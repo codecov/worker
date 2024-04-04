@@ -1,10 +1,8 @@
-import pytest
 from sqlalchemy.orm.session import Session
 
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     GithubAppInstallation,
-    Owner,
 )
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
 from tasks.backfill_gh_app_installations import BackfillGHAppInstallationsTask

@@ -6,7 +6,7 @@ from asgiref.sync import async_to_sync
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from celery_config import backfill_gh_app_installations
+from celery_config import backfill_gh_app_installations_name
 from database.models.core import GithubAppInstallation, Owner, Repository
 from services.owner import get_owner_provider_service
 from tasks.base import BaseCodecovTask
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 class BackfillGHAppInstallationsTask(
-    BaseCodecovTask, name=backfill_gh_app_installations
+    BaseCodecovTask, name=backfill_gh_app_installations_name
 ):
     # Looping and adding all repositories in the installation app
     def add_repos_service_ids_from_provider(

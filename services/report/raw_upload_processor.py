@@ -90,10 +90,14 @@ def process_raw_upload(
     else:
         ignored_file_lines = None
 
+    session = session or Session()
     # Get a sesisonid to merge into
     # anything merged into the original_report
     # will take on this sessionid
-    sessionid, session = original_report.add_session(session or Session())
+    # But we don't actually merge yet in case the report is empty.
+    # This is done to avoid garbage sessions to build up in the report
+    # How can you be sure this will be the sessionid used when you actually merge it? Remember that this piece of code runs inside a lock u.u
+    sessionid = original_report.next_session_number()
     session.id = sessionid
     if env:
         session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
@@ -106,7 +110,7 @@ def process_raw_upload(
     should_use_encoded_labels = (
         upload
         and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            upload.report.commit.repository.repoid, default=False
+            repo_id=upload.report.commit.repository.repoid, default=False
         )
     )
     # [javascript] check for both coverage.json and coverage/coverage.lcov
@@ -182,6 +186,10 @@ def process_raw_upload(
         # none of the reports processed contributed any new labels to it.
         # So we assume there are no labels and just reset the _labels_index of temporary_report
         temporary_report.labels_index = None
+    # Now we actually add the session to the original_report
+    # Because we know that the processing was successful
+    sessionid, session = original_report.add_session(session)
+    # Adjust sessions removed carryforward sessions that are being replaced
     session_manipulation_result = _adjust_sessions(
         original_report,
         temporary_report,
@@ -343,7 +351,7 @@ def _adjust_sessions(
     if (
         upload
         and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            upload.report.commit.repository.repoid, default=False
+            repo_id=upload.report.commit.repository.repoid, default=False
         )
         and to_partially_overwrite_flags
     ):

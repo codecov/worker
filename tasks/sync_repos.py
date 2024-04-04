@@ -5,7 +5,12 @@ from typing import List, Optional, Tuple
 from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
-from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_name
+from shared.celery_config import (
+    sync_repo_languages_gql_task_name,
+    sync_repo_languages_task_name,
+    sync_repos_task_name,
+)
+from shared.config import get_config
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
@@ -93,10 +98,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     using_integration,
                     ignore_installation=(not using_integration),
                 )
-                synced_repoids = []
+                sync_repos_output = {}
                 if using_integration:
                     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
-                        synced_repoids = async_to_sync(
+                        sync_repos_output = async_to_sync(
                             self.sync_repos_using_integration
                         )(
                             db_session,
@@ -107,14 +112,18 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                         )
                 else:
                     with metrics.timer(f"{metrics_scope}.sync_repos"):
-                        synced_repoids = async_to_sync(self.sync_repos)(
+                        sync_repos_output = async_to_sync(self.sync_repos)(
                             db_session, git, owner, username, using_integration
                         )
 
-                self.sync_repos_languages(
-                    synced_repoids=synced_repoids or [],
-                    manual_trigger=manual_trigger,
-                )
+                if get_config(
+                    "setup", "tasks", "sync_repo_languages", "enabled", default=True
+                ):
+                    self.sync_repos_languages(
+                        sync_repos_output=sync_repos_output,
+                        manual_trigger=manual_trigger,
+                        current_owner=owner,
+                    )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
@@ -144,7 +153,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         repos_to_search = [
             x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
         ]
-        for repo_data in git.get_repos_from_nodeids_generator(
+        async for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
         ):
             # Insert those repos
@@ -242,15 +251,15 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        #####################################TEMP#########################################
-        # elif LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
-        #     with metrics.timer(
-        #         f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
-        #     ):
-        #         async for page in git.list_repos_using_installation_generator(username):
-        #             received_repos = True
-        #             process_repos(page)
-        #####################################TEMP#########################################
+        elif await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
+            owner_id=ownerid, default=False
+        ):
+            with metrics.timer(
+                f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
+            ):
+                async for page in git.list_repos_using_installation_generator(username):
+                    received_repos = True
+                    process_repos(page)
         else:
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos"
@@ -272,7 +281,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             extra=dict(repoids_created=repoids, repoids_created_count=len(repoids)),
         )
 
-        return repoids
+        return {
+            "service": git.service,
+            "org_usernames": [owner.username],
+            "repoids": repoids,
+        }
 
     async def sync_repos(self, db_session, git, owner, username, using_integration):
         service = owner.service
@@ -342,17 +355,17 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            #####################################TEMP#########################################
-            # if LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value(ownerid, default=False):
-            #     with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-            #         async for page in git.list_repos_generator():
-            #             process_repos(page)
-            # else:
-            #####################################TEMP#########################################
-            # get my repos (and team repos)
-            with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                repos = await git.list_repos()
-                process_repos(repos)
+            if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
+                owner_id=ownerid, default=False
+            ):
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
+                    async for page in git.list_repos_generator():
+                        process_repos(page)
+            else:
+                # get my repos (and team repos)
+                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
+                    repos = await git.list_repos()
+                    process_repos(repos)
         except SoftTimeLimitExceeded:
             old_permissions = owner.permission or []
             log.warning(
@@ -402,7 +415,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         log.info("Repo sync done", extra=dict(repoids=repoids))
 
-        return repoids
+        return {
+            "service": git.service,
+            "org_usernames": [item[2] for item in owners_by_id.keys()],
+            "repoids": repoids,
+        }
 
     def upsert_owner(self, db_session, service, service_id, username):
         log.info(
@@ -419,7 +436,12 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             if (owner.username or "").lower() != username.lower():
                 owner.username = username
         else:
-            owner = Owner(service=service, service_id=service_id, username=username)
+            owner = Owner(
+                service=service,
+                service_id=service_id,
+                username=username,
+                createstamp=datetime.now(),
+            )
             db_session.add(owner)
             db_session.flush()
 
@@ -546,11 +568,23 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         db_session.flush()
         return new_repo.repoid
 
-    def sync_repos_languages(self, synced_repoids: List[int], manual_trigger: bool):
-        for repoid in synced_repoids:
-            self.app.tasks[sync_repo_languages_task_name].apply_async(
-                kwargs=dict(repoid=repoid, manual_trigger=manual_trigger)
-            )
+    def sync_repos_languages(
+        self, sync_repos_output: dict, manual_trigger: bool, current_owner: Owner
+    ):
+        if sync_repos_output:
+            if sync_repos_output["service"] == "github":
+                for owner_username in sync_repos_output["org_usernames"]:
+                    self.app.tasks[sync_repo_languages_gql_task_name].apply_async(
+                        kwargs=dict(
+                            org_username=owner_username,
+                            current_owner_id=current_owner.ownerid,
+                        )
+                    )
+            else:
+                for repoid in sync_repos_output["repoids"]:
+                    self.app.tasks[sync_repo_languages_task_name].apply_async(
+                        kwargs=dict(repoid=repoid, manual_trigger=manual_trigger)
+                    )
 
 
 RegisteredSyncReposTask = celery_app.register_task(SyncReposTask())

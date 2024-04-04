@@ -27,7 +27,7 @@ from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
 from services.billing import BillingPlan
 from services.commit_status import RepositoryCIFilter
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
 from services.lock_manager import LockManager, LockType
@@ -213,15 +213,14 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             )
             ghapp_default_installations = list(
                 filter(
-                    lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+                    lambda obj: obj.name == installation_name_to_use
+                    and obj.is_configured(),
                     commit.repository.owner.github_app_installations or [],
                 )
             )
-            rely_on_webhook_ghapp = (
-                ghapp_default_installations != []
-                and ghapp_default_installations[0].is_repo_covered_by_integration(
-                    commit.repository
-                )
+            rely_on_webhook_ghapp = ghapp_default_installations != [] and any(
+                obj.is_repo_covered_by_integration(commit.repository)
+                for obj in ghapp_default_installations
             )
             rely_on_webhook_legacy = commit.repository.using_integration
             if (
@@ -325,6 +324,11 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 head_report,
                 enriched_pull,
                 empty_upload,
+                all_tests_passed=(
+                    test_result_commit_report is not None
+                    and test_result_commit_report.test_result_totals is not None
+                ),
+                installation_name_to_use=installation_name_to_use,
             )
             self.log_checkpoint(kwargs, UploadFlow.NOTIFIED)
             log.info(
@@ -378,6 +382,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         head_report,
         enriched_pull: EnrichedPull,
         empty_upload=None,
+        # It's only true if the test_result processing is setup
+        # And all tests indeed passed
+        all_tests_passed: bool = False,
+        installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     ):
         # base_commit is an "adjusted" base commit; for project coverage, we
         # compare a PR head's report against its base's report, or if the base
@@ -405,7 +413,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
                 current_yaml=current_yaml,
-            )
+            ),
+            context=NotificationContext(all_tests_passed=all_tests_passed),
         )
 
         decoration_type = self.determine_decoration_type_from_pull(
@@ -413,7 +422,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         )
 
         notifications_service = NotificationService(
-            commit.repository, current_yaml, decoration_type
+            commit.repository,
+            current_yaml,
+            decoration_type,
+            gh_installation_name_to_use=installation_name_to_use,
         )
         return async_to_sync(notifications_service.notify)(comparison)
 

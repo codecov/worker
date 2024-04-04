@@ -1,5 +1,7 @@
+from base64 import b64encode
 from decimal import Decimal
 from unittest.mock import PropertyMock
+from urllib.parse import urlencode
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -16,12 +18,15 @@ from shared.yaml import UserYaml
 
 from database.models.core import GithubAppInstallation
 from database.tests.factories import RepositoryFactory
+from services.comparison import NotificationContext
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
+    ellipsis,
+    escape_markdown,
     format_number_to_str,
     sort_by_importance,
 )
@@ -33,6 +38,7 @@ from services.notification.notifiers.mixins.message.sections import (
     NewFilesSectionWriter,
     NewFooterSectionWriter,
     NewHeaderSectionWriter,
+    _get_tree_cell,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 from services.yaml.reader import get_components_from_yaml
@@ -743,12 +749,13 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
         ]
         res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
-        assert expected_result == res
+        for expected, res in zip(expected_result, res):
+            assert expected == res
 
     @pytest.mark.asyncio
     async def test_create_message_files_section_with_critical_files(
@@ -901,8 +908,8 @@ class TestCommentNotifier(object):
             "",
             f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
         ]
@@ -961,7 +968,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
@@ -1086,7 +1093,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
@@ -1384,7 +1391,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | |",
             f"|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
             f"",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
@@ -1457,7 +1464,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
+            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"------",
             f"",
@@ -1528,7 +1535,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
+            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"------",
             f"",
@@ -1601,7 +1608,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (ø)` | |",
             f"",
             f"------",
             f"",
@@ -1675,7 +1682,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `50.00% <ø> (-12.50%)` | `11.00 <0.00> (+1.00)` | :arrow_down: |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `50.00% <ø> (-12.50%)` | `11.00 <0.00> (+1.00)` | :arrow_down: |",
             f"",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
@@ -1867,7 +1874,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
@@ -2249,7 +2256,7 @@ class TestCommentNotifier(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
             f"",
@@ -3440,10 +3447,34 @@ class TestFileSectionWriter(object):
         assert lines == [
             "| [Files](pull.link?dropdown=coverage&src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
-            "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
+            "| [file\\_1.go](pull.link?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
             f"",
             "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
+
+    def test_get_tree_cell(self):
+        typ = "added"
+        path = "path/to/test_file.go"
+        metrics = "| this is where the metrics go |"
+        line = _get_tree_cell(
+            typ=typ, path=path, metrics=metrics, compare="pull.link", is_critical=False
+        )
+        assert (
+            line
+            == f"| [path/to/test\\_file.go](pull.link?src=pr&el=tree&filepath=path%2Fto%2Ftest_file.go#diff-cGF0aC90by90ZXN0X2ZpbGUuZ28=) {metrics}"
+        )
+
+    def test_get_tree_cell_with_critical(self):
+        typ = "added"
+        path = "path/to/test_file.go"
+        metrics = "| this is where the metrics go |"
+        line = _get_tree_cell(
+            typ=typ, path=path, metrics=metrics, compare="pull.link", is_critical=True
+        )
+        assert (
+            line
+            == f"| [path/to/test\\_file.go](pull.link?src=pr&el=tree&filepath=path%2Fto%2Ftest_file.go#diff-cGF0aC90by90ZXN0X2ZpbGUuZ28=) **Critical** {metrics}"
+        )
 
     @pytest.mark.asyncio
     async def test_file_with_critical(self, sample_comparison, mocker):
@@ -3534,7 +3565,7 @@ class TestFileSectionWriter(object):
         assert lines == [
             "| [Files](pull.link?dropdown=coverage&src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
-            "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) **Critical** | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
+            "| [file\\_1.go](pull.link?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) **Critical** | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
             "",
             "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
@@ -3617,8 +3648,8 @@ class TestFileSectionWriter(object):
         assert lines == [
             "| [Files](pull.link?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
             "|---|---|---|",
-            "| [file\\_2.py](pull.link?src=pr&el=tree#diff-ZmlsZV8yLnB5) | -23.33% | [2 Missing and 3 partials :warning: ](pull.link?src=pr&el=tree) |",
-            "| [file\\_1.go](pull.link?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.66% | [1 Missing :warning: ](pull.link?src=pr&el=tree) |",
+            "| [file\\_2.py](pull.link?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) | -23.33% | [2 Missing and 3 partials :warning: ](pull.link?src=pr&el=tree) |",
+            "| [file\\_1.go](pull.link?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.66% | [1 Missing :warning: ](pull.link?src=pr&el=tree) |",
         ]
 
     @pytest.mark.asyncio
@@ -3992,6 +4023,37 @@ class TestNewHeaderSectionWriter(object):
         ]
 
     @pytest.mark.asyncio
+    async def test_new_header_section_writer_test_results_setup(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(all_tests_passed=True)
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            "",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
+        ]
+
+    @pytest.mark.asyncio
     async def test_new_header_section_writer_no_project_coverage(
         self, mocker, sample_comparison
     ):
@@ -4016,6 +4078,36 @@ class TestNewHeaderSectionWriter(object):
         )
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer_no_project_coverage_test_results_setup(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(all_tests_passed=True)
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={"hide_project_coverage": True},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
         ]
 
 
@@ -4305,8 +4397,8 @@ class TestCommentNotifierInNewLayout(object):
             "",
             f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
+            f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             f"",
             "",
         ]
@@ -4371,7 +4463,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
+            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
@@ -4439,7 +4531,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             f"|---|---|---|---|",
-            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
+            f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
             f"",
             f"</details>",
             f"",
@@ -4482,7 +4574,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
             f"|---|---|---|",
-            f"| [file\\_1.go]({pull_url}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
             f"",
             f"",
             f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
@@ -4523,7 +4615,7 @@ class TestCommentNotifierInNewLayout(object):
             f"",
             f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
             f"|---|---|---|",
-            f"| [file\\_1.go]({pull_url}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
             f"",
             f"",
             f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
@@ -4679,6 +4771,94 @@ class TestCommentNotifierInNewLayout(object):
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_team_plan_customer_missing_lines(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_head_and_pull_head_differ,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison_head_and_pull_head_differ
+        comparison.repository_service.service = "github"
+        # relevant part of this test
+        comparison.head.commit.repository.owner.plan = "users-teamm"
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                # Irrelevant but they don't overwrite Owner's plan
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={
+                # Irrelevant but here to ensure they don't overwrite Owner's plan
+                "component_management": {
+                    "individual_components": [
+                        {"component_id": "go_files", "paths": [r".*\.go"]},
+                        {"component_id": "unit_flags", "flag_regexes": [r"unit.*"]},
+                    ]
+                }
+            },
+        )
+
+        pull = comparison.pull
+        repository = sample_comparison_head_and_pull_head_differ.head.commit.repository
+        result = await notifier.build_message(comparison)
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
+            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+        ]
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_team_plan_customer_all_lines_covered(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_coverage_carriedforward,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        sample_comparison_coverage_carriedforward.context = NotificationContext(
+            all_tests_passed=True
+        )
+        comparison = sample_comparison_coverage_carriedforward
+        comparison.repository_service.service = "github"
+        # relevant part of this test
+        comparison.head.commit.repository.owner.plan = "users-teamm"
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                # Irrelevant but they don't overwrite Owner's plan
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        pull = comparison.pull
+        repository = sample_comparison_coverage_carriedforward.head.commit.repository
+        result = await notifier.build_message(comparison)
+
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+        ]
         assert result == expected_result
 
     @pytest.mark.asyncio

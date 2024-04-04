@@ -172,7 +172,7 @@ def process_report(
                         f"worker.services.report.processors.{processor.name}.failure"
                     )
                     raise
-    log.info(
+    log.warning(
         "File format could not be recognized",
         extra=dict(
             report_filename=name, first_line=first_line[:100], report_type=report_type

@@ -19,6 +19,7 @@ here = Path(__file__)
 
 
 class TestUploadTestProcessorTask(object):
+    @pytest.mark.parametrize("use_bulk_insert", [False, True])
     @pytest.mark.integration
     def test_upload_processor_task_call(
         self,
@@ -29,7 +30,18 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        use_bulk_insert,
     ):
+        mock_feature = mocker.patch(
+            "tasks.test_results_processor.BULK_INSERT_TEST_INSTANCES"
+        )
+        mock_feature.check_value.return_value = use_bulk_insert
+
+        tests = dbsession.query(Test).all()
+        test_instances = dbsession.query(TestInstance).all()
+        assert len(tests) == 0
+        assert len(test_instances) == 0
+
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.txt") as f:
             content = f.read()
@@ -97,15 +109,21 @@ class TestUploadTestProcessorTask(object):
                 )
             ]
         )
+        metrics_write_to_db_tags = {
+            "method": "bulk_insert" if use_bulk_insert else "simple_insert"
+        }
         calls = [
             call("test_results.processor"),
             call("test_results.processor.process_individual_arg"),
             call("test_results.processor.file_parsing"),
-            call("test_results.processor.write_to_db"),
+            call(
+                key="test_results.processor.write_to_db", tags=metrics_write_to_db_tags
+            ),
         ]
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
 
+    @pytest.mark.parametrize("use_bulk_insert", [False, True])
     @pytest.mark.integration
     def test_upload_processor_task_call_pytest_reportlog(
         self,
@@ -116,7 +134,13 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        use_bulk_insert,
     ):
+        mock_feature = mocker.patch(
+            "tasks.test_results_processor.BULK_INSERT_TEST_INSTANCES"
+        )
+        mock_feature.check_value.return_value = use_bulk_insert
+
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_pytest_reportlog.txt") as f:
             content = f.read()
@@ -171,6 +195,7 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert commit.message == "hello world"
 
+    @pytest.mark.parametrize("use_bulk_insert", [False, True])
     @pytest.mark.integration
     def test_upload_processor_task_call_vitest(
         self,
@@ -181,7 +206,13 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        use_bulk_insert,
     ):
+        mock_feature = mocker.patch(
+            "tasks.test_results_processor.BULK_INSERT_TEST_INSTANCES"
+        )
+        mock_feature.check_value.return_value = use_bulk_insert
+
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_vitest.txt") as f:
             content = f.read()
@@ -377,6 +408,7 @@ class TestUploadTestProcessorTask(object):
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
 
+    @pytest.mark.parametrize("use_bulk_insert", [False, True])
     @pytest.mark.integration
     def test_test_result_processor_task_delete_archive(
         self,
@@ -388,7 +420,13 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        use_bulk_insert,
     ):
+        mock_feature = mocker.patch(
+            "tasks.test_results_processor.BULK_INSERT_TEST_INSTANCES"
+        )
+        mock_feature.check_value.return_value = use_bulk_insert
+
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_vitest.txt") as f:
             content = f.read()
@@ -499,6 +537,7 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert "File did not match any parser format" in caplog.text
 
+    @pytest.mark.parametrize("use_bulk_insert", [False, True])
     @pytest.mark.integration
     def test_upload_processor_task_call_existing_test(
         self,
@@ -509,7 +548,13 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        use_bulk_insert,
     ):
+        mock_feature = mocker.patch(
+            "tasks.test_results_processor.BULK_INSERT_TEST_INSTANCES"
+        )
+        mock_feature.check_value.return_value = use_bulk_insert
+
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.txt") as f:
             content = f.read()
@@ -585,6 +630,7 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert commit.message == "hello world"
 
+    @pytest.mark.parametrize("use_bulk_insert", [False, True])
     @pytest.mark.integration
     def test_upload_processor_task_call_existing_test_diff_flags_hash(
         self,
@@ -595,7 +641,13 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
+        use_bulk_insert,
     ):
+        mock_feature = mocker.patch(
+            "tasks.test_results_processor.BULK_INSERT_TEST_INSTANCES"
+        )
+        mock_feature.check_value.return_value = use_bulk_insert
+
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.txt") as f:
             content = f.read()
