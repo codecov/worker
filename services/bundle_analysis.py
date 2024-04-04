@@ -163,14 +163,26 @@ class BundleAnalysisReportService(BaseReportService):
             )
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
+            plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
             sentry_metrics.incr(
                 "bundle_analysis_upload",
                 tags={
                     "result": "parser_error",
-                    "plugin_name": getattr(e, "bundle_analysis_plugin_name", "unknown"),
+                    "plugin_name": plugin_name,
                 },
             )
-            raise e
+            return ProcessingResult(
+                upload=upload,
+                commit=commit,
+                error=ProcessingError(
+                    code="parser_error",
+                    params={
+                        "location": upload.storage_path,
+                        "plugin_name": plugin_name,
+                    },
+                    is_retryable=False,
+                ),
+            )
         finally:
             os.remove(local_path)
 
