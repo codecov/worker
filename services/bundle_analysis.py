@@ -6,6 +6,7 @@ from functools import cached_property
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import sentry_sdk
+from sentry_sdk import metrics as sentry_metrics
 from shared.bundle_analysis import (
     BundleAnalysisComparison,
     BundleAnalysisReport,
@@ -85,6 +86,13 @@ class ProcessingResult:
             self.upload.state_id = UploadState.PROCESSED.db_id
             self.upload.order_number = self.session_id
 
+        sentry_metrics.incr(
+            "bundle_analysis_upload",
+            tags={
+                "result": "upload_error" if self.error else "processed",
+            },
+        )
+
         db_session.flush()
 
 
@@ -151,6 +159,28 @@ class BundleAnalysisReportService(BaseReportService):
                     code="file_not_in_storage",
                     params={"location": upload.storage_path},
                     is_retryable=True,
+                ),
+            )
+        except Exception as e:
+            # Metrics to count number of parsing errors of bundle files by plugins
+            plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
+            sentry_metrics.incr(
+                "bundle_analysis_upload",
+                tags={
+                    "result": "parser_error",
+                    "plugin_name": plugin_name,
+                },
+            )
+            return ProcessingResult(
+                upload=upload,
+                commit=commit,
+                error=ProcessingError(
+                    code="parser_error",
+                    params={
+                        "location": upload.storage_path,
+                        "plugin_name": plugin_name,
+                    },
+                    is_retryable=False,
                 ),
             )
         finally:
