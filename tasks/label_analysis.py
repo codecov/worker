@@ -419,7 +419,7 @@ class LabelAnalysisRequestProcessingTask(
     def calculate_final_result(
         self,
         *,
-        requested_labels: List[str],
+        requested_labels: Optional[List[str]],
         existing_labels: ExistingLabelSetsNotEncoded,
         commit_sha: str,
     ):
@@ -436,10 +436,10 @@ class LabelAnalysisRequestProcessingTask(
                 commit=commit_sha,
             ),
         )
-        self.metrics_context.attempt_log_simple_metric(
+        self.metrics_context.log_simple_metric(
             "label_analysis.tests_saved_count", len(all_report_labels)
         )
-        self.metrics_context.attempt_log_simple_metric(
+        self.metrics_context.log_simple_metric(
             "label_analysis.requests_with_requested_labels",
             float(requested_labels is not None),
         )
@@ -453,10 +453,10 @@ class LabelAnalysisRequestProcessingTask(
                 "absent_labels": sorted(requested_labels - all_report_labels),
                 "global_level_labels": sorted(global_level_labels & requested_labels),
             }
-            self.metrics_context.attempt_log_simple_metric(
+            self.metrics_context.log_simple_metric(
                 "label_analysis.requested_labels_count", len(requested_labels)
             )
-            self.metrics_context.attempt_log_simple_metric(
+            self.metrics_context.log_simple_metric(
                 "label_analysis.tests_to_run_count",
                 len(
                     ans["present_diff_labels"]
@@ -465,7 +465,7 @@ class LabelAnalysisRequestProcessingTask(
                 ),
             )
             return ans
-        self.metrics_context.attempt_log_simple_metric(
+        self.metrics_context.log_simple_metric(
             "label_analysis.tests_to_run_count",
             len(executable_lines_labels | global_level_labels),
         )
