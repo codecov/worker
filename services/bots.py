@@ -47,6 +47,17 @@ def get_owner_installation_id(
     ignore_installation: bool = False
 ) -> Optional[Dict]:
 
+    log.info(
+        "Getting owner installation id",
+        extra=dict(
+            deprecated_using_integration=deprecated_using_integration,
+            installation_name=installation_name,
+            ignore_installation=ignore_installation,
+            ownerid=owner.ownerid,
+            repoid=getattr(repository, "repoid", None),
+        ),
+    )
+
     if not ignore_installation or deprecated_using_integration:
         default_app_installation_filter: List[GithubAppInstallation] = list(
             filter(
@@ -92,6 +103,8 @@ def get_owner_installation_id(
                         extra=dict(
                             installation=app_installation.external_id,
                             installation_name=app_installation.name,
+                            ownerid=owner.ownerid,
+                            repoid=repository.repoid,
                         ),
                     )
                     return {
@@ -109,6 +122,7 @@ def get_owner_installation_id(
                     extra=dict(
                         installation=app_installation.external_id,
                         installation_name=app_installation.name,
+                        ownerid=owner.ownerid,
                     ),
                 )
                 return {
@@ -128,6 +142,15 @@ def get_repo_appropriate_bot_token(
     repo: Repository,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> Tuple[Dict, Optional[Owner]]:
+
+    log.info(
+        "Get repo appropriate bot token",
+        extra=dict(
+            installation_name_to_use=installation_name_to_use,
+            repoid=repo.repoid,
+        ),
+    )
+
     if is_enterprise() and get_config(repo.service, "bot"):
         return get_public_bot_token(repo)
 
