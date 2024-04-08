@@ -3,7 +3,6 @@ from typing import Optional
 
 from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
-from redis.exceptions import LockError
 from shared.celery_config import (
     new_user_activated_task_name,
     notify_task_name,
