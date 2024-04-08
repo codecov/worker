@@ -41,7 +41,13 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from helpers.labels import get_labels_per_session
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
+from services.redis import (
+    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+    get_parallel_upload_processing_session_counter_redis_key,
+    get_redis_connection,
+)
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
@@ -280,6 +286,29 @@ class ReportService(BaseReportService):
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
+
+                # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
+                # finisher can build off of it later. Makes the assumption that the CFFs occupy the first
+                # j to i session ids where i is the max id of the CFFs and j is some integer less than i.
+                if await PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value_async(
+                    commit.repository.repoid
+                ):
+                    self.save_parallel_report_to_archive(commit, report, report_code)
+                    highest_session_id = max(
+                        report.sessions.keys()
+                    )  # the largest id among the CFFs
+                    get_redis_connection().incrby(
+                        name=get_parallel_upload_processing_session_counter_redis_key(
+                            commit.repository.repoid, commit.commitid
+                        ),
+                        amount=highest_session_id + 1,
+                    )
+                    get_redis_connection().expire(
+                        name=get_parallel_upload_processing_session_counter_redis_key(
+                            commit.repository.repoid, commit.commitid
+                        ),
+                        time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+                    )
 
         return current_report_row
 
@@ -773,7 +802,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(
-        self, repo: Repository, upload: Upload
+        self, repo: Repository, upload: Upload, is_parallel=False
     ) -> ParsedRawReport:
         """Pulls the raw uploaded report from storage and parses it do it's
         easier to access different parts of the raw upload.
@@ -783,7 +812,12 @@ class ReportService(BaseReportService):
         """
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
-        parser = get_proper_parser(upload)
+
+        # for the parallel experiment: since the parallel version runs after the old behaviour
+        # has finished, the current uploads have already been rewritten in a human readable
+        # format, so we need to use the legacy parser here for the parallel version.
+        parser = get_proper_parser(upload, use_legacy=is_parallel)
+
         raw_uploaded_report = parser.parse_raw_report_from_bytes(
             archive_service.read_file(archive_url)
         )
@@ -791,7 +825,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def build_report_from_raw_content(
-        self, master: Optional[Report], upload: Upload
+        self, master: Optional[Report], upload: Upload, parallel_idx=None
     ) -> ProcessingResult:
         """
             Processes an upload on top of an existing report `master` and returns
@@ -828,7 +862,7 @@ class ReportService(BaseReportService):
         )
         try:
             raw_uploaded_report = self.parse_raw_report_from_storage(
-                commit.repository, upload
+                commit.repository, upload, is_parallel=parallel_idx is not None
             )
         except FileNotInStorageError:
             return ProcessingResult(
@@ -854,6 +888,7 @@ class ReportService(BaseReportService):
                     flags,
                     session,
                     upload=upload,
+                    parallel_idx=parallel_idx,
                 )
             log.info(
                 "Successfully processed report",
@@ -914,8 +949,15 @@ class ReportService(BaseReportService):
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
-            upload_obj.state = "processed"
+            # this should be enabled for the actual rollout of parallel upload processing.
+            # if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            #     "this should be the repo id"
+            # ):
+            #     upload_obj.state_id = UploadState.PARALLEL_PROCESSED.db_id
+            #     upload_obj.state = "parallel_processed"
+            # else:
             upload_obj.state_id = UploadState.PROCESSED.db_id
+            upload_obj.state = "processed"
             upload_obj.order_number = session.id
             upload_totals = upload_obj.totals
             if upload_totals is None:
@@ -1056,3 +1098,22 @@ class ReportService(BaseReportService):
                 db_session.add(upload_totals)
                 upload_totals.update_from_totals(session.totals)
         return res
+
+    def save_parallel_report_to_archive(
+        self, commit: Commit, report: Report, report_code=None
+    ):
+        commitid = commit.commitid
+        archive_service = self.get_archive_service(commit.repository)
+
+        # save incremental results to archive storage,
+        # upload_finisher will combine
+        chunks = report.to_archive().encode()
+        _, files_and_sessions = report.to_database()
+
+        archive_service.write_parallel_experiment_file(
+            commitid, chunks, report_code, "chunks"
+        )
+
+        archive_service.write_parallel_experiment_file(
+            commitid, files_and_sessions, report_code, "files_and_sessions"
+        )
