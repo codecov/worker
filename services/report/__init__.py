@@ -293,7 +293,9 @@ class ReportService(BaseReportService):
                 if await PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value_async(
                     commit.repository.repoid
                 ):
-                    self.save_parallel_report_to_archive(commit, report, report_code)
+                    await self.save_parallel_report_to_archive(
+                        commit, report, report_code
+                    )
                     highest_session_id = max(
                         report.sessions.keys()
                     )  # the largest id among the CFFs
@@ -1099,21 +1101,46 @@ class ReportService(BaseReportService):
                 upload_totals.update_from_totals(session.totals)
         return res
 
-    def save_parallel_report_to_archive(
+    async def save_parallel_report_to_archive(
         self, commit: Commit, report: Report, report_code=None
     ):
         commitid = commit.commitid
+        repository = commit.repository
         archive_service = self.get_archive_service(commit.repository)
+
+        # Attempt to calculate diff of report (which uses commit info from the git provider), but it it fails to do so, it just moves on without such diff
+        try:
+            repository_service = get_repo_provider_service(repository, commit)
+            report.apply_diff(await repository_service.get_commit_diff(commitid))
+        except TorngitError:
+            # When this happens, we have that commit.totals["diff"] is not available.
+            # Since there is no way to calculate such diff without the git commit,
+            # then we assume having the rest of the report saved there is better than the
+            # alternative of refusing an otherwise "good" report because of the lack of diff
+            log.warning(
+                "Could not apply diff to report because there was an error fetching diff from provider",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    parent_task=self.request.parent_id,
+                ),
+                exc_info=True,
+            )
 
         # save incremental results to archive storage,
         # upload_finisher will combine
         chunks = report.to_archive().encode()
         _, files_and_sessions = report.to_database()
 
-        archive_service.write_parallel_experiment_file(
+        chunks_url = archive_service.write_parallel_experiment_file(
             commitid, chunks, report_code, "chunks"
         )
 
-        archive_service.write_parallel_experiment_file(
+        files_and_sessions_url = archive_service.write_parallel_experiment_file(
             commitid, files_and_sessions, report_code, "files_and_sessions"
         )
+
+        return {
+            "chunks_path": chunks_url,
+            "files_and_sessions_path": files_and_sessions_url,
+        }

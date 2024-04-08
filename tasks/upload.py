@@ -671,7 +671,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 sessions = report_service.build_sessions(commit=commit)
                 upload_context.redis_connection.set(
                     redis_key,
-                    max(sessions.keys()) + 1,
+                    max(sessions.keys()) + 1 if sessions.keys() else 0,
                 )
 
             # increment redis to claim session ids
