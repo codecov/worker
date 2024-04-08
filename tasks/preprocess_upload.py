@@ -5,6 +5,7 @@ from redis.exceptions import LockError
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes
@@ -112,11 +113,16 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 commit, repository_service
             )
         else:
+            context = OwnerContext(
+                owner_onboarding_date=repository.owner.createstamp,
+                owner_plan=repository.owner.plan,
+                ownerid=repository.ownerid,
+            )
             commit_yaml = UserYaml.get_final_yaml(
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
-                ownerid=repository.owner.ownerid,
+                owner_context=context,
             )
         report_service = ReportService(commit_yaml)
         commit_report = async_to_sync(report_service.initialize_and_save_report)(
@@ -198,11 +204,16 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 exc_info=True,
             )
             commit_yaml = None
+        context = OwnerContext(
+            owner_onboarding_date=repository.owner.createstamp,
+            owner_plan=repository.owner.plan,
+            ownerid=repository.ownerid,
+        )
         return UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
-            ownerid=repository.owner.ownerid,
+            owner_context=context,
         )
 
 
