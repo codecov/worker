@@ -4343,6 +4343,7 @@ class TestReportService(BaseTestCase):
         assert len(mock_storage.storage["archive"]) == 0
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default"})
     async def test_initialize_and_save_report_carryforward_needed(
         self, dbsession, sample_commit_with_report_big, mocker, mock_storage
     ):
@@ -4422,6 +4423,7 @@ class TestReportService(BaseTestCase):
         ]
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default"})
     async def test_initialize_and_save_report_report_but_no_details_carryforward_needed(
         self, dbsession, sample_commit_with_report_big, mock_storage
     ):

@@ -30,6 +30,11 @@ from database.models import (
     uploadflagmembership,
 )
 from services.archive import ArchiveService
+from services.redis import (
+    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+    get_parallel_upload_processing_session_counter_redis_key,
+    get_redis_connection,
+)
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -151,10 +156,33 @@ class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
 
     @sentry_sdk.trace
     def _delete_commits(self, db_session: Session, repoid: int) -> int:
-        deleted_commits = db_session.query(Commit).filter_by(repoid=repoid).delete()
+        commits_to_delete = (
+            db_session.query(Commit.commitid).filter_by(repoid=repoid).all()
+        )
+        commit_ids_to_delete = [commit.commitid for commit in commits_to_delete]
+
+        pipeline = get_redis_connection().pipeline()
+        for id in commit_ids_to_delete:
+            pipeline.set(
+                get_parallel_upload_processing_session_counter_redis_key(
+                    repoid=repoid, commitid=id
+                ),
+                0,
+                ex=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+            )
+        pipeline.execute()
+
+        delete_count = (
+            db_session.query(Commit)
+            .filter(Commit.commitid.in_(commit_ids_to_delete))
+            .delete(synchronize_session=False)
+        )
         db_session.commit()
-        log.info("Deleted commits", extra=dict(repoid=repoid))
-        return deleted_commits
+
+        log.info(
+            "Deleted commits", extra=dict(repoid=repoid, deleted_count=delete_count)
+        )
+        return delete_count
 
     @sentry_sdk.trace
     def _delete_branches(self, db_session: Session, repoid: int) -> int:
