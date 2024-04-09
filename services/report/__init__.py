@@ -821,6 +821,9 @@ class ReportService(BaseReportService):
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit
             )
+            metric_context.attempt_log_simple_metric(
+                "worker_service_report_carryforward_success", 1
+            )
             return carryforward_report
 
     @sentry_sdk.trace
