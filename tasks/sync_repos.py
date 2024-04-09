@@ -14,6 +14,7 @@ from shared.config import get_config
 from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
+from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -59,13 +60,13 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     def run_impl(
         self,
-        db_session,
+        db_session: Session,
         # `previous_results`` is added by celery if the task is chained.
         # It contains the results of tasks that came before this one in the chain
         previous_results=None,
         *,
-        ownerid,
-        username=None,
+        ownerid: int,
+        username: Optional[str] = None,
         using_integration=False,
         manual_trigger=False,
         # `repository_service_ids` is optionally passed to the task
@@ -78,7 +79,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         log.info(
             "Sync repos",
             extra=dict(
-                ownerid=ownerid, username=username, using_integration=using_integration
+                ownerid=ownerid,
+                username=username,
+                using_integration=using_integration,
+                manual_trigger=manual_trigger,
+                repository_service_ids=repository_service_ids,
             ),
         )
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
@@ -149,6 +154,16 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         )
         missing_repo_service_ids = service_ids.difference(existing_repos)
 
+        log.info(
+            "Sync missing repos if any",
+            extra=dict(
+                ownerid=owner.ownerid,
+                missing_repo_service_ids=missing_repo_service_ids,
+                num_missing_repos=len(missing_repo_service_ids),
+                existing_repos=existing_repos,
+            ),
+        )
+
         # Get info from provider on the repos we don't have
         repos_to_search = [
             x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
@@ -182,10 +197,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     async def sync_repos_using_integration(
         self,
-        db_session,
+        db_session: Session,
         git,
-        owner,
-        username,
+        owner: Owner,
+        username: str,
         repository_service_ids: Optional[List[Tuple[str, str]]] = None,
     ):
         ownerid = owner.ownerid
@@ -195,6 +210,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         )
 
         repoids = []
+
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
@@ -287,7 +303,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             "repoids": repoids,
         }
 
-    async def sync_repos(self, db_session, git, owner, username, using_integration):
+    async def sync_repos(
+        self,
+        db_session: Session,
+        git,
+        owner: Owner,
+        username: Optional[str],
+        using_integration: bool,
+    ):
         service = owner.service
         ownerid = owner.ownerid
         private_project_ids = []
@@ -299,6 +322,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         repoids = []
         owners_by_id = {}
+
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
@@ -392,7 +416,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         log.info(
             "Updating permissions",
-            extra=dict(ownerid=ownerid, username=username, repoids=private_project_ids),
+            extra=dict(
+                ownerid=ownerid, username=username, privaterepoids=private_project_ids
+            ),
         )
         old_permissions = owner.permission or []
         removed_permissions = set(old_permissions) - set(private_project_ids)
@@ -413,7 +439,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # update user permissions
         owner.permission = sorted(set(private_project_ids))
 
-        log.info("Repo sync done", extra=dict(repoids=repoids))
+        log.info(
+            "Repo sync done",
+            extra=dict(ownerid=ownerid, username=username, repoids=repoids),
+        )
 
         return {
             "service": git.service,
@@ -421,7 +450,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             "repoids": repoids,
         }
 
-    def upsert_owner(self, db_session, service, service_id, username):
+    def upsert_owner(
+        self, db_session: Session, service: str, service_id: int, username: str
+    ):
         log.info(
             "Upserting owner",
             extra=dict(git_service=service, service_id=service_id, username=username),
@@ -448,9 +479,17 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         return owner.ownerid
 
     def upsert_repo(
-        self, db_session, service, ownerid, repo_data, using_integration=None
+        self,
+        db_session: Session,
+        service: str,
+        ownerid: int,
+        repo_data,
+        using_integration: Optional[bool] = None,
     ):
-        log.info("Upserting repo", extra=dict(ownerid=ownerid, repo_data=repo_data))
+        log.info(
+            "Upserting repo",
+            extra=dict(ownerid=ownerid, repo_data=repo_data),
+        )
         repo = (
             db_session.query(Repository)
             .filter(
@@ -571,6 +610,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     def sync_repos_languages(
         self, sync_repos_output: dict, manual_trigger: bool, current_owner: Owner
     ):
+        log.info(
+            "Syncing repos languages",
+            extra=dict(
+                ownerid=current_owner.ownerid,
+                sync_repos_output=sync_repos_output,
+                manual_trigger=manual_trigger,
+            ),
+        )
         if sync_repos_output:
             if sync_repos_output["service"] == "github":
                 for owner_username in sync_repos_output["org_usernames"]:

@@ -193,6 +193,7 @@ def test_results_setup(mocker, dbsession):
 
 class TestUploadTestFinisherTask(object):
     @pytest.mark.integration
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call(
         self,
         mocker,

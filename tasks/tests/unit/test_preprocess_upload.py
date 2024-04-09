@@ -21,6 +21,7 @@ class TestPreProcessUpload(object):
         assert task._is_running(mock_redis, "lock_1") == True
         assert task._is_running(mock_redis, "lock_2") == False
 
+    @pytest.mark.django_db(databases={"default"})
     def test_preprocess_task(
         self,
         mocker,
