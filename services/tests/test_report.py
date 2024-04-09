@@ -857,6 +857,7 @@ class TestReportService(BaseTestCase):
         # notice we dont compare the diff since that one comes from git information we lost on the reset
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit(
         self,
         dbsession,
@@ -1926,6 +1927,7 @@ class TestReportService(BaseTestCase):
         assert expected_results == readable_report
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_with_labels(
         self, dbsession, sample_commit_with_report_big_with_labels
     ):
@@ -2387,6 +2389,7 @@ class TestReportService(BaseTestCase):
         assert report == mocked_create_new_report_for_commit.return_value
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_build_report_from_commit_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
@@ -2592,6 +2595,7 @@ class TestReportService(BaseTestCase):
         assert new_readable_report["report"]["sessions"]["3"] == newly_added_session
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_with_path_filters(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
@@ -3184,6 +3188,7 @@ class TestReportService(BaseTestCase):
         assert expected_results == readable_report
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_no_parent(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
@@ -3250,6 +3255,7 @@ class TestReportService(BaseTestCase):
         assert expected_results == readable_report
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_parent_not_ready(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
@@ -3454,6 +3460,7 @@ class TestReportService(BaseTestCase):
         assert expected_results_report == readable_report["report"]
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_parent_not_ready_but_skipped(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
@@ -3561,6 +3568,7 @@ class TestReportService(BaseTestCase):
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_too_many_ancestors_not_ready(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
@@ -3596,6 +3604,7 @@ class TestReportService(BaseTestCase):
         assert expected_results_report == readable_report["report"]
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
         current_commit = CommitFactory.create(parent_commit_id=None, state="pending")
         dbsession.add(current_commit)
@@ -3621,6 +3630,7 @@ class TestReportService(BaseTestCase):
             )
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_potential_cf_but_not_real_cf(
         self, dbsession, sample_commit_with_report_big
     ):
@@ -3648,6 +3658,7 @@ class TestReportService(BaseTestCase):
         assert report.is_empty()
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_parent_has_no_report(
         self, mock_storage, dbsession
     ):

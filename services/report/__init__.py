@@ -41,7 +41,11 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from helpers.labels import get_labels_per_session
-from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
+from helpers.telemetry import MetricContext
+from rollouts import (
+    CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER,
+    PARALLEL_UPLOAD_PROCESSING_BY_REPO,
+)
 from services.archive import ArchiveService
 from services.redis import (
     PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
@@ -617,10 +621,10 @@ class ReportService(BaseReportService):
         f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
     )
     def get_appropriate_commit_to_carryforward_from(
-        self, commit: Commit
+        self, commit: Commit, max_parenthood_deepness: int = 10
     ) -> Optional[Commit]:
+
         parent_commit = commit.get_parent_commit()
-        max_parenthood_deepness = 10
         parent_commit_tracking = []
         count = 1  # `parent_commit` is already the first parent
         while (
@@ -739,11 +743,30 @@ class ReportService(BaseReportService):
                 return Report()
             if not self.current_yaml.has_any_carryforward():
                 return Report()
-            parent_commit = self.get_appropriate_commit_to_carryforward_from(commit)
+
+            owner = commit.repository.owner
+            metric_context = MetricContext(
+                commit_sha=commit.commitid,
+                commit_id=commit.id,
+                repo_id=commit.repoid,
+                owner_id=owner.ownerid,
+            )
+            max_parenthood_deepness = (
+                await CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value_async(
+                    owner, default=10
+                )
+            )
+
+            parent_commit = self.get_appropriate_commit_to_carryforward_from(
+                commit, max_parenthood_deepness
+            )
             if parent_commit is None:
                 log.warning(
                     "Could not find parent for possible carryforward",
                     extra=dict(commit=commit.commitid, repoid=commit.repoid),
+                )
+                metric_context.attempt_log_simple_metric(
+                    "worker_service_report_carryforward_base_not_found", 1
                 )
                 return Report()
             parent_report = self.get_existing_report_for_commit(parent_commit)
