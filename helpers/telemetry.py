@@ -7,6 +7,7 @@ from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetri
 
 from database.engine import get_db_session
 from database.models.core import Commit, Owner, Repository
+
 from .timeseries import timeseries_enabled
 
 
