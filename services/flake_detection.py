@@ -22,24 +22,25 @@ class BaseSymptomDetector:
     blueprint class for a single symptom of flakiness detector
 
     classes that implement this interface are expected to:
-    - maintain their own state necessary to detect a symptom of flakiness
-    - implement the ingest method that:
-        - receives a TestInstanceInfo object
-        - adds the necessary information to its state to be able to
-          detect the symptom of flakiness it is responsible for
-    - implement the detect method that:
-        - Runs the detection based on all the instances that it has
-          ingested
-        - returns an InstanceMapping
+    maintain their own state necessary to detect a symptom of flakiness
+    in whatever form is suitable
     """
 
-    def ingest(self, instance):
+    def ingest(self, instance: TestInstance):
+        """
+        - receives a TestInstance as an arg
+        - adds the necessary information to the state of the object
+          so that the detect stage works
+        """
         raise NotImplementedError()
 
     def detect(self) -> dict[str, TestInstance]:
+        """
+        Run flake detection based on all the instances that it has ingested
+        for the symptom it is responsible for
+        """
         raise NotImplementedError()
 
-    @cached_property
     def symptom(self) -> FlakeSymptomType:
         raise NotImplementedError()
 
