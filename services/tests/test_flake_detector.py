@@ -2,10 +2,16 @@ from uuid import uuid4
 
 from test_results_parser import Outcome
 
+from database.enums import FlakeSymptomType
 from database.models.core import Repository
 from database.models.reports import Test, TestInstance
 from database.tests.factories import CommitFactory, ReportFactory, UploadFactory
-from services.flake_detection import FlakeDetector, FlakeType
+from services.flake_detection import (
+    DefaultBranchFailureDetector,
+    DiffOutcomeDetector,
+    FlakeDetectionEngine,
+    UnrelatedMatchesDetector,
+)
 from services.test_results import generate_test_id
 
 
@@ -77,6 +83,7 @@ def create_test_instance(dbsession, test_id, upload_id, outcome, failure_message
     )
     dbsession.add(ti)
     dbsession.flush()
+    return ti
 
 
 def test_flake_detector_failure_on_main(dbsession):
@@ -87,16 +94,19 @@ def test_flake_detector_failure_on_main(dbsession):
     reportid = create_report(dbsession, commitid)
     uploadid = create_upload(dbsession, reportid)
     test_id = create_test(dbsession, repoid)
-    create_test_instance(
+    ti = create_test_instance(
         dbsession, test_id, uploadid, str(Outcome.Failure), "failure message"
     )
 
-    fd = FlakeDetector(dbsession, repoid)
-    fd.populate(dbsession)
+    dbfd = DefaultBranchFailureDetector(dbsession, repoid, "main")
+    umd = UnrelatedMatchesDetector()
+    dod = DiffOutcomeDetector()
 
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == {test_id: FlakeType.FAILED_IN_DEFAULT_BRANCH}
+    assert test_id in flaky_tests
+    assert flaky_tests[test_id] == {FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH}
 
 
 def test_flake_consecutive_differing_outcomes(dbsession):
@@ -109,17 +119,46 @@ def test_flake_consecutive_differing_outcomes(dbsession):
     uploadid = create_upload(dbsession, reportid)
     uploadid2 = create_upload(dbsession, reportid2)
     test_id = create_test(dbsession, repoid)
-    create_test_instance(
+    ti1 = create_test_instance(
         dbsession, test_id, uploadid, str(Outcome.Failure), "failure message"
     )
-    create_test_instance(dbsession, test_id, uploadid2, str(Outcome.Pass), None)
+    _ = create_test_instance(dbsession, test_id, uploadid2, str(Outcome.Pass), None)
 
-    fd = FlakeDetector(dbsession, repoid)
-    fd.populate(dbsession)
+    dbfd = DefaultBranchFailureDetector(dbsession, repoid, "main")
+    umd = UnrelatedMatchesDetector()
+    dod = DiffOutcomeDetector()
 
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == {test_id: FlakeType.CONSECUTIVE_DIFF_OUTCOMES}
+    assert test_id in flaky_tests
+    assert flaky_tests[test_id] == {FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES}
+
+
+def test_flake_consecutive_differing_outcomes_no_main_branch_specified(dbsession):
+    repoid = create_repo(
+        dbsession,
+    )
+    commitid = create_commit(dbsession, repoid, "not_main")
+    reportid = create_report(dbsession, commitid)
+    reportid2 = create_report(dbsession, commitid)
+    uploadid = create_upload(dbsession, reportid)
+    uploadid2 = create_upload(dbsession, reportid2)
+    test_id = create_test(dbsession, repoid)
+    ti1 = create_test_instance(
+        dbsession, test_id, uploadid, str(Outcome.Failure), "failure message"
+    )
+    _ = create_test_instance(dbsession, test_id, uploadid2, str(Outcome.Pass), None)
+
+    dbfd = DefaultBranchFailureDetector(dbsession, repoid)
+    umd = UnrelatedMatchesDetector()
+    dod = DiffOutcomeDetector()
+
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    flaky_tests = fd.detect_flakes()
+
+    assert test_id in flaky_tests
+    assert flaky_tests[test_id] == {FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES}
 
 
 def test_flake_matching_failures_on_unrelated_branches(dbsession):
@@ -139,22 +178,28 @@ def test_flake_matching_failures_on_unrelated_branches(dbsession):
     uploadid3 = create_upload(dbsession, reportid3)
 
     test_id = create_test(dbsession, repoid)
-    create_test_instance(
+    ti1 = create_test_instance(
         dbsession, test_id, uploadid, str(Outcome.Failure), "failure message"
     )
-    create_test_instance(
+    ti2 = create_test_instance(
         dbsession, test_id, uploadid2, str(Outcome.Failure), "failure message"
     )
-    create_test_instance(
+    ti3 = create_test_instance(
         dbsession, test_id, uploadid3, str(Outcome.Failure), "failure message"
     )
 
-    fd = FlakeDetector(dbsession, repoid)
-    fd.populate(dbsession)
+    dbfd = DefaultBranchFailureDetector(dbsession, repoid, "main")
+    umd = UnrelatedMatchesDetector()
+    dod = DiffOutcomeDetector()
 
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == {test_id: FlakeType.UNRELATED_MATCHING_FAILURES}
+    assert test_id in flaky_tests
+
+    assert flaky_tests[test_id] == {FlakeSymptomType.UNRELATED_MATCHING_FAILURES}
+    assert flaky_tests[test_id] == {FlakeSymptomType.UNRELATED_MATCHING_FAILURES}
+    assert flaky_tests[test_id] == {FlakeSymptomType.UNRELATED_MATCHING_FAILURES}
 
 
 def test_flake_matching_failures_on_related_branches(dbsession):
@@ -184,9 +229,11 @@ def test_flake_matching_failures_on_related_branches(dbsession):
         dbsession, test_id, uploadid3, str(Outcome.Failure), "failure message"
     )
 
-    fd = FlakeDetector(dbsession, repoid)
-    fd.populate(dbsession)
+    dbfd = DefaultBranchFailureDetector(dbsession, repoid, "main")
+    umd = UnrelatedMatchesDetector()
+    dod = DiffOutcomeDetector()
 
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
     flaky_tests = fd.detect_flakes()
 
-    assert flaky_tests == dict()
+    assert len(flaky_tests) == 0
