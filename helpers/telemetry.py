@@ -9,6 +9,7 @@ from database.engine import get_db_session
 from database.models.core import Commit, Owner, Repository
 from .timeseries import timeseries_enabled
 
+
 def fire_and_forget(fn):
     """
     Decorator for an async function that will throw it in the asyncio queue and
