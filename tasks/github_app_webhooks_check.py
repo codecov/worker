@@ -120,7 +120,7 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
         pages_processed = 0
 
         async def process_deliveries():
-            for deliveries in gh_handler.list_webhook_deliveries():
+            async for deliveries in gh_handler.list_webhook_deliveries():
                 nonlocal all_deliveries
                 nonlocal pages_processed
                 nonlocal redeliveries_requested

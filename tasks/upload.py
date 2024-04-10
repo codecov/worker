@@ -654,8 +654,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     ),
                 )
                 processing_tasks.append(sig)
-
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            repo_id=commit.repository.repoid
+        ):
             parallel_chunk_size = 1
             num_sessions = len(argument_list)
             redis_key = get_parallel_upload_processing_session_counter_redis_key(
@@ -671,7 +672,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 sessions = report_service.build_sessions(commit=commit)
                 upload_context.redis_connection.set(
                     redis_key,
-                    max(sessions.keys()) + 1,
+                    max(sessions.keys()) + 1 if sessions.keys() else 0,
                 )
 
             # increment redis to claim session ids
@@ -729,7 +730,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             processing_tasks.append(finish_sig)
             serial_tasks = chain(*processing_tasks)
 
-            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(commit.repository.repoid):
+            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                repo_id=commit.repository.repoid
+            ):
                 parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
                 parallel_shadow_experiment = serial_tasks | parallel_tasks
                 res = parallel_shadow_experiment.apply_async()

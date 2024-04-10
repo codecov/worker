@@ -9,6 +9,8 @@ from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetri
 from database.engine import get_db_session
 from database.models.core import Commit, Owner, Repository
 
+from .timeseries import timeseries_enabled
+
 
 def fire_and_forget(fn):
     """
@@ -128,14 +130,15 @@ class MetricContext:
             commit_id=self.commit_id,
         )
 
-        TsSimpleMetric.objects.create(
-            timestamp=timestamp,
-            name=name,
-            value=value,
-            repo_slug=self.repo_slug,
-            owner_slug=self.owner_slug,
-            commit_slug=self.commit_slug,
-        )
+        if timeseries_enabled():
+            TsSimpleMetric.objects.create(
+                timestamp=timestamp,
+                name=name,
+                value=value,
+                repo_slug=self.repo_slug,
+                owner_slug=self.owner_slug,
+                commit_slug=self.commit_slug,
+            )
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):

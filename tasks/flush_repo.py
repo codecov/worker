@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -209,14 +210,12 @@ class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
             return FlushRepoTaskReturnType(error="repo not found")
 
         deleted_archives = self._delete_archive(repo)
-        with sentry_sdk.start_span("query_commit_ids"):
-            commit_ids = db_session.query(Commit.id_).filter_by(repoid=repo.repoid)
+        commit_ids = db_session.query(Commit.id_).filter_by(repoid=repo.repoid)
         self._delete_comparisons(db_session, commit_ids, repoid)
 
-        with sentry_sdk.start_span("query_report_ids"):
-            report_ids = db_session.query(CommitReport.id_).filter(
-                CommitReport.commit_id.in_(commit_ids)
-            )
+        report_ids = db_session.query(CommitReport.id_).filter(
+            CommitReport.commit_id.in_(commit_ids)
+        )
         self._delete_reports(db_session, report_ids, repoid)
         self._delete_uploads(db_session, report_ids, repoid)
 

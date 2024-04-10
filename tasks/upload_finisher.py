@@ -4,6 +4,7 @@ import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 
+from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.celery_config import (
     compute_comparison_task_name,
@@ -30,6 +31,7 @@ from services.report import ReportService
 from services.report.raw_upload_processor import _adjust_sessions
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
+from tasks.parallel_verification import parallel_verification_task
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
 from tasks.upload_processor import UploadProcessorTask
 
@@ -91,7 +93,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repository = commit.repository
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repository.repoid)
             and in_parallel
         ):
             actual_processing_results = {
@@ -134,15 +136,28 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
 
             with metrics.timer(f"{self.metrics_prefix}.save_parallel_report_results"):
-                report_service.save_parallel_report_to_archive(
-                    commit, report, report_code
-                )
+                parallel_paths = async_to_sync(
+                    report_service.save_parallel_report_to_archive
+                )(commit, report, report_code)
             # now that we've built the report and stored it to GCS, we have what we need to
             # compare the results with the current upload pipeline. We end execution of the
             # finisher task here so that we don't cause any additional side-effects
 
-            # we should also fire the comparison task to verify correctness of our
-            # parallel report here
+            # The verification task that will compare the results of the serial flow and
+            # the parallel flow, and log the result to determine if parallel flow is
+            # working properly.
+            task = parallel_verification_task.signature(
+                args=(),
+                kwargs=dict(
+                    repoid=repoid,
+                    commitid=commitid,
+                    commit_yaml=commit_yaml,
+                    report_code=report_code,
+                    parallel_paths=parallel_paths,
+                ),
+            )
+            task.apply_async()
+
             return
         redis_connection = get_redis_connection()
         try:

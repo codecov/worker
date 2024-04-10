@@ -91,7 +91,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             extra=dict(repoid=repoid, commit=commitid),
         )
 
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid) and in_parallel:
+        if (
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            and in_parallel
+        ):
             log.info(
                 "Using parallel upload processing, skip acquiring upload processing lock",
                 extra=dict(
@@ -179,7 +182,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         in_parallel=False,
         **kwargs,
     ):
-        if not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repoid) and in_parallel:
+        if (
+            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            and in_parallel
+        ):
             log.info(
                 "Obtained upload processing lock, starting",
                 extra=dict(
@@ -206,7 +212,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_service = ReportService(commit_yaml)
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repository.repoid)
             and in_parallel
         ):
             log.info(
@@ -299,7 +305,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             parallel_incremental_result = None
             results_dict = {}
             if (
-                PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+                PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                    repo_id=repository.repoid
+                )
                 and in_parallel
             ):
                 with metrics.timer(
@@ -328,7 +336,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 # the parallel flow runs second, it parses the human readable artifacts instead
                 # since the serial flow already rewrote it
                 if not (
-                    PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+                    PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                        repo_id=repository.repoid
+                    )
                     and in_parallel
                 ):
                     deleted_archive = self._possibly_delete_archive(
@@ -357,7 +367,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             }
 
             if (
-                PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repository.repoid)
+                PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                    repo_id=repository.repoid
+                )
                 and in_parallel
             ):
                 result["parallel_incremental_result"] = parallel_incremental_result

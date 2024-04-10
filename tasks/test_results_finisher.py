@@ -34,6 +34,7 @@ ESCAPE_FAILURE_MESSAGE_DEFN = [
     Replacement(["\r"], "", EscapeEnum.REPLACE),
     Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
 ]
+QUEUE_NOTIFY_KEY = "queue_notify"
 
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
@@ -73,7 +74,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 LockType.NOTIFICATION,
                 retry_num=self.request.retries,
             ):
-                return self.process_impl_within_lock(
+                finisher_result = self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -81,6 +82,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     previous_result=chord_result,
                     **kwargs,
                 )
+            if finisher_result[QUEUE_NOTIFY_KEY]:
+                self.app.tasks[notify_task_name].apply_async(
+                    args=None,
+                    kwargs=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        current_yaml=commit_yaml.to_dict(),
+                    ),
+                )
+
+            return finisher_result
+
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
@@ -115,7 +128,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "test_results.finisher",
                 tags={"status": "failure", "reason": "no_successful_processing"},
             )
-            return {"notify_attempted": False, "notify_succeeded": False}
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": False,
+                QUEUE_NOTIFY_KEY: False,
+            }
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
         with metrics.timing("test_results.finisher.fetch_latest_test_instances"):
@@ -185,7 +202,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     repoid=repoid, commitid=commitid, current_yaml=commit_yaml.to_dict()
                 ),
             )
-            return {"notify_attempted": False, "notify_succeeded": False}
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": False,
+                QUEUE_NOTIFY_KEY: True,
+            }
 
         metrics.incr(
             "test_results.finisher",
@@ -218,7 +239,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             "test_results.finisher.test_result_notifier",
             tags={"status": success, "reason": reason},
         )
-        return {"notify_attempted": True, "notify_succeeded": success}
+        return {
+            "notify_attempted": True,
+            "notify_succeeded": success,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
     def check_if_no_success(self, previous_result):
         return all(
