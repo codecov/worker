@@ -746,16 +746,16 @@ class ReportService(BaseReportService):
             if not self.current_yaml.has_any_carryforward():
                 return Report()
 
-            owner = commit.repository.owner
+            repo = commit.repository
             metric_context = MetricContext(
                 commit_sha=commit.commitid,
                 commit_id=commit.id,
                 repo_id=commit.repoid,
-                owner_id=owner.ownerid,
+                owner_id=repo.ownerid,
             )
             max_parenthood_deepness = (
                 await CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value_async(
-                    owner, default=10
+                    owner_id=repo.ownerid, default=10
                 )
             )
 
