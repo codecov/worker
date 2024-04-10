@@ -26,7 +26,7 @@ def _get_installation_weight(installation: GithubAppInstallation) -> int:
     """The weight for a given app installation.
     Establishes an exponential ramp-up period for installations after being updated.
     """
-    age = datetime.now(timezone.utc) - installation.updated_at
+    age = datetime.now(timezone.utc) - installation.created_at
     if age.days >= 10:
         return MAX_GITHUB_APP_SELECTION_WEIGHT
     seconds_in_hour = 3600
