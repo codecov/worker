@@ -3,11 +3,17 @@ from typing import List, Optional
 
 import shared.torngit as torngit
 from asgiref.sync import async_to_sync
+from shared.config import get_config
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from celery_config import backfill_gh_app_installations_name
-from database.models.core import GithubAppInstallation, Owner, Repository
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+    Owner,
+    Repository,
+)
 from services.owner import get_owner_provider_service
 from tasks.base import BaseCodecovTask
 
@@ -54,6 +60,28 @@ class BackfillGHAppInstallationsTask(
             gh_app_installation.repository_service_ids = new_repo_service_ids
             db_session.commit()
 
+    def maybe_set_installation_to_all_repos(
+        self,
+        db_session: Session,
+        owner_service,
+        gh_app_installation: GithubAppInstallation,
+    ):
+        remote_gh_app_installation = async_to_sync(
+            owner_service.get_gh_app_installation
+        )(installation_id=gh_app_installation.installation_id)
+        repository_selection = remote_gh_app_installation.get(
+            "repository_selection", ""
+        )
+        if repository_selection == "all":
+            gh_app_installation.repository_service_ids = None
+            db_session.commit()
+            log.info(
+                "Selection is set to all, no installation is needed",
+                extra=dict(ownerid=gh_app_installation.ownerid),
+            )
+            return True
+        return False
+
     def backfill_existing_gh_apps(
         self, db_session: Session, owner_ids: List[int] = None
     ):
@@ -84,29 +112,19 @@ class BackfillGHAppInstallationsTask(
 
         for gh_app_installation in gh_app_installations:
             # Check if gh app has 'all' repositories selected
-            installation_id = gh_app_installation.installation_id
-
             owner = owners_dict[gh_app_installation.ownerid]
             ownerid = owner.ownerid
 
             owner_service = get_owner_provider_service(
                 owner=owner, using_integration=True
             )
-
-            remote_gh_app_installation = async_to_sync(
-                owner_service.get_gh_app_installation
-            )(installation_id=installation_id)
-            repository_selection = remote_gh_app_installation.get(
-                "repository_selection", ""
+            is_selection_all = self.maybe_set_installation_to_all_repos(
+                db_session=db_session,
+                owner_service=owner_service,
+                gh_app_installation=gh_app_installation,
             )
-            if repository_selection == "all":
-                gh_app_installation.repository_service_ids = None
-                db_session.commit()
-                log.info(
-                    "Selection is set to all, no installation is needed",
-                    extra=dict(ownerid=ownerid),
-                )
-            else:
+
+            if not is_selection_all:
                 # Find and add all repos the gh app has access to
                 self.add_repos_service_ids_from_provider(
                     db_session=db_session,
@@ -153,18 +171,28 @@ class BackfillGHAppInstallationsTask(
                 extra=dict(ownerid=ownerid),
             )
             gh_app_installation = GithubAppInstallation(
-                owner=owner, installation_id=owner.integration_id
+                owner=owner,
+                installation_id=owner.integration_id,
+                app_id=get_config("github", "integration", "id"),
+                name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
             )
             db_session.add(gh_app_installation)
             db_session.commit()
 
-            # Find and add all repos the gh app has access to
-            self.add_repos_service_ids_from_provider(
+            is_selection_all = self.maybe_set_installation_to_all_repos(
                 db_session=db_session,
-                ownerid=ownerid,
                 owner_service=owner_service,
                 gh_app_installation=gh_app_installation,
             )
+
+            if not is_selection_all:
+                # Find and add all repos the gh app has access to
+                self.add_repos_service_ids_from_provider(
+                    db_session=db_session,
+                    ownerid=ownerid,
+                    owner_service=owner_service,
+                    gh_app_installation=gh_app_installation,
+                )
             log.info("Successful backfill", extra=dict(ownerid=ownerid))
 
     def run_impl(
@@ -174,6 +202,10 @@ class BackfillGHAppInstallationsTask(
         *args,
         **kwargs
     ):
+        log.info(
+            "Starting GH App backfill task",
+        )
+
         # Backfill gh apps we already have
         self.backfill_existing_gh_apps(db_session=db_session, owner_ids=owner_ids)
 
