@@ -44,7 +44,6 @@ from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
     possibly_update_commit_from_provider_info,
-    update_commit_from_provider_info,
 )
 from services.test_results import TestResultsReportService
 from services.yaml import save_repo_yaml_to_database_if_needed
