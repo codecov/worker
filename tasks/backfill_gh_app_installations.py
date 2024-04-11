@@ -60,7 +60,7 @@ class BackfillGHAppInstallationsTask(
             gh_app_installation.repository_service_ids = new_repo_service_ids
             db_session.commit()
 
-    def is_gh_app_remote_selection_all(
+    def maybe_set_installation_to_all_repos(
         self,
         db_session: Session,
         owner_service,
@@ -118,7 +118,7 @@ class BackfillGHAppInstallationsTask(
             owner_service = get_owner_provider_service(
                 owner=owner, using_integration=True
             )
-            is_selection_all = self.is_gh_app_remote_selection_all(
+            is_selection_all = self.maybe_set_installation_to_all_repos(
                 db_session=db_session,
                 owner_service=owner_service,
                 gh_app_installation=gh_app_installation,
@@ -179,7 +179,7 @@ class BackfillGHAppInstallationsTask(
             db_session.add(gh_app_installation)
             db_session.commit()
 
-            is_selection_all = self.is_gh_app_remote_selection_all(
+            is_selection_all = self.maybe_set_installation_to_all_repos(
                 db_session=db_session,
                 owner_service=owner_service,
                 gh_app_installation=gh_app_installation,
