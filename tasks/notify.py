@@ -30,7 +30,7 @@ from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
-from services.lock_manager import LockManager, LockType
+from services.lock_manager import LockManager, LockRetry, LockType
 from services.notification import NotificationService
 from services.redis import Redis, get_redis_connection
 from services.report import ReportService
@@ -96,7 +96,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     empty_upload=empty_upload,
                     **kwargs,
                 )
-        except LockError as err:
+        except LockRetry as err:
             log.info(
                 "Not notifying because there is another notification already happening",
                 extra=dict(
