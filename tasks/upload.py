@@ -662,31 +662,51 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             redis_key = get_parallel_upload_processing_session_counter_redis_key(
                 repoid=commit.repository.repoid, commitid=commit.commitid
             )
+            report_service = ReportService(commit_yaml)
+            sessions = report_service.build_sessions(commit=commit)
 
             # if session count expired due to TTL (which is unlikely for most cases), recalculate the
             # session ids used and set it in redis.
             if self.parallel_session_count_key_expired(
                 redis_key, upload_context.redis_connection
             ):
-                report_service = ReportService(commit_yaml)
-                sessions = report_service.build_sessions(commit=commit)
                 upload_context.redis_connection.set(
                     redis_key,
                     max(sessions.keys()) + 1 if sessions.keys() else 0,
                 )
 
-            # increment redis to claim session ids
-            parallel_session_id = (
-                upload_context.redis_connection.incrby(
-                    name=redis_key,
-                    amount=num_sessions,
-                )
-                - num_sessions
-            )
-            upload_context.redis_connection.expire(
-                name=redis_key,
-                time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
-            )
+            # try to scrap the redis counter idea to fully mimic how session ids are allocated in the
+            # serial flow. This change is technically less performant, and would not allow for concurrent
+            # chords to be running at the same time. For now this is just a temporary change, just for
+            # verifying correctness.
+            #
+            # # increment redis to claim session ids
+            # parallel_session_id = (
+            #     upload_context.redis_connection.incrby(
+            #         name=redis_key,
+            #         amount=num_sessions,
+            #     )
+            #     - num_sessions
+            # )
+            # upload_context.redis_connection.expire(
+            #     name=redis_key,
+            #     time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+            # )
+
+            # copied from shared/reports/resources.py Report.next_session_number()
+            def next_session_number(session_dict):
+                start_number = len(session_dict)
+                while start_number in session_dict or str(start_number) in session_dict:
+                    start_number += 1
+                return start_number
+
+            mock_sessions = set(sessions.keys())
+            session_ids_for_parallel_idx = []
+
+            for i in range(num_sessions):
+                next = next_session_number(mock_sessions)
+                mock_sessions.add(next)
+                session_ids_for_parallel_idx.append(next)
 
             parallel_processing_tasks = []
             for i in range(0, num_sessions, parallel_chunk_size):
@@ -700,7 +720,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                             commit_yaml=commit_yaml,
                             arguments_list=chunk,
                             report_code=commit_report.code,
-                            parallel_idx=i + parallel_session_id,
+                            parallel_idx=session_ids_for_parallel_idx[
+                                i
+                            ],  # i + parallel_session_id,
                             in_parallel=True,
                         ),
                     )
