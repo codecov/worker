@@ -718,13 +718,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 flags_under_carryforward_rules = [
                     f for f in to_merge_flags if current_yaml.flag_has_carryfoward(f)
                 ]
-                to_fully_overwrite_flags = [f for f in flags_under_carryforward_rules]
-                if to_fully_overwrite_flags:
+                if flags_under_carryforward_rules:
                     for sess_id, curr_sess in original_sessions.items():
                         if curr_sess.session_type == SessionType.carriedforward:
                             if curr_sess.flags:
                                 if any(
-                                    f in to_fully_overwrite_flags
+                                    f in flags_under_carryforward_rules
                                     for f in curr_sess.flags
                                 ):
                                     session_ids_to_fully_delete.append(sess_id)
