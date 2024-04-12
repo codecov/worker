@@ -312,10 +312,11 @@ class TestBackfillBothTypesOfOwners(object):
         dbsession.add_all([owner, gh_app_installation, owner_without_app])
         dbsession.commit()
 
-        # Mock fn return values
-        mock_repo_provider.get_gh_app_installation.return_value = {
-            "repository_selection": "all"
-        }
+        # Mock fn return values; 1st call "all", 2nd call "selected"
+        mock_repo_provider.get_gh_app_installation.side_effect = [
+            {"repository_selection": "all"},
+            {"repository_selection": "selected"},
+        ]
         mock_repo_provider.list_repos_using_installation.return_value = mock_repos
         mocker.patch(
             f"tasks.backfill_gh_app_installations.get_owner_provider_service",
