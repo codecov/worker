@@ -445,6 +445,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 None,
             )
         except FileNotInStorageError:  # there were no CFFs, so no report was stored in GCS
+            log.info(
+                "No base report found for parallel upload processing, using an empty report",
+                extra=dict(commit=commitid, repoid=repoid),
+            )
             report = Report()
 
         log.info(
@@ -521,7 +525,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             ),
         )
         report = functools.reduce(merge_report, unmerged_reports, report)
-        return report  # TODO: should compute totals after all incremental reports get merged together
+        return report
 
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())

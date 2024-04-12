@@ -88,7 +88,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         repoid = int(repoid)
         log.info(
             "Received upload processor task",
-            extra=dict(repoid=repoid, commit=commitid),
+            extra=dict(repoid=repoid, commit=commitid, in_parallel=in_parallel),
         )
 
         if (
@@ -217,7 +217,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         ):
             log.info(
                 "Creating empty report to store incremental result",
-                extra=dict(commit=commitid),
+                extra=dict(commit=commitid, repo=repoid),
             )
             report = Report()
         else:
@@ -249,6 +249,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         commit_yaml=commit_yaml.to_dict(),
                         upload=upload_obj.id_,
                         parent_task=self.request.parent_id,
+                        in_parallel=in_parallel,
                     ),
                 )
                 individual_info = {"arguments": arguments.copy()}
@@ -299,6 +300,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     repoid=repoid,
                     commit=commitid,
                     parent_task=self.request.parent_id,
+                    in_parallel=in_parallel,
                 ),
             )
 
@@ -318,6 +320,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
                     parallel_incremental_result["upload_pk"] = arguments_list[0].get(
                         "upload_pk"
+                    )
+
+                    log.info(
+                        "Saved incremental report results to storage",
+                        extra=dict(
+                            repoid=repoid,
+                            commit=commitid,
+                            incremental_result_path=parallel_incremental_result,
+                        ),
                     )
             else:
                 with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
