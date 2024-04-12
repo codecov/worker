@@ -6,10 +6,10 @@ from json import load
 from typing import Any, Optional, Tuple
 
 from lxml import etree
+from shared.metrics import Counter, Histogram
 from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
-from helpers.metrics import metrics
 from services.report.languages import (
     BullseyeProcessor,
     CloverProcessor,
@@ -45,6 +45,20 @@ from services.report.parser.types import ParsedUploadedReportFile
 from services.report.report_builder import ReportBuilder
 
 log = logging.getLogger(__name__)
+
+
+RAW_REPORT_PROCESSOR_RUNTIME_SECONDS = Histogram(
+    "worker_services_report_raw_processor_duration_seconds",
+    "Time it takes (in seconds) for a raw report processor to run",
+    ["processor"],
+    buckets=[0.05, 0.1, 0.5, 1, 2, 5, 7.5, 10, 15, 20, 30, 60, 120, 180, 300, 600, 900],
+)
+
+RAW_REPORT_PROCESSOR_COUNTER = Counter(
+    "worker_services_report_raw_processor_runs",
+    "Number of times a raw report processor was run and with what result",
+    ["processor", "result"],
+)
 
 
 def report_type_matching(report: ParsedUploadedReportFile) -> Tuple[Any, Optional[str]]:
@@ -147,14 +161,14 @@ def process_report(
     processors = get_possible_processors_list(report_type)
     for processor in processors:
         if processor.matches_content(parsed_report, first_line, name):
-            with metrics.timer(
-                f"worker.services.report.processors.{processor.name}.run"
-            ):
+            with RAW_REPORT_PROCESSOR_RUNTIME_SECONDS.labels(
+                processor=processor.name
+            ).time():
                 try:
                     res = processor.process(name, parsed_report, report_builder)
-                    metrics.incr(
-                        f"worker.services.report.processors.{processor.name}.success"
-                    )
+                    RAW_REPORT_PROCESSOR_COUNTER.labels(
+                        processor=processor.name, result="success"
+                    ).inc()
                     return res
                 except CorruptRawReportError as e:
                     log.warning(
@@ -166,11 +180,14 @@ def process_report(
                         ),
                         exc_info=True,
                     )
+                    RAW_REPORT_PROCESSOR_COUNTER.labels(
+                        processor=processor.name, result="corrupt_raw_report"
+                    ).inc()
                     return None
                 except Exception:
-                    metrics.incr(
-                        f"worker.services.report.processors.{processor.name}.failure"
-                    )
+                    RAW_REPORT_PROCESSOR_COUNTER.labels(
+                        processor=processor.name, result="failure"
+                    ).inc()
                     raise
     log.warning(
         "File format could not be recognized",

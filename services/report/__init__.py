@@ -919,7 +919,8 @@ class ReportService(BaseReportService):
                     parallel_idx=parallel_idx,
                 )
             log.info(
-                "Successfully processed report",
+                "Successfully processed report"
+                + (" (in parallel)" if parallel_idx is not None else ""),
                 extra=dict(
                     session=session.id,
                     ci=f"{session.provider}:{session.build}:{session.job}",

@@ -1,4 +1,3 @@
-import copy
 import logging
 import re
 import uuid
@@ -17,7 +16,6 @@ from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitRepoNotFoundError,
 )
-from shared.utils.sessions import SessionType
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
@@ -25,12 +23,12 @@ from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from database.models.reports import Upload
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.metrics import metrics
+from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
@@ -47,7 +45,6 @@ from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
     possibly_update_commit_from_provider_info,
-    update_commit_from_provider_info,
 )
 from services.test_results import TestResultsReportService
 from services.yaml import save_repo_yaml_to_database_if_needed
@@ -661,6 +658,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     ),
                 )
                 processing_tasks.append(sig)
+
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
             repo_id=commit.repository.repoid
         ):
@@ -682,6 +680,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     max(sessions.keys()) + 1 if sessions.keys() else 0,
                 )
 
+            # https://github.com/codecov/worker/commit/7d9c1984b8bc075c9fa002ee15cab3419684f2d6
             # try to scrap the redis counter idea to fully mimic how session ids are allocated in the
             # serial flow. This change is technically less performant, and would not allow for concurrent
             # chords to be running at the same time. For now this is just a temporary change, just for
@@ -699,56 +698,20 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             #     name=redis_key,
             #     time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
             # )
+            original_session_ids = list(sessions.keys())
+            parallel_session_ids = get_parallel_session_ids(
+                sessions, argument_list, db_session, report_service, commit_yaml
+            )
 
-            # copied from shared/reports/resources.py Report.next_session_number()
-            def next_session_number(session_dict):
-                start_number = len(session_dict)
-                while start_number in session_dict or str(start_number) in session_dict:
-                    start_number += 1
-                return start_number
-
-            # copied and cut down from worker/services/report/raw_upload_processor.py
-            # this version stripped out all the ATS label stuff
-            def _adjust_sessions(
-                original_sessions: dict,
-                to_merge_flags,
-                current_yaml,
-            ):
-                session_ids_to_fully_delete = []
-                flags_under_carryforward_rules = [
-                    f for f in to_merge_flags if current_yaml.flag_has_carryfoward(f)
-                ]
-                if flags_under_carryforward_rules:
-                    for sess_id, curr_sess in original_sessions.items():
-                        if curr_sess.session_type == SessionType.carriedforward:
-                            if curr_sess.flags:
-                                if any(
-                                    f in flags_under_carryforward_rules
-                                    for f in curr_sess.flags
-                                ):
-                                    session_ids_to_fully_delete.append(sess_id)
-                if session_ids_to_fully_delete:
-                    # delete sessions from dict
-                    for id in session_ids_to_fully_delete:
-                        original_sessions.pop(id, None)
-                return
-
-            mock_sessions = copy.deepcopy(sessions)
-            session_ids_for_parallel_idx = []
-
-            # iterate over all uploads, get the next session id, and adjust sessions (remove CFF logic)
-            for i in range(num_sessions):
-                next_session_id = next_session_number(mock_sessions)
-
-                upload_pk = argument_list[i]["upload_pk"]
-                upload = db_session.query(Upload).filter_by(id_=upload_pk).first()
-                to_merge_session = report_service.build_session(upload)
-                flags = upload.flag_names
-
-                mock_sessions[next_session_id] = to_merge_session
-                _adjust_sessions(mock_sessions, flags, commit_yaml)
-
-                session_ids_for_parallel_idx.append(next_session_id)
+            log.info(
+                "Allocated the following session ids for parallel upload processing: "
+                + " ".join(str(id) for id in parallel_session_ids),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    original_session_ids=original_session_ids,
+                ),
+            )
 
             parallel_processing_tasks = []
             commit_yaml = commit_yaml.to_dict()
@@ -764,7 +727,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                             commit_yaml=commit_yaml,
                             arguments_list=chunk,
                             report_code=commit_report.code,
-                            parallel_idx=session_ids_for_parallel_idx[
+                            parallel_idx=parallel_session_ids[
                                 i
                             ],  # i + parallel_session_id,
                             in_parallel=True,
