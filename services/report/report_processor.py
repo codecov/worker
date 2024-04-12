@@ -161,15 +161,14 @@ def process_report(
     processors = get_possible_processors_list(report_type)
     for processor in processors:
         if processor.matches_content(parsed_report, first_line, name):
-            processor_counter = RAW_REPORT_PROCESSOR_COUNTER.labels(
-                processor=processor.name
-            )
             with RAW_REPORT_PROCESSOR_RUNTIME_SECONDS.labels(
                 processor=processor.name
             ).time():
                 try:
                     res = processor.process(name, parsed_report, report_builder)
-                    processor_counter.labels(result="success").inc()
+                    RAW_REPORT_PROCESSOR_COUNTER.labels(
+                        processor=processor.name, result="success"
+                    ).inc()
                     return res
                 except CorruptRawReportError as e:
                     log.warning(
@@ -181,10 +180,14 @@ def process_report(
                         ),
                         exc_info=True,
                     )
-                    processor_counter.labels(result="corrupt_raw_report").inc()
+                    RAW_REPORT_PROCESSOR_COUNTER.labels(
+                        processor=processor.name, result="corrupt_raw_report"
+                    ).inc()
                     return None
                 except Exception:
-                    processor_counter.labels(result="failure").inc()
+                    RAW_REPORT_PROCESSOR_COUNTER.labels(
+                        processor=processor.name, result="failure"
+                    ).inc()
                     raise
     log.warning(
         "File format could not be recognized",
