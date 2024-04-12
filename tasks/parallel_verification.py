@@ -36,7 +36,7 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         archive_service = report_service.get_archive_service(repository)
 
         log.info(
-            "Starting parallel upload processsing verification task",
+            "Starting parallel upload processing verification task",
             extra=dict(
                 repoid=repoid,
                 commitid=commitid,
@@ -117,7 +117,7 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
 
         if verification_result == 1:
             log.info(
-                "Parallel upload processsing verification succeeded",
+                "Parallel upload processing verification succeeded",
                 extra=dict(
                     repoid=repoid,
                     commitid=commitid,
@@ -128,7 +128,7 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
             )
         else:
             log.info(
-                f"Parallel upload processsing verification failed with {verification_result}",
+                f"Parallel upload processing verification failed with {verification_result}",
                 extra=dict(
                     repoid=repoid,
                     commitid=commitid,
