@@ -6,7 +6,7 @@ from mock import AsyncMock, call
 from shared.torngit.exceptions import TorngitClientError
 from test_results_parser import Outcome
 
-from database.enums import ReportType
+from database.enums import ReportType, TestResultsProcessingError
 from database.models import CommitReport, RepositoryFlag, Test, TestInstance
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from services.repository import EnrichedPull
@@ -360,7 +360,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {
             "notify_attempted": False,
             "notify_succeeded": False,
-            QUEUE_NOTIFY_KEY: False,
+            QUEUE_NOTIFY_KEY: True,
         }
 
         assert expected_result == result
@@ -378,6 +378,17 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
             ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.notify.Notify"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "commitid": commit.commitid,
+                "current_yaml": {"codecov": {"max_report_age": False}},
+                "repoid": repoid,
+            },
         )
 
     @pytest.mark.integration

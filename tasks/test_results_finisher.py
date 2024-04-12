@@ -9,8 +9,8 @@ from shared.yaml import UserYaml
 from test_results_parser import Outcome
 
 from app import celery_app
-from database.enums import FlakeSymptomType, ReportType
-from database.models import Commit, Test, TestResultReportTotals
+from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
+from database.models import Commit, TestResultReportTotals
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from rollouts import FLAKY_TEST_DETECTION
 from services.failure_normalizer import FailureNormalizer
@@ -143,24 +143,41 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         notifier = TestResultsNotifier(commit, commit_yaml)
 
+        commit_report = commit.commit_report(ReportType.TEST_RESULTS)
+
+        totals = commit_report.test_result_totals
+        if totals is None:
+            totals = TestResultReportTotals(
+                report_id=commit_report.id,
+            )
+            totals.passed = 0
+            totals.skipped = 0
+            totals.failed = 0
+            db_session.add(totals)
+            db_session.flush()
+
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
             metrics.incr(
                 "test_results.finisher",
                 tags={"status": "failure", "reason": "no_successful_processing"},
             )
+            totals.error = str(TestResultsProcessingError.NO_SUCCESS)
+            db_session.flush()
+
+            # make an attempt to comment
             success, reason = async_to_sync(notifier.error_comment)()
             metrics.incr(
                 "test_results.finisher.test_result_notifier_error_comment",
                 tags={"status": success, "reason": reason},
             )
+
             return {
                 "notify_attempted": False,
                 "notify_succeeded": False,
-                QUEUE_NOTIFY_KEY: False,
+                QUEUE_NOTIFY_KEY: True,
             }
 
-        commit_report = commit.commit_report(ReportType.TEST_RESULTS)
         with metrics.timing("test_results.finisher.fetch_latest_test_instances"):
             test_instances = latest_test_instances_for_a_given_commit(
                 db_session, commit.id_
@@ -206,12 +223,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             elif test_instance.outcome == str(Outcome.Pass):
                 passed_tests += 1
 
-        totals = commit_report.test_result_totals
-        if totals is None:
-            totals = TestResultReportTotals(
-                report_id=commit_report.id,
-            )
-            db_session.add(totals)
         totals.passed = passed_tests
         totals.skipped = skipped_tests
         totals.failed = failed_tests

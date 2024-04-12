@@ -12,7 +12,7 @@ from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
 )
 
-from database.enums import CompareCommitState
+from database.enums import CompareCommitState, TestResultsProcessingError
 from database.models import CompareCommit
 from helpers.metrics import metrics
 from services.archive import ArchiveService
@@ -29,6 +29,7 @@ class NotificationContext(object):
     """Extra information not necessarily related to coverage that may affect notifications"""
 
     all_tests_passed: bool
+    test_results_error: TestResultsProcessingError | None = False
 
 
 class ComparisonProxy(object):
@@ -254,6 +255,9 @@ class ComparisonProxy(object):
 
     def all_tests_passed(self):
         return self.context is not None and self.context.all_tests_passed
+
+    def test_results_error(self):
+        return self.context is not None and self.context.test_results_error
 
     async def get_existing_statuses(self):
         async with self._existing_statuses_lock:
