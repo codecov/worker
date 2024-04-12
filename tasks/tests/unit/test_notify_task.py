@@ -23,6 +23,7 @@ from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
+from services.lock_manager import LockRetry
 from services.notification import NotificationService
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
@@ -837,7 +838,7 @@ class TestNotifyTask(object):
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
         m = mocker.MagicMock()
-        m.return_value.locked.return_value.__enter__.side_effect = LockError()
+        m.return_value.locked.return_value.__enter__.side_effect = LockRetry(60)
         mocker.patch("tasks.notify.LockManager", m)
 
         res = task.run_impl(

@@ -1,3 +1,4 @@
+import copy
 import logging
 import re
 import uuid
@@ -16,6 +17,7 @@ from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
     TorngitRepoNotFoundError,
 )
+from shared.utils.sessions import SessionType
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 
@@ -23,6 +25,7 @@ from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from database.models.reports import Upload
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -512,6 +515,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 argument_list,
                 commit_report,
                 upload_context,
+                db_session,
                 checkpoints,
             )
         else:
@@ -579,6 +583,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list,
         commit_report: CommitReport,
         upload_context: UploadContext,
+        db_session,
         checkpoints=None,
     ):
         commit_yaml = commit_yaml.to_dict()
@@ -594,6 +599,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 argument_list,
                 commit_report,
                 upload_context,
+                db_session,
                 checkpoints=checkpoints,
             )
         elif commit_report.report_type == ReportType.BUNDLE_ANALYSIS.value:
@@ -627,6 +633,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list,
         commit_report,
         upload_context: UploadContext,
+        db_session,
         checkpoints=None,
     ):
         chunk_size = CHUNK_SIZE
@@ -661,33 +668,90 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             redis_key = get_parallel_upload_processing_session_counter_redis_key(
                 repoid=commit.repository.repoid, commitid=commit.commitid
             )
-
+            report_service = ReportService(commit_yaml)
+            sessions = report_service.build_sessions(commit=commit)
+            commit_yaml = UserYaml(commit_yaml)
             # if session count expired due to TTL (which is unlikely for most cases), recalculate the
             # session ids used and set it in redis.
             if self.parallel_session_count_key_expired(
                 redis_key, upload_context.redis_connection
             ):
-                report_service = ReportService(commit_yaml)
-                sessions = report_service.build_sessions(commit=commit)
                 upload_context.redis_connection.set(
                     redis_key,
                     max(sessions.keys()) + 1 if sessions.keys() else 0,
                 )
 
-            # increment redis to claim session ids
-            parallel_session_id = (
-                upload_context.redis_connection.incrby(
-                    name=redis_key,
-                    amount=num_sessions,
-                )
-                - num_sessions
-            )
-            upload_context.redis_connection.expire(
-                name=redis_key,
-                time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
-            )
+            # try to scrap the redis counter idea to fully mimic how session ids are allocated in the
+            # serial flow. This change is technically less performant, and would not allow for concurrent
+            # chords to be running at the same time. For now this is just a temporary change, just for
+            # verifying correctness.
+            #
+            # # increment redis to claim session ids
+            # parallel_session_id = (
+            #     upload_context.redis_connection.incrby(
+            #         name=redis_key,
+            #         amount=num_sessions,
+            #     )
+            #     - num_sessions
+            # )
+            # upload_context.redis_connection.expire(
+            #     name=redis_key,
+            #     time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+            # )
+
+            # copied from shared/reports/resources.py Report.next_session_number()
+            def next_session_number(session_dict):
+                start_number = len(session_dict)
+                while start_number in session_dict or str(start_number) in session_dict:
+                    start_number += 1
+                return start_number
+
+            # copied and cut down from worker/services/report/raw_upload_processor.py
+            # this version stripped out all the ATS label stuff
+            def _adjust_sessions(
+                original_sessions: dict,
+                to_merge_flags,
+                current_yaml,
+            ):
+                session_ids_to_fully_delete = []
+                flags_under_carryforward_rules = [
+                    f for f in to_merge_flags if current_yaml.flag_has_carryfoward(f)
+                ]
+                if flags_under_carryforward_rules:
+                    for sess_id, curr_sess in original_sessions.items():
+                        if curr_sess.session_type == SessionType.carriedforward:
+                            if curr_sess.flags:
+                                if any(
+                                    f in flags_under_carryforward_rules
+                                    for f in curr_sess.flags
+                                ):
+                                    session_ids_to_fully_delete.append(sess_id)
+                if session_ids_to_fully_delete:
+                    # delete sessions from dict
+                    for id in session_ids_to_fully_delete:
+                        original_sessions.pop(id, None)
+                return
+
+            mock_sessions = copy.deepcopy(sessions)
+            session_ids_for_parallel_idx = []
+
+            # iterate over all uploads, get the next session id, and adjust sessions (remove CFF logic)
+            for i in range(num_sessions):
+                next_session_id = next_session_number(mock_sessions)
+
+                upload_pk = argument_list[i]["upload_pk"]
+                upload = db_session.query(Upload).filter_by(id_=upload_pk).first()
+                to_merge_session = report_service.build_session(upload)
+                flags = upload.flag_names
+
+                mock_sessions[next_session_id] = to_merge_session
+                _adjust_sessions(mock_sessions, flags, commit_yaml)
+
+                session_ids_for_parallel_idx.append(next_session_id)
 
             parallel_processing_tasks = []
+            commit_yaml = commit_yaml.to_dict()
+
             for i in range(0, num_sessions, parallel_chunk_size):
                 chunk = argument_list[i : i + parallel_chunk_size]
                 if chunk:
@@ -699,7 +763,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                             commit_yaml=commit_yaml,
                             arguments_list=chunk,
                             report_code=commit_report.code,
-                            parallel_idx=i + parallel_session_id,
+                            parallel_idx=session_ids_for_parallel_idx[
+                                i
+                            ],  # i + parallel_session_id,
                             in_parallel=True,
                         ),
                     )
