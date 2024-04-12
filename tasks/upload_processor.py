@@ -240,8 +240,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     .first()
                 )
                 log.info(
-                    "Processing individual report %s",
-                    arguments.get("reportid"),
+                    f"Processing individual report {arguments.get('reportid')}"
+                    + (" (in parallel)" if in_parallel else ""),
                     extra=dict(
                         repoid=repoid,
                         commit=commitid,
@@ -294,8 +294,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     n_processed += 1
                 processings_so_far.append(individual_info)
             log.info(
-                "Finishing the processing of %d reports",
-                n_processed,
+                f"Finishing the processing of {n_processed} reports"
+                + (" (in parallel)" if in_parallel else ""),
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
@@ -362,14 +362,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 processed_individual_report.pop("upload_obj", None)
                 processed_individual_report.pop("raw_report", None)
             log.info(
-                "Processed %d reports",
-                n_processed,
+                f"Processed {n_processed} reports"
+                + (" (in parallel)" if in_parallel else ""),
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
                     commit_yaml=commit_yaml.to_dict(),
                     url=results_dict.get("url"),
                     parent_task=self.request.parent_id,
+                    in_parallel=in_parallel,
                 ),
             )
 
