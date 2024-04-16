@@ -4,7 +4,7 @@ import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
 
 from helpers.token_refresh import get_token_refresh_callback
-from services.bots import get_owner_appropriate_bot_token
+from services.bots import get_owner_appropriate_bot_token, get_owner_installation_id
 
 log = logging.getLogger(__name__)
 
@@ -17,9 +17,10 @@ def get_owner_provider_service(
         get_config("setup", "http", "timeouts", "receive", default=30),
     ]
     service = owner.service
-    token = get_owner_appropriate_bot_token(
+    installation_info = get_owner_installation_id(
         owner, using_integration, ignore_installation=ignore_installation
     )
+    token = get_owner_appropriate_bot_token(owner, installation_dict=installation_info)
     adapter_params = dict(
         owner=dict(
             service_id=owner.service_id, ownerid=owner.ownerid, username=owner.username
@@ -36,6 +37,9 @@ def get_owner_provider_service(
         on_token_refresh=(
             get_token_refresh_callback(owner) if not using_integration else None
         ),
+        fallback_installations=installation_info.get("fallback_installations")
+        if installation_info
+        else None,
     )
     return _get_owner_provider_service_instance(service, **adapter_params)
 
