@@ -767,7 +767,7 @@ class ReportService(BaseReportService):
                     "Could not find parent for possible carryforward",
                     extra=dict(commit=commit.commitid, repoid=commit.repoid),
                 )
-                metric_context.attempt_log_simple_metric(
+                await metric_context.log_simple_metric_async(
                     "worker_service_report_carryforward_base_not_found", 1
                 )
                 return Report()
@@ -823,7 +823,7 @@ class ReportService(BaseReportService):
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit
             )
-            metric_context.attempt_log_simple_metric(
+            await metric_context.log_simple_metric_async(
                 "worker_service_report_carryforward_success", 1
             )
             return carryforward_report
