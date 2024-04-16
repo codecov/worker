@@ -1,5 +1,5 @@
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 from services.comparison import ComparisonProxy, FilteredComparison
@@ -10,7 +10,17 @@ log = logging.getLogger(__name__)
 
 class StatusPatchMixin(object):
     async def get_patch_status(self, comparison) -> Tuple[str, str]:
-        threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
+        threshold = self.notifier_yaml_settings.get("threshold", "0.0")
+
+        # check if user has erroneously added a % to this input and fix
+        if isinstance(threshold, str) and threshold[-1] == "%":
+            threshold = threshold[:-1]
+
+        try:
+            threshold = Decimal(threshold)
+        except (InvalidOperation, TypeError):
+            threshold = Decimal("0.0")
+
         diff = await comparison.get_diff(use_original_base=True)
         totals = comparison.head.report.apply_diff(diff)
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
