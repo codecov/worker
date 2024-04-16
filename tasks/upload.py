@@ -30,6 +30,7 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.metrics import metrics
 from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
+from helpers.string import NameCreator
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
@@ -492,6 +493,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             self.retry(countdown=60, kwargs=kwargs)
         argument_list = []
 
+        name_creator = NameCreator()
         for arguments in upload_context.arguments_list():
             normalized_arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" in normalized_arguments:
@@ -503,8 +505,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     normalized_arguments, commit_report
                 )
 
+            if not upload.name:
+                upload.name = name_creator.create()
+
             normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
+
+        db_session.flush()
         if argument_list:
             db_session.commit()
             self.schedule_task(
