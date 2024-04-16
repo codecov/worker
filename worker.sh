@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -n "$PROMETHEUS_MULTIPROC_DIR" ]; then
     rm -r "$PROMETHEUS_MULTIPROC_DIR" 2> /dev/null
