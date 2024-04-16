@@ -22,7 +22,7 @@ export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 # Codecov CLI version to use
-CODECOV_CLI_VERSION := 0.4.6
+CODECOV_CLI_VERSION := 0.5.1
 
 build:
 	$(MAKE) build.requirements
@@ -96,6 +96,10 @@ build.app:
 	docker build -f docker/Dockerfile . \
 		-t ${AR_REPO}:latest \
 		-t ${AR_REPO}:${VERSION} \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
+		--label "org.opencontainers.image.revision"="$(full_sha)" \
+		--label "org.opencontainers.image.source"="github.com/codecov/worker" \
 		--build-arg REQUIREMENTS_IMAGE=${AR_REPO}:${REQUIREMENTS_TAG} \
 		--build-arg RELEASE_VERSION=${VERSION} \
 		--build-arg BUILD_ENV=cloud
@@ -116,6 +120,8 @@ build.self-hosted-runtime:
 	docker build -f docker/Dockerfile . \
 		-t ${DOCKERHUB_REPO}:latest \
 		-t ${DOCKERHUB_REPO}:${VERSION} \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
 		--build-arg REQUIREMENTS_IMAGE=${AR_REPO}:${REQUIREMENTS_TAG} \
         --build-arg RELEASE_VERSION=${VERSION} \
         --build-arg BUILD_ENV=self-hosted-runtime
