@@ -173,6 +173,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=True,
             ),
         )
         kwargs = dict(
@@ -567,6 +568,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         t2 = upload_processor_task.signature(
@@ -582,6 +584,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         t3 = upload_processor_task.signature(
@@ -596,6 +599,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         kwargs = dict(
@@ -1086,6 +1090,7 @@ class TestUploadTaskUnit(object):
                 arguments_list=argument_list,
                 report_code=None,
                 in_parallel=False,
+                is_final=True,
             ),
         )
         t2 = upload_finisher_task.signature(
