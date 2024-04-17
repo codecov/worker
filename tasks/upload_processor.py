@@ -349,9 +349,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         report_code,
                     )
 
-                # save the final accumulated results from the serial flow for the
+                # Save the final accumulated result from the serial flow for the
                 # ParallelVerification task to compare with later, for the parallel
-                # experiment
+                # experiment. The report being saved is not necessarily the final
+                # report for the commit, as more uploads can still be made.
                 if is_final and (not in_parallel):
                     save_final_serial_report_results(
                         report_service, commit, report, report_code, arguments_list

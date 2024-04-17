@@ -70,7 +70,7 @@ def save_incremental_report_results(
     commitid = commit.commitid
     archive_service = report_service.get_archive_service(commit.repository)
 
-    # save incremental results to archive storage,
+    # Save incremental results to archive storage,
     # upload_finisher will combine
     chunks = report.to_archive().encode()
     _, files_and_sessions = report.to_database()
@@ -102,14 +102,12 @@ def save_final_serial_report_results(
     commitid = commit.commitid
     archive_service = report_service.get_archive_service(commit.repository)
 
-    # we identify the final result of an entire serial processing pipeline
+    # We identify the final result of an entire serial processing pipeline
     # by the upload_pk of the very last upload received (ie the last element
     # in arguments_list), and this is how each parallel verification task
     # knows where to find the corresponding report to compare with for a given flow
     latest_upload_pk = arguments_list[-1].get("upload_pk")
 
-    # save incremental results to archive storage,
-    # upload_finisher will combine
     chunks = report.to_archive().encode()
     _, files_and_sessions = report.to_database()
 

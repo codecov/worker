@@ -57,7 +57,10 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
             parallel_paths["chunks_path"]
         ).decode(errors="replace")
 
-        # TODO: ensure the legacy report building method is accurate aswell
+        # TODO: ensure the legacy report building method (`commit.report_json["files"]`) is accurate aswell. There's
+        # no easy way to do this right now because the legacy method assumes the
+        # report to build lives in the database, but the report we want to compare
+        # for the verification experiment lives in archive storage.
 
         # the pk of the last upload for the processing pipeline
         last_upload_pk = processing_results["processings_so_far"][-1]["arguments"].get(
@@ -78,10 +81,10 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
             parallel_path_to_serial_path(parallel_paths["chunks_path"], last_upload_pk)
         ).decode(errors="replace")
 
-        fas_regular = parallel_files_and_sessions == files_and_sessions
-        chunks_regular = parallel_chunks == chunks
+        fas_comparison_result = parallel_files_and_sessions == files_and_sessions
+        chunks_comparison_result = parallel_chunks == chunks
 
-        if not fas_regular:
+        if not fas_comparison_result:
             log.info(
                 "Files and sessions did not match parallel results",
                 extra=dict(
@@ -92,7 +95,7 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
                     parallel_paths=parallel_paths,
                 ),
             )
-        if not chunks_regular:
+        if not chunks_comparison_result:
             log.info(
                 "chunks did not match parallel results",
                 extra=dict(
@@ -105,7 +108,7 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
             )
 
         verification_result = (
-            (1 if fas_regular else 0) + (1 if chunks_regular else 0)
+            (1 if fas_comparison_result else 0) + (1 if chunks_comparison_result else 0)
         ) / 2
 
         if verification_result == 1:
