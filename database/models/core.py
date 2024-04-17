@@ -470,10 +470,25 @@ class Pull(CodecovBaseModel):
         )
 
     @cached_property
-    def is_first_pull(self):
+    def is_first_coverage_pull(self):
+        """
+        This method determines if this is the first PR that has coverage.
+
+        It first fetches the first record of the pulls table. Then sees if the record has a
+        previous bundle analysis comment without a coverage comment. If so, it is the first coverage
+        pull. Else, it proceeds to determine if it's the first pull ever.
+        """
         first_pull = (
-            self.repository.pulls.with_entities(Pull.id_).order_by(Pull.id_).first()
+            self.repository.pulls.with_entities(
+                Pull.id_, Pull.commentid, Pull.bundle_analysis_commentid
+            )
+            .order_by(Pull.id_)
+            .first()
         )
+        # If has previous BA pull records but no coverage records, and it's the first pull
+        if first_pull.bundle_analysis_commentid and not first_pull.commentid:
+            return True
+
         return first_pull.id_ == self.id_
 
     _flare = Column("flare", postgresql.JSON)

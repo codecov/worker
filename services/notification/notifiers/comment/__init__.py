@@ -375,7 +375,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             return self._create_empty_upload_message()
         if self.should_use_upload_limit_decoration():
             return self._create_reached_upload_limit_message(comparison)
-        if comparison.pull.is_first_pull:
+        if comparison.pull.is_first_coverage_pull:
             return self._create_welcome_message()
         pull_dict = comparison.enriched_pull.provider_pull
         return await self.create_message(
