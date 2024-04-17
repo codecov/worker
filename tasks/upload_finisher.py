@@ -154,6 +154,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     commit_yaml=commit_yaml,
                     report_code=report_code,
                     parallel_paths=parallel_paths,
+                    processing_results=processing_results,
                 ),
             )
             task.apply_async()
