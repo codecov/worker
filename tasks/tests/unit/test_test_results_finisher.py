@@ -195,6 +195,107 @@ def test_results_setup(mocker, dbsession):
     return (repoid, commit, pull, test_instances)
 
 
+@pytest.fixture
+def test_results_setup_no_instances(mocker, dbsession):
+    mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
+
+    commit = CommitFactory.create(
+        message="hello world",
+        commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+        repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+        repository__owner__username="joseph-sentry",
+        repository__owner__service="github",
+        repository__name="codecov-demo",
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    repoid = commit.repoid
+
+    current_report_row = CommitReport(
+        commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
+    )
+    dbsession.add(current_report_row)
+    dbsession.flush()
+
+    pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+
+    _ = mocker.patch(
+        "services.test_results.fetch_and_update_pull_request_information_from_commit",
+        return_value=EnrichedPull(
+            database_pull=pull,
+            provider_pull={},
+        ),
+    )
+
+    uploads = [UploadFactory.create() for _ in range(4)]
+    uploads[3].created_at += datetime.timedelta(0, 3)
+
+    for upload in uploads:
+        upload.report = current_report_row
+        upload.report.commit.repoid = repoid
+        dbsession.add(upload)
+    dbsession.flush()
+
+    flags = [RepositoryFlag(repository_id=repoid, flag_name=str(i)) for i in range(2)]
+    for flag in flags:
+        dbsession.add(flag)
+    dbsession.flush()
+
+    uploads[0].flags = [flags[0]]
+    uploads[1].flags = [flags[1]]
+    uploads[2].flags = []
+    uploads[3].flags = [flags[0]]
+    dbsession.flush()
+
+    test_name = "test_name"
+    test_suite = "test_testsuite"
+
+    test_id1 = generate_test_id(repoid, test_name + "0", test_suite, "a")
+    test1 = Test(
+        id_=test_id1,
+        repoid=repoid,
+        name=test_name + "0",
+        testsuite=test_suite,
+        flags_hash="a",
+    )
+    dbsession.add(test1)
+
+    test_id2 = generate_test_id(repoid, test_name + "1", test_suite, "b")
+    test2 = Test(
+        id_=test_id2,
+        repoid=repoid,
+        name=test_name + "1",
+        testsuite=test_suite,
+        flags_hash="b",
+    )
+    dbsession.add(test2)
+
+    test_id3 = generate_test_id(repoid, test_name + "2", test_suite, "")
+    test3 = Test(
+        id_=test_id3,
+        repoid=repoid,
+        name=test_name + "2",
+        testsuite=test_suite,
+        flags_hash="",
+    )
+    dbsession.add(test3)
+
+    test_id4 = generate_test_id(repoid, test_name + "3", test_suite, "")
+    test4 = Test(
+        id_=test_id4,
+        repoid=repoid,
+        name=test_name + "3",
+        testsuite=test_suite,
+        flags_hash="",
+    )
+    dbsession.add(test4)
+
+    dbsession.flush()
+
+    return (repoid, commit, pull, None)
+
+
 class TestUploadTestFinisherTask(object):
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
@@ -340,12 +441,12 @@ class TestUploadTestFinisherTask(object):
         mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
-        test_results_setup,
+        test_results_setup_no_instances,
     ):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
-        repoid, commit, pull, _ = test_results_setup
+        repoid, commit, pull, _ = test_results_setup_no_instances
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
@@ -373,7 +474,10 @@ class TestUploadTestFinisherTask(object):
                 ),
             ]
         )
-        assert mock_metrics.timing.mock_calls == []
+        assert (
+            call("test_results.finisher.fetch_latest_test_instances")
+            in mock_metrics.timing.mock_calls
+        )
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,

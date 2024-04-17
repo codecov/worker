@@ -156,32 +156,42 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             db_session.add(totals)
             db_session.flush()
 
+        with metrics.timing("test_results.finisher.fetch_latest_test_instances"):
+            test_instances = latest_test_instances_for_a_given_commit(
+                db_session, commit.id_
+            )
+
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
             metrics.incr(
                 "test_results.finisher",
                 tags={"status": "failure", "reason": "no_successful_processing"},
             )
-            totals.error = str(TestResultsProcessingError.NO_SUCCESS)
-            db_session.flush()
+            queue_notify = False
+            if len(test_instances) == 0:
+                totals.error = str(TestResultsProcessingError.NO_SUCCESS)
+                db_session.flush()
 
-            # make an attempt to comment
-            success, reason = async_to_sync(notifier.error_comment)()
-            metrics.incr(
-                "test_results.finisher.test_result_notifier_error_comment",
-                tags={"status": success, "reason": reason},
-            )
+                # make an attempt to make test results comment
+                success, reason = async_to_sync(notifier.error_comment)()
+
+                # also make attempt to make coverage comment
+                queue_notify = True
+
+                metrics.incr(
+                    "test_results.finisher.test_result_notifier_error_comment",
+                    tags={"status": success, "reason": reason},
+                )
 
             return {
                 "notify_attempted": False,
                 "notify_succeeded": False,
-                QUEUE_NOTIFY_KEY: True,
+                QUEUE_NOTIFY_KEY: queue_notify,
             }
 
-        with metrics.timing("test_results.finisher.fetch_latest_test_instances"):
-            test_instances = latest_test_instances_for_a_given_commit(
-                db_session, commit.id_
-            )
+        if totals.error is not None:
+            totals.error = None
+            db_session.flush()
 
         failed_tests = 0
         passed_tests = 0
