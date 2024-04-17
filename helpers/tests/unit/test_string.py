@@ -1,10 +1,4 @@
-from helpers.string import (
-    EscapeEnum,
-    NameCreator,
-    Replacement,
-    StringEscaper,
-    shorten_file_paths,
-)
+from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 
 
 def test_string_escaper():
@@ -39,13 +33,3 @@ Received: -1
 
 """
     assert expected == shorten_file_paths(string)
-
-
-def test_name_generator():
-    generator = NameCreator()
-    s = set()
-    for _ in range(5):
-        res = generator.create()
-        assert len(res) == 8
-        assert res not in s
-        s.add(res)

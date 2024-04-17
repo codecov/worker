@@ -28,9 +28,9 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.metrics import metrics
+from helpers.name_creator import global_name_creator
 from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
-from helpers.string import NameCreator
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
@@ -85,7 +85,6 @@ class UploadContext:
         self.report_type = report_type
         self.report_code = report_code
         self.redis_connection = redis_connection or get_redis_connection()
-        self.name_creator = NameCreator()
 
     def lock_name(self, lock_type: str):
         if self.report_type == ReportType.COVERAGE:
@@ -505,8 +504,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     normalized_arguments, commit_report
                 )
 
-            if not upload.name:
-                upload.name = self.name_creator.create()
+            self.possibly_update_upload_name(db_session, upload)
 
             normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
@@ -953,6 +951,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         if redis_connection.exists(redis_key):
             return False
         return True
+
+    def possibly_update_upload_name(self, db_session, upload):
+        if upload.name is None:
+            upload.name = global_name_creator.create()
+            db_session.flush()
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

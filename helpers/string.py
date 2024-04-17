@@ -1,4 +1,3 @@
-import uuid
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
@@ -119,19 +118,3 @@ def shorten_file_paths(string):
             string = string.replace(file_path, shortened_path)
 
     return string
-
-
-class NameCreator:
-    def __init__(self):
-        self.curr_uuid = ""
-        self.curr_idx = 0
-
-    def create(self) -> str:
-        if self.curr_idx == 0:
-            self.curr_uuid = uuid.uuid4().hex
-        low = self.curr_idx * 8
-        high = low + 8
-        result = self.curr_uuid[low:high]
-        self.curr_idx += 1
-        self.curr_idx %= 4
-        return result

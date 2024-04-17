@@ -158,6 +158,8 @@ class TestUploadTaskIntegration(object):
             .filter_by(report_id=commit.report.id, build_code="some_random_build")
             .first()
         )
+        assert len(first_session.name) == 8
+
         t1 = upload_processor_task.signature(
             args=({},),
             kwargs=dict(
@@ -169,6 +171,112 @@ class TestUploadTaskIntegration(object):
                         "url": url,
                         "build": "some_random_build",
                         "upload_pk": first_session.id,
+                    }
+                ],
+                report_code=None,
+                in_parallel=False,
+            ),
+        )
+        kwargs = dict(
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            report_code=None,
+            in_parallel=False,
+        )
+        kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
+        t2 = upload_finisher_task.signature(kwargs=kwargs)
+        mocked_1.assert_called_with(t1, t2)
+
+        calls = [
+            mock.call(
+                "time_before_processing",
+                UploadFlow.UPLOAD_TASK_BEGIN,
+                UploadFlow.PROCESSING_BEGIN,
+            ),
+            mock.call(
+                "initial_processing_duration",
+                UploadFlow.PROCESSING_BEGIN,
+                UploadFlow.INITIAL_PROCESSING_COMPLETE,
+            ),
+        ]
+        mock_checkpoint_submit.assert_has_calls(calls)
+
+    @pytest.mark.django_db(databases={"default"})
+    def test_upload_task_call_does_not_generate_name(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        mock_checkpoint_submit,
+    ):
+        mocked_1 = mocker.patch("tasks.upload.chain")
+        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        redis_queue = [
+            {"url": url, "build": "some_random_build", "name": "hello_world"}
+        ]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocker.patch.object(UploadTask, "app", celery_app)
+
+        commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+        repo_updatestamp = commit.repository.updatestamp
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
+        checkpoints = _create_checkpoint_logger(mocker)
+        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
+        result = UploadTask().run_impl(
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            kwargs=kwargs,
+        )
+        expected_result = {"was_setup": False, "was_updated": True}
+        assert expected_result == result
+        assert commit.message == "dsidsahdsahdsa"
+        assert commit.parent_commit_id is None
+        assert commit.report is not None
+        assert commit.report.details is not None
+        assert commit.repository.updatestamp > repo_updatestamp
+        sessions = commit.report.uploads
+        assert len(sessions) == 1
+        first_session = (
+            dbsession.query(Upload)
+            .filter_by(
+                report_id=commit.report.id,
+                build_code="some_random_build",
+                name="hello_world",
+            )
+            .first()
+        )
+
+        t1 = upload_processor_task.signature(
+            args=({},),
+            kwargs=dict(
+                repoid=commit.repoid,
+                commitid="abf6d4df662c47e32460020ab14abf9303581429",
+                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+                arguments_list=[
+                    {
+                        "url": url,
+                        "build": "some_random_build",
+                        "upload_pk": first_session.id,
+                        "name": "hello_world",
                     }
                 ],
                 report_code=None,
