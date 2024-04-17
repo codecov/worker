@@ -142,7 +142,7 @@ class MetricContext:
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):
-        self.log_simple_metric(name, value)
+        await self.log_simple_metric_async(name, value)
 
 
 class TimeseriesTimer:

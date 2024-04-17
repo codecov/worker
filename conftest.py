@@ -298,3 +298,29 @@ def mock_checkpoint_submit(mocker, request):
         "submit_subflow",
         mock_submit,
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_metric_context(mocker, request):
+    if request.node.get_closest_marker("real_metric_context"):
+        return
+
+    from helpers.telemetry import MetricContext
+
+    def populate(self):
+        self.populated = True
+
+    return mocker.patch.object(MetricContext, "populate", populate)
+
+
+@pytest.fixture(autouse=True)
+def mock_feature(mocker, request):
+    if request.node.get_closest_marker("real_feature"):
+        return
+
+    from shared.rollouts import Feature
+
+    def check_value(self, *, owner_id=None, repo_id=None, default=False):
+        return default
+
+    return mocker.patch.object(Feature, "check_value", check_value)
