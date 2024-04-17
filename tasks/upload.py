@@ -85,6 +85,7 @@ class UploadContext:
         self.report_type = report_type
         self.report_code = report_code
         self.redis_connection = redis_connection or get_redis_connection()
+        self.name_creator = NameCreator()
 
     def lock_name(self, lock_type: str):
         if self.report_type == ReportType.COVERAGE:
@@ -493,7 +494,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             self.retry(countdown=60, kwargs=kwargs)
         argument_list = []
 
-        name_creator = NameCreator()
         for arguments in upload_context.arguments_list():
             normalized_arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" in normalized_arguments:
@@ -506,7 +506,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 )
 
             if not upload.name:
-                upload.name = name_creator.create()
+                upload.name = self.name_creator.create()
 
             normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
