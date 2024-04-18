@@ -80,7 +80,9 @@ class BackfillGHAppInstallationsTask(
                 "Selection is set to all, no installation is needed",
                 extra=dict(ownerid=gh_app_installation.ownerid),
             )
+            del remote_gh_app_installation
             return True
+        del remote_gh_app_installation
         return False
 
     def backfill_existing_gh_apps(
@@ -142,6 +144,7 @@ class BackfillGHAppInstallationsTask(
                 )
                 missed_owner_ids.append(ownerid)
                 continue
+        del gh_app_installations
 
     def backfill_owners_with_integration_without_gh_app(
         self, db_session: Session, owner_ids: List[int] = None, missed_owner_ids=[]
@@ -211,6 +214,7 @@ class BackfillGHAppInstallationsTask(
                 )
                 missed_owner_ids.append(ownerid)
                 continue
+        del owners
 
     def run_impl(
         self,
