@@ -15,7 +15,6 @@ from shared.metrics import metrics
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
-from celery_config import backfill_gh_app_installations_name
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -91,10 +90,6 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         assert owner, "Owner not found"
 
-        self.app.tasks[backfill_gh_app_installations_name].apply_async(
-            kwargs=dict(owner_ids=[])
-        )
-
         lock_name = f"syncrepos_lock_{ownerid}_{using_integration}"
         redis_connection = get_redis_connection()
         try:
@@ -109,22 +104,22 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     ignore_installation=(not using_integration),
                 )
                 sync_repos_output = {}
-                # if using_integration:
-                #     with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
-                #         sync_repos_output = async_to_sync(
-                #             self.sync_repos_using_integration
-                #         )(
-                #             db_session,
-                #             git,
-                #             owner,
-                #             username,
-                #             repository_service_ids=repository_service_ids,
-                #         )
-                # else:
-                #     with metrics.timer(f"{metrics_scope}.sync_repos"):
-                #         sync_repos_output = async_to_sync(self.sync_repos)(
-                #             db_session, git, owner, username, using_integration
-                #         )
+                if using_integration:
+                    with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
+                        sync_repos_output = async_to_sync(
+                            self.sync_repos_using_integration
+                        )(
+                            db_session,
+                            git,
+                            owner,
+                            username,
+                            repository_service_ids=repository_service_ids,
+                        )
+                else:
+                    with metrics.timer(f"{metrics_scope}.sync_repos"):
+                        sync_repos_output = async_to_sync(self.sync_repos)(
+                            db_session, git, owner, username, using_integration
+                        )
 
                 if get_config(
                     "setup", "tasks", "sync_repo_languages", "enabled", default=True
