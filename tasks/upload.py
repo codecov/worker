@@ -18,6 +18,7 @@ from shared.torngit.exceptions import (
 )
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
@@ -452,11 +453,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit, repository_service
             )
         else:
+            context = OwnerContext(
+                owner_onboarding_date=repository.owner.createstamp,
+                owner_plan=repository.owner.plan,
+                ownerid=repository.ownerid,
+            )
             commit_yaml = UserYaml.get_final_yaml(
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
-                ownerid=repository.owner.ownerid,
+                owner_context=context,
             )
 
         if report_type == ReportType.COVERAGE:
@@ -567,11 +573,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 exc_info=True,
             )
             commit_yaml = None
+        context = OwnerContext(
+            owner_onboarding_date=repository.owner.createstamp,
+            owner_plan=repository.owner.plan,
+            ownerid=repository.ownerid,
+        )
         return UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
-            ownerid=repository.owner.ownerid,
+            owner_context=context,
         )
 
     def schedule_task(
