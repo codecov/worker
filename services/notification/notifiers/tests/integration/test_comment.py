@@ -1,4 +1,4 @@
-from unittest.mock import PropertyMock, patch
+from unittest.mock import PropertyMock
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -13,7 +13,7 @@ from services.notification.notifiers.comment import CommentNotifier
 @pytest.fixture
 def is_not_first_pull(mocker):
     mocker.patch(
-        "database.models.core.Pull.is_first_pull",
+        "database.models.core.Pull.is_first_coverage_pull",
         return_value=False,
         new_callable=PropertyMock,
     )

@@ -16,10 +16,12 @@ from shared.torngit.exceptions import (
 from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
-from database.models.core import GithubAppInstallation
+from database.models.core import GithubAppInstallation, Pull
 from database.tests.factories import RepositoryFactory
-from services.comparison import NotificationContext
+from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
+from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.overlays.critical_path import CriticalPathOverlay
+from services.comparison.types import Comparison, FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
@@ -41,13 +43,14 @@ from services.notification.notifiers.mixins.message.sections import (
     _get_tree_cell,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
+from services.repository import EnrichedPull
 from services.yaml.reader import get_components_from_yaml
 
 
 @pytest.fixture
 def is_not_first_pull(mocker):
     mocker.patch(
-        "database.models.core.Pull.is_first_pull",
+        "database.models.core.Pull.is_first_coverage_pull",
         return_value=False,
         new_callable=PropertyMock,
     )
@@ -5234,6 +5237,7 @@ class TestCommentNotifierWelcome:
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -5252,3 +5256,110 @@ class TestCommentNotifierWelcome:
         for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_with_preexisting_bundle_pulls(
+        self, dbsession, mock_configuration, mock_repo_provider
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        owner = OwnerFactory.create(
+            service="github",
+        )
+        repository = RepositoryFactory.create(owner=owner)
+        branch = "new_branch"
+        # artificially create multiple pull entries with BA comments only
+        ba_pull_one = PullFactory.create(
+            repository=repository,
+            base=CommitFactory.create(repository=repository).commitid,
+            head=CommitFactory.create(repository=repository, branch=branch).commitid,
+            commentid=None,
+            bundle_analysis_commentid="98123978",
+        )
+        ba_pull_two = PullFactory.create(
+            repository=repository,
+            base=CommitFactory.create(repository=repository).commitid,
+            head=CommitFactory.create(repository=repository, branch=branch).commitid,
+            commentid=None,
+            bundle_analysis_commentid="23982347",
+        )
+        # Add these entries first so they are created before the pull with commentid only
+        dbsession.add_all([ba_pull_one, ba_pull_two])
+        dbsession.flush()
+
+        # Create new coverage pull
+        base_commit = CommitFactory.create(repository=repository)
+        head_commit = CommitFactory.create(repository=repository, branch=branch)
+        pull = PullFactory.create(
+            repository=repository,
+            base=base_commit.commitid,
+            head=head_commit.commitid,
+        )
+
+        head_report = Report()
+        head_file = ReportFile("file_1.go")
+        head_file.append(
+            1, ReportLine.create(coverage=1, sessions=[[0, 1]], complexity=(10, 2))
+        )
+        head_report.append(head_file)
+
+        base_report = Report()
+        base_file = ReportFile("file_1.go")
+        base_file.append(
+            1, ReportLine.create(coverage=0, sessions=[[0, 1]], complexity=(10, 2))
+        )
+        base_report.append(base_file)
+
+        head_full_commit = FullCommit(
+            commit=head_commit, report=ReadOnlyReport.create_from_report(head_report)
+        )
+        base_full_commit = FullCommit(
+            commit=base_commit, report=ReadOnlyReport.create_from_report(base_report)
+        )
+        comparison = ComparisonProxy(
+            Comparison(
+                head=head_full_commit,
+                project_coverage_base=base_full_commit,
+                patch_coverage_base_commitid=base_commit.commitid,
+                enriched_pull=EnrichedPull(
+                    database_pull=pull,
+                    provider_pull={
+                        "author": {"id": "12345", "username": "codecov-test-user"},
+                        "base": {"branch": "master", "commitid": base_commit.commitid},
+                        "head": {
+                            "branch": "reason/some-testing",
+                            "commitid": head_commit.commitid,
+                        },
+                        "number": str(pull.pullid),
+                        "id": str(pull.pullid),
+                        "state": "open",
+                        "title": "Creating new code for reasons no one knows",
+                    },
+                ),
+            )
+        )
+        dbsession.add_all([repository, base_commit, head_commit, pull])
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(comparison)
+
+        expected_result = [
+            "## Welcome to [Codecov](https://codecov.io) :tada:",
+            "",
+            "Once you merge this PR into your default branch, you're all set! Codecov will compare coverage reports and display results in all future pull requests.",
+            "",
+            "Thanks for integrating Codecov - We've got you covered :open_umbrella:",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
+        pulls_in_db = dbsession.query(Pull).all()
+        assert len(pulls_in_db) == 3

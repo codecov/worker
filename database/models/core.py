@@ -470,11 +470,27 @@ class Pull(CodecovBaseModel):
         )
 
     @cached_property
-    def is_first_pull(self):
-        first_pull = (
-            self.repository.pulls.with_entities(Pull.id_).order_by(Pull.id_).first()
+    def is_first_coverage_pull(self):
+        """
+        This method determines if this is the first PR that has coverage.
+
+        It fetches the first record that has a commentid, which implies having a coverage comment.
+        If it doesn't exist, this is the first record ever, hence returning true. Else, we evaluate if
+        the record found is the same as the current one.
+        """
+
+        first_pull_with_coverage = (
+            self.repository.pulls.with_entities(
+                Pull.id_, Pull.commentid, Pull.bundle_analysis_commentid
+            )
+            .filter(Pull.commentid != None)
+            .order_by(Pull.id_)
+            .first()
         )
-        return first_pull.id_ == self.id_
+
+        if first_pull_with_coverage:
+            return first_pull_with_coverage.id_ == self.id_
+        return True
 
     _flare = Column("flare", postgresql.JSON)
     _flare_storage_path = Column("flare_storage_path", types.Text, nullable=True)
