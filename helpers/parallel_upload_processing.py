@@ -5,7 +5,7 @@ from shared.utils.sessions import SessionType
 from database.models.reports import Upload
 
 
-# copied from shared/reports/resources.py Report.next_session_number()
+# Copied from shared/reports/resources.py Report.next_session_number()
 def next_session_number(session_dict):
     start_number = len(session_dict)
     while start_number in session_dict or str(start_number) in session_dict:
@@ -13,7 +13,7 @@ def next_session_number(session_dict):
     return start_number
 
 
-# copied and cut down from worker/services/report/raw_upload_processor.py
+# Copied and cut down from worker/services/report/raw_upload_processor.py
 # this version stripped out all the ATS label stuff
 def _adjust_sessions(
     original_sessions: dict,
