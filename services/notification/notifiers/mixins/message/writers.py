@@ -136,7 +136,7 @@ class TeamPlanWriter:
         lines.append("")
         lines.append(
             ":loudspeaker: Thoughts on this report? [Let us know!]({0})".format(
-                "https://about.codecov.io/pull-request-comment-report/"
+                "https://github.com/codecov/feedback/issues/255"
             )
         )
 
