@@ -474,22 +474,23 @@ class Pull(CodecovBaseModel):
         """
         This method determines if this is the first PR that has coverage.
 
-        It first fetches the first record of the pulls table. Then sees if the record has a
-        previous bundle analysis comment without a coverage comment. If so, it is the first coverage
-        pull. Else, it proceeds to determine if it's the first pull ever.
+        It fetches the first record that has a commentid, which implies having a coverage comment.
+        If it doesn't exist, this is the first record ever, hence returning true. Else, we evaluate if
+        the record found is the same as the current one.
         """
-        first_pull = (
+
+        first_pull_with_coverage = (
             self.repository.pulls.with_entities(
                 Pull.id_, Pull.commentid, Pull.bundle_analysis_commentid
             )
+            .filter(Pull.commentid != None)
             .order_by(Pull.id_)
             .first()
         )
-        # If has previous BA pull records but no coverage records, and it's the first pull
-        if first_pull.bundle_analysis_commentid and not first_pull.commentid:
-            return True
 
-        return first_pull.id_ == self.id_
+        if first_pull_with_coverage:
+            return first_pull_with_coverage.id_ == self.id_
+        return True
 
     _flare = Column("flare", postgresql.JSON)
     _flare_storage_path = Column("flare_storage_path", types.Text, nullable=True)

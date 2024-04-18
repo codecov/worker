@@ -2,6 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+from mock import PropertyMock
 
 from database.models import Pull
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
@@ -10,6 +11,15 @@ from services.notification.notifiers.base import NotificationResult
 from tasks.notify import NotifyTask
 
 sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
+
+
+@pytest.fixture
+def is_not_first_pull(mocker):
+    mocker.patch(
+        "database.models.core.Pull.is_first_coverage_pull",
+        return_value=False,
+        new_callable=PropertyMock,
+    )
 
 
 @pytest.mark.integration
@@ -775,6 +785,7 @@ class TestNotifyTask(object):
         codecov_vcr,
         mock_storage,
         mock_configuration,
+        is_not_first_pull,
     ):
         mock_post_request.return_value.status_code = 200
         mock_configuration.params["setup"][
