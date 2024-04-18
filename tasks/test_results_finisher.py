@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any, Dict
 
 from asgiref.sync import async_to_sync
@@ -8,16 +9,27 @@ from shared.yaml import UserYaml
 from test_results_parser import Outcome
 
 from app import celery_app
-from database.enums import ReportType
-from database.models import Commit, TestResultReportTotals
+from database.enums import FlakeSymptomType, ReportType
+from database.models import Commit, Test, TestResultReportTotals
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
+from rollouts import FLAKY_TEST_DETECTION
+from services.failure_normalizer import FailureNormalizer
+from services.flake_detection import (
+    DefaultBranchFailureDetector,
+    DiffOutcomeDetector,
+    FlakeDetectionEngine,
+    FlakeDetectionResult,
+    UnrelatedMatchesDetector,
+)
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotificationFailure,
+    TestResultsNotificationFlake,
     TestResultsNotificationPayload,
     TestResultsNotifier,
     latest_test_instances_for_a_given_commit,
 )
+from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.notify import notify_task_name
 
@@ -34,6 +46,14 @@ ESCAPE_FAILURE_MESSAGE_DEFN = [
     Replacement(["\r"], "", EscapeEnum.REPLACE),
     Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
 ]
+QUEUE_NOTIFY_KEY = "queue_notify"
+
+
+@dataclass
+class FlakeUpdateInfo:
+    new_flake_ids: list[str]
+    old_flake_ids: list[str]
+    newly_calculated_flakes: dict[str, set[FlakeSymptomType]]
 
 
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
@@ -73,7 +93,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 LockType.NOTIFICATION,
                 retry_num=self.request.retries,
             ):
-                return self.process_impl_within_lock(
+                finisher_result = self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -81,6 +101,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     previous_result=chord_result,
                     **kwargs,
                 )
+            if finisher_result[QUEUE_NOTIFY_KEY]:
+                self.app.tasks[notify_task_name].apply_async(
+                    args=None,
+                    kwargs=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        current_yaml=commit_yaml.to_dict(),
+                    ),
+                )
+
+            return finisher_result
+
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
@@ -115,7 +147,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "test_results.finisher",
                 tags={"status": "failure", "reason": "no_successful_processing"},
             )
-            return {"notify_attempted": False, "notify_succeeded": False}
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": False,
+                QUEUE_NOTIFY_KEY: False,
+            }
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
         with metrics.timing("test_results.finisher.fetch_latest_test_instances"):
@@ -185,18 +221,25 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     repoid=repoid, commitid=commitid, current_yaml=commit_yaml.to_dict()
                 ),
             )
-            return {"notify_attempted": False, "notify_succeeded": False}
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": False,
+                QUEUE_NOTIFY_KEY: True,
+            }
 
         metrics.incr(
             "test_results.finisher",
             tags={"status": "success", "reason": "tests_failed"},
         )
+        flaky_tests = None
+        if FLAKY_TEST_DETECTION.check_value(repo_id=repoid):
+            flaky_tests = dict()
 
         notifier = TestResultsNotifier(commit, commit_yaml)
 
         failures = sorted(failures, key=lambda x: x.testsuite + x.testname)
         payload = TestResultsNotificationPayload(
-            failed_tests, passed_tests, skipped_tests, failures
+            failed_tests, passed_tests, skipped_tests, failures, flaky_tests
         )
 
         with metrics.timing("test_results.finisher.notification"):
@@ -218,7 +261,86 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             "test_results.finisher.test_result_notifier",
             tags={"status": success, "reason": reason},
         )
-        return {"notify_attempted": True, "notify_succeeded": success}
+
+        if FLAKY_TEST_DETECTION.check_value(repo_id=repoid):
+            with metrics.timing("test_results.finisher.run_flaky_test_detection"):
+                success, reason = self.run_flaky_test_detection(
+                    db_session, repoid, notifier, payload
+                )
+
+            metrics.incr(
+                "test_results.finisher.flaky_test_detection",
+                tags={"status": success, "reason": reason},
+            )
+
+        return {
+            "notify_attempted": True,
+            "notify_succeeded": success,
+            QUEUE_NOTIFY_KEY: False,
+        }
+
+    def run_flaky_test_detection(
+        self,
+        db_session,
+        repoid,
+        notifier: TestResultsNotifier,
+        payload: TestResultsNotificationPayload,
+    ):
+        ignore_predefined = read_yaml_field(
+            "test_analytics", "ignore_predefined", _else=False
+        )
+
+        user_normalization_regex = read_yaml_field(
+            "test_analytics", "normalization_regex", _else=dict()
+        )
+
+        failure_normalizer = FailureNormalizer(
+            user_normalization_regex, ignore_predefined
+        )
+
+        default_branch_failure_detector = DefaultBranchFailureDetector(
+            db_session, repoid, "main"
+        )
+        unrelated_matches_detector = UnrelatedMatchesDetector()
+        diff_outcome_detector = DiffOutcomeDetector()
+
+        flake_detection_engine = FlakeDetectionEngine(
+            db_session,
+            repoid,
+            [
+                default_branch_failure_detector,
+                unrelated_matches_detector,
+                diff_outcome_detector,
+            ],
+            failure_normalizer,
+        )
+
+        current_state_of_repo_flakes = flake_detection_engine.detect_flakes()
+
+        for test_id, symptoms in current_state_of_repo_flakes.items():
+            payload.flaky_tests[test_id] = TestResultsNotificationFlake(
+                list(symptoms),
+                True,
+            )
+            db_session.flush()
+
+        success, reason = async_to_sync(notifier.notify)(payload)
+
+        return success, reason
+
+    def get_flake_diff(
+        self,
+        newly_calculated_flakes: FlakeDetectionResult,
+        existing_flakes_from_db: dict[str, TestResultsNotificationFlake],
+    ):
+        newly_discovered_flakes = set(newly_calculated_flakes.keys()) - set(
+            existing_flakes_from_db.keys()
+        )
+        no_longer_flakes = set(existing_flakes_from_db.keys()) - set(
+            newly_calculated_flakes.keys()
+        )
+
+        return list(newly_discovered_flakes), list(no_longer_flakes)
 
     def check_if_no_success(self, previous_result):
         return all(

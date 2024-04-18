@@ -27,6 +27,7 @@ def _create_checkpoint_logger(mocker):
 
 
 class TestUploadFinisherTask(object):
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call(
         self,
         mocker,
@@ -103,6 +104,7 @@ class TestUploadFinisherTask(object):
         ]
         mock_checkpoint_submit.assert_has_calls(calls)
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call_no_author(
         self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
@@ -152,6 +154,7 @@ class TestUploadFinisherTask(object):
             timeout=300,
         )
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call_different_branch(
         self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
     ):
@@ -531,6 +534,7 @@ class TestUploadFinisherTask(object):
         assert mocked_app.send_task.call_count == 0
         assert not mocked_app.tasks["app.tasks.notify.Notify"].apply_async.called
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_calls_save_commit_measurements_task(
         self, mocker, dbsession, mock_redis
     ):

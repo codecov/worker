@@ -95,13 +95,19 @@ distlib==0.3.7
 distro==1.8.0
     # via openai
 django==4.2.11
-    # via shared
+    # via
+    #   django-model-utils
+    #   shared
 django-admin==2.0.2
     # via -r requirements.in
 django-better-admin-arrayfield==1.4.2
     # via shared
 django-excel-response2==3.0.6
     # via django-admin
+django-model-utils==4.3.1
+    # via shared
+django-prometheus==2.3.1
+    # via shared
 django-six==1.0.5
     # via
     #   django-admin
@@ -247,7 +253,9 @@ pluggy==0.13.1
 pre-commit==3.4.0
     # via -r requirements.in
 prometheus-client==0.17.1
-    # via shared
+    # via
+    #   django-prometheus
+    #   shared
 prompt-toolkit==3.0.28
     # via click-repl
 proto-plus==1.22.3
@@ -318,7 +326,9 @@ python-dateutil==2.8.2
 python-json-logger==0.1.11
     # via -r requirements.in
 python-redis-lock==4.0.0
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   shared
 pytz==2022.1
     # via
     #   shared
@@ -342,6 +352,7 @@ requests==2.31.0
     #   codecovopentelem
     #   google-api-core
     #   google-cloud-storage
+    #   shared
     #   stripe
 respx==0.20.2
     # via -r requirements.in
@@ -354,8 +365,10 @@ s3transfer==0.3.4
 screen==1.0.1
     # via excel-base
 sentry-sdk==1.40.0
-    # via -r requirements.in
-shared @ https://github.com/codecov/shared/archive/db61cbcb78d72aa390a313f037fa9bb6b24a8918.tar.gz
+    # via
+    #   -r requirements.in
+    #   shared
+shared @ https://github.com/codecov/shared/archive/b2798abaa2b47d8834cf7d552cc892efbff01b70.tar.gz
     # via -r requirements.in
 six==1.15.0
     # via

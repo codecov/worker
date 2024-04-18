@@ -1,5 +1,4 @@
 import pytest
-from mock import patch
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.torngit.exceptions import (
@@ -1904,7 +1903,7 @@ class TestPatchStatusNotifier(object):
         assert expected_result == result
 
     @pytest.mark.asyncio
-    async def test_build_payload_target_coverage_failure_witinh_threshold(
+    async def test_build_payload_target_coverage_failure_within_threshold(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1918,6 +1917,58 @@ class TestPatchStatusNotifier(object):
             repository=sample_comparison.head.commit.repository,
             title="title",
             notifier_yaml_settings={"threshold": "5"},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
+            "state": "success",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_get_patch_status_bad_threshold(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        third_file = ReportFile("file_3.c")
+        third_file.append(100, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        third_file.append(101, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        third_file.append(102, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        third_file.append(103, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        sample_comparison.project_coverage_base.report.append(third_file)
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"threshold": None},  # invalid value for threshold
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        expected_result = {
+            "message": "66.67% of diff hit (target 70.00%)",
+            "state": "failure",
+        }
+        result = await notifier.build_payload(sample_comparison)
+        assert expected_result == result
+
+    @pytest.mark.asyncio
+    async def test_get_patch_status_bad_threshold_fixed(
+        self, sample_comparison, mock_repo_provider, mock_configuration
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        third_file = ReportFile("file_3.c")
+        third_file.append(100, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        third_file.append(101, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        third_file.append(102, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        third_file.append(103, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+        sample_comparison.project_coverage_base.report.append(third_file)
+        notifier = PatchStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "threshold": "5%"
+            },  # invalid value for threshold, caught and fixed
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )

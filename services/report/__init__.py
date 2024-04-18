@@ -41,7 +41,17 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from helpers.labels import get_labels_per_session
+from helpers.telemetry import MetricContext
+from rollouts import (
+    CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER,
+    PARALLEL_UPLOAD_PROCESSING_BY_REPO,
+)
 from services.archive import ArchiveService
+from services.redis import (
+    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+    get_parallel_upload_processing_session_counter_redis_key,
+    get_redis_connection,
+)
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
@@ -280,6 +290,31 @@ class ReportService(BaseReportService):
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
+
+                # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
+                # finisher can build off of it later. Makes the assumption that the CFFs occupy the first
+                # j to i session ids where i is the max id of the CFFs and j is some integer less than i.
+                if await PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value_async(
+                    repo_id=commit.repository.repoid
+                ):
+                    await self.save_parallel_report_to_archive(
+                        commit, report, report_code
+                    )
+                    highest_session_id = max(
+                        report.sessions.keys()
+                    )  # the largest id among the CFFs
+                    get_redis_connection().incrby(
+                        name=get_parallel_upload_processing_session_counter_redis_key(
+                            commit.repository.repoid, commit.commitid
+                        ),
+                        amount=highest_session_id + 1,
+                    )
+                    get_redis_connection().expire(
+                        name=get_parallel_upload_processing_session_counter_redis_key(
+                            commit.repository.repoid, commit.commitid
+                        ),
+                        time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+                    )
 
         return current_report_row
 
@@ -588,10 +623,10 @@ class ReportService(BaseReportService):
         f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
     )
     def get_appropriate_commit_to_carryforward_from(
-        self, commit: Commit
+        self, commit: Commit, max_parenthood_deepness: int = 10
     ) -> Optional[Commit]:
+
         parent_commit = commit.get_parent_commit()
-        max_parenthood_deepness = 10
         parent_commit_tracking = []
         count = 1  # `parent_commit` is already the first parent
         while (
@@ -710,11 +745,30 @@ class ReportService(BaseReportService):
                 return Report()
             if not self.current_yaml.has_any_carryforward():
                 return Report()
-            parent_commit = self.get_appropriate_commit_to_carryforward_from(commit)
+
+            repo = commit.repository
+            metric_context = MetricContext(
+                commit_sha=commit.commitid,
+                commit_id=commit.id,
+                repo_id=commit.repoid,
+                owner_id=repo.ownerid,
+            )
+            max_parenthood_deepness = (
+                await CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value_async(
+                    owner_id=repo.ownerid, default=10
+                )
+            )
+
+            parent_commit = self.get_appropriate_commit_to_carryforward_from(
+                commit, max_parenthood_deepness
+            )
             if parent_commit is None:
                 log.warning(
                     "Could not find parent for possible carryforward",
                     extra=dict(commit=commit.commitid, repoid=commit.repoid),
+                )
+                await metric_context.log_simple_metric_async(
+                    "worker_service_report_carryforward_base_not_found", 1
                 )
                 return Report()
             parent_report = self.get_existing_report_for_commit(parent_commit)
@@ -769,11 +823,14 @@ class ReportService(BaseReportService):
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit
             )
+            await metric_context.log_simple_metric_async(
+                "worker_service_report_carryforward_success", 1
+            )
             return carryforward_report
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(
-        self, repo: Repository, upload: Upload
+        self, repo: Repository, upload: Upload, is_parallel=False
     ) -> ParsedRawReport:
         """Pulls the raw uploaded report from storage and parses it do it's
         easier to access different parts of the raw upload.
@@ -783,7 +840,12 @@ class ReportService(BaseReportService):
         """
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
-        parser = get_proper_parser(upload)
+
+        # for the parallel experiment: since the parallel version runs after the old behaviour
+        # has finished, the current uploads have already been rewritten in a human readable
+        # format, so we need to use the legacy parser here for the parallel version.
+        parser = get_proper_parser(upload, use_legacy=is_parallel)
+
         raw_uploaded_report = parser.parse_raw_report_from_bytes(
             archive_service.read_file(archive_url)
         )
@@ -791,7 +853,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def build_report_from_raw_content(
-        self, master: Optional[Report], upload: Upload
+        self, master: Optional[Report], upload: Upload, parallel_idx=None
     ) -> ProcessingResult:
         """
             Processes an upload on top of an existing report `master` and returns
@@ -828,7 +890,7 @@ class ReportService(BaseReportService):
         )
         try:
             raw_uploaded_report = self.parse_raw_report_from_storage(
-                commit.repository, upload
+                commit.repository, upload, is_parallel=parallel_idx is not None
             )
         except FileNotInStorageError:
             return ProcessingResult(
@@ -854,9 +916,11 @@ class ReportService(BaseReportService):
                     flags,
                     session,
                     upload=upload,
+                    parallel_idx=parallel_idx,
                 )
             log.info(
-                "Successfully processed report",
+                "Successfully processed report"
+                + (" (in parallel)" if parallel_idx is not None else ""),
                 extra=dict(
                     session=session.id,
                     ci=f"{session.provider}:{session.build}:{session.job}",
@@ -914,8 +978,15 @@ class ReportService(BaseReportService):
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
-            upload_obj.state = "processed"
+            # this should be enabled for the actual rollout of parallel upload processing.
+            # if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            #     "this should be the repo id"
+            # ):
+            #     upload_obj.state_id = UploadState.PARALLEL_PROCESSED.db_id
+            #     upload_obj.state = "parallel_processed"
+            # else:
             upload_obj.state_id = UploadState.PROCESSED.db_id
+            upload_obj.state = "processed"
             upload_obj.order_number = session.id
             upload_totals = upload_obj.totals
             if upload_totals is None:
@@ -1056,3 +1127,47 @@ class ReportService(BaseReportService):
                 db_session.add(upload_totals)
                 upload_totals.update_from_totals(session.totals)
         return res
+
+    async def save_parallel_report_to_archive(
+        self, commit: Commit, report: Report, report_code=None
+    ):
+        commitid = commit.commitid
+        repository = commit.repository
+        archive_service = self.get_archive_service(commit.repository)
+
+        # Attempt to calculate diff of report (which uses commit info from the git provider), but it it fails to do so, it just moves on without such diff
+        try:
+            repository_service = get_repo_provider_service(repository, commit)
+            report.apply_diff(await repository_service.get_commit_diff(commitid))
+        except TorngitError:
+            # When this happens, we have that commit.totals["diff"] is not available.
+            # Since there is no way to calculate such diff without the git commit,
+            # then we assume having the rest of the report saved there is better than the
+            # alternative of refusing an otherwise "good" report because of the lack of diff
+            log.warning(
+                "Could not apply diff to report because there was an error fetching diff from provider",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    parent_task=self.request.parent_id,
+                ),
+                exc_info=True,
+            )
+
+        # save incremental results to archive storage,
+        # upload_finisher will combine
+        chunks = report.to_archive().encode()
+        _, files_and_sessions = report.to_database()
+
+        chunks_url = archive_service.write_parallel_experiment_file(
+            commitid, chunks, report_code, "chunks"
+        )
+
+        files_and_sessions_url = archive_service.write_parallel_experiment_file(
+            commitid, files_and_sessions, report_code, "files_and_sessions"
+        )
+
+        return {
+            "chunks_path": chunks_url,
+            "files_and_sessions_path": files_and_sessions_url,
+        }

@@ -28,16 +28,24 @@ from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.metrics import metrics
+from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
-from services.redis import Redis, download_archive_from_redis, get_redis_connection
+from services.redis import (
+    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+    Redis,
+    download_archive_from_redis,
+    get_parallel_upload_processing_session_counter_redis_key,
+    get_redis_connection,
+)
 from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
     possibly_update_commit_from_provider_info,
-    update_commit_from_provider_info,
 )
 from services.test_results import TestResultsReportService
 from services.yaml import save_repo_yaml_to_database_if_needed
@@ -506,7 +514,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         if argument_list:
             db_session.commit()
             self.schedule_task(
-                commit, commit_yaml, argument_list, commit_report, checkpoints
+                commit,
+                commit_yaml,
+                argument_list,
+                commit_report,
+                upload_context,
+                db_session,
+                checkpoints,
             )
         else:
             if checkpoints:
@@ -577,6 +591,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit_yaml,
         argument_list,
         commit_report: CommitReport,
+        upload_context: UploadContext,
+        db_session,
         checkpoints=None,
     ):
         commit_yaml = commit_yaml.to_dict()
@@ -591,6 +607,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_yaml,
                 argument_list,
                 commit_report,
+                upload_context,
+                db_session,
                 checkpoints=checkpoints,
             )
         elif commit_report.report_type == ReportType.BUNDLE_ANALYSIS.value:
@@ -618,11 +636,26 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         return None
 
     def _schedule_coverage_processing_task(
-        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+        self,
+        commit,
+        commit_yaml,
+        argument_list,
+        commit_report,
+        upload_context: UploadContext,
+        db_session,
+        checkpoints=None,
     ):
-        chain_to_call = []
-        for i in range(0, len(argument_list), CHUNK_SIZE):
-            chunk = argument_list[i : i + CHUNK_SIZE]
+        chunk_size = CHUNK_SIZE
+        parallel_session_id = 0
+
+        checkpoint_data = None
+        if checkpoints:
+            checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+            checkpoint_data = checkpoints.data
+
+        processing_tasks = []
+        for i in range(0, len(argument_list), chunk_size):
+            chunk = argument_list[i : i + chunk_size]
             if chunk:
                 sig = upload_processor_task.signature(
                     args=({},) if i == 0 else (),
@@ -632,29 +665,122 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         commit_yaml=commit_yaml,
                         arguments_list=chunk,
                         report_code=commit_report.code,
+                        in_parallel=False,
                     ),
                 )
-                chain_to_call.append(sig)
-        if chain_to_call:
-            checkpoint_data = None
-            if checkpoints:
-                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-                checkpoint_data = checkpoints.data
+                processing_tasks.append(sig)
 
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            repo_id=commit.repository.repoid
+        ):
+            parallel_chunk_size = 1
+            num_sessions = len(argument_list)
+            redis_key = get_parallel_upload_processing_session_counter_redis_key(
+                repoid=commit.repository.repoid, commitid=commit.commitid
+            )
+            report_service = ReportService(commit_yaml)
+            sessions = report_service.build_sessions(commit=commit)
+            commit_yaml = UserYaml(commit_yaml)
+            # if session count expired due to TTL (which is unlikely for most cases), recalculate the
+            # session ids used and set it in redis.
+            if self.parallel_session_count_key_expired(
+                redis_key, upload_context.redis_connection
+            ):
+                upload_context.redis_connection.set(
+                    redis_key,
+                    max(sessions.keys()) + 1 if sessions.keys() else 0,
+                )
+
+            # https://github.com/codecov/worker/commit/7d9c1984b8bc075c9fa002ee15cab3419684f2d6
+            # try to scrap the redis counter idea to fully mimic how session ids are allocated in the
+            # serial flow. This change is technically less performant, and would not allow for concurrent
+            # chords to be running at the same time. For now this is just a temporary change, just for
+            # verifying correctness.
+            #
+            # # increment redis to claim session ids
+            # parallel_session_id = (
+            #     upload_context.redis_connection.incrby(
+            #         name=redis_key,
+            #         amount=num_sessions,
+            #     )
+            #     - num_sessions
+            # )
+            # upload_context.redis_connection.expire(
+            #     name=redis_key,
+            #     time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+            # )
+            original_session_ids = list(sessions.keys())
+            parallel_session_ids = get_parallel_session_ids(
+                sessions, argument_list, db_session, report_service, commit_yaml
+            )
+
+            log.info(
+                "Allocated the following session ids for parallel upload processing: "
+                + " ".join(str(id) for id in parallel_session_ids),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    original_session_ids=original_session_ids,
+                ),
+            )
+
+            parallel_processing_tasks = []
+            commit_yaml = commit_yaml.to_dict()
+
+            for i in range(0, num_sessions, parallel_chunk_size):
+                chunk = argument_list[i : i + parallel_chunk_size]
+                if chunk:
+                    sig = upload_processor_task.signature(
+                        args=(),
+                        kwargs=dict(
+                            repoid=commit.repoid,
+                            commitid=commit.commitid,
+                            commit_yaml=commit_yaml,
+                            arguments_list=chunk,
+                            report_code=commit_report.code,
+                            parallel_idx=parallel_session_ids[
+                                i
+                            ],  # i + parallel_session_id,
+                            in_parallel=True,
+                        ),
+                    )
+                    parallel_processing_tasks.append(sig)
+
+        if processing_tasks:
             finish_sig = upload_finisher_task.signature(
                 kwargs={
                     "repoid": commit.repoid,
                     "commitid": commit.commitid,
                     "commit_yaml": commit_yaml,
                     "report_code": commit_report.code,
+                    "in_parallel": False,
                     _kwargs_key(UploadFlow): checkpoint_data,
                 },
             )
-            chain_to_call.append(finish_sig)
-            res = chain(*chain_to_call).apply_async()
+            finish_parallel_sig = upload_finisher_task.signature(
+                kwargs={
+                    "repoid": commit.repoid,
+                    "commitid": commit.commitid,
+                    "commit_yaml": commit_yaml,
+                    "report_code": commit_report.code,
+                    "in_parallel": True,
+                    _kwargs_key(UploadFlow): checkpoint_data,
+                },
+            )
+            processing_tasks.append(finish_sig)
+            serial_tasks = chain(*processing_tasks)
+
+            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+                repo_id=commit.repository.repoid
+            ):
+                parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
+                parallel_shadow_experiment = serial_tasks | parallel_tasks
+                res = parallel_shadow_experiment.apply_async()
+            else:
+                res = serial_tasks.apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling coverage processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -746,7 +872,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             ).apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling test results processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -758,7 +884,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             return res
         log.info(
-            "Not scheduling task because there were no reports to be processed found",
+            "Not scheduling test results processing tasks because there were no reports to be processed found",
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,
@@ -826,6 +952,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     extra=dict(repoid=repository.repoid, commit=commit.commitid),
                 )
         return False
+
+    def parallel_session_count_key_expired(self, redis_key, redis_connection):
+        if redis_connection.exists(redis_key):
+            return False
+        return True
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

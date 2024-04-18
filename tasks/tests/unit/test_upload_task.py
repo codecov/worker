@@ -102,6 +102,7 @@ def mock_redis(mocker):
 
 @pytest.mark.integration
 class TestUploadTaskIntegration(object):
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call(
         self,
         mocker,
@@ -171,6 +172,7 @@ class TestUploadTaskIntegration(object):
                     }
                 ],
                 report_code=None,
+                in_parallel=False,
             ),
         )
         kwargs = dict(
@@ -178,6 +180,7 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
+            in_parallel=False,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t2 = upload_finisher_task.signature(kwargs=kwargs)
@@ -369,6 +372,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_upload_processing_delay_not_enough_delay(
         self,
         mocker,
@@ -415,6 +419,7 @@ class TestUploadTaskIntegration(object):
         assert mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         assert not mock_possibly_update_commit_from_provider_info.called
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_upload_processing_delay_enough_delay(
         self,
         mocker,
@@ -462,6 +467,7 @@ class TestUploadTaskIntegration(object):
         assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_upload_processing_delay_upload_is_none(
         self,
         mocker,
@@ -504,6 +510,7 @@ class TestUploadTaskIntegration(object):
         assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
 
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_multiple_processors(
         self,
         mocker,
@@ -559,6 +566,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
                 ],
                 report_code=None,
+                in_parallel=False,
             ),
         )
         t2 = upload_processor_task.signature(
@@ -573,6 +581,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
                 ],
                 report_code=None,
+                in_parallel=False,
             ),
         )
         t3 = upload_processor_task.signature(
@@ -586,6 +595,7 @@ class TestUploadTaskIntegration(object):
                     {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
                 ],
                 report_code=None,
+                in_parallel=False,
             ),
         )
         kwargs = dict(
@@ -593,6 +603,7 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
+            in_parallel=False,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t_final = upload_finisher_task.signature(kwargs=kwargs)
@@ -711,6 +722,8 @@ class TestUploadTaskIntegration(object):
             ],
             commit.report,
             mocker.ANY,
+            mocker.ANY,
+            mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
 
@@ -763,6 +776,8 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
             commit.report,
+            mocker.ANY,
+            mocker.ANY,
             mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
@@ -837,6 +852,8 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": second_session.id},
             ],
             commit.report,
+            mocker.ANY,
+            mocker.ANY,
             mocker.ANY,
         )
 
@@ -927,6 +944,8 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report,
+            mocker.ANY,
+            mocker.ANY,
             mocker.ANY,
         )
 
@@ -1033,6 +1052,7 @@ class TestUploadTaskUnit(object):
         ]
         assert b"Some weird value" == content
 
+    @pytest.mark.django_db(databases={"default"})
     def test_schedule_task_with_no_tasks(self, dbsession):
         commit = CommitFactory.create()
         commit_yaml = UserYaml({})
@@ -1040,14 +1060,11 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         result = UploadTask().schedule_task(
-            commit,
-            commit_yaml,
-            argument_list,
-            ReportFactory.create(),
-            None,
+            commit, commit_yaml, argument_list, ReportFactory.create(), None, dbsession
         )
         assert result is None
 
+    @pytest.mark.django_db(databases={"default"})
     def test_schedule_task_with_one_task(self, dbsession, mocker):
         mocked_chain = mocker.patch("tasks.upload.chain")
         commit = CommitFactory.create()
@@ -1057,11 +1074,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         result = UploadTask().schedule_task(
-            commit,
-            commit_yaml,
-            argument_list,
-            ReportFactory.create(),
-            None,
+            commit, commit_yaml, argument_list, ReportFactory.create(), None, dbsession
         )
         assert result == mocked_chain.return_value.apply_async.return_value
         t1 = upload_processor_task.signature(
@@ -1072,6 +1085,7 @@ class TestUploadTaskUnit(object):
                 commit_yaml=commit_yaml.to_dict(),
                 arguments_list=argument_list,
                 report_code=None,
+                in_parallel=False,
             ),
         )
         t2 = upload_finisher_task.signature(
@@ -1080,6 +1094,7 @@ class TestUploadTaskUnit(object):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml.to_dict(),
                 "report_code": None,
+                "in_parallel": False,
                 _kwargs_key(UploadFlow): mocker.ANY,
             }
         )
