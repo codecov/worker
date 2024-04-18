@@ -59,6 +59,7 @@ class BackfillGHAppInstallationsTask(
             )
             gh_app_installation.repository_service_ids = new_repo_service_ids
             db_session.commit()
+        del repos
 
     def maybe_set_installation_to_all_repos(
         self,
@@ -134,6 +135,7 @@ class BackfillGHAppInstallationsTask(
                         gh_app_installation=gh_app_installation,
                     )
                     log.info("Successful backfill", extra=dict(ownerid=ownerid))
+                del owner_service
             except:
                 log.info(
                     "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
@@ -202,6 +204,7 @@ class BackfillGHAppInstallationsTask(
                         gh_app_installation=gh_app_installation,
                     )
                 log.info("Successful backfill", extra=dict(ownerid=ownerid))
+                del owner_service
             except:
                 log.info(
                     "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
