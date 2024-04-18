@@ -59,20 +59,27 @@ class SyncRepoLanguagesGQLTask(BaseCodecovTask, name=sync_repo_languages_gql_tas
             )
             return {"successful": False, "error": "torngit_error"}
 
-        updated_repoids = []
+        updated_repoids_for_logging = []
+        updated_repos = []
         for db_repo in org_db_repositories:
             repo_langs_from_github: Optional[List[str]] = repos_in_github.get(
                 db_repo.name
             )
             if repo_langs_from_github is not None:
-                updated_repoids.append(db_repo.repoid)
-                db_repo.languages = repos_in_github[db_repo.name]
-                db_repo.languages_last_updated = get_utc_now()
-                db_session.flush()
+                updated_repoids_for_logging.append(db_repo.repoid)
+                updated_repo = {
+                    "repoid": db_repo.repoid,
+                    "languages": repo_langs_from_github,
+                    "languages_last_updated": get_utc_now(),
+                }
+                updated_repos.append(updated_repo)
+
+        db_session.bulk_update_mappings(Repository, updated_repos)
+        db_session.commit()
 
         log.info(
             "Repo languages sync done",
-            extra=dict(username=org_username, repoids=updated_repoids),
+            extra=dict(username=org_username, repoids=updated_repoids_for_logging),
         )
 
         return {"successful": True}
