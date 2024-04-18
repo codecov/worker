@@ -769,7 +769,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 res = serial_tasks.apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling coverage processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -861,7 +861,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             ).apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling test results processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -873,7 +873,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             return res
         log.info(
-            "Not scheduling task because there were no reports to be processed found",
+            "Not scheduling test results processing tasks because there were no reports to be processed found",
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,

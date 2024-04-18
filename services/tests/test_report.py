@@ -4980,6 +4980,7 @@ class TestReportService(BaseTestCase):
         }
 
     @pytest.mark.asyncio
+    @pytest.mark.django_db(databases={"default", "timeseries"})
     async def test_create_new_report_for_commit_and_shift(
         self, dbsession, sample_report, mocker, mock_repo_provider, mock_storage
     ):
