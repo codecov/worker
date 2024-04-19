@@ -26,12 +26,12 @@ log = logging.getLogger("worker")
 REQUEST_TIMEOUT_COUNTER = Counter(
     "worker_task_counts_timeouts",
     "Number of times a task experienced any kind of timeout",
-    ["task"],
+    ["task", "task_group"],
 )
 REQUEST_HARD_TIMEOUT_COUNTER = Counter(
     "worker_task_counts_hard_timeouts",
     "Number of times a task experienced a hard timeout",
-    ["task"],
+    ["task", "task_group"],
 )
 
 
@@ -42,49 +42,58 @@ class BaseCodecovRequest(Request):
 
     def on_timeout(self, soft: bool, timeout: int):
         res = super().on_timeout(soft, timeout)
+        task_group = (
+            self.name.split(".")[-2] if self.name is not None else "unknown_group"
+        )
         if not soft:
-            REQUEST_HARD_TIMEOUT_COUNTER.labels(task=self.name).inc()
+            REQUEST_HARD_TIMEOUT_COUNTER.labels(
+                task=self.name, task_group=task_group
+            ).inc()
             metrics.incr(f"{self.metrics_prefix}.hardtimeout")
-        REQUEST_TIMEOUT_COUNTER.labels(task=self.name).inc()
+        REQUEST_TIMEOUT_COUNTER.labels(task=self.name, task_group=task_group).inc()
         metrics.incr(f"{self.metrics_prefix}.timeout")
         return res
 
 
 # Task reliability metrics
 TASK_RUN_COUNTER = Counter(
-    "worker_task_counts_runs", "Number of times this task was run", ["task"]
+    "worker_task_counts_runs",
+    "Number of times this task was run",
+    ["task", "task_group"],
 )
 TASK_RETRY_COUNTER = Counter(
-    "worker_task_counts_retries", "Number of times this task was retried", ["task"]
+    "worker_task_counts_retries",
+    "Number of times this task was retried",
+    ["task", "task_group"],
 )
 TASK_SUCCESS_COUNTER = Counter(
     "worker_task_counts_successes",
     "Number of times this task completed without error",
-    ["task"],
+    ["task", "task_group"],
 )
 TASK_FAILURE_COUNTER = Counter(
     "worker_task_counts_failures",
     "Number of times this task failed with an exception",
-    ["task"],
+    ["task", "task_group"],
 )
 
 # Task runtime metrics
 TASK_FULL_RUNTIME = Histogram(
     "worker_task_timers_full_runtime_seconds",
     "Total runtime in seconds of this task including db commits and error handling",
-    ["task"],
+    ["task", "task_group"],
     buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
 )
 TASK_CORE_RUNTIME = Histogram(
     "worker_task_timers_core_runtime_seconds",
     "Runtime in seconds of this task's main logic, not including db commits or error handling",
-    ["task"],
+    ["task", "task_group"],
     buckets=[0.05, 0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 180, 300, 600, 900],
 )
 TASK_TIME_IN_QUEUE = Histogram(
     "worker_tasks_timers_time_in_queue_seconds",
     "Time in {TODO} spent waiting in the queue before being run",
-    ["task", "queue"],
+    ["task", "queue", "task_group"],
     buckets=[
         0.01,
         0.05,
@@ -114,20 +123,33 @@ TASK_TIME_IN_QUEUE = Histogram(
 class BaseCodecovTask(celery_app.Task):
     Request = BaseCodecovRequest
 
-    def __init_subclass__(cls, name=None):
+    def __init_subclass__(cls, name="unknown_task"):
         cls.name = name
+        # All task names follow the format `app.[cron|task].<task_group>.<task>`
+        task_group = name.split(".")[-2] if name != "unknown_task" else "unknown_group"
+        cls.task_group = task_group
 
         cls.metrics_prefix = f"worker.task.{name}"
 
         # Task reliability metrics
-        cls.task_run_counter = TASK_RUN_COUNTER.labels(task=name)
-        cls.task_retry_counter = TASK_RETRY_COUNTER.labels(task=name)
-        cls.task_success_counter = TASK_SUCCESS_COUNTER.labels(task=name)
-        cls.task_failure_counter = TASK_FAILURE_COUNTER.labels(task=name)
+        cls.task_run_counter = TASK_RUN_COUNTER.labels(task=name, task_group=task_group)
+        cls.task_retry_counter = TASK_RETRY_COUNTER.labels(
+            task=name, task_group=task_group
+        )
+        cls.task_success_counter = TASK_SUCCESS_COUNTER.labels(
+            task=name, task_group=task_group
+        )
+        cls.task_failure_counter = TASK_FAILURE_COUNTER.labels(
+            task=name, task_group=task_group
+        )
 
         # Task runtime metrics
-        cls.task_full_runtime = TASK_FULL_RUNTIME.labels(task=name)
-        cls.task_core_runtime = TASK_CORE_RUNTIME.labels(task=name)
+        cls.task_full_runtime = TASK_FULL_RUNTIME.labels(
+            task=name, task_group=task_group
+        )
+        cls.task_core_runtime = TASK_CORE_RUNTIME.labels(
+            task=name, task_group=task_group
+        )
 
     @property
     def hard_time_limit_task(self):
@@ -236,7 +258,7 @@ class BaseCodecovTask(celery_app.Task):
 
             queue_name = self.request.get("delivery_info", {}).get("routing_key", None)
             time_in_queue_timer = TASK_TIME_IN_QUEUE.labels(
-                task=self.name, queue=queue_name
+                task=self.name, queue=queue_name, task_group=self.task_group
             )  # TODO is None a valid label value
             time_in_queue_timer.observe(delta.total_seconds())
 
