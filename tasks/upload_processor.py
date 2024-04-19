@@ -19,6 +19,10 @@ from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit, Upload
 from helpers.metrics import metrics
+from helpers.parallel_upload_processing import (
+    save_final_serial_report_results,
+    save_incremental_report_results,
+)
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.bots import RepositoryWithoutValidBotError
@@ -83,6 +87,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_code=None,
         parallel_idx=None,
         in_parallel=False,
+        is_final=False,
         **kwargs,
     ):
         repoid = int(repoid)
@@ -151,6 +156,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         parallel_idx=parallel_idx,
                         parent_task=self.request.parent_id,
                         in_parallel=in_parallel,
+                        is_final=is_final,
                         **kwargs,
                     )
             except LockError:
@@ -180,6 +186,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_code,
         parallel_idx=None,
         in_parallel=False,
+        is_final=False,
         **kwargs,
     ):
         if (
@@ -315,7 +322,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 with metrics.timer(
                     f"{self.metrics_prefix}.save_incremental_report_results"
                 ):
-                    parallel_incremental_result = self.save_incremental_report_results(
+                    parallel_incremental_result = save_incremental_report_results(
                         report_service, commit, report, parallel_idx, report_code
                     )
                     parallel_incremental_result["upload_pk"] = arguments_list[0].get(
@@ -340,6 +347,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         report,
                         pr,
                         report_code,
+                    )
+
+                # Save the final accumulated result from the serial flow for the
+                # ParallelVerification task to compare with later, for the parallel
+                # experiment. The report being saved is not necessarily the final
+                # report for the commit, as more uploads can still be made.
+                if is_final and (not in_parallel):
+                    save_final_serial_report_results(
+                        report_service, commit, report, report_code, arguments_list
                     )
 
             for processed_individual_report in processings_so_far:
@@ -592,34 +608,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         res = report_service.save_report(commit, report, report_code)
         db_session.commit()
         return res
-
-    def save_incremental_report_results(
-        self, report_service, commit, report, parallel_idx, report_code
-    ):
-        commitid = commit.commitid
-        archive_service = report_service.get_archive_service(commit.repository)
-
-        # save incremental results to archive storage,
-        # upload_finisher will combine
-        chunks = report.to_archive().encode()
-        _, files_and_sessions = report.to_database()
-
-        chunks_url = archive_service.write_parallel_experiment_file(
-            commitid, chunks, report_code, f"incremental/chunk{parallel_idx}"
-        )
-        files_and_sessions_url = archive_service.write_parallel_experiment_file(
-            commitid,
-            files_and_sessions,
-            report_code,
-            f"incremental/files_and_sessions{parallel_idx}",
-        )
-
-        parallel_incremental_result = {
-            "parallel_idx": parallel_idx,
-            "chunks_path": chunks_url,
-            "files_and_sessions_path": files_and_sessions_url,
-        }
-        return parallel_incremental_result
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())
