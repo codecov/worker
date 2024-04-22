@@ -58,7 +58,7 @@ test.integration:
 
 
 update-requirements:
-	pip install pip-tools==6.1.0
+	pip install pip-tools==7.4.1
 	pip-compile requirements.in
 
 
