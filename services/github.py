@@ -3,7 +3,6 @@ from typing import Optional
 
 from shared.github import InvalidInstallationError
 from shared.github import get_github_integration_token as _get_github_integration_token
-from shared.github import is_installation_rate_limited
 
 from helpers.cache import cache
 from helpers.exceptions import RepositoryWithoutValidBotError

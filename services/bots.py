@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple, TypedDict
 
 from shared.config import get_config
+from shared.github import is_installation_rate_limited
 from shared.torngit.base import TokenType
-from shared.typings.oauth_token_types import GithubInstallationInfo, Token
+from shared.typings.oauth_token_types import GithubInstallationInfo
 
 from database.models import Owner, Repository
 from database.models.core import (
@@ -15,7 +16,7 @@ from database.models.core import (
 from helpers.environment import is_enterprise
 from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
 from services.encryption import encryptor
-from services.github import get_github_integration_token, is_installation_rate_limited
+from services.github import get_github_integration_token
 from services.redis import get_redis_connection
 
 log = logging.getLogger(__name__)
