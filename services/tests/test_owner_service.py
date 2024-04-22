@@ -21,6 +21,7 @@ class TestOwnerServiceTestCase(object):
                 "username": owner.username,
             },
             "repo": {},
+            "fallback_installations": None,
         }
         assert res.service == "github"
         assert res.data == expected_data
@@ -40,6 +41,7 @@ class TestOwnerServiceTestCase(object):
                 "username": owner.username,
             },
             "repo": {},
+            "fallback_installations": None,
         }
         assert res.service == "gitlab"
         assert res.data == expected_data
@@ -61,6 +63,7 @@ class TestOwnerServiceTestCase(object):
                 "username": owner.username,
             },
             "repo": {},
+            "fallback_installations": None,
         }
         assert res.data["repo"] == expected_data["repo"]
         assert res.data == expected_data
