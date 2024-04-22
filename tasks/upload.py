@@ -3,6 +3,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 from json import loads
+from math import ceil
 from typing import Any, List, Mapping, Optional
 
 from asgiref.sync import async_to_sync
@@ -666,6 +667,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         arguments_list=chunk,
                         report_code=commit_report.code,
                         in_parallel=False,
+                        is_final=True
+                        if i == ceil(len(argument_list) / chunk_size) - 1
+                        else False,
                     ),
                 )
                 processing_tasks.append(sig)
@@ -742,6 +746,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                                 i
                             ],  # i + parallel_session_id,
                             in_parallel=True,
+                            is_final=True if i == num_sessions - 1 else False,
                         ),
                     )
                     parallel_processing_tasks.append(sig)
