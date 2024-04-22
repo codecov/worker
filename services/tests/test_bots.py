@@ -8,8 +8,8 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from database.tests.factories import OwnerFactory, RepositoryFactory
+from helpers.exceptions import NoConfiguredAppsAvailable
 from services.bots import (
-    NoConfiguredAppsAvailable,
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
     TokenType,
