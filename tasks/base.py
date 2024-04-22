@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from typing import Optional
 
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
@@ -35,6 +36,14 @@ REQUEST_HARD_TIMEOUT_COUNTER = Counter(
 )
 
 
+def _get_task_group_from_name(task_name: Optional[str]) -> Optional[str]:
+    if task_name is None or ("." not in task_name):
+        return None
+    # We checked that '.' is part of task_name
+    # So there will be at least 2 items in the array
+    return task_name.split(".")[-2]
+
+
 class BaseCodecovRequest(Request):
     @property
     def metrics_prefix(self):
@@ -42,9 +51,7 @@ class BaseCodecovRequest(Request):
 
     def on_timeout(self, soft: bool, timeout: int):
         res = super().on_timeout(soft, timeout)
-        task_group = (
-            self.name.split(".")[-2] if self.name is not None else "unknown_group"
-        )
+        task_group = _get_task_group_from_name(self.name)
         if not soft:
             REQUEST_HARD_TIMEOUT_COUNTER.labels(
                 task=self.name, task_group=task_group
@@ -126,7 +133,7 @@ class BaseCodecovTask(celery_app.Task):
     def __init_subclass__(cls, name="unknown_task"):
         cls.name = name
         # All task names follow the format `app.[cron|task].<task_group>.<task>`
-        task_group = name.split(".")[-2] if name != "unknown_task" else "unknown_group"
+        task_group = _get_task_group_from_name(name)
         cls.task_group = task_group
 
         cls.metrics_prefix = f"worker.task.{name}"

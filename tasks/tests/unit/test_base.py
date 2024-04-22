@@ -20,10 +20,25 @@ from sqlalchemy.exc import (
 )
 
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
-from tasks.base import BaseCodecovRequest, BaseCodecovTask
+from tasks.base import BaseCodecovRequest, BaseCodecovTask, _get_task_group_from_name
 from tasks.base import celery_app as base_celery_app
 
 here = Path(__file__)
+
+
+@pytest.mark.parametrize(
+    "task_name,output",
+    [
+        (None, None),
+        ("task_not_following_expected_pattern", None),
+        ("task_group.task_name", "task_group"),
+        ("app.task.task_group.task_name", "task_group"),
+        ("app.cron.daily.task_name", "daily"),
+        (f"app.tasks.test_results.TestResultsProcessor", "test_results"),
+    ],
+)
+def test__get_task_group_from_name(task_name, output):
+    assert _get_task_group_from_name(task_name) == output
 
 
 class MockDateTime(datetime):
@@ -422,7 +437,6 @@ class TestBaseCodecovTaskHooks(object):
 
 
 class TestBaseCodecovRequest(object):
-
     """
     All in all, this is a really weird class
 
