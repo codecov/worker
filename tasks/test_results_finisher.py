@@ -263,6 +263,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         )
 
         if FLAKY_TEST_DETECTION.check_value(repo_id=repoid):
+            log.info(
+                "Running flaky test detection",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    commit_yaml=commit_yaml,
+                    parent_task=self.request.parent_id,
+                ),
+            )
             with metrics.timing("test_results.finisher.run_flaky_test_detection"):
                 success, reason = self.run_flaky_test_detection(
                     db_session, repoid, notifier, payload
@@ -315,9 +324,25 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             failure_normalizer,
         )
 
+        log.info(
+            "Starting flake detection",
+            extra=dict(
+                repoid=repoid,
+                parent_task=self.request.parent_id,
+            ),
+        )
         current_state_of_repo_flakes = flake_detection_engine.detect_flakes()
 
         for test_id, symptoms in current_state_of_repo_flakes.items():
+            log.info(
+                "Discovered flaky test",
+                extra=dict(
+                    repoid=repoid,
+                    parent_task=self.request.parent_id,
+                    test_id=test_id,
+                    symptoms=list(symptoms),
+                ),
+            )
             payload.flaky_tests[test_id] = TestResultsNotificationFlake(
                 list(symptoms),
                 True,
@@ -325,6 +350,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             db_session.flush()
 
         success, reason = async_to_sync(notifier.notify)(payload)
+        log.info(
+            "Added flaky test information to the PR comment",
+            extra=dict(
+                repoid=repoid,
+                parent_task=self.request.parent_id,
+                success=success,
+                reason=reason,
+            ),
+        )
 
         return success, reason
 
