@@ -208,6 +208,7 @@ def get_public_bot_token(repo):
     tokenless_bot_dict = get_config(
         repo.service, "bots", "tokenless", default=public_bot_dict
     )
+
     if tokenless_bot_dict and tokenless_bot_dict.get("key"):
         log.info(
             "Using tokenless bot as bot fallback",
@@ -215,6 +216,12 @@ def get_public_bot_token(repo):
         )
         # Once again token not owned by an Owner.
         return tokenless_bot_dict, None
+
+    log.error(
+        "No tokenless bot dict in get_public_bot_token",
+        extra=dict(repoid=repo.repoid),
+    )
+    raise RepositoryWithoutValidBotError()
 
 
 def get_repo_particular_bot_token(repo) -> Tuple[Dict, Owner]:
