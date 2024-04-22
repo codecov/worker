@@ -14,7 +14,11 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from helpers.environment import is_enterprise
-from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
+from helpers.exceptions import (
+    NoConfiguredAppsAvailable,
+    OwnerWithoutValidBotError,
+    RepositoryWithoutValidBotError,
+)
 from services.encryption import encryptor
 from services.github import get_github_integration_token
 from services.redis import get_redis_connection
@@ -88,12 +92,6 @@ def _get_apps_from_weighted_selection(
         seen_ids[app.id] = True
         list_to_return.append(app)
     return list_to_return
-
-
-class NoConfiguredAppsAvailable(Exception):
-    def __init__(self, apps_count: int, all_rate_limited: bool) -> None:
-        self.apps_count = apps_count
-        self.all_rate_limited = all_rate_limited
 
 
 def get_owner_installation_id(
