@@ -168,6 +168,53 @@ class TestRepositoryServiceTestCase(object):
             "key": "installation_token",
         }
 
+    def test_get_repo_provider_service_github_with_installations_repo_fails_owner_doesnt(
+        self, dbsession, mocker
+    ):
+        mocker.patch(
+            "services.bots.get_github_integration_token",
+            return_value="installation_token",
+        )
+        repo = RepositoryFactory.create(
+            owner__service="github",
+            name="example-python",
+            using_integration=False,
+            service_id=14500,
+        )
+        installation_0 = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=1200,
+            app_id=200,
+            repository_service_ids=["100"],  # Not the repo we have
+            owner=repo.owner,
+        )
+        repo.owner.github_app_installations = [installation_0]
+        repo.owner.oauth_token = None
+        dbsession.add_all([repo, installation_0])
+        dbsession.flush()
+        res = get_repo_provider_service(repo)
+        print(res.data, res.token)
+        expected_data = {
+            "owner": {
+                "ownerid": repo.owner.ownerid,
+                "service_id": repo.owner.service_id,
+                "username": repo.owner.username,
+            },
+            "repo": {
+                "name": "example-python",
+                "using_integration": False,
+                "service_id": 14500,
+                "repoid": repo.repoid,
+            },
+            "fallback_installations": [],
+        }
+        assert res.data == expected_data
+        assert repo.owner.service == "github"
+        assert res._on_token_refresh is None
+        assert res.token == {
+            "key": "installation_token",
+        }
+
     def test_get_repo_provider_service_bitbucket(self, dbsession):
         repo = RepositoryFactory.create(
             owner__unencrypted_oauth_token="testyftq3ovzkb3zmt823u3t04lkrt9w",

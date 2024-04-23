@@ -19,6 +19,7 @@ from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     GithubAppInstallation,
 )
+from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.token_refresh import get_token_refresh_callback
 from services.bots import (
     get_owner_installation_id,
@@ -63,7 +64,35 @@ def get_repo_provider_service(
         ignore_installation=False,
         installation_name=installation_name_to_use,
     )
-    token, token_owner = get_repo_appropriate_bot_token(repository, installation_info)
+    print("INSTALLATION INFO", installation_info)
+    try:
+        token, token_owner = get_repo_appropriate_bot_token(
+            repository, installation_info
+        )
+    except RepositoryWithoutValidBotError:
+        installation_info_without_considering_repo = get_owner_installation_id(
+            repository.owner,
+            False,
+            repository=None,
+            ignore_installation=False,
+            installation_name=installation_name_to_use,
+        )
+        print("INSTALLATION INFO (no repo)", installation_info_without_considering_repo)
+
+        if installation_info_without_considering_repo:
+            log.warning(
+                "Got installation for owner without considering repo",
+                extra=dict(
+                    ownerid=repository.owner.ownerid,
+                    repoid=repository.repoid,
+                    installation_info=installation_info_without_considering_repo,
+                ),
+            )
+            token, token_owner = get_repo_appropriate_bot_token(
+                repository, installation_info_without_considering_repo
+            )
+            # for the fallback options
+            installation_info = installation_info_without_considering_repo
     adapter_params = dict(
         repo=dict(
             name=repository.name,
@@ -87,9 +116,11 @@ def get_repo_provider_service(
             secret=get_config(service, "client_secret"),
         ),
         on_token_refresh=get_token_refresh_callback(token_owner),
-        fallback_installations=installation_info.get("fallback_installations")
-        if installation_info
-        else None,
+        fallback_installations=(
+            installation_info.get("fallback_installations")
+            if installation_info
+            else None
+        ),
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
 
