@@ -3,6 +3,7 @@ from unittest.mock import call
 
 import pytest
 from celery.exceptions import MaxRetriesExceededError, Retry
+from freezegun import freeze_time
 from redis.exceptions import LockError
 from shared.celery_config import new_user_activated_task_name
 from shared.reports.resources import Report
@@ -21,8 +22,9 @@ from database.tests.factories import (
 )
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
+from services.lock_manager import LockRetry
 from services.notification import NotificationService
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
@@ -713,6 +715,35 @@ class TestNotifyTask(object):
         }
         assert expected_result == res
 
+    @freeze_time("2024-04-22T11:15:00")
+    def test_notify_task_no_ghapp_available(self, dbsession, mocker):
+        get_repo_provider_service = mocker.patch(
+            "tasks.notify.get_repo_provider_service"
+        )
+        mock_retry = mocker.patch.object(NotifyTask, "retry", return_value=None)
+        get_repo_provider_service.side_effect = NoConfiguredAppsAvailable(
+            apps_count=2, all_rate_limited=True
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            repository__using_integration=True,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        current_yaml = {"codecov": {"require_ci_to_pass": True}}
+        task = NotifyTask()
+        res = task.run_impl_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
+        )
+        assert res is None
+        mock_retry.assert_called_with(max_retries=10, countdown=45 * 60)
+
     def test_submit_third_party_notifications_exception(self, mocker, dbsession):
         current_yaml = {}
         repository = RepositoryFactory.create()
@@ -837,7 +868,7 @@ class TestNotifyTask(object):
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
         m = mocker.MagicMock()
-        m.return_value.locked.return_value.__enter__.side_effect = LockError()
+        m.return_value.locked.return_value.__enter__.side_effect = LockRetry(60)
         mocker.patch("tasks.notify.LockManager", m)
 
         res = task.run_impl(

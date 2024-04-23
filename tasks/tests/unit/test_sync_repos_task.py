@@ -503,15 +503,6 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
 
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 1}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
-
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -556,15 +547,6 @@ class TestSyncReposTaskUnit(object):
         mocker.patch.object(
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
-
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
 
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -660,14 +642,6 @@ class TestSyncReposTaskUnit(object):
         mocker.patch.object(
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 0}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
 
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -807,16 +781,6 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
 
-        if use_generator:
-
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 1}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
-
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -868,15 +832,6 @@ class TestSyncReposTaskUnit(object):
         mocker.patch.object(
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
-
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
 
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -992,15 +947,6 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
         mocker.patch("tasks.sync_repos.get_config", return_value=False)
-
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
 
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(

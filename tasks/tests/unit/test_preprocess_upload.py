@@ -21,6 +21,7 @@ class TestPreProcessUpload(object):
         assert task._is_running(mock_redis, "lock_1") == True
         assert task._is_running(mock_redis, "lock_2") == False
 
+    @pytest.mark.django_db(databases={"default"})
     def test_preprocess_task(
         self,
         mocker,
@@ -37,19 +38,22 @@ class TestPreProcessUpload(object):
             "get_existing_report_for_commit",
             return_value=sample_report,
         )
-        mocked_fetch_yaml = mocker.patch.object(
-            PreProcessUpload,
-            "fetch_commit_yaml_and_possibly_store",
-            return_value={
-                "flag_management": {
-                    "individual_flags": [
-                        {
-                            "name": "unit",
-                            "carryforward": True,
-                        }
-                    ]
-                }
-            },
+        commit_yaml = {
+            "flag_management": {
+                "individual_flags": [
+                    {
+                        "name": "unit",
+                        "carryforward": True,
+                    }
+                ]
+            }
+        }
+        mocker.patch(
+            "tasks.preprocess_upload.fetch_commit_yaml_from_provider",
+            return_value=commit_yaml,
+        )
+        mock_save_commit = mocker.patch(
+            "tasks.preprocess_upload.save_repo_yaml_to_database_if_needed"
         )
         mocker.patch.object(PreProcessUpload, "_is_running", return_value=False)
 
@@ -163,7 +167,7 @@ class TestPreProcessUpload(object):
             "reportid": str(report.external_id),
             "updated_commit": False,
         }
-        mocked_fetch_yaml.assert_called()
+        mock_save_commit.assert_called_with(commit, commit_yaml)
         mock_possibly_shift.assert_called()
 
     def create_commit_and_report(self, dbsession):
@@ -221,26 +225,25 @@ class TestPreProcessUpload(object):
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
         commit = CommitFactory.create()
         repo_provider = PreProcessUpload().get_repo_service(commit)
-        assert not repo_provider
+        assert repo_provider is None
 
-    def test_get_repo_service_repo_not_found(self, dbsession, mocker):
+    def test_preprocess_upload_fail_no_provider_service(self, dbsession, mocker):
+        mocker.patch("tasks.preprocess_upload.save_commit_error")
         mock_get_repo_service = mocker.patch(
             "tasks.preprocess_upload.get_repo_provider_service"
         )
-        mock_get_repo_service.side_effect = TorngitRepoNotFoundError(
-            "fake_response", "message"
-        )
+        mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
         commit = CommitFactory.create()
-        repo_provider = PreProcessUpload().get_repo_service(commit)
-        assert not repo_provider
-
-    def test_get_repo_service_torngit_error(self, dbsession, mocker):
-        mock_get_repo_service = mocker.patch(
-            "tasks.preprocess_upload.get_repo_provider_service"
+        dbsession.add(commit)
+        dbsession.flush()
+        res = PreProcessUpload().process_impl_within_lock(
+            db_session=dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            report_code=None,
         )
-        mock_get_repo_service.side_effect = TorngitClientError(
-            403, "response", "message"
-        )
-        commit = CommitFactory.create()
-        repo_provider = PreProcessUpload().get_repo_service(commit)
-        assert not repo_provider
+        assert res == {
+            "preprocessed_upload": False,
+            "updated_commit": False,
+            "error": "Failed to get repository_service",
+        }

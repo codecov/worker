@@ -47,6 +47,7 @@ def make_metric_context(dbsession):
 
 
 @pytest.mark.asyncio
+@pytest.mark.real_metric_context
 async def test_fire_and_forget():
     """
     @fire_and_forget wraps an async function in a sync function that schedules
@@ -84,6 +85,7 @@ async def test_fire_and_forget():
 
 
 class TestMetricContext:
+    @pytest.mark.real_metric_context
     def test_populate_complete(self, dbsession, mocker):
         mc = make_metric_context(dbsession)
         assert mc.repo_id is not None
@@ -106,6 +108,7 @@ class TestMetricContext:
         )
         assert mc.commit_id is not None
 
+    @pytest.mark.real_metric_context
     def test_populate_no_repo(self, dbsession, mocker):
         mc = make_metric_context(dbsession)
         mc.repo_id = None
@@ -119,6 +122,7 @@ class TestMetricContext:
         assert mc.commit_id is None
 
     @pytest.mark.django_db(databases={"default", "timeseries"})
+    @pytest.mark.real_metric_context
     def test_log_simple_metric(self, dbsession, mocker):
         mc = make_metric_context(dbsession)
 
@@ -148,6 +152,7 @@ class TestMetricContext:
         """
 
     @pytest.mark.asyncio
+    @pytest.mark.real_metric_context
     async def test_attempt_log_simple_metric(self, dbsession, mocker):
         mc = make_metric_context(dbsession)
         mock_fn = mocker.patch.object(mc, "log_simple_metric")
@@ -161,6 +166,7 @@ class TestMetricContext:
 
 
 class TestTimeseriesTimer:
+    @pytest.mark.real_metric_context
     def test_sync(self, dbsession, mocker):
         mc = Mock()
         time1 = datetime.fromisoformat("2023-11-21").replace(tzinfo=timezone.utc)
@@ -177,6 +183,7 @@ class TestTimeseriesTimer:
         assert ("test_sync_timer", expected_value) in mc.log_simple_metric.call_args
 
     @pytest.mark.asyncio
+    @pytest.mark.real_metric_context
     async def test_async(self, dbsession, mocker):
         mc = Mock()
         time1 = datetime.fromisoformat("2023-11-21").replace(tzinfo=timezone.utc)

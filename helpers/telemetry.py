@@ -2,11 +2,14 @@ import asyncio
 from datetime import datetime
 
 import django
+from asgiref.sync import sync_to_async
 from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
 from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 
 from database.engine import get_db_session
 from database.models.core import Commit, Owner, Repository
+
+from .timeseries import timeseries_enabled
 
 
 def fire_and_forget(fn):
@@ -108,6 +111,10 @@ class MetricContext:
 
         self.populated = True
 
+    @sync_to_async
+    def log_simple_metric_async(self, name: str, value: float):
+        self.log_simple_metric(name, value)
+
     def log_simple_metric(self, name: str, value: float):
         # Timezone-aware timestamp in UTC
         timestamp = django.utils.timezone.now()
@@ -123,18 +130,19 @@ class MetricContext:
             commit_id=self.commit_id,
         )
 
-        TsSimpleMetric.objects.create(
-            timestamp=timestamp,
-            name=name,
-            value=value,
-            repo_slug=self.repo_slug,
-            owner_slug=self.owner_slug,
-            commit_slug=self.commit_slug,
-        )
+        if timeseries_enabled():
+            TsSimpleMetric.objects.create(
+                timestamp=timestamp,
+                name=name,
+                value=value,
+                repo_slug=self.repo_slug,
+                owner_slug=self.owner_slug,
+                commit_slug=self.commit_slug,
+            )
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):
-        self.log_simple_metric(name, value)
+        await self.log_simple_metric_async(name, value)
 
 
 class TimeseriesTimer:

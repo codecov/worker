@@ -11,7 +11,7 @@ from database.models import CommitReport, RepositoryFlag, Test, TestInstance
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
-from tasks.test_results_finisher import TestResultsFinisherTask
+from tasks.test_results_finisher import QUEUE_NOTIFY_KEY, TestResultsFinisherTask
 
 here = Path(__file__)
 
@@ -60,7 +60,11 @@ def test_results_setup(mocker, dbsession):
         repository__owner__service="github",
         repository__name="codecov-demo",
     )
+    commit.branch = "main"
     dbsession.add(commit)
+    dbsession.flush()
+
+    commit.repository.branch = "main"
     dbsession.flush()
 
     repoid = commit.repoid
@@ -193,6 +197,7 @@ def test_results_setup(mocker, dbsession):
 
 class TestUploadTestFinisherTask(object):
     @pytest.mark.integration
+    @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call(
         self,
         mocker,
@@ -207,6 +212,9 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
+        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
         repoid, commit, pull, _ = test_results_setup
 
         result = TestResultsFinisherTask().run_impl(
@@ -219,12 +227,16 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name2<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name3<br>Envs:<br>- 0<br></pre> | <pre>No failure message available</pre> |",
+            f"**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name0<br><br>**Envs:**<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name1<br><br>**Envs:**<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name2<br><br>**Envs:**<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name3<br><br>**Envs:**<br>- 0<br></pre> | <pre>No failure message available</pre> |",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -261,6 +273,9 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
+        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
         repoid, commit, _, test_instances = test_results_setup
 
         for instance in test_instances:
@@ -277,7 +292,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": False, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: True,
+        }
         test_results_mock_app.tasks[
             "app.tasks.notify.Notify"
         ].apply_async.assert_called_with(
@@ -323,6 +342,9 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
+        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
         repoid, commit, _, _ = test_results_setup
 
         result = TestResultsFinisherTask().run_impl(
@@ -335,7 +357,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": False, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
 
@@ -364,6 +390,9 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
+        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
         repoid, commit, pull, _ = test_results_setup
 
         pull.commentid = 1
@@ -379,12 +408,16 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": True}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name0<br>Envs:<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name1<br>Envs:<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name2<br>Envs:<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>Testsuite:<br>test_testsuite<br>Test name:<br>test_name3<br>Envs:<br>- 0<br></pre> | <pre>No failure message available</pre> |",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name0<br><br>**Envs:**<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name1<br><br>**Envs:**<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name2<br><br>**Envs:**<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name3<br><br>**Envs:**<br>- 0<br></pre> | <pre>No failure message available</pre> |",
         )
 
         assert expected_result == result
@@ -404,6 +437,9 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
+        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
         repoid, commit, _, _ = test_results_setup
 
         mock_repo_provider_comments.post_comment.side_effect = TorngitClientError
@@ -418,7 +454,11 @@ class TestUploadTestFinisherTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {"notify_attempted": True, "notify_succeeded": False}
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: False,
+        }
 
         assert expected_result == result
 
@@ -431,6 +471,74 @@ class TestUploadTestFinisherTask(object):
                 call(
                     "test_results.finisher.test_result_notifier",
                     tags={"status": False, "reason": "torngit_error"},
+                ),
+            ]
+        )
+        calls = [
+            call("test_results.finisher.fetch_latest_test_instances"),
+            call("test_results.finisher.notification"),
+        ]
+        for c in calls:
+            assert c in mock_metrics.timing.mock_calls
+
+    @pytest.mark.integration
+    def test_upload_finisher_task_call_with_flaky(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        mock_metrics,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = True
+
+        repoid, commit, pull, _ = test_results_setup
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            [
+                [{"successful": True}],
+            ],
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name0<br><br>**Envs:**<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name1<br><br>**Envs:**<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name2<br><br>**Envs:**<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name3<br><br>**Envs:**<br>- 0<br></pre> | <pre>No failure message available</pre> |",
+        )
+
+        mock_repo_provider_comments.edit_comment.assert_called_with(
+            pull.pullid,
+            1,
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(4 newly detected flaky), 0 passed and 0 skipped.\n- Total :snowflake:**4 flaky tests.**\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| :snowflake::card_index_dividers: **Newly Detected Flake**<br><pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name0<br><br>**Envs:**<br>- 0<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br><pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| :snowflake::card_index_dividers: **Newly Detected Flake**<br><pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name1<br><br>**Envs:**<br>- 1<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br><pre>Shared failure message</pre> |\n| :snowflake::card_index_dividers: **Newly Detected Flake**<br><pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name2<br><br>**Envs:**<br>- default<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br><pre>Shared failure message</pre> |\n| :snowflake::card_index_dividers: **Newly Detected Flake**<br><pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name3<br><br>**Envs:**<br>- 0<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br><pre>No failure message available</pre> |",
+        )
+
+        mock_metrics.incr.assert_has_calls(
+            [
+                call(
+                    "test_results.finisher",
+                    tags={"status": "success", "reason": "tests_failed"},
+                ),
+                call(
+                    "test_results.finisher.test_result_notifier",
+                    tags={"status": True, "reason": "comment_posted"},
                 ),
             ]
         )

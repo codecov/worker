@@ -3,7 +3,7 @@ import requests
 
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.bots import get_repo_appropriate_bot_token
+from services.bots import get_owner_installation_id, get_repo_appropriate_bot_token
 
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDCFqq2ygFh9UQU/6PoDJ6L9e4ovLPCHtlBt7vzDwyfwr3XGxln
@@ -36,7 +36,9 @@ class TestRepositoryServiceIntegration(object):
             owner__integration_id=5944641,
             name="example-python",
             using_integration=True,
+            private=True,
         )
+        repo.owner.oauth_token = None
         dbsession.add(repo)
         dbsession.flush()
         with pytest.raises(RepositoryWithoutValidBotError):
@@ -58,4 +60,7 @@ class TestRepositoryServiceIntegration(object):
         dbsession.add(repo)
         dbsession.flush()
         with pytest.raises(requests.exceptions.HTTPError):
-            get_repo_appropriate_bot_token(repo)
+            info = get_owner_installation_id(
+                repo.owner, repo.using_integration, ignore_installation=False
+            )
+            get_repo_appropriate_bot_token(repo, info)

@@ -255,14 +255,12 @@ class TestGHAppWebhooksTask(object):
         fake_redelivery.assert_not_called()
 
     def test_successful_run(self, dbsession, mocker, sample_deliveries):
-        def side_effect(*args, **kwargs):
-            yield sample_deliveries
-
         fake_list_deliveries = mocker.patch.object(
             Github,
             "list_webhook_deliveries",
-            side_effect=side_effect,
         )
+        fake_list_deliveries.return_value.__aiter__.return_value = [sample_deliveries]
+
         fake_get_token = mocker.patch(
             "tasks.github_app_webhooks_check.get_github_integration_token",
             return_value="integration_jwt_token",
@@ -288,14 +286,12 @@ class TestGHAppWebhooksTask(object):
     def test_redelivery_counters(
         self, dbsession, mocker, sample_deliveries, mock_metrics
     ):
-        def side_effect(*args, **kwargs):
-            yield sample_deliveries
-
         fake_list_deliveries = mocker.patch.object(
             Github,
             "list_webhook_deliveries",
-            side_effect=side_effect,
         )
+        fake_list_deliveries.return_value.__aiter__.return_value = [sample_deliveries]
+
         fake_get_token = mocker.patch(
             "tasks.github_app_webhooks_check.get_github_integration_token",
             return_value="integration_jwt_token",

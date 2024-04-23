@@ -1,10 +1,13 @@
 import logging
+from typing import Optional
 
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes
@@ -38,7 +41,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         *,
         repoid: int,
         commitid: str,
-        report_code: str,
+        report_code: Optional[str] = None,
         **kwargs,
     ):
         log.info(
@@ -100,25 +103,27 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         commit = commits.first()
         assert commit, "Commit not found in database."
 
-        repository = commit.repository
         repository_service = self.get_repo_service(commit)
+        if repository_service is None:
+            log.warning(
+                "Failed to get repository_service",
+                extra=dict(commit=commitid, repo=repoid),
+            )
+            return {
+                "preprocessed_upload": False,
+                "updated_commit": False,
+                "error": "Failed to get repository_service",
+            }
         # Makes sure that we can properly carry forward reports
         # By populating the commit info (if needed)
         updated_commit = async_to_sync(possibly_update_commit_from_provider_info)(
             commit=commit, repository_service=repository_service
         )
-        if repository_service:
-            commit_yaml = self.fetch_commit_yaml_and_possibly_store(
-                commit, repository_service
-            )
-        else:
-            commit_yaml = UserYaml.get_final_yaml(
-                owner_yaml=repository.owner.yaml,
-                repo_yaml=repository.yaml,
-                commit_yaml=None,
-                ownerid=repository.owner.ownerid,
-            )
+        commit_yaml = self.fetch_commit_yaml_and_possibly_store(
+            commit, repository_service
+        )
         report_service = ReportService(commit_yaml)
+        # For parallel upload processing experiment, saving the report to GCS happens here
         commit_report = async_to_sync(report_service.initialize_and_save_report)(
             commit, report_code
         )
@@ -130,7 +135,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             "updated_commit": updated_commit,
         }
 
-    def get_repo_service(self, commit):
+    def get_repo_service(self, commit) -> Optional[TorngitBaseAdapter]:
         repository_service = None
         try:
             repository_service = get_repo_provider_service(commit.repository, commit)
@@ -145,17 +150,6 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             log.warning(
                 "Unable to reach git provider because repo doesn't have a valid bot",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
-            )
-        except TorngitRepoNotFoundError:
-            log.warning(
-                "Unable to reach git provider because this specific bot/integration can't see that repository",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-            )
-        except TorngitClientError:
-            log.warning(
-                "Unable to reach git provider because there was a 4xx error",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-                exc_info=True,
             )
 
         return repository_service
@@ -198,11 +192,16 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 exc_info=True,
             )
             commit_yaml = None
+        context = OwnerContext(
+            owner_onboarding_date=repository.owner.createstamp,
+            owner_plan=repository.owner.plan,
+            ownerid=repository.ownerid,
+        )
         return UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
-            ownerid=repository.owner.ownerid,
+            owner_context=context,
         )
 
 

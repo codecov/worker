@@ -9,6 +9,7 @@ from shared.reports.types import CoverageDatapoint
 from shared.torngit.base import TorngitBaseAdapter
 from shared.utils.enums import TaskConfigGroup
 from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.models.core import Commit
@@ -186,11 +187,16 @@ class CleanLabelsIndexTask(
                 commit, repository_service
             )
         if commit_yaml is None:
+            context = OwnerContext(
+                owner_onboarding_date=repository.owner.createstamp,
+                owner_plan=repository.owner.plan,
+                ownerid=repository.ownerid,
+            )
             commit_yaml = UserYaml.get_final_yaml(
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
-                ownerid=repository.owner.ownerid,
+                owner_context=context,
             ).to_dict()
         return commit_yaml
 
