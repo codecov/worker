@@ -52,11 +52,15 @@ def get_repo_provider_service(
     commit=None,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> torngit.base.TorngitBaseAdapter:
+    """Gets the TorngitBaseAdapter instance for this repository.
+
+    !raises: RepositoryWithoutValidBotError
+    """
     _timeouts = [
         get_config("setup", "http", "timeouts", "connect", default=30),
         get_config("setup", "http", "timeouts", "receive", default=60),
     ]
-    service = repository.owner.service
+    service: str = repository.owner.service
     installation_info = get_owner_installation_id(
         repository.owner,
         repository.using_integration,
@@ -64,12 +68,22 @@ def get_repo_provider_service(
         ignore_installation=False,
         installation_name=installation_name_to_use,
     )
-    print("INSTALLATION INFO", installation_info)
     try:
         token, token_owner = get_repo_appropriate_bot_token(
             repository, installation_info
         )
     except RepositoryWithoutValidBotError:
+        # GitHub exclusive bit -- START
+        #
+        # If owner is NOT using GitHub it's because they legitimately don't have the repo properly configured.
+        # So `get_owner_installation_id` will raise again.
+        #
+        # If owner IS using GitHub it's possible that there's a difference between the repos the installation says it covers
+        # and the repos it actually covers (due to dropped webhooks or sync issues)
+        # Because previously `get_owner_installation_id` raised we know that no other valid config is available.
+        # To prevent the app from breaking (assuming we are wrong, instead of the user) we try again to get an installation for the owner,
+        # this time without requiring the repo to be covered.
+        # If the owner legitimately doesn't have the repo properly configured `get_owner_installation_id` will raise again.
         installation_info_without_considering_repo = get_owner_installation_id(
             repository.owner,
             False,
@@ -77,9 +91,8 @@ def get_repo_provider_service(
             ignore_installation=False,
             installation_name=installation_name_to_use,
         )
-        print("INSTALLATION INFO (no repo)", installation_info_without_considering_repo)
-
         if installation_info_without_considering_repo:
+            # This means the owner has a configured installation that (we think) doesn't cover this repo.
             log.warning(
                 "Got installation for owner without considering repo",
                 extra=dict(
@@ -93,6 +106,8 @@ def get_repo_provider_service(
             )
             # for the fallback options
             installation_info = installation_info_without_considering_repo
+        # GitHub exclusive bit -- END
+
     adapter_params = dict(
         repo=dict(
             name=repository.name,

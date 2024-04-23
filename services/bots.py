@@ -106,6 +106,14 @@ def get_owner_installation_id(
     # And might get out-of-sync soon
     ignore_installation: bool = False
 ) -> Optional[Dict]:
+    """Gets the installation information for an owner with the name specified and
+    guaranteeing that it covers the repository specified (if any).
+    EXCLUSIVE to GitHub and GitHub Enterprise owners.
+
+    Owner's GithubAppInstallation are created by the api in response to webhooks received from Github.
+
+    !raises: NoConfiguredAppsAvailable
+    """
 
     log.info(
         "Getting owner installation id",
