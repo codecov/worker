@@ -20,8 +20,14 @@ class BaseLogger(JsonFormatter):
     def format_json_on_new_lines(self, json_str):
         # Parse the input JSON string
         data = json.loads(json_str)
+
+        for key, value in data.items():
+            if isinstance(value, list) and len(value) > 10:
+                # If more than 10 elements in a list, concat to single line
+                data[key] = ", ".join(map(str, value))
+
         # Convert the parsed JSON data back to a formatted JSON string
-        formatted_json = json.dumps(data, indent=4, separators=(",", ":"))
+        formatted_json = json.dumps(data, indent=4)
         return formatted_json
 
 
