@@ -1,5 +1,6 @@
-from copy import deepcopy
 import json
+from copy import deepcopy
+
 from celery._state import get_current_task
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
