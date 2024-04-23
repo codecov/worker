@@ -260,14 +260,14 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         # Here comes the actual function
         received_repos = False
-        if repository_service_ids:
-            # This flow is different from the ones below because the API already informed us the repos affected
-            # So we can update those values directly
-            repoids_added = await self.sync_repos_affected_repos_known(
-                db_session, git, owner, repository_service_ids
-            )
-            repoids = repoids_added
-        elif await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
+        # if repository_service_ids:
+        #     # This flow is different from the ones below because the API already informed us the repos affected
+        #     # So we can update those values directly
+        #     repoids_added = await self.sync_repos_affected_repos_known(
+        #         db_session, git, owner, repository_service_ids
+        #     )
+        #     repoids = repoids_added
+        if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
             owner_id=ownerid, default=False
         ):
             with metrics.timer(

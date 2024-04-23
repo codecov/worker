@@ -87,9 +87,11 @@ def get_repo_provider_service(
             secret=get_config(service, "client_secret"),
         ),
         on_token_refresh=get_token_refresh_callback(token_owner),
-        fallback_installations=installation_info.get("fallback_installations")
-        if installation_info
-        else None,
+        fallback_installations=(
+            installation_info.get("fallback_installations")
+            if installation_info
+            else None
+        ),
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
 
