@@ -137,7 +137,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         db_session,
         git,
         owner: Owner,
-        repository_service_ids: Optional[List[Tuple[str, str]]],
+        repository_service_ids: Optional[List[Tuple[int, str]]],
     ):
         repoids_added = []
         # Casting to str in case celery interprets the service ID as a integer for some reason
@@ -161,12 +161,15 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 missing_repo_service_ids=missing_repo_service_ids,
                 num_missing_repos=len(missing_repo_service_ids),
                 existing_repos=existing_repos,
+                repository_service_ids=repository_service_ids,
             ),
         )
 
         # Get info from provider on the repos we don't have
         repos_to_search = [
-            x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
+            x[1]
+            for x in repository_service_ids
+            if str(x[0]) in missing_repo_service_ids
         ]
         async for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
@@ -195,13 +198,44 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             repoids_added.append(new_repo.repoid)
         return repoids_added
 
+    def _possibly_update_ghinstallation_covered_repos(
+        self, db_session, git, owner: Owner, service_ids_listed: List[str]
+    ):
+        if (
+            owner.github_app_installations is None
+            or owner.github_app_installations == []
+        ):
+            log.warning(
+                "Failed to possibly update ghapp covered repos. Owner has no installations",
+            ),
+            return
+        # FIXME This is no *always* true, but in general owners have 1 installation,
+        # That is for the default app. So it's OK for a quick fix.
+        # The more elaborate fix involves passing more info to the `git` object and get the installation being used from that.
+        ghapp = owner.github_app_installations[0]
+        if ghapp and ghapp.repository_service_ids is not None:
+            covered_repos = set(ghapp.repository_service_ids)
+            service_ids_listed_set = set(service_ids_listed)
+            log.info(
+                "Updating list of repos covered",
+                extra=dict(
+                    owner=owner.ownerid,
+                    installation=ghapp.installation_id,
+                    ghapp_id=ghapp.id,
+                    added_repos_service_ids=covered_repos.difference(
+                        service_ids_listed_set
+                    ),
+                ),
+            )
+            ghapp.repository_service_ids = list(covered_repos | service_ids_listed_set)
+
     async def sync_repos_using_integration(
         self,
         db_session: Session,
         git,
         owner: Owner,
         username: str,
-        repository_service_ids: Optional[List[Tuple[str, str]]] = None,
+        repository_service_ids: Optional[List[Tuple[int, str]]] = None,
     ):
         ownerid = owner.ownerid
         log.info(
@@ -215,6 +249,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
             service_ids = {repo["repo"]["service_id"] for repo in repos}
+            self._possibly_update_ghinstallation_covered_repos(
+                db_session, git, owner, service_ids
+            )
             if service_ids:
                 # Querying through the `Repository` model is cleaner, but we
                 # need to go through the table object instead if we want to
@@ -260,13 +297,18 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         # Here comes the actual function
         received_repos = False
-        # if repository_service_ids:
-        #     # This flow is different from the ones below because the API already informed us the repos affected
-        #     # So we can update those values directly
-        #     repoids_added = await self.sync_repos_affected_repos_known(
-        #         db_session, git, owner, repository_service_ids
-        #     )
-        #     repoids = repoids_added
+        if repository_service_ids:
+            # This flow is different from the ones below because the API already informed us the repos affected
+            # So we can update those values directly
+            repoids_added = await self.sync_repos_affected_repos_known(
+                db_session, git, owner, repository_service_ids
+            )
+            repoids = repoids_added
+        # The `if` below should be `elif` but we had issues recently
+        # related to the sync task when repos are known
+        # So we should still run it just in case and possibly update GithubInstallation.repository_service_ids
+        # Instead of relying exclusively on the webhooks to do that
+        # TODO: Maybe we don't need to run this every time, but once in a while just in case...
         if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
             owner_id=ownerid, default=False
         ):

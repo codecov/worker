@@ -16,6 +16,10 @@ from shared.celery_config import (
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Owner, Repository
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from tasks.sync_repo_languages import SyncRepoLanguagesTask
 from tasks.sync_repo_languages_gql import SyncRepoLanguagesGQLTask
@@ -548,16 +552,33 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
 
-        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
             service="github",
             username="1nf1n1t3l00p",
-            unencrypted_oauth_token=token,
             permission=[],
             service_id="45343385",
         )
         dbsession.add(user)
+
+        mock_redis.exists.return_value = False
+        mocker.patch(
+            "services.bots.get_github_integration_token",
+            return_value="installation_token",
+        )
+
+        ghapp = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=1822,
+            # inaccurate because this integration should be able to list all repos in the test
+            # but the sync_repos should fix this too
+            repository_service_ids=["555555555"],
+            owner=user,
+        )
+        dbsession.add(ghapp)
+        user.github_app_installations = [ghapp]
+
+        dbsession.flush()
 
         def repo_obj(service_id, name, language, private, branch, using_integration):
             return {
@@ -630,6 +651,7 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # there were no private repos
         for repo in repos:
             assert repo.using_integration is True
+        ghapp.repository_service_ids = ["159089634" "164948070" "213786132" "555555555"]
 
     @pytest.mark.parametrize("use_generator", [False, True])
     @respx.mock
@@ -1002,162 +1024,162 @@ class TestSyncReposTaskUnit(object):
 
         mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_not_called()
 
-    # def test_sync_repos_using_integration_affected_repos_known(
-    #     self,
-    #     mocker,
-    #     dbsession,
-    #     mock_owner_provider,
-    #     mock_redis,
-    # ):
+    def test_sync_repos_using_integration_affected_repos_known(
+        self,
+        mocker,
+        dbsession,
+        mock_owner_provider,
+        mock_redis,
+    ):
 
-    #     user = OwnerFactory.create(
-    #         organizations=[],
-    #         service="github",
-    #         username="1nf1n1t3l00p",
-    #         unencrypted_oauth_token="sometesttoken",
-    #         permission=[],
-    #         service_id="45343385",
-    #     )
-    #     dbsession.add(user)
+        user = OwnerFactory.create(
+            organizations=[],
+            service="github",
+            username="1nf1n1t3l00p",
+            unencrypted_oauth_token="sometesttoken",
+            permission=[],
+            service_id="45343385",
+        )
+        dbsession.add(user)
 
-    #     mocked_app = mocker.patch.object(
-    #         SyncRepoLanguagesGQLTask,
-    #         "app",
-    #         tasks={
-    #             sync_repo_languages_gql_task_name: mocker.MagicMock(),
-    #         },
-    #     )
-    #     repository_service_ids = [
-    #         ("460565350", "R_kgDOG3OrZg"),
-    #         ("665728948", "R_kgDOJ643tA"),
-    #         ("553624697", "R_kgDOIP-keQ"),
-    #         ("631985885", "R_kgDOJatW3Q"),  # preseeded
-    #         ("623359086", "R_kgDOJSe0bg"),  # preseeded
-    #     ]
-    #     service_ids = [x[0] for x in repository_service_ids]
-    #     service_ids_to_add = service_ids[:3]
+        mocked_app = mocker.patch.object(
+            SyncRepoLanguagesGQLTask,
+            "app",
+            tasks={
+                sync_repo_languages_gql_task_name: mocker.MagicMock(),
+            },
+        )
+        repository_service_ids = [
+            ("460565350", "R_kgDOG3OrZg"),
+            ("665728948", "R_kgDOJ643tA"),
+            ("553624697", "R_kgDOIP-keQ"),
+            ("631985885", "R_kgDOJatW3Q"),  # preseeded
+            ("623359086", "R_kgDOJSe0bg"),  # preseeded
+        ]
+        service_ids = [x[0] for x in repository_service_ids]
+        service_ids_to_add = service_ids[:3]
 
-    #     def repo_obj(service_id, name, language, private, branch, using_integration):
-    #         return {
-    #             "owner": {
-    #                 "service_id": "test-owner-service-id",
-    #                 "username": "test-owner-username",
-    #             },
-    #             "repo": {
-    #                 "service_id": service_id,
-    #                 "name": name,
-    #                 "language": language,
-    #                 "private": private,
-    #                 "branch": branch,
-    #             },
-    #             "_using_integration": using_integration,
-    #         }
+        def repo_obj(service_id, name, language, private, branch, using_integration):
+            return {
+                "owner": {
+                    "service_id": "test-owner-service-id",
+                    "username": "test-owner-username",
+                },
+                "repo": {
+                    "service_id": service_id,
+                    "name": name,
+                    "language": language,
+                    "private": private,
+                    "branch": branch,
+                },
+                "_using_integration": using_integration,
+            }
 
-    #     preseeded_repos = [
-    #         repo_obj("631985885", "example-python", "python", False, "main", True),
-    #         repo_obj("623359086", "sentry", "python", False, "main", True),
-    #     ]
+        preseeded_repos = [
+            repo_obj("631985885", "example-python", "python", False, "main", True),
+            repo_obj("623359086", "sentry", "python", False, "main", True),
+        ]
 
-    #     for repo in preseeded_repos:
-    #         new_repo = RepositoryFactory.create(
-    #             private=repo["repo"]["private"],
-    #             name=repo["repo"]["name"],
-    #             using_integration=repo["_using_integration"],
-    #             service_id=repo["repo"]["service_id"],
-    #             owner=user,
-    #         )
-    #         dbsession.add(new_repo)
-    #     dbsession.flush()
+        for repo in preseeded_repos:
+            new_repo = RepositoryFactory.create(
+                private=repo["repo"]["private"],
+                name=repo["repo"]["name"],
+                using_integration=repo["_using_integration"],
+                service_id=repo["repo"]["service_id"],
+                owner=user,
+            )
+            dbsession.add(new_repo)
+        dbsession.flush()
 
-    #     # These are the repos we're supposed to query from the service provider
-    #     async def side_effect(*args, **kwargs):
-    #         results = [
-    #             {
-    #                 "branch": "main",
-    #                 "language": "python",
-    #                 "name": "codecov-cli",
-    #                 "owner": {
-    #                     "is_expected_owner": False,
-    #                     "node_id": "MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=",
-    #                     "service_id": "8226205",
-    #                     "username": "codecov",
-    #                 },
-    #                 "service_id": "460565350",
-    #                 "private": False,
-    #             },
-    #             {
-    #                 "branch": "main",
-    #                 "language": "python",
-    #                 "name": "worker",
-    #                 "owner": {
-    #                     "is_expected_owner": False,
-    #                     "node_id": "MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=",
-    #                     "service_id": "8226205",
-    #                     "username": "codecov",
-    #                 },
-    #                 "service_id": "665728948",
-    #                 "private": False,
-    #             },
-    #             {
-    #                 "branch": "main",
-    #                 "language": "python",
-    #                 "name": "components-demo",
-    #                 "owner": {
-    #                     "is_expected_owner": True,
-    #                     "node_id": "U_kgDOBfIxWg",
-    #                     "username": "giovanni-guidini",
-    #                 },
-    #                 "service_id": "553624697",
-    #                 "private": False,
-    #             },
-    #         ]
-    #         for r in results:
-    #             yield r
+        # These are the repos we're supposed to query from the service provider
+        async def side_effect(*args, **kwargs):
+            results = [
+                {
+                    "branch": "main",
+                    "language": "python",
+                    "name": "codecov-cli",
+                    "owner": {
+                        "is_expected_owner": False,
+                        "node_id": "MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=",
+                        "service_id": "8226205",
+                        "username": "codecov",
+                    },
+                    "service_id": 460565350,
+                    "private": False,
+                },
+                {
+                    "branch": "main",
+                    "language": "python",
+                    "name": "worker",
+                    "owner": {
+                        "is_expected_owner": False,
+                        "node_id": "MDEyOk9yZ2FuaXphdGlvbjgyMjYyMDU=",
+                        "service_id": "8226205",
+                        "username": "codecov",
+                    },
+                    "service_id": 665728948,
+                    "private": False,
+                },
+                {
+                    "branch": "main",
+                    "language": "python",
+                    "name": "components-demo",
+                    "owner": {
+                        "is_expected_owner": True,
+                        "node_id": "U_kgDOBfIxWg",
+                        "username": "giovanni-guidini",
+                    },
+                    "service_id": 553624697,
+                    "private": False,
+                },
+            ]
+            for r in results:
+                yield r
 
-    #     mock_owner_provider.get_repos_from_nodeids_generator.side_effect = side_effect
-    #     mock_owner_provider.service = "github"
+        mock_owner_provider.get_repos_from_nodeids_generator.side_effect = side_effect
+        mock_owner_provider.service = "github"
 
-    #     SyncReposTask().run_impl(
-    #         dbsession,
-    #         ownerid=user.ownerid,
-    #         using_integration=True,
-    #         repository_service_ids=repository_service_ids,
-    #     )
-    #     dbsession.commit()
+        SyncReposTask().run_impl(
+            dbsession,
+            ownerid=user.ownerid,
+            using_integration=True,
+            repository_service_ids=repository_service_ids,
+        )
+        dbsession.commit()
 
-    #     mock_owner_provider.get_repos_from_nodeids_generator.assert_called_with(
-    #         ["R_kgDOG3OrZg", "R_kgDOJ643tA", "R_kgDOIP-keQ"], user.username
-    #     )
+        mock_owner_provider.get_repos_from_nodeids_generator.assert_called_with(
+            ["R_kgDOG3OrZg", "R_kgDOJ643tA", "R_kgDOIP-keQ"], user.username
+        )
 
-    #     repos = (
-    #         dbsession.query(Repository)
-    #         .filter(Repository.service_id.in_(service_ids))
-    #         .all()
-    #     )
-    #     repos_added = list(
-    #         filter(lambda repo: repo.service_id in service_ids_to_add, repos)
-    #     )
-    #     assert len(repos) == 5
+        repos = (
+            dbsession.query(Repository)
+            .filter(Repository.service_id.in_(service_ids))
+            .all()
+        )
+        repos_added = list(
+            filter(lambda repo: repo.service_id in service_ids_to_add, repos)
+        )
+        assert len(repos) == 5
 
-    #     mocked_app.tasks[sync_repo_languages_gql_task_name].apply_async.calls(
-    #         [
-    #             call(
-    #                 kwargs={
-    #                     "current_owner_id": user.ownerid,
-    #                     "org_username": user.ownerid,
-    #                 }
-    #             )
-    #             for repo in repos_added
-    #         ]
-    #     )
+        mocked_app.tasks[sync_repo_languages_gql_task_name].apply_async.calls(
+            [
+                call(
+                    kwargs={
+                        "current_owner_id": user.ownerid,
+                        "org_username": user.ownerid,
+                    }
+                )
+                for repo in repos_added
+            ]
+        )
 
-    #     upserted_owner = (
-    #         dbsession.query(Owner)
-    #         .filter(Owner.service == "github", Owner.service_id == "8226205")
-    #         .first()
-    #     )
-    #     assert upserted_owner is not None
-    #     assert upserted_owner.username == "codecov"
+        upserted_owner = (
+            dbsession.query(Owner)
+            .filter(Owner.service == "github", Owner.service_id == "8226205")
+            .first()
+        )
+        assert upserted_owner is not None
+        assert upserted_owner.username == "codecov"
 
     @pytest.mark.django_db(databases={"default"})
     def test_sync_repos_with_feature_flag_django_call(
