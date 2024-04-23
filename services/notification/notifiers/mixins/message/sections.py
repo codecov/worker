@@ -42,11 +42,7 @@ def get_section_class_from_layout_name(layout_name):
         return ImpactedEntrypointsSectionWriter
     if layout_name == "announcements":
         return AnnouncementSectionWriter
-    if (
-        layout_name == "header"
-        or layout_name == "newheader"
-        or layout_name == "condensed_header"
-    ):
+    if layout_name in ["header", "newheader", "condensed_header"]:
         return NewHeaderSectionWriter
     if layout_name == "newfooter" or layout_name == "condensed_footer":
         return NewFooterSectionWriter
