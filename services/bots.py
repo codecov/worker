@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, TypedDict
 from shared.config import get_config
 from shared.github import is_installation_rate_limited
 from shared.torngit.base import TokenType
-from shared.typings.oauth_token_types import GithubInstallationInfo
+from shared.typings.torngit import GithubInstallationInfo
 
 from database.models import Owner, Repository
 from database.models.core import (
@@ -127,7 +127,9 @@ def get_owner_installation_id(
         apps_matching_criteria_count = len(apps_to_consider)
         apps_to_consider = list(
             filter(
-                lambda obj: not is_installation_rate_limited(redis_connection, obj.id),
+                lambda obj: not is_installation_rate_limited(
+                    redis_connection, obj.installation_id, app_id=obj.app_id
+                ),
                 apps_to_consider,
             )
         )
