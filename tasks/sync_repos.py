@@ -12,6 +12,7 @@ from shared.celery_config import (
 )
 from shared.config import get_config
 from shared.metrics import metrics
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
@@ -134,10 +135,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     async def sync_repos_affected_repos_known(
         self,
-        db_session,
-        git,
+        db_session: Session,
+        git: TorngitBaseAdapter,
         owner: Owner,
-        repository_service_ids: Optional[List[Tuple[int, str]]],
+        repository_service_ids: List[Tuple[int, str]] | None,
     ):
         repoids_added = []
         # Casting to str in case celery interprets the service ID as a integer for some reason
@@ -199,8 +200,16 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         return repoids_added
 
     def _possibly_update_ghinstallation_covered_repos(
-        self, db_session, git, owner: Owner, service_ids_listed: List[str]
+        self,
+        git: TorngitBaseAdapter,
+        owner: Owner,
+        service_ids_listed: List[str],
     ):
+        installation_used = git.data.get("installation")
+        if installation_used is None:
+            log.warning(
+                "Failed to update ghapp covered repos. We don't know which installation is being used"
+            )
         if (
             owner.github_app_installations is None
             or owner.github_app_installations == []
@@ -209,10 +218,16 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 "Failed to possibly update ghapp covered repos. Owner has no installations",
             ),
             return
-        # FIXME This is no *always* true, but in general owners have 1 installation,
-        # That is for the default app. So it's OK for a quick fix.
-        # The more elaborate fix involves passing more info to the `git` object and get the installation being used from that.
-        ghapp = owner.github_app_installations[0]
+        ghapp = next(
+            filter(
+                lambda obj: (
+                    obj.installation_id == installation_used.get("installation_id")
+                    and obj.app_id == installation_used.get("app_id")
+                ),
+                owner.github_app_installations,
+            ),
+            None,
+        )
         if ghapp and ghapp.repository_service_ids is not None:
             covered_repos = set(ghapp.repository_service_ids)
             service_ids_listed_set = set(service_ids_listed)
@@ -232,7 +247,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
     async def sync_repos_using_integration(
         self,
         db_session: Session,
-        git,
+        git: TorngitBaseAdapter,
         owner: Owner,
         username: str,
         repository_service_ids: Optional[List[Tuple[int, str]]] = None,
@@ -249,9 +264,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
             service_ids = {repo["repo"]["service_id"] for repo in repos}
-            self._possibly_update_ghinstallation_covered_repos(
-                db_session, git, owner, service_ids
-            )
+            self._possibly_update_ghinstallation_covered_repos(git, owner, service_ids)
             if service_ids:
                 # Querying through the `Repository` model is cleaner, but we
                 # need to go through the table object instead if we want to

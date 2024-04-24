@@ -212,9 +212,14 @@ def mock_repo_provider(mocker):
 
 @pytest.fixture
 def mock_owner_provider(mocker):
-    m = mocker.patch("services.owner._get_owner_provider_service_instance")
     provider_instance = mocker.MagicMock(GithubHandler)
-    m.return_value = provider_instance
+
+    def side_effect(*args, **kwargs):
+        provider_instance.data = {**kwargs}
+        return provider_instance
+
+    m = mocker.patch("services.owner._get_owner_provider_service_instance")
+    m.side_effect = side_effect
     yield provider_instance
 
 
