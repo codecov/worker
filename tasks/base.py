@@ -204,7 +204,7 @@ class BaseCodecovTask(celery_app.Task):
         try:
             import psycopg2
 
-            if exception.orig and isinstance(
+            if hasattr(exception, "orig") and isinstance(
                 exception.orig, psycopg2.errors.DeadlockDetected
             ):
                 log.exception(
@@ -213,7 +213,7 @@ class BaseCodecovTask(celery_app.Task):
                     exc_info=True,
                 )
                 return
-            elif exception.orig and isinstance(
+            elif hasattr(exception, "orig") and isinstance(
                 exception.orig, psycopg2.OperationalError
             ):
                 log.warning(
