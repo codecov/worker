@@ -101,10 +101,14 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         # file level totals comparison
         for filename, file_summary in parallel_report._files.items():
             parallel_file_level_totals = file_summary.file_totals
-            serial_file_level_totals = serial_report._files[filename].file_totals
 
-            if serial_file_level_totals != parallel_file_level_totals:
-                file_level_mismatched_files.append(filename)
+            if filename in serial_report._files:
+                serial_file_level_totals = serial_report._files[filename].file_totals
+
+                if serial_file_level_totals != parallel_file_level_totals:
+                    file_level_mismatched_files.append(filename)
+                    file_level_totals_match = False
+            else:
                 file_level_totals_match = False
 
         if len(parallel_report._files) != len(serial_report._files):
