@@ -106,9 +106,10 @@ def init_celery_tracing(*args, **kwargs):
 hourly_check_task_name = "app.cron.hourly_check.HourlyCheckTask"
 daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
 
-backfill_gh_app_installations_name = (
-    "app.tasks.backfill_gh_app_installations.BackfillGHAppInstallationsTask"
-)
+# Backfill GH Apps
+backfill_existing_gh_app_installations_name = "app.tasks.backfill_existing_gh_apps_installations.BackfillExistingGHAppInstallationsTask"
+backfill_gh_app_installations_without_gh_app_name = "app.tasks.backfill_gh_apps_installations_without_gh_app_name.BackfillGHAppInstallationsWithoutGHAppTask"
+
 trial_expiration_task_name = "app.tasks.plan.TrialExpirationTask"
 trial_expiration_cron_task_name = "app.cron.plan.TrialExpirationCronTask"
 
