@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 
 from celery._state import get_current_task
@@ -17,6 +18,19 @@ class BaseLogger(JsonFormatter):
             log_record["task_name"] = "???"
             log_record["task_id"] = "???"
 
+    def format_json_on_new_lines(self, json_str):
+        # Parse the input JSON string
+        data = json.loads(json_str)
+
+        for key, value in data.items():
+            if isinstance(value, list) and len(value) > 10:
+                # If more than 10 elements in a list, concat to single line
+                data[key] = ", ".join(map(str, value))
+
+        # Convert the parsed JSON data back to a formatted JSON string
+        formatted_json = json.dumps(data, indent=4)
+        return formatted_json
+
 
 class CustomLocalJsonFormatter(BaseLogger):
     def jsonify_log_record(self, log_record) -> str:
@@ -25,9 +39,10 @@ class CustomLocalJsonFormatter(BaseLogger):
         message = log_record.pop("message")
         exc_info = log_record.pop("exc_info", "")
         content = super().jsonify_log_record(log_record)
+        formatted = super().format_json_on_new_lines(content) if content else None
         if exc_info:
-            return f"{levelname}: {message} --- {content}\n{exc_info}"
-        return f"{levelname}: {message} --- {content}"
+            return f"{levelname}: {message} \n {formatted}\n{exc_info}"
+        return f"{levelname}: {message} \n {formatted}"
 
 
 class CustomDatadogJsonFormatter(BaseLogger):

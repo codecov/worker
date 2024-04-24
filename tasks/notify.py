@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
@@ -21,7 +22,8 @@ from database.models import Commit, Pull
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.clock import get_seconds_to_next_hour
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
@@ -127,6 +129,35 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         if checkpoints.data:
             checkpoints.log(checkpoint)
 
+    def _attempt_retry(
+        self,
+        max_retries: int,
+        countdown: int,
+        commit: Commit,
+        current_yaml: Optional[UserYaml],
+        *args,
+        **kwargs,
+    ) -> None:
+        try:
+            self.retry(max_retries=max_retries, countdown=countdown)
+        except MaxRetriesExceededError:
+            log.warning(
+                "Not attempting to retry notifications since we already retried too many times",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    max_retries=max_retries,
+                    next_countdown_would_be=countdown,
+                    current_yaml=current_yaml.to_dict(),
+                ),
+            )
+            self.log_checkpoint(kwargs, UploadFlow.NOTIF_TOO_MANY_RETRIES)
+            return {
+                "notified": False,
+                "notifications": None,
+                "reason": "too_many_retries",
+            }
+
     def run_impl_within_lock(
         self,
         db_session: Session,
@@ -175,6 +206,26 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             )
             self.log_checkpoint(kwargs, UploadFlow.NOTIF_NO_VALID_INTEGRATION)
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
+        except NoConfiguredAppsAvailable as exp:
+            # Min wait time of 1 minute
+            retry_delay_seconds = max(60, get_seconds_to_next_hour())
+            log.warning(
+                "Unable to start notifications because all ghapps available are rate limited",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    apps_available=exp.apps_count,
+                    countdown_seconds=retry_delay_seconds,
+                ),
+            )
+            return self._attempt_retry(
+                max_retries=10,
+                countdown=retry_delay_seconds,
+                current_yaml=current_yaml,
+                commit=commit,
+                **kwargs,
+            )
+
         if current_yaml is None:
             current_yaml = async_to_sync(get_current_yaml)(commit, repository_service)
         else:
@@ -234,25 +285,14 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             else:
                 max_retries = 10
                 countdown = 15 * 2**self.request.retries
-            try:
-                self.retry(max_retries=max_retries, countdown=countdown)
-            except MaxRetriesExceededError:
-                log.warning(
-                    "Not attempting to retry notifications since we already retried too many times",
-                    extra=dict(
-                        repoid=commit.repoid,
-                        commit=commit.commitid,
-                        max_retries=max_retries,
-                        next_countdown_would_be=countdown,
-                        current_yaml=current_yaml.to_dict(),
-                    ),
-                )
-                self.log_checkpoint(kwargs, UploadFlow.NOTIF_TOO_MANY_RETRIES)
-                return {
-                    "notified": False,
-                    "notifications": None,
-                    "reason": "too_many_retries",
-                }
+            return self._attempt_retry(
+                max_retries=max_retries,
+                countdown=countdown,
+                current_yaml=current_yaml,
+                commit=commit,
+                **kwargs,
+            )
+
         report_service = ReportService(current_yaml)
         head_report = report_service.get_existing_report_for_commit(
             commit, report_class=ReadOnlyReport

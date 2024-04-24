@@ -26,7 +26,6 @@ class Command(MigrateCommand):
     We need to override the migrate command to block on acquiring a lock in Redis.
     Otherwise, concurrent worker and api deploys could attempt to run migrations
     at the same time which is not safe.
-
     This class is copied from `codecov-api` except it omits logic about faking
     certain migrations. When the `legacy_migrations` app is moved to `shared`
     and installed in `worker`, which is a prerequisite for core models, we can
