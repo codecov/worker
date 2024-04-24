@@ -25,6 +25,13 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         processing_results,
         **kwargs,
     ):
+        logging_context = dict(
+            repoid=repoid,
+            commitid=commitid,
+            commit_yaml=commit_yaml,
+            report_code=report_code,
+            parallel_paths=parallel_paths,
+        )
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
         )
@@ -38,24 +45,22 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
 
         log.info(
             "Starting parallel upload processing verification task",
-            extra=dict(
-                repoid=repoid,
-                commitid=commitid,
-                commit_yaml=commit_yaml,
-                report_code=report_code,
-                parallel_paths=parallel_paths,
-            ),
+            extra=logging_context,
         )
 
         # Retrieve parallel results
-        parallel_files_and_sessions = sort_and_stringify_report_json(
-            json.loads(
-                archive_service.read_file(parallel_paths["files_and_sessions_path"])
-            )
+        parallel_files_and_sessions = json.loads(
+            archive_service.read_file(parallel_paths["files_and_sessions_path"])
         )
         parallel_chunks = archive_service.read_file(
             parallel_paths["chunks_path"]
         ).decode(errors="replace")
+        parallel_report = report_service.build_report(
+            parallel_chunks,
+            parallel_files_and_sessions["files"],
+            parallel_files_and_sessions["sessions"],
+            None,
+        )
 
         # TODO: ensure the legacy report building method (`commit.report_json["files"]`) is accurate aswell. There's
         # no easy way to do this right now because the legacy method assumes the
@@ -68,73 +73,70 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         )
 
         # Retrieve serial results
-        files_and_sessions = sort_and_stringify_report_json(
-            json.loads(
-                archive_service.read_file(
-                    parallel_path_to_serial_path(
-                        parallel_paths["files_and_sessions_path"], last_upload_pk
-                    )
+        serial_files_and_sessions = json.loads(
+            archive_service.read_file(
+                parallel_path_to_serial_path(
+                    parallel_paths["files_and_sessions_path"], last_upload_pk
                 )
             )
         )
-        chunks = archive_service.read_file(
+        serial_chunks = archive_service.read_file(
             parallel_path_to_serial_path(parallel_paths["chunks_path"], last_upload_pk)
         ).decode(errors="replace")
+        serial_report = report_service.build_report(
+            serial_chunks,
+            serial_files_and_sessions["files"],
+            serial_files_and_sessions["sessions"],
+            None,
+        )
 
-        fas_comparison_result = parallel_files_and_sessions == files_and_sessions
-        chunks_comparison_result = parallel_chunks == chunks
+        top_level_totals_match = True
+        file_level_totals_match = True
+        file_level_mismatched_files = []
 
-        if not fas_comparison_result:
-            log.info(
-                "Files and sessions did not match parallel results",
-                extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    report_code=report_code,
-                    parallel_paths=parallel_paths,
-                ),
-            )
-        if not chunks_comparison_result:
-            log.info(
-                "chunks did not match parallel results",
-                extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    report_code=report_code,
-                    parallel_paths=parallel_paths,
-                ),
-            )
+        # top level totals comparison
+        if parallel_report.totals.astuple() != serial_report.totals.astuple():
+            top_level_totals_match = False
+
+        # file level totals comparison
+        for filename, file_summary in parallel_report._files.items():
+            parallel_file_level_totals = file_summary.file_totals
+            serial_file_level_totals = serial_report._files[filename].file_totals
+
+            if serial_file_level_totals != parallel_file_level_totals:
+                file_level_mismatched_files.append(filename)
+                file_level_totals_match = False
+
+        if len(parallel_report._files) != len(serial_report._files):
+            log.info("Number of files did not match", extra=logging_context)
 
         verification_result = (
-            (1 if fas_comparison_result else 0) + (1 if chunks_comparison_result else 0)
+            (1 if top_level_totals_match else 0) + (1 if file_level_totals_match else 0)
         ) / 2
 
-        if verification_result == 1:
+        if not top_level_totals_match:
             log.info(
-                "Parallel upload processing verification succeeded",
+                "Top level totals did not match",
                 extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    report_code=report_code,
-                    parallel_paths=parallel_paths,
-                ),
-            )
-        else:
-            log.info(
-                f"Parallel upload processing verification failed with {verification_result}",
-                extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    report_code=report_code,
-                    parallel_paths=parallel_paths,
+                    logging_context,
+                    parallel_totals=parallel_report.totals.astuple(),
+                    serial_totals=serial_report.totals.astuple(),
                 ),
             )
 
-        return
+        if not file_level_totals_match:
+            log.info(
+                "File level totals did not match",
+                extra=dict(
+                    logging_context,
+                    mismatched_files=file_level_mismatched_files,
+                ),
+            )
+
+        log.info(
+            f"Parallel upload processing verification {'succeeded' if verification_result == 1 else 'failed with ' + str(verification_result)}",
+            extra=logging_context,
+        )
 
 
 def parallel_path_to_serial_path(parallel_path, last_upload_pk):
