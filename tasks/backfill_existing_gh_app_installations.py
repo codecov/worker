@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 yield_amount = 100
 
 
-class BackfillExistingGHAppInstallationsBaseTask(
+class BackfillExistingGHAppInstallationsTask(
     BaseCodecovTask, name=backfill_existing_gh_app_installations_name
 ):
     def backfill_existing_gh_apps(
@@ -44,7 +44,7 @@ class BackfillExistingGHAppInstallationsBaseTask(
         owners: List[Owner] = owners_query.all()
         gh_app_installations: List[
             GithubAppInstallation
-        ] = gh_app_installations_query.all().yield_per(yield_amount)
+        ] = gh_app_installations_query.yield_per(yield_amount)
 
         # I need to make reference of these in the gh installation app, Ill take suggestions here
         owners_dict = {owner.ownerid: owner for owner in owners}
@@ -114,9 +114,9 @@ class BackfillExistingGHAppInstallationsBaseTask(
         return {"successful": True, "reason": "backfill task finished"}
 
 
-RegisteredBackfillExistingGHAppInstallationsBaseTask = celery_app.register_task(
-    BackfillExistingGHAppInstallationsBaseTask()
+RegisteredBackfillExistingGHAppInstallationsTask = celery_app.register_task(
+    BackfillExistingGHAppInstallationsTask()
 )
-backfill_existing_gh_app_installations_base_task = celery_app.tasks[
-    RegisteredBackfillExistingGHAppInstallationsBaseTask.name
+backfill_existing_gh_app_installations_task = celery_app.tasks[
+    RegisteredBackfillExistingGHAppInstallationsTask.name
 ]

@@ -1,18 +1,15 @@
 import logging
 from typing import List, Optional
 
-import shared.torngit as torngit
-from asgiref.sync import async_to_sync
 from shared.config import get_config
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from celery_config import backfill_gh_app_installations_without_gh_app_name
+from celery_config import backfill_owners_without_gh_app_installations_name
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     GithubAppInstallation,
     Owner,
-    Repository,
 )
 from helpers.backfills import (
     add_repos_service_ids_from_provider,
@@ -26,8 +23,8 @@ log = logging.getLogger(__name__)
 yield_amount = 100
 
 
-class BackfillGHAppInstallationsWithoutGHAppTask(
-    BaseCodecovTask, name=backfill_gh_app_installations_without_gh_app_name
+class BackfillOwnersWithoutGHAppInstallations(
+    BaseCodecovTask, name=backfill_owners_without_gh_app_installations_name
 ):
     def backfill_owners_with_integration_without_gh_app(
         self, db_session: Session, owner_ids: List[int] = None, missed_owner_ids=[]
@@ -52,9 +49,7 @@ class BackfillGHAppInstallationsWithoutGHAppTask(
                 )
             )
 
-        owners: List[
-            Owner
-        ] = owners_with_integration_id_without_gh_app_query.all().yield_per(
+        owners: List[Owner] = owners_with_integration_id_without_gh_app_query.yield_per(
             yield_amount
         )
 
@@ -135,9 +130,9 @@ class BackfillGHAppInstallationsWithoutGHAppTask(
         return {"successful": True, "reason": "backfill task finished"}
 
 
-RegisteredBackfillGHAppInstallationsWithoutGHAppTask = celery_app.register_task(
-    BackfillGHAppInstallationsWithoutGHAppTask()
+RegisterOwnersWithoutGHAppInstallations = celery_app.register_task(
+    BackfillOwnersWithoutGHAppInstallations()
 )
-backfill_gh_app_installations_task = celery_app.tasks[
-    RegisteredBackfillGHAppInstallationsWithoutGHAppTask.name
+backfill_owners_without_gh_app_installations = celery_app.tasks[
+    RegisterOwnersWithoutGHAppInstallations.name
 ]

@@ -11,7 +11,6 @@ log = logging.getLogger(__name__)
 # GH App Backfills
 # Looping and adding all repositories in the installation app
 def add_repos_service_ids_from_provider(
-    self,
     db_session: Session,
     ownerid: int,
     owner_service: torngit.base.TorngitBaseAdapter,
@@ -48,8 +47,8 @@ def add_repos_service_ids_from_provider(
     del repos
 
 
+# Check if gh selection is set to all and act accordingly
 def maybe_set_installation_to_all_repos(
-    self,
     db_session: Session,
     owner_service,
     gh_app_installation: GithubAppInstallation,
