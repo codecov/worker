@@ -120,10 +120,10 @@ class TestDictObject:
 
 
 class UnrelatedMatchesDetector(BaseSymptomDetector):
-    def __init__(self, failure_normalizer=None):
+    def __init__(self, failure_normalizer: FailureNormalizer | None = None):
         self.state = defaultdict(lambda: defaultdict(TestDictObject))
         self.res = defaultdict(list)
-        self.failure_normalizer: FailureNormalizer | None = failure_normalizer
+        self.failure_normalizer = failure_normalizer
 
     def ingest(self, instance):
         outcome = instance.TestInstance.outcome
