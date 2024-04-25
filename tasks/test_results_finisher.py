@@ -153,6 +153,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             totals.passed = 0
             totals.skipped = 0
             totals.failed = 0
+            totals.error = str(TestResultsProcessingError.NO_SUCCESS)
             db_session.add(totals)
             db_session.flush()
 
@@ -167,11 +168,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "test_results.finisher",
                 tags={"status": "failure", "reason": "no_successful_processing"},
             )
-            queue_notify = False
-            if len(test_instances) == 0:
-                totals.error = str(TestResultsProcessingError.NO_SUCCESS)
-                db_session.flush()
 
+            queue_notify = False
+
+            # if error is None this whole process should be a noop
+            if totals.error is not None:
                 # make an attempt to make test results comment
                 success, reason = async_to_sync(notifier.error_comment)()
 
@@ -189,6 +190,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 QUEUE_NOTIFY_KEY: queue_notify,
             }
 
+        # if we succeed once, error should be None for this commit forever
         if totals.error is not None:
             totals.error = None
             db_session.flush()

@@ -16,8 +16,8 @@ from shared.torngit.exceptions import (
 from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
-from database.models.core import GithubAppInstallation, Pull
 from database.enums import TestResultsProcessingError
+from database.models.core import GithubAppInstallation, Pull
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
 from services.comparison import ComparisonProxy, NotificationContext
@@ -4062,7 +4062,7 @@ class TestNewHeaderSectionWriter(object):
         self, mocker, sample_comparison
     ):
         sample_comparison.context = NotificationContext(
-            all_tests_passed=True,
+            all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
         writer = NewHeaderSectionWriter(
@@ -4153,7 +4153,7 @@ class TestNewHeaderSectionWriter(object):
         self, mocker, sample_comparison
     ):
         sample_comparison.context = NotificationContext(
-            all_tests_passed=True,
+            all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
         writer = NewHeaderSectionWriter(
@@ -4942,7 +4942,7 @@ class TestCommentNotifierInNewLayout(object):
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         sample_comparison_coverage_carriedforward.context = NotificationContext(
-            all_tests_passed=True,
+            all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
         comparison = sample_comparison_coverage_carriedforward
@@ -4970,7 +4970,7 @@ class TestCommentNotifierInNewLayout(object):
             "",
             ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
             "",
-            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
         ]
         assert result == expected_result
 

@@ -367,6 +367,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 all_tests_passed=(
                     test_result_commit_report is not None
                     and test_result_commit_report.test_result_totals is not None
+                    and test_result_commit_report.test_result_totals.error is None
+                    and test_result_commit_report.test_result_totals.failed == 0
                 ),
                 test_results_error=(
                     test_result_commit_report is not None

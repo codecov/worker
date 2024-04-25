@@ -29,7 +29,7 @@ class NotificationContext(object):
     """Extra information not necessarily related to coverage that may affect notifications"""
 
     all_tests_passed: bool
-    test_results_error: TestResultsProcessingError | None = False
+    test_results_error: TestResultsProcessingError | None = None
 
 
 class ComparisonProxy(object):

@@ -413,7 +413,7 @@ class TestCommentNotifierIntegration(object):
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
         sample_comparison.context = NotificationContext(
-            all_tests_passed=True,
+            all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
         mock_configuration._params["setup"] = {
