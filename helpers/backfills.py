@@ -44,7 +44,6 @@ def add_repos_service_ids_from_provider(
         )
         gh_app_installation.repository_service_ids = new_repo_service_ids
         db_session.commit()
-    del repos
 
 
 # Check if gh selection is set to all and act accordingly
@@ -64,7 +63,5 @@ def maybe_set_installation_to_all_repos(
             "Selection is set to all, no installation is needed",
             extra=dict(ownerid=gh_app_installation.ownerid),
         )
-        del remote_gh_app_installation
         return True
-    del remote_gh_app_installation
     return False

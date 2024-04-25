@@ -15,7 +15,7 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
-yield_amount = 100
+YIELD_AMOUNT = 100
 
 
 class BackfillExistingGHAppInstallationsTask(
@@ -41,18 +41,14 @@ class BackfillExistingGHAppInstallationsTask(
                 GithubAppInstallation.ownerid.in_(owner_ids)
             )
 
-        owners: List[Owner] = owners_query.all()
         gh_app_installations: List[
             GithubAppInstallation
-        ] = gh_app_installations_query.yield_per(yield_amount)
-
-        # I need to make reference of these in the gh installation app, Ill take suggestions here
-        owners_dict = {owner.ownerid: owner for owner in owners}
+        ] = gh_app_installations_query.yield_per(YIELD_AMOUNT)
 
         for gh_app_installation in gh_app_installations:
             # Check if gh app has 'all' repositories selected
-            owner = owners_dict[gh_app_installation.ownerid]
-            ownerid = owner.ownerid
+            owner = gh_app_installation.owner
+            ownerid = gh_app_installation.owner.ownerid
 
             try:
                 owner_service = get_owner_provider_service(

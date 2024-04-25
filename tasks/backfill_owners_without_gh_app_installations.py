@@ -20,7 +20,7 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
-yield_amount = 100
+YIELD_AMOUNT = 100
 
 
 class BackfillOwnersWithoutGHAppInstallations(
@@ -50,7 +50,7 @@ class BackfillOwnersWithoutGHAppInstallations(
             )
 
         owners: List[Owner] = owners_with_integration_id_without_gh_app_query.yield_per(
-            yield_amount
+            YIELD_AMOUNT
         )
 
         for owner in owners:
@@ -89,14 +89,12 @@ class BackfillOwnersWithoutGHAppInstallations(
                         gh_app_installation=gh_app_installation,
                     )
                 log.info("Successful backfill", extra=dict(ownerid=ownerid))
-                del owner_service
             except:
                 log.info(
                     "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
                 )
                 missed_owner_ids.append(ownerid)
                 continue
-        del owners
 
     def run_impl(
         self,
