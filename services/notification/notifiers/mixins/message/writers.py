@@ -46,17 +46,16 @@ class TeamPlanWriter:
 
         hide_project_coverage = settings.get("hide_project_coverage", False)
         if hide_project_coverage:
-            if comparison.all_tests_passed():
-                if comparison.test_results_error():
-                    lines.append("")
-                    lines.append(
-                        ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
-                    )
-                else:
-                    lines.append("")
-                    lines.append(
-                        ":white_check_mark: All tests successful. No failed tests found."
-                    )
+            if comparison.test_results_error():
+                lines.append("")
+                lines.append(
+                    ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
+                )
+            elif comparison.all_tests_passed():
+                lines.append("")
+                lines.append(
+                    ":white_check_mark: All tests successful. No failed tests found."
+                )
 
         return lines
 
