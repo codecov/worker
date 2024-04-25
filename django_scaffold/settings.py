@@ -17,10 +17,19 @@ IS_DEV = os.getenv("RUN_ENV") == "DEV"
 # Application definition
 
 INSTALLED_APPS = [
-    "django_scaffold",  # must be first to override migrate command
+    "shared.django_apps.legacy_migrations",
+    "shared.django_apps.codecov_auth",
+    "shared.django_apps.core",
+    "shared.django_apps.reports",
     "shared.django_apps.pg_telemetry",
     "shared.django_apps.ts_telemetry",
     "shared.django_apps.rollouts",
+    # Needed to install legacy migrations
+    "django.contrib.admin",
+    "django.contrib.contenttypes",
+    "django.contrib.auth",
+    "django.contrib.messages",
+    "django.contrib.sessions",
 ]
 
 TELEMETRY_VANILLA_DB = "default"
@@ -33,9 +42,28 @@ DATABASE_ROUTERS = [
 
 SKIP_RISKY_MIGRATION_STEPS = get_config("migrations", "skip_risky_steps", default=False)
 
-MIDDLEWARE = []
+MIDDLEWARE = [
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+]
 
-TEMPLATES = []
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.contrib.auth.context_processors.auth",
+                "django.template.context_processors.request",
+                "django.contrib.messages.context_processors.messages",
+            ]
+        },
+    }
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -52,3 +80,12 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
+
+
+# Allows to do migrations from another module
+MIGRATION_MODULES = {
+    "codecov_auth": "shared.django_apps.codecov_auth.migrations",
+    "core": "shared.django_apps.core.migrations",
+    "reports": "shared.django_apps.reports.migrations",
+    "legacy_migrations": "shared.django_apps.legacy_migrations.migrations",
+}
