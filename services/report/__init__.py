@@ -830,7 +830,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(
-        self, repo: Repository, upload: Upload, is_parallel=False
+        self, repo: Repository, upload: Upload, is_parallel=False, is_error_case=False
     ) -> ParsedRawReport:
         """Pulls the raw uploaded report from storage and parses it do it's
         easier to access different parts of the raw upload.
@@ -841,14 +841,35 @@ class ReportService(BaseReportService):
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
 
-        # for the parallel experiment: since the parallel version runs after the old behaviour
-        # has finished, the current uploads have already been rewritten in a human readable
-        # format, so we need to use the legacy parser here for the parallel version.
-        parser = get_proper_parser(upload, use_legacy=is_parallel)
+        # For the parallel upload verification experiment, we need to make a copy of the raw uploaded reports
+        # so that the parallel pipeline can use those to parse. The serial pipeline rewrites the raw uploaded
+        # reports to a human readable version that doesn't include file fixes, so that's why copying is necessary.
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            repo_id=repo.repoid, default=False
+        ) and (not is_error_case):
+            parallel_url = archive_url.removesuffix(".txt") + "_PARALLEL.txt"
+            if not is_parallel:
+                archive_file = archive_service.read_file(archive_url)
+                archive_service.write_file(parallel_url, archive_file)
+                log.info(
+                    "Copying raw report file for parallel experiment to: "
+                    + str(parallel_url),
+                    extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
+                )
+            else:
+                archive_url = parallel_url
+                archive_file = archive_service.read_file(archive_url)
+                log.info(
+                    "Reading raw report file for parallel experiment from: "
+                    + str(archive_url),
+                    extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
+                )
+        else:
+            archive_file = archive_service.read_file(archive_url)
 
-        raw_uploaded_report = parser.parse_raw_report_from_bytes(
-            archive_service.read_file(archive_url)
-        )
+        parser = get_proper_parser(upload)
+
+        raw_uploaded_report = parser.parse_raw_report_from_bytes(archive_file)
         return raw_uploaded_report
 
     @sentry_sdk.trace

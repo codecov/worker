@@ -1066,8 +1066,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"> Merging [#{pull.pullid}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=desc) ({comparison.head.commit.commitid[:7]}) into [master](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) ({sample_comparison.project_coverage_base.commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-            f"> The diff coverage is `66.67%`.",
+            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -4819,7 +4819,7 @@ class TestCommentNotifierInNewLayout(object):
             "|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
-            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
         ]
         assert result == expected_result
 
@@ -4860,7 +4860,7 @@ class TestCommentNotifierInNewLayout(object):
             "",
             ":white_check_mark: All tests successful. No failed tests found :relaxed:",
             "",
-            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
         ]
         assert result == expected_result
 

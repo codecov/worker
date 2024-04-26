@@ -175,17 +175,9 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         async for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
         ):
-            # Insert those repos
-            new_repo = Repository(
-                service_id=repo_data["service_id"],
-                name=repo_data["name"],
-                language=repo_data["language"],
-                private=repo_data["private"],
-                branch=repo_data["branch"],
-                using_integration=True,
-            )
+            # Get or create owner
             if repo_data["owner"]["is_expected_owner"]:
-                new_repo.ownerid = owner.ownerid
+                new_repo_ownerid = owner.ownerid
             else:
                 upserted_owner_id = self.upsert_owner(
                     db_session,
@@ -193,10 +185,18 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     repo_data["owner"]["service_id"],
                     repo_data["owner"]["username"],
                 )
-                new_repo.ownerid = upserted_owner_id
-            db_session.add(new_repo)
-            db_session.flush()
-            repoids_added.append(new_repo.repoid)
+                new_repo_ownerid = upserted_owner_id
+            # Get or create repo
+            # Yes we had issues trying to insert a repeated repo at this point.
+            # Maybe race condition?
+            repoid = self.upsert_repo(
+                db_session=db_session,
+                service=git.service,
+                ownerid=new_repo_ownerid,
+                repo_data={**repo_data, "service_id": str(repo_data["service_id"])},
+                using_integration=True,
+            )
+            repoids_added.append(repoid)
         return repoids_added
 
     def _possibly_update_ghinstallation_covered_repos(
