@@ -832,7 +832,7 @@ class ReportService(BaseReportService):
     def parse_raw_report_from_storage(
         self, repo: Repository, upload: Upload, is_parallel=False, is_error_case=False
     ) -> ParsedRawReport:
-        """Pulls the raw uploaded report from storage and parses it do it's
+        """Pulls the raw uploaded report from storage and parses it so it's
         easier to access different parts of the raw upload.
 
         Raises:
@@ -841,6 +841,17 @@ class ReportService(BaseReportService):
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
 
+        # TODO: For the parallel experiment, can remove once finished
+        log.info(
+            "Parsing the raw report from storage",
+            extra=dict(
+                commit=upload.report.commit_id,
+                repoid=repo.repoid,
+                archive_url=archive_url,
+                is_parallel=is_parallel,
+            ),
+        )
+
         # For the parallel upload verification experiment, we need to make a copy of the raw uploaded reports
         # so that the parallel pipeline can use those to parse. The serial pipeline rewrites the raw uploaded
         # reports to a human readable version that doesn't include file fixes, so that's why copying is necessary.
@@ -848,11 +859,20 @@ class ReportService(BaseReportService):
             repo_id=repo.repoid, default=False
         ) and (not is_error_case):
             parallel_url = archive_url.removesuffix(".txt") + "_PARALLEL.txt"
+            log.info(
+                "In the parallel experiment for parsing raw report in storage",
+                extra=dict(
+                    commit=upload.report.commit_id,
+                    repoid=repo.repoid,
+                    parallel_url=parallel_url,
+                    archive_url=archive_url,
+                ),
+            )
             if not is_parallel:
                 archive_file = archive_service.read_file(archive_url)
                 archive_service.write_file(parallel_url, archive_file)
                 log.info(
-                    "Copying raw report file for parallel experiment to: "
+                    "Copied raw report file for parallel experiment to: "
                     + str(parallel_url),
                     extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
                 )
@@ -860,7 +880,7 @@ class ReportService(BaseReportService):
                 archive_url = parallel_url
                 archive_file = archive_service.read_file(archive_url)
                 log.info(
-                    "Reading raw report file for parallel experiment from: "
+                    "Read raw report file for parallel experiment from: "
                     + str(archive_url),
                     extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
                 )
@@ -914,6 +934,17 @@ class ReportService(BaseReportService):
                 commit.repository, upload, is_parallel=parallel_idx is not None
             )
         except FileNotInStorageError:
+            log.info(
+                "Raw report file was not found",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    reportid=reportid,
+                    commit_yaml=self.current_yaml.to_dict(),
+                    archive_url=archive_url,
+                    in_parallel=parallel_idx is not None,
+                ),
+            )
             return ProcessingResult(
                 report=None,
                 session=session,
