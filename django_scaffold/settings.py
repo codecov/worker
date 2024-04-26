@@ -15,7 +15,6 @@ if "timeseries" in DATABASES:
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
 
 # Application definition
-
 INSTALLED_APPS = [
     "shared.django_apps.legacy_migrations",
     "shared.django_apps.codecov_auth",
@@ -24,6 +23,8 @@ INSTALLED_APPS = [
     "shared.django_apps.pg_telemetry",
     "shared.django_apps.ts_telemetry",
     "shared.django_apps.rollouts",
+    "shared.django_apps.user_measurements",
+    "psqlextra",
     # Needed to install legacy migrations
     "django.contrib.admin",
     "django.contrib.contenttypes",
@@ -34,11 +35,6 @@ INSTALLED_APPS = [
 
 TELEMETRY_VANILLA_DB = "default"
 TELEMETRY_TIMESCALE_DB = "timeseries"
-
-DATABASE_ROUTERS = [
-    "shared.django_apps.db_routers.TelemetryDatabaseRouter",
-    "shared.django_apps.db_routers.MultiDatabaseRouter",
-]
 
 SKIP_RISKY_MIGRATION_STEPS = get_config("migrations", "skip_risky_steps", default=False)
 
@@ -69,7 +65,6 @@ TEMPLATES = [
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = []
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -80,12 +75,3 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
-
-# Allows to do migrations from another module
-MIGRATION_MODULES = {
-    "codecov_auth": "shared.django_apps.codecov_auth.migrations",
-    "core": "shared.django_apps.core.migrations",
-    "reports": "shared.django_apps.reports.migrations",
-    "legacy_migrations": "shared.django_apps.legacy_migrations.migrations",
-}

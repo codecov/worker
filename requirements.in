@@ -1,4 +1,4 @@
-https://github.com/codecov/shared/archive/c92716def259095261338a85fa0d12deb97b5abe.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/0b1710fc8c3c3ebc9fc6d2f14f14b6cd8909db8c.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz#egg=test-results-parser
 boto3
@@ -6,6 +6,7 @@ celery>=5.3.6
 click
 codecov-ribs
 coverage
+django-postgres-extra>=2.0.8
 factory-boy
 google-cloud-storage>=2.10.0
 httpx
@@ -20,7 +21,6 @@ pytest-asyncio
 pytest-cov
 pytest-celery
 pytest-django
-django-postgres-extra>=2.0.8
 pytest-mock
 pytest-sqlalchemy
 pytest-freezegun
