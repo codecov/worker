@@ -482,11 +482,9 @@ class TestBotsService(BaseTestCase):
         with pytest.raises(NoConfiguredAppsAvailable):
             get_owner_installation_id(owner, True, installation_name="my_app")
         mock_redis.exists.assert_any_call(
-            f"rate_limited_installations_{installation_0.id}"
+            f"rate_limited_installations_default_app_123456"
         )
-        mock_redis.exists.assert_any_call(
-            f"rate_limited_installations_{installation_1.id}"
-        )
+        mock_redis.exists.assert_any_call(f"rate_limited_installations_1212_12000")
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration_specific_repos(
         self, mocker, dbsession
