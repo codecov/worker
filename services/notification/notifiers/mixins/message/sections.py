@@ -104,9 +104,7 @@ class NewHeaderSectionWriter(BaseSectionWriter):
     def _possibly_include_test_result_setup_confirmation(self, comparison):
         if comparison.all_tests_passed():
             yield ("")
-            yield (
-                ":white_check_mark: All tests successful. No failed tests found :relaxed:"
-            )
+            yield (":white_check_mark: All tests successful. No failed tests found.")
 
     async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml

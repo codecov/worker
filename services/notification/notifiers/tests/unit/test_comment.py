@@ -4053,7 +4053,7 @@ class TestNewHeaderSectionWriter(object):
             "All modified and coverable lines are covered by tests :white_check_mark:",
             f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
             "",
-            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
+            ":white_check_mark: All tests successful. No failed tests found.",
         ]
 
     @pytest.mark.asyncio
@@ -4110,7 +4110,7 @@ class TestNewHeaderSectionWriter(object):
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "",
-            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
+            ":white_check_mark: All tests successful. No failed tests found.",
         ]
 
 
@@ -4858,7 +4858,7 @@ class TestCommentNotifierInNewLayout(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "",
-            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
+            ":white_check_mark: All tests successful. No failed tests found.",
             "",
             ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
         ]
