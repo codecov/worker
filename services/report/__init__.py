@@ -295,7 +295,7 @@ class ReportService(BaseReportService):
                 # finisher can build off of it later. Makes the assumption that the CFFs occupy the first
                 # j to i session ids where i is the max id of the CFFs and j is some integer less than i.
                 if await PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value_async(
-                    repo_id=commit.repository.repoid
+                    identifier=commit.repository.repoid
                 ):
                     await self.save_parallel_report_to_archive(
                         commit, report, report_code
@@ -755,7 +755,7 @@ class ReportService(BaseReportService):
             )
             max_parenthood_deepness = (
                 await CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value_async(
-                    owner_id=repo.ownerid, default=10
+                    identifier=repo.ownerid, default=10
                 )
             )
 
