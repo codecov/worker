@@ -19,7 +19,11 @@ from helpers.checkpoint_logger import (
     "NOTIF_ERROR_NO_REPORT",
 )
 @success_events(
-    "SKIPPING_NOTIFICATION", "NOTIFIED", "NO_PENDING_JOBS", "NOTIF_STALE_HEAD"
+    "SKIPPING_NOTIFICATION",
+    "NOTIFIED",
+    "NO_PENDING_JOBS",
+    "NOTIF_STALE_HEAD",
+    "NO_REPORTS_FOUND",
 )
 @subflows(
     ("time_before_processing", "UPLOAD_TASK_BEGIN", "PROCESSING_BEGIN"),
@@ -36,6 +40,7 @@ from helpers.checkpoint_logger import (
 class UploadFlow(BaseFlow):
     UPLOAD_TASK_BEGIN = auto()
     NO_PENDING_JOBS = auto()
+    NO_REPORTS_FOUND = auto()
     TOO_MANY_RETRIES = auto()
     PROCESSING_BEGIN = auto()
     INITIAL_PROCESSING_COMPLETE = auto()

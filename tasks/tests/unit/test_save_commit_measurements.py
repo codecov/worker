@@ -23,8 +23,8 @@ class TestSaveCommitMeasurements(object):
         assert task.run_impl(
             dbsession, commitid=commit.commitid, repoid=commit.repoid
         ) == {"successful": True}
-        assert save_commit_measurements_mock.called_with(
-            commitid=commit.commitid, dataset_names=None
+        save_commit_measurements_mock.assert_called_with(
+            commit=commit, dataset_names=None
         )
 
     def test_save_commit_measurements_no_commit(self, dbsession):
