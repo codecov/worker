@@ -87,7 +87,7 @@ class LockManager:
                 )
         except LockError:
             max_retry = 200 * 3**retry_num
-            countdown = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
+            countdown = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
 
             log.warning(
                 "Unable to acquire lock",
