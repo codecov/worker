@@ -856,7 +856,7 @@ class ReportService(BaseReportService):
         # so that the parallel pipeline can use those to parse. The serial pipeline rewrites the raw uploaded
         # reports to a human readable version that doesn't include file fixes, so that's why copying is necessary.
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-            repo_id=repo.repoid, default=False
+            identifier=repo.repoid, default=False
         ) and (not is_error_case):
             parallel_url = archive_url.removesuffix(".txt") + "_PARALLEL.txt"
             log.info(

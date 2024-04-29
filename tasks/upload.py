@@ -675,7 +675,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 processing_tasks.append(sig)
 
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-            repo_id=commit.repository.repoid
+            identifier=commit.repository.repoid
         ):
             parallel_chunk_size = 1
             num_sessions = len(argument_list)
@@ -776,7 +776,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             serial_tasks = chain(*processing_tasks)
 
             if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                repo_id=commit.repository.repoid
+                identifier=commit.repository.repoid
             ):
                 parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
                 parallel_shadow_experiment = serial_tasks | parallel_tasks
