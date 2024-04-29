@@ -6,11 +6,11 @@ if [ -n "$PROMETHEUS_MULTIPROC_DIR" ]; then
 fi
 
 queues=""
-if [[ "$CODECOV_WORKER_QUEUES" ]]; then
+if [ "$CODECOV_WORKER_QUEUES" ]; then
   queues="--queue $CODECOV_WORKER_QUEUES"
 fi
 
-if [[ "$RUN_ENV" == "ENTERPRISE" ]] || [[ "$RUN_ENV" == "DEV" ]]; then
+if [ "$RUN_ENV" = "ENTERPRISE" ] || [ "$RUN_ENV" = "DEV" ]; then
     python manage.py migrate
     python manage.py migrate --database "timeseries"
 fi
