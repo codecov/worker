@@ -49,7 +49,7 @@ class TeamPlanWriter:
             if comparison.all_tests_passed():
                 lines.append("")
                 lines.append(
-                    ":white_check_mark: All tests successful. No failed tests found :relaxed:"
+                    ":white_check_mark: All tests successful. No failed tests found."
                 )
 
         return lines

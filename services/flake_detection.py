@@ -11,6 +11,7 @@ from test_results_parser import Outcome
 from database.enums import FlakeSymptomType
 from database.models.core import Commit, Repository
 from database.models.reports import CommitReport, Test, TestInstance, Upload
+from services.failure_normalizer import FailureNormalizer
 
 log = getLogger(__name__)
 
@@ -119,19 +120,26 @@ class TestDictObject:
 
 
 class UnrelatedMatchesDetector(BaseSymptomDetector):
-    def __init__(self):
+    def __init__(self, failure_normalizer: FailureNormalizer | None = None):
         self.state = defaultdict(lambda: defaultdict(TestDictObject))
         self.res = defaultdict(list)
+        self.failure_normalizer = failure_normalizer
 
     def ingest(self, instance):
         outcome = instance.TestInstance.outcome
         if outcome == str(Outcome.Failure) or outcome == str(Outcome.Error):
-            test_id = instance.TestInstance.test_id
-            fail = instance.TestInstance.failure_message
-            branch = instance.branch
+            if instance.TestInstance.failure_message is not None:
+                test_id = instance.TestInstance.test_id
+                if self.failure_normalizer is not None:
+                    fail = self.failure_normalizer.normalize_failure_message(
+                        instance.TestInstance.failure_message
+                    )
+                else:
+                    fail = instance.TestInstance.failure_message
+                branch = instance.branch
 
-            self.state[test_id][fail].branches.add(branch)
-            self.state[test_id][fail].instances.append(instance.TestInstance)
+                self.state[test_id][fail].branches.add(branch)
+                self.state[test_id][fail].instances.append(instance.TestInstance)
 
     def detect(self):
         for test_id, test_dict in self.state.items():
@@ -157,11 +165,9 @@ class FlakeDetectionEngine:
         db_session,
         repoid,
         symptom_detectors: list[BaseSymptomDetector],
-        failure_normalizer=None,
     ):
         self.db_session = db_session
         self.repoid = repoid
-        self.failure_normalizer = failure_normalizer
         self.symptom_detectors = symptom_detectors
 
     @trace

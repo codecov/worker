@@ -99,10 +99,10 @@ def test_flake_detector_failure_on_main(dbsession):
     )
 
     dbfd = DefaultBranchFailureDetector(dbsession, repoid, "main")
-    umd = UnrelatedMatchesDetector()
+    umd = UnrelatedMatchesDetector(None)
     dod = DiffOutcomeDetector()
 
-    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd])
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
@@ -128,7 +128,7 @@ def test_flake_consecutive_differing_outcomes(dbsession):
     umd = UnrelatedMatchesDetector()
     dod = DiffOutcomeDetector()
 
-    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd])
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
@@ -154,7 +154,7 @@ def test_flake_consecutive_differing_outcomes_no_main_branch_specified(dbsession
     umd = UnrelatedMatchesDetector()
     dod = DiffOutcomeDetector()
 
-    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd])
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
@@ -180,7 +180,7 @@ def test_flake_consecutive_differing_outcomes_no_main_branch_specified(dbsession
     umd = UnrelatedMatchesDetector()
     dod = DiffOutcomeDetector()
 
-    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd])
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
@@ -218,7 +218,7 @@ def test_flake_matching_failures_on_unrelated_branches(dbsession):
     umd = UnrelatedMatchesDetector()
     dod = DiffOutcomeDetector()
 
-    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd])
     flaky_tests = fd.detect_flakes()
 
     assert test_id in flaky_tests
@@ -259,7 +259,7 @@ def test_flake_matching_failures_on_related_branches(dbsession):
     umd = UnrelatedMatchesDetector()
     dod = DiffOutcomeDetector()
 
-    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd], None)
+    fd = FlakeDetectionEngine(dbsession, repoid, [dbfd, dod, umd])
     flaky_tests = fd.detect_flakes()
 
     assert len(flaky_tests) == 0

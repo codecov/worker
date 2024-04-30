@@ -310,7 +310,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         default_branch_failure_detector = DefaultBranchFailureDetector(
             db_session, repoid, "main"
         )
-        unrelated_matches_detector = UnrelatedMatchesDetector()
+        unrelated_matches_detector = UnrelatedMatchesDetector(failure_normalizer)
         diff_outcome_detector = DiffOutcomeDetector()
 
         flake_detection_engine = FlakeDetectionEngine(
@@ -321,7 +321,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 unrelated_matches_detector,
                 diff_outcome_detector,
             ],
-            failure_normalizer,
         )
 
         log.info(
