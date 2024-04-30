@@ -72,7 +72,7 @@ class BackfillOwnersWithoutGHAppInstallations(
                     name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
                 )
                 db_session.add(gh_app_installation)
-                db_session.commit()
+                # db_session.commit()
 
                 is_selection_all = maybe_set_installation_to_all_repos(
                     db_session=db_session,

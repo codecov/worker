@@ -69,7 +69,6 @@ class BackfillExistingGHAppInstallationsTask(
                         gh_app_installation=gh_app_installation,
                     )
                     log.info("Successful backfill", extra=dict(ownerid=ownerid))
-                del owner_service
             except:
                 log.info(
                     "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
