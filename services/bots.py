@@ -38,14 +38,17 @@ def _get_installation_weight(installation: GithubAppInstallation) -> int:
         return MAX_GITHUB_APP_SELECTION_WEIGHT
     seconds_in_hour = 3600
     age_hours = (age.seconds // seconds_in_hour) + age.days * 24
-    return age_hours + 2**age.days
+    # Prevent clock differences from making the weight negative
+    return max(1, age_hours + 2**age.days)
 
 
 def _get_apps_from_weighted_selection(
     owner: Owner, installation_name: str, repository: Optional[Repository]
 ) -> List[GithubAppInstallation]:
-    ghapp_installations_filter: List[GithubAppInstallation] = list(
-        filter(
+    # Map GithubAppInstallation.id --> GithubAppInstallation
+    ghapp_installations_filter: Dict[int, GithubAppInstallation] = {
+        obj.id: obj
+        for obj in filter(
             lambda obj: (
                 obj.name == installation_name
                 and obj.is_configured()
@@ -58,23 +61,33 @@ def _get_apps_from_weighted_selection(
             ),
             owner.github_app_installations or [],
         )
-    )
+    }
     # We assign weights to the apps based on how long ago they were created.
     # The idea is that there's a greater chance that a change misconfigured the app,
     # So apps recently created are selected less frequently than older apps
+    keys = list(ghapp_installations_filter.keys())
     weights = [
-        min(MAX_GITHUB_APP_SELECTION_WEIGHT, _get_installation_weight(obj))
-        for obj in ghapp_installations_filter
+        min(
+            MAX_GITHUB_APP_SELECTION_WEIGHT,
+            _get_installation_weight(ghapp_installations_filter[key]),
+        )
+        for key in keys
     ]
-    # Random selection of size 3.
-    # If all apps have roughly the same probability of being selected, the array would have different entries.
-    # If 1 app dominates the probability of selection than it would probably be that app repeated 3 times, BUT
-    # from time to time the less frequent one would be selected.
-    apps_to_consider = (
-        random.choices(ghapp_installations_filter, weights=weights, k=3)
-        if len(ghapp_installations_filter) > 0
-        else []
-    )
+    # We pick apps one by one until all apps have been selected
+    # Obviously apps with a higher weight have a higher change of being selected as the main app (1st selection)
+    # But it's important that others are also selected so we can use them as fallbacks
+    apps_to_consider = []
+    if keys:
+        while len(keys) > 1:
+            selected_app_id = random.choices(keys, weights, k=1)[0]
+            apps_to_consider.append(ghapp_installations_filter[selected_app_id])
+            # random.choices chooses with replacement
+            # which we are trying to avoid here. So we remove the key selected and its weight from the population.
+            key_idx = keys.index(selected_app_id)
+            keys.pop(key_idx)
+            weights.pop(key_idx)
+        # The app remaining is the last choice
+        apps_to_consider.append(ghapp_installations_filter[keys[0]])
     if installation_name != GITHUB_APP_INSTALLATION_DEFAULT_NAME:
         # Add the default app as the last fallback if the owner is using a different app for the task
         default_apps = filter(
@@ -83,15 +96,7 @@ def _get_apps_from_weighted_selection(
         )
         if default_apps:
             apps_to_consider.extend(default_apps)
-    # Now we de-duplicate the apps_to_consider list before returning
-    seen_ids = dict()
-    list_to_return = []
-    for app in apps_to_consider:
-        if seen_ids.get(app.id, False):
-            continue
-        seen_ids[app.id] = True
-        list_to_return.append(app)
-    return list_to_return
+    return apps_to_consider
 
 
 def get_owner_installation_id(
