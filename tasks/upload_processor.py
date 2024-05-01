@@ -161,7 +161,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
             except LockError:
                 max_retry = 200 * 3**self.request.retries
-                retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
+                retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
                 log.warning(
                     "Unable to acquire lock for key %s. Retrying",
                     lock_name,
