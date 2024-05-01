@@ -41,3 +41,5 @@ def initialize_sentry() -> None:
         ],
         release=os.getenv("SENTRY_RELEASE", version_str),
     )
+    if os.getenv("CLUSTER_ENV"):
+        sentry_sdk.set_tag("cluster", os.getenv("CLUSTER_ENV"))
