@@ -323,7 +323,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # Instead of relying exclusively on the webhooks to do that
         # TODO: Maybe we don't need to run this every time, but once in a while just in case...
         if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
-            owner_id=ownerid, default=False
+            identifier=ownerid, default=False
         ):
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
@@ -436,7 +436,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         try:
             if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
-                owner_id=ownerid, default=False
+                identifier=ownerid, default=False
             ):
                 with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
                     async for page in git.list_repos_generator():

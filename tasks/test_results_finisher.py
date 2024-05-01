@@ -232,7 +232,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             tags={"status": "success", "reason": "tests_failed"},
         )
         flaky_tests = None
-        if FLAKY_TEST_DETECTION.check_value(repo_id=repoid):
+        if FLAKY_TEST_DETECTION.check_value(identifier=repoid):
             flaky_tests = dict()
 
         notifier = TestResultsNotifier(commit, commit_yaml)
@@ -262,7 +262,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             tags={"status": success, "reason": reason},
         )
 
-        if FLAKY_TEST_DETECTION.check_value(repo_id=repoid):
+        if FLAKY_TEST_DETECTION.check_value(identifier=repoid):
             log.info(
                 "Running flaky test detection",
                 extra=dict(
