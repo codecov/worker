@@ -22,7 +22,7 @@ export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 # Codecov CLI version to use
-CODECOV_CLI_VERSION := 0.4.6
+CODECOV_CLI_VERSION := 0.5.1
 
 build:
 	$(MAKE) build.requirements
@@ -48,17 +48,17 @@ lint:
 	make lint.run
 
 test:
-	python -m pytest --cov=./ --junitxml=junit.xml
+	COVERAGE_CORE=sysmon python -m pytest --cov=./ --junitxml=junit.xml
 
 test.unit:
-	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml
+	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml
 
 test.integration:
-	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml
+	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml
 
 
 update-requirements:
-	pip install pip-tools==6.1.0
+	pip install pip-tools==7.4.1
 	pip-compile requirements.in
 
 
@@ -96,6 +96,10 @@ build.app:
 	docker build -f docker/Dockerfile . \
 		-t ${AR_REPO}:latest \
 		-t ${AR_REPO}:${VERSION} \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
+		--label "org.opencontainers.image.revision"="$(full_sha)" \
+		--label "org.opencontainers.image.source"="github.com/codecov/worker" \
 		--build-arg REQUIREMENTS_IMAGE=${AR_REPO}:${REQUIREMENTS_TAG} \
 		--build-arg RELEASE_VERSION=${VERSION} \
 		--build-arg BUILD_ENV=cloud
@@ -116,6 +120,8 @@ build.self-hosted-runtime:
 	docker build -f docker/Dockerfile . \
 		-t ${DOCKERHUB_REPO}:latest \
 		-t ${DOCKERHUB_REPO}:${VERSION} \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
 		--build-arg REQUIREMENTS_IMAGE=${AR_REPO}:${REQUIREMENTS_TAG} \
         --build-arg RELEASE_VERSION=${VERSION} \
         --build-arg BUILD_ENV=self-hosted-runtime
@@ -204,7 +210,7 @@ test_env.install_cli:
 	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
-	apk add -U curl git build-base jq
+	apt-get install -y git build-essential netcat-traditional
 	make test_env.install_cli
 	git config --global --add safe.directory /worker
 
@@ -252,7 +258,7 @@ test_env.run_mutation:
 	docker-compose exec worker make test_env.container_mutation
 
 test_env.container_mutation:
-	apk add git
+	apt-get install -y git
 	git diff origin/main ${full_sha} > data.patch
 	pip install mutmut[patch]
 	mutmut run --use-patch-file data.patch || true

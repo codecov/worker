@@ -3,11 +3,17 @@ from typing import List, Optional
 
 import shared.torngit as torngit
 from asgiref.sync import async_to_sync
+from shared.config import get_config
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from celery_config import backfill_gh_app_installations_name
-from database.models.core import GithubAppInstallation, Owner, Repository
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+    Owner,
+    Repository,
+)
 from services.owner import get_owner_provider_service
 from tasks.base import BaseCodecovTask
 
@@ -53,9 +59,34 @@ class BackfillGHAppInstallationsTask(
             )
             gh_app_installation.repository_service_ids = new_repo_service_ids
             db_session.commit()
+        del repos
+
+    def maybe_set_installation_to_all_repos(
+        self,
+        db_session: Session,
+        owner_service,
+        gh_app_installation: GithubAppInstallation,
+    ):
+        remote_gh_app_installation = async_to_sync(
+            owner_service.get_gh_app_installation
+        )(installation_id=gh_app_installation.installation_id)
+        repository_selection = remote_gh_app_installation.get(
+            "repository_selection", ""
+        )
+        if repository_selection == "all":
+            gh_app_installation.repository_service_ids = None
+            db_session.commit()
+            log.info(
+                "Selection is set to all, no installation is needed",
+                extra=dict(ownerid=gh_app_installation.ownerid),
+            )
+            del remote_gh_app_installation
+            return True
+        del remote_gh_app_installation
+        return False
 
     def backfill_existing_gh_apps(
-        self, db_session: Session, owner_ids: List[int] = None
+        self, db_session: Session, owner_ids: List[int] = None, missed_owner_ids=[]
     ):
         # Get owners that have installations, and installations queries
         owners_query = (
@@ -84,40 +115,39 @@ class BackfillGHAppInstallationsTask(
 
         for gh_app_installation in gh_app_installations:
             # Check if gh app has 'all' repositories selected
-            installation_id = gh_app_installation.installation_id
-
             owner = owners_dict[gh_app_installation.ownerid]
             ownerid = owner.ownerid
 
-            owner_service = get_owner_provider_service(
-                owner=owner, using_integration=True
-            )
-
-            remote_gh_app_installation = async_to_sync(
-                owner_service.get_gh_app_installation
-            )(installation_id=installation_id)
-            repository_selection = remote_gh_app_installation.get(
-                "repository_selection", ""
-            )
-            if repository_selection == "all":
-                gh_app_installation.repository_service_ids = None
-                db_session.commit()
-                log.info(
-                    "Selection is set to all, no installation is needed",
-                    extra=dict(ownerid=ownerid),
+            try:
+                owner_service = get_owner_provider_service(
+                    owner=owner, using_integration=True
                 )
-            else:
-                # Find and add all repos the gh app has access to
-                self.add_repos_service_ids_from_provider(
+                is_selection_all = self.maybe_set_installation_to_all_repos(
                     db_session=db_session,
-                    ownerid=ownerid,
                     owner_service=owner_service,
                     gh_app_installation=gh_app_installation,
                 )
-                log.info("Successful backfill", extra=dict(ownerid=ownerid))
+
+                if not is_selection_all:
+                    # Find and add all repos the gh app has access to
+                    self.add_repos_service_ids_from_provider(
+                        db_session=db_session,
+                        ownerid=ownerid,
+                        owner_service=owner_service,
+                        gh_app_installation=gh_app_installation,
+                    )
+                    log.info("Successful backfill", extra=dict(ownerid=ownerid))
+                del owner_service
+            except:
+                log.info(
+                    "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
+                )
+                missed_owner_ids.append(ownerid)
+                continue
+        del gh_app_installations
 
     def backfill_owners_with_integration_without_gh_app(
-        self, db_session: Session, owner_ids: List[int] = None
+        self, db_session: Session, owner_ids: List[int] = None, missed_owner_ids=[]
     ):
         owners_with_integration_id_without_gh_app_query = (
             db_session.query(Owner)
@@ -143,29 +173,48 @@ class BackfillGHAppInstallationsTask(
 
         for owner in owners:
             ownerid = owner.ownerid
-            owner_service = get_owner_provider_service(
-                owner=owner, using_integration=True
-            )
+            try:
+                owner_service = get_owner_provider_service(
+                    owner=owner, using_integration=True
+                )
 
-            # Create new GH app installation and add all repos the gh app has access to
-            log.info(
-                "This owner has no Github App Installation",
-                extra=dict(ownerid=ownerid),
-            )
-            gh_app_installation = GithubAppInstallation(
-                owner=owner, installation_id=owner.integration_id
-            )
-            db_session.add(gh_app_installation)
-            db_session.commit()
+                # Create new GH app installation and add all repos the gh app has access to
+                log.info(
+                    "This owner has no Github App Installation",
+                    extra=dict(ownerid=ownerid),
+                )
+                gh_app_installation = GithubAppInstallation(
+                    owner=owner,
+                    installation_id=owner.integration_id,
+                    app_id=get_config("github", "integration", "id"),
+                    name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+                )
+                db_session.add(gh_app_installation)
+                db_session.commit()
 
-            # Find and add all repos the gh app has access to
-            self.add_repos_service_ids_from_provider(
-                db_session=db_session,
-                ownerid=ownerid,
-                owner_service=owner_service,
-                gh_app_installation=gh_app_installation,
-            )
-            log.info("Successful backfill", extra=dict(ownerid=ownerid))
+                is_selection_all = self.maybe_set_installation_to_all_repos(
+                    db_session=db_session,
+                    owner_service=owner_service,
+                    gh_app_installation=gh_app_installation,
+                )
+
+                if not is_selection_all:
+                    # Find and add all repos the gh app has access to
+                    self.add_repos_service_ids_from_provider(
+                        db_session=db_session,
+                        ownerid=ownerid,
+                        owner_service=owner_service,
+                        gh_app_installation=gh_app_installation,
+                    )
+                log.info("Successful backfill", extra=dict(ownerid=ownerid))
+                del owner_service
+            except:
+                log.info(
+                    "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
+                )
+                missed_owner_ids.append(ownerid)
+                continue
+        del owners
 
     def run_impl(
         self,
@@ -174,17 +223,35 @@ class BackfillGHAppInstallationsTask(
         *args,
         **kwargs
     ):
+        log.info(
+            "Starting GH App backfill task",
+        )
+
+        missed_owner_ids = []
+
         # Backfill gh apps we already have
-        self.backfill_existing_gh_apps(db_session=db_session, owner_ids=owner_ids)
+        self.backfill_existing_gh_apps(
+            db_session=db_session,
+            owner_ids=owner_ids,
+            missed_owner_ids=missed_owner_ids,
+        )
 
         # Backfill owners with legacy integration + adding new gh app
         self.backfill_owners_with_integration_without_gh_app(
-            db_session=db_session, owner_ids=owner_ids
+            db_session=db_session,
+            owner_ids=owner_ids,
+            missed_owner_ids=missed_owner_ids,
         )
 
         log.info(
             "Complete backfill finished",
         )
+
+        log.info(
+            "Potential owner ids that didn't backfill",
+            extra=dict(missed_owner_ids=missed_owner_ids),
+        )
+
         return {"successful": True, "reason": "backfill task finished"}
 
 

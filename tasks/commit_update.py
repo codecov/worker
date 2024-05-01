@@ -14,7 +14,6 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 from services.repository import (
     get_repo_provider_service,
     possibly_update_commit_from_provider_info,
-    update_commit_from_provider_info,
 )
 from tasks.base import BaseCodecovTask
 

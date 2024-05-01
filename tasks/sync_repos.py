@@ -12,6 +12,7 @@ from shared.celery_config import (
 )
 from shared.config import get_config
 from shared.metrics import metrics
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
@@ -134,10 +135,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     async def sync_repos_affected_repos_known(
         self,
-        db_session,
-        git,
+        db_session: Session,
+        git: TorngitBaseAdapter,
         owner: Owner,
-        repository_service_ids: Optional[List[Tuple[str, str]]],
+        repository_service_ids: List[Tuple[int, str]] | None,
     ):
         repoids_added = []
         # Casting to str in case celery interprets the service ID as a integer for some reason
@@ -161,27 +162,22 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 missing_repo_service_ids=missing_repo_service_ids,
                 num_missing_repos=len(missing_repo_service_ids),
                 existing_repos=existing_repos,
+                repository_service_ids=repository_service_ids,
             ),
         )
 
         # Get info from provider on the repos we don't have
         repos_to_search = [
-            x[1] for x in repository_service_ids if x[0] in missing_repo_service_ids
+            x[1]
+            for x in repository_service_ids
+            if str(x[0]) in missing_repo_service_ids
         ]
         async for repo_data in git.get_repos_from_nodeids_generator(
             repos_to_search, owner.username
         ):
-            # Insert those repos
-            new_repo = Repository(
-                service_id=repo_data["service_id"],
-                name=repo_data["name"],
-                language=repo_data["language"],
-                private=repo_data["private"],
-                branch=repo_data["branch"],
-                using_integration=True,
-            )
+            # Get or create owner
             if repo_data["owner"]["is_expected_owner"]:
-                new_repo.ownerid = owner.ownerid
+                new_repo_ownerid = owner.ownerid
             else:
                 upserted_owner_id = self.upsert_owner(
                     db_session,
@@ -189,19 +185,72 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     repo_data["owner"]["service_id"],
                     repo_data["owner"]["username"],
                 )
-                new_repo.ownerid = upserted_owner_id
-            db_session.add(new_repo)
-            db_session.flush()
-            repoids_added.append(new_repo.repoid)
+                new_repo_ownerid = upserted_owner_id
+            # Get or create repo
+            # Yes we had issues trying to insert a repeated repo at this point.
+            # Maybe race condition?
+            repoid = self.upsert_repo(
+                db_session=db_session,
+                service=git.service,
+                ownerid=new_repo_ownerid,
+                repo_data={**repo_data, "service_id": str(repo_data["service_id"])},
+                using_integration=True,
+            )
+            repoids_added.append(repoid)
         return repoids_added
+
+    def _possibly_update_ghinstallation_covered_repos(
+        self,
+        git: TorngitBaseAdapter,
+        owner: Owner,
+        service_ids_listed: List[str],
+    ):
+        installation_used = git.data.get("installation")
+        if installation_used is None:
+            log.warning(
+                "Failed to update ghapp covered repos. We don't know which installation is being used"
+            )
+        if (
+            owner.github_app_installations is None
+            or owner.github_app_installations == []
+        ):
+            log.warning(
+                "Failed to possibly update ghapp covered repos. Owner has no installations",
+            ),
+            return
+        ghapp = next(
+            filter(
+                lambda obj: (
+                    obj.installation_id == installation_used.get("installation_id")
+                    and obj.app_id == installation_used.get("app_id")
+                ),
+                owner.github_app_installations,
+            ),
+            None,
+        )
+        if ghapp and ghapp.repository_service_ids is not None:
+            covered_repos = set(ghapp.repository_service_ids)
+            service_ids_listed_set = set(service_ids_listed)
+            log.info(
+                "Updating list of repos covered",
+                extra=dict(
+                    owner=owner.ownerid,
+                    installation=ghapp.installation_id,
+                    ghapp_id=ghapp.id,
+                    added_repos_service_ids=covered_repos.difference(
+                        service_ids_listed_set
+                    ),
+                ),
+            )
+            ghapp.repository_service_ids = list(covered_repos | service_ids_listed_set)
 
     async def sync_repos_using_integration(
         self,
         db_session: Session,
-        git,
+        git: TorngitBaseAdapter,
         owner: Owner,
         username: str,
-        repository_service_ids: Optional[List[Tuple[str, str]]] = None,
+        repository_service_ids: Optional[List[Tuple[int, str]]] = None,
     ):
         ownerid = owner.ownerid
         log.info(
@@ -215,6 +264,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
             service_ids = {repo["repo"]["service_id"] for repo in repos}
+            self._possibly_update_ghinstallation_covered_repos(git, owner, service_ids)
             if service_ids:
                 # Querying through the `Repository` model is cleaner, but we
                 # need to go through the table object instead if we want to
@@ -267,15 +317,21 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        elif await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
+        # The `if` below should be `elif` but we had issues recently
+        # related to the sync task when repos are known
+        # So we should still run it just in case and possibly update GithubInstallation.repository_service_ids
+        # Instead of relying exclusively on the webhooks to do that
+        # TODO: Maybe we don't need to run this every time, but once in a while just in case...
+        if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
             owner_id=ownerid, default=False
         ):
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
             ):
                 async for page in git.list_repos_using_installation_generator(username):
-                    received_repos = True
-                    process_repos(page)
+                    if page:
+                        received_repos = True
+                        process_repos(page)
         else:
             with metrics.timer(
                 f"{metrics_scope}.sync_repos_using_integration.list_repos"

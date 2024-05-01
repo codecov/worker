@@ -173,6 +173,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=True,
             ),
         )
         kwargs = dict(
@@ -567,6 +568,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         t2 = upload_processor_task.signature(
@@ -582,6 +584,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         t3 = upload_processor_task.signature(
@@ -596,6 +599,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         kwargs = dict(
@@ -723,6 +727,7 @@ class TestUploadTaskIntegration(object):
             commit.report,
             mocker.ANY,
             mocker.ANY,
+            mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
 
@@ -775,6 +780,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
             commit.report,
+            mocker.ANY,
             mocker.ANY,
             mocker.ANY,
         )
@@ -850,6 +856,7 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": second_session.id},
             ],
             commit.report,
+            mocker.ANY,
             mocker.ANY,
             mocker.ANY,
         )
@@ -941,6 +948,7 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report,
+            mocker.ANY,
             mocker.ANY,
             mocker.ANY,
         )
@@ -1056,11 +1064,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         result = UploadTask().schedule_task(
-            commit,
-            commit_yaml,
-            argument_list,
-            ReportFactory.create(),
-            None,
+            commit, commit_yaml, argument_list, ReportFactory.create(), None, dbsession
         )
         assert result is None
 
@@ -1074,11 +1078,7 @@ class TestUploadTaskUnit(object):
         dbsession.add(commit)
         dbsession.flush()
         result = UploadTask().schedule_task(
-            commit,
-            commit_yaml,
-            argument_list,
-            ReportFactory.create(),
-            None,
+            commit, commit_yaml, argument_list, ReportFactory.create(), None, dbsession
         )
         assert result == mocked_chain.return_value.apply_async.return_value
         t1 = upload_processor_task.signature(
@@ -1090,6 +1090,7 @@ class TestUploadTaskUnit(object):
                 arguments_list=argument_list,
                 report_code=None,
                 in_parallel=False,
+                is_final=True,
             ),
         )
         t2 = upload_finisher_task.signature(

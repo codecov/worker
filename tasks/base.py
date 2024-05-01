@@ -204,14 +204,18 @@ class BaseCodecovTask(celery_app.Task):
         try:
             import psycopg2
 
-            if isinstance(exception.orig, psycopg2.errors.DeadlockDetected):
+            if hasattr(exception, "orig") and isinstance(
+                exception.orig, psycopg2.errors.DeadlockDetected
+            ):
                 log.exception(
                     "Deadlock while talking to database",
                     extra=dict(task_args=args, task_kwargs=kwargs),
                     exc_info=True,
                 )
                 return
-            elif isinstance(exception.orig, psycopg2.OperationalError):
+            elif hasattr(exception, "orig") and isinstance(
+                exception.orig, psycopg2.OperationalError
+            ):
                 log.warning(
                     "Database seems to be unavailable",
                     extra=dict(task_args=args, task_kwargs=kwargs),

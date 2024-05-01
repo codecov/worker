@@ -9,6 +9,7 @@ from database.tests.factories.core import CommitFactory
 from helpers.labels import SpecialLabelsEnum
 from tasks.upload_clean_labels_index import (
     CleanLabelsIndexTask,
+    OwnerContext,
     ReadOnlyArgs,
     ReportService,
     UserYaml,
@@ -232,12 +233,17 @@ class TestCleanLabelsIndexReadOnlyArgs(object):
         task = CleanLabelsIndexTask()
         res = task._get_best_effort_commit_yaml(commit, None)
         assert res == {"yaml_for": f"commit_{commit.commitid}", "origin": "database"}
+        owner = commit.repository.owner
         mock_fetch_commit.assert_not_called()
         mock_final_yaml.assert_called_with(
             owner_yaml=commit.repository.owner.yaml,
             repo_yaml=commit.repository.yaml,
             commit_yaml=None,
-            ownerid=commit.repository.owner.ownerid,
+            owner_context=OwnerContext(
+                ownerid=owner.ownerid,
+                owner_plan=owner.plan,
+                owner_onboarding_date=owner.createstamp,
+            ),
         )
 
 

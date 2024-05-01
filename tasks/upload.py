@@ -3,6 +3,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 from json import loads
+from math import ceil
 from typing import Any, List, Mapping, Optional
 
 from asgiref.sync import async_to_sync
@@ -18,6 +19,7 @@ from shared.torngit.exceptions import (
 )
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
@@ -28,6 +30,7 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.metrics import metrics
+from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
@@ -44,7 +47,6 @@ from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
     possibly_update_commit_from_provider_info,
-    update_commit_from_provider_info,
 )
 from services.test_results import TestResultsReportService
 from services.yaml import save_repo_yaml_to_database_if_needed
@@ -452,11 +454,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit, repository_service
             )
         else:
+            context = OwnerContext(
+                owner_onboarding_date=repository.owner.createstamp,
+                owner_plan=repository.owner.plan,
+                ownerid=repository.ownerid,
+            )
             commit_yaml = UserYaml.get_final_yaml(
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
-                ownerid=repository.owner.ownerid,
+                owner_context=context,
             )
 
         if report_type == ReportType.COVERAGE:
@@ -513,6 +520,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 argument_list,
                 commit_report,
                 upload_context,
+                db_session,
                 checkpoints,
             )
         else:
@@ -566,11 +574,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 exc_info=True,
             )
             commit_yaml = None
+        context = OwnerContext(
+            owner_onboarding_date=repository.owner.createstamp,
+            owner_plan=repository.owner.plan,
+            ownerid=repository.ownerid,
+        )
         return UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
-            ownerid=repository.owner.ownerid,
+            owner_context=context,
         )
 
     def schedule_task(
@@ -580,6 +593,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list,
         commit_report: CommitReport,
         upload_context: UploadContext,
+        db_session,
         checkpoints=None,
     ):
         commit_yaml = commit_yaml.to_dict()
@@ -595,6 +609,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 argument_list,
                 commit_report,
                 upload_context,
+                db_session,
                 checkpoints=checkpoints,
             )
         elif commit_report.report_type == ReportType.BUNDLE_ANALYSIS.value:
@@ -628,6 +643,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list,
         commit_report,
         upload_context: UploadContext,
+        db_session,
         checkpoints=None,
     ):
         chunk_size = CHUNK_SIZE
@@ -651,9 +667,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         arguments_list=chunk,
                         report_code=commit_report.code,
                         in_parallel=False,
+                        is_final=True
+                        if i == ceil(len(argument_list) / chunk_size) - 1
+                        else False,
                     ),
                 )
                 processing_tasks.append(sig)
+
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
             repo_id=commit.repository.repoid
         ):
@@ -662,33 +682,55 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             redis_key = get_parallel_upload_processing_session_counter_redis_key(
                 repoid=commit.repository.repoid, commitid=commit.commitid
             )
-
+            report_service = ReportService(commit_yaml)
+            sessions = report_service.build_sessions(commit=commit)
+            commit_yaml = UserYaml(commit_yaml)
             # if session count expired due to TTL (which is unlikely for most cases), recalculate the
             # session ids used and set it in redis.
             if self.parallel_session_count_key_expired(
                 redis_key, upload_context.redis_connection
             ):
-                report_service = ReportService(commit_yaml)
-                sessions = report_service.build_sessions(commit=commit)
                 upload_context.redis_connection.set(
                     redis_key,
                     max(sessions.keys()) + 1 if sessions.keys() else 0,
                 )
 
-            # increment redis to claim session ids
-            parallel_session_id = (
-                upload_context.redis_connection.incrby(
-                    name=redis_key,
-                    amount=num_sessions,
-                )
-                - num_sessions
+            # https://github.com/codecov/worker/commit/7d9c1984b8bc075c9fa002ee15cab3419684f2d6
+            # try to scrap the redis counter idea to fully mimic how session ids are allocated in the
+            # serial flow. This change is technically less performant, and would not allow for concurrent
+            # chords to be running at the same time. For now this is just a temporary change, just for
+            # verifying correctness.
+            #
+            # # increment redis to claim session ids
+            # parallel_session_id = (
+            #     upload_context.redis_connection.incrby(
+            #         name=redis_key,
+            #         amount=num_sessions,
+            #     )
+            #     - num_sessions
+            # )
+            # upload_context.redis_connection.expire(
+            #     name=redis_key,
+            #     time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+            # )
+            original_session_ids = list(sessions.keys())
+            parallel_session_ids = get_parallel_session_ids(
+                sessions, argument_list, db_session, report_service, commit_yaml
             )
-            upload_context.redis_connection.expire(
-                name=redis_key,
-                time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
+
+            log.info(
+                "Allocated the following session ids for parallel upload processing: "
+                + " ".join(str(id) for id in parallel_session_ids),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    original_session_ids=original_session_ids,
+                ),
             )
 
             parallel_processing_tasks = []
+            commit_yaml = commit_yaml.to_dict()
+
             for i in range(0, num_sessions, parallel_chunk_size):
                 chunk = argument_list[i : i + parallel_chunk_size]
                 if chunk:
@@ -700,8 +742,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                             commit_yaml=commit_yaml,
                             arguments_list=chunk,
                             report_code=commit_report.code,
-                            parallel_idx=i + parallel_session_id,
+                            parallel_idx=parallel_session_ids[
+                                i
+                            ],  # i + parallel_session_id,
                             in_parallel=True,
+                            is_final=True if i == num_sessions - 1 else False,
                         ),
                     )
                     parallel_processing_tasks.append(sig)
@@ -740,7 +785,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 res = serial_tasks.apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling coverage processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -832,7 +877,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             ).apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling test results processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -844,7 +889,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             return res
         log.info(
-            "Not scheduling task because there were no reports to be processed found",
+            "Not scheduling test results processing tasks because there were no reports to be processed found",
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,

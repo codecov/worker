@@ -16,6 +16,10 @@ from shared.celery_config import (
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Owner, Repository
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from tasks.sync_repo_languages import SyncRepoLanguagesTask
 from tasks.sync_repo_languages_gql import SyncRepoLanguagesGQLTask
@@ -503,15 +507,6 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
 
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 1}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
-
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -557,25 +552,33 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
 
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
-
-        token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
             service="github",
             username="1nf1n1t3l00p",
-            unencrypted_oauth_token=token,
             permission=[],
             service_id="45343385",
         )
         dbsession.add(user)
+
+        mock_redis.exists.return_value = False
+        mocker.patch(
+            "services.bots.get_github_integration_token",
+            return_value="installation_token",
+        )
+
+        ghapp = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=1822,
+            # inaccurate because this integration should be able to list all repos in the test
+            # but the sync_repos should fix this too
+            repository_service_ids=["555555555"],
+            owner=user,
+        )
+        dbsession.add(ghapp)
+        user.github_app_installations = [ghapp]
+
+        dbsession.flush()
 
         def repo_obj(service_id, name, language, private, branch, using_integration):
             return {
@@ -648,6 +651,7 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # there were no private repos
         for repo in repos:
             assert repo.using_integration is True
+        ghapp.repository_service_ids = ["159089634" "164948070" "213786132" "555555555"]
 
     @pytest.mark.parametrize("use_generator", [False, True])
     @respx.mock
@@ -660,14 +664,6 @@ class TestSyncReposTaskUnit(object):
         mocker.patch.object(
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 0}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
 
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -807,16 +803,6 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
 
-        if use_generator:
-
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 1}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
-
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -868,15 +854,6 @@ class TestSyncReposTaskUnit(object):
         mocker.patch.object(
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
-
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
 
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -992,15 +969,6 @@ class TestSyncReposTaskUnit(object):
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=use_generator
         )
         mocker.patch("tasks.sync_repos.get_config", return_value=False)
-
-        if use_generator:
-            respx.post("https://api.github.com/graphql").mock(
-                httpx.Response(
-                    status_code=200,
-                    content='{"data":{"viewer":{"repositories":{"totalCount": 4}}}}',
-                    headers={"Content-Type": "application/json"},
-                )
-            )
 
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
@@ -1136,7 +1104,7 @@ class TestSyncReposTaskUnit(object):
                         "service_id": "8226205",
                         "username": "codecov",
                     },
-                    "service_id": "460565350",
+                    "service_id": 460565350,
                     "private": False,
                 },
                 {
@@ -1149,7 +1117,7 @@ class TestSyncReposTaskUnit(object):
                         "service_id": "8226205",
                         "username": "codecov",
                     },
-                    "service_id": "665728948",
+                    "service_id": 665728948,
                     "private": False,
                 },
                 {
@@ -1161,7 +1129,7 @@ class TestSyncReposTaskUnit(object):
                         "node_id": "U_kgDOBfIxWg",
                         "username": "giovanni-guidini",
                     },
-                    "service_id": "553624697",
+                    "service_id": 553624697,
                     "private": False,
                 },
             ]

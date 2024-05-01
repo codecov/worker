@@ -14,8 +14,13 @@ class OwnerWithoutValidBotError(Exception):
     pass
 
 
-class CorruptRawReportError(Exception):
+class NoConfiguredAppsAvailable(Exception):
+    def __init__(self, apps_count: int, all_rate_limited: bool) -> None:
+        self.apps_count = apps_count
+        self.all_rate_limited = all_rate_limited
 
+
+class CorruptRawReportError(Exception):
     """Error indicated that report is somehow different than it should be
 
     Notice that this error should not be used to replace `matches_content` logic on each processor.

@@ -1,4 +1,4 @@
-from unittest.mock import PropertyMock, patch
+from unittest.mock import PropertyMock
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -13,7 +13,7 @@ from services.notification.notifiers.comment import CommentNotifier
 @pytest.fixture
 def is_not_first_pull(mocker):
     mocker.patch(
-        "database.models.core.Pull.is_first_pull",
+        "database.models.core.Pull.is_first_coverage_pull",
         return_value=False,
         new_callable=PropertyMock,
     )
@@ -360,7 +360,7 @@ class TestCommentNotifierIntegration(object):
             "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=desc).",
             "> Report is 2 commits behind head on main.",
             "",
-            ":white_check_mark: All tests successful. No failed tests found :relaxed:",
+            ":white_check_mark: All tests successful. No failed tests found.",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
             "",

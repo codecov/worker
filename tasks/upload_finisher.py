@@ -154,6 +154,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     commit_yaml=commit_yaml,
                     report_code=report_code,
                     parallel_paths=parallel_paths,
+                    processing_results=processing_results,
                 ),
             )
             task.apply_async()
@@ -445,6 +446,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 None,
             )
         except FileNotInStorageError:  # there were no CFFs, so no report was stored in GCS
+            log.info(
+                "No base report found for parallel upload processing, using an empty report",
+                extra=dict(commit=commitid, repoid=repoid),
+            )
             report = Report()
 
         log.info(
@@ -481,7 +486,17 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             incremental_report = obj["report"]
             parallel_idx = obj["parallel_idx"]
 
-            assert len(incremental_report.sessions) == 1
+            if len(incremental_report.sessions) != 1:
+                log.warn(
+                    f"Incremental report does not have 1 session, it has {len(incremental_report.sessions)}",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        upload_pk=obj["upload_pk"],
+                        parallel_idx=obj["parallel_idx"],
+                    ),
+                )
+
             sessionid = next(iter(incremental_report.sessions))
             incremental_report.sessions[sessionid].id = sessionid
 
@@ -494,7 +509,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 cumulative_report, incremental_report, session, UserYaml(commit_yaml)
             )
             # ReportService.update_upload_with_processing_result should use this result
-            # to update the state of Upload. Once the experiement is finished, it should
+            # to update the state of Upload. Once the experiement is finished, Upload.state should
             # be set to: parallel_processed (instead of processed)
 
             cumulative_report.merge(incremental_report)
@@ -521,7 +536,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             ),
         )
         report = functools.reduce(merge_report, unmerged_reports, report)
-        return report  # TODO: should compute totals after all incremental reports get merged together
+        return report
 
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())
