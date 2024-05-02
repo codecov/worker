@@ -97,7 +97,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         )
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repoid)
             and in_parallel
         ):
             log.info(
@@ -161,7 +161,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
             except LockError:
                 max_retry = 200 * 3**self.request.retries
-                retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
+                retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
                 log.warning(
                     "Unable to acquire lock for key %s. Retrying",
                     lock_name,
@@ -190,7 +190,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         **kwargs,
     ):
         if (
-            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repoid)
             and in_parallel
         ):
             log.info(
@@ -219,7 +219,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_service = ReportService(commit_yaml)
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repository.repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repository.repoid)
             and in_parallel
         ):
             log.info(
@@ -315,7 +315,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             results_dict = {}
             if (
                 PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                    repo_id=repository.repoid
+                    identifier=repository.repoid
                 )
                 and in_parallel
             ):
@@ -395,7 +395,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
             if (
                 PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                    repo_id=repository.repoid
+                    identifier=repository.repoid
                 )
                 and in_parallel
             ):
