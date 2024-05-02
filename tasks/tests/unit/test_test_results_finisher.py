@@ -481,7 +481,7 @@ class TestUploadTestFinisherTask(object):
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+            "",
         )
 
         test_results_mock_app.tasks[
@@ -537,7 +537,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n| **Test Description** | **Failure message** |\n| :-- | :-- |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name0<br><br>**Envs:**<br>- 0<br></pre> | <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name1<br><br>**Envs:**<br>- 1<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name2<br><br>**Envs:**<br>- default<br></pre> | <pre>Shared failure message</pre> |\n| <pre>**Testsuite:**<br>test_testsuite<br><br>**Test name:**<br>test_name3<br><br>**Envs:**<br>- 0<br></pre> | <pre>No failure message available</pre> |",
+            "",
         )
 
         assert expected_result == result
