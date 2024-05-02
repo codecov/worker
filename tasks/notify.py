@@ -3,7 +3,6 @@ from typing import Optional
 
 from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
-from redis.exceptions import LockError
 from shared.celery_config import (
     new_user_activated_task_name,
     notify_task_name,
@@ -178,6 +177,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         if (
             test_result_commit_report is not None
             and test_result_commit_report.test_result_totals is not None
+            and not test_result_commit_report.test_result_totals.error
             and test_result_commit_report.test_result_totals.failed > 0
         ):
             return {
@@ -367,6 +367,13 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 all_tests_passed=(
                     test_result_commit_report is not None
                     and test_result_commit_report.test_result_totals is not None
+                    and test_result_commit_report.test_result_totals.error is None
+                    and test_result_commit_report.test_result_totals.failed == 0
+                ),
+                test_results_error=(
+                    test_result_commit_report is not None
+                    and test_result_commit_report.test_result_totals is not None
+                    and test_result_commit_report.test_result_totals.error
                 ),
                 installation_name_to_use=installation_name_to_use,
             )
@@ -425,6 +432,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         # It's only true if the test_result processing is setup
         # And all tests indeed passed
         all_tests_passed: bool = False,
+        test_results_error: bool = False,
         installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     ):
         # base_commit is an "adjusted" base commit; for project coverage, we
@@ -454,7 +462,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
                 current_yaml=current_yaml,
             ),
-            context=NotificationContext(all_tests_passed=all_tests_passed),
+            context=NotificationContext(
+                all_tests_passed=all_tests_passed, test_results_error=test_results_error
+            ),
         )
 
         decoration_type = self.determine_decoration_type_from_pull(

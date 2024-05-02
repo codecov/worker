@@ -16,6 +16,7 @@ from shared.torngit.exceptions import (
 from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
+from database.enums import TestResultsProcessingError
 from database.models.core import GithubAppInstallation, Pull
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
@@ -4057,6 +4058,40 @@ class TestNewHeaderSectionWriter(object):
         ]
 
     @pytest.mark.asyncio
+    async def test_new_header_section_writer_test_results_error(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+        )
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+        ]
+
+    @pytest.mark.asyncio
     async def test_new_header_section_writer_no_project_coverage(
         self, mocker, sample_comparison
     ):
@@ -4111,6 +4146,39 @@ class TestNewHeaderSectionWriter(object):
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "",
             ":white_check_mark: All tests successful. No failed tests found.",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer_no_project_coverage_test_results_error(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+        )
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={"hide_project_coverage": True},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         ]
 
 
@@ -4859,6 +4927,88 @@ class TestCommentNotifierInNewLayout(object):
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "",
             ":white_check_mark: All tests successful. No failed tests found.",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
+        ]
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_team_plan_customer_all_lines_covered_test_results_error(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_coverage_carriedforward,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        sample_comparison_coverage_carriedforward.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+        )
+        comparison = sample_comparison_coverage_carriedforward
+        comparison.repository_service.service = "github"
+        # relevant part of this test
+        comparison.head.commit.repository.owner.plan = "users-teamm"
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                # Irrelevant but they don't overwrite Owner's plan
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        pull = comparison.pull
+        repository = sample_comparison_coverage_carriedforward.head.commit.repository
+        result = await notifier.build_message(comparison)
+
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
+        ]
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_team_plan_customer_all_lines_covered(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_coverage_carriedforward,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        sample_comparison_coverage_carriedforward.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=None,
+        )
+        comparison = sample_comparison_coverage_carriedforward
+        comparison.repository_service.service = "github"
+        # relevant part of this test
+        comparison.head.commit.repository.owner.plan = "users-teamm"
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                # Irrelevant but they don't overwrite Owner's plan
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        pull = comparison.pull
+        repository = sample_comparison_coverage_carriedforward.head.commit.repository
+        result = await notifier.build_message(comparison)
+
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
             "",
             ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
         ]

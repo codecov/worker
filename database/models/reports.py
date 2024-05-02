@@ -312,3 +312,4 @@ class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     passed = Column(types.Integer)
     skipped = Column(types.Integer)
     failed = Column(types.Integer)
+    error = Column(types.String(100), nullable=True)
