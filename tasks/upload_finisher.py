@@ -93,7 +93,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repository = commit.repository
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repository.repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repository.repoid)
             and in_parallel
         ):
             actual_processing_results = {

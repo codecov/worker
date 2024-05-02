@@ -325,7 +325,7 @@ def mock_feature(mocker, request):
 
     from shared.rollouts import Feature
 
-    def check_value(self, *, owner_id=None, repo_id=None, default=False):
+    def check_value(self, identifier, default=False):
         return default
 
     return mocker.patch.object(Feature, "check_value", check_value)
