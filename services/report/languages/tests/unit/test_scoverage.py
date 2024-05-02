@@ -1,5 +1,4 @@
 import xml.etree.cElementTree as etree
-from json import dumps
 
 from services.report.languages import scoverage
 from services.report.report_builder import ReportBuilder

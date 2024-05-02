@@ -1,7 +1,4 @@
-import json
 from pathlib import Path
-from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
-from unittest.mock import MagicMock
 
 import pytest
 from jinja2 import TemplateNotFound, UndefinedError

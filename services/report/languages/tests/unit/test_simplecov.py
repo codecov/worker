@@ -1,6 +1,5 @@
 import pprint
 from json import loads
-from platform import processor
 
 from services.report.languages import simplecov
 from services.report.report_builder import ReportBuilder

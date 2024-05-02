@@ -38,8 +38,7 @@ class ParserFailureError(Exception):
         self.parser_err_msg = parser_err_msg
 
 
-class ParserNotSupportedError(Exception):
-    ...
+class ParserNotSupportedError(Exception): ...
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
@@ -109,7 +108,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     ):
         memory_used = getsizeof(parsed_testruns) // 1024
         with metrics.timing(key="test_results.processor.write_to_db"):
-
             test_data = []
             test_instance_data = []
             for testrun in parsed_testruns:
@@ -232,7 +230,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         filename: str,
         file_bytes: BytesIO,
     ):
-
         try:
             with metrics.timing("test_results.processor.parser_matching"):
                 parser, parsing_function = self.match_report(filename, file_bytes)

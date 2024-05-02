@@ -214,9 +214,11 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             owner.github_app_installations is None
             or owner.github_app_installations == []
         ):
-            log.warning(
-                "Failed to possibly update ghapp covered repos. Owner has no installations",
-            ),
+            (
+                log.warning(
+                    "Failed to possibly update ghapp covered repos. Owner has no installations",
+                ),
+            )
             return
         ghapp = next(
             filter(

@@ -1,7 +1,6 @@
 import logging
 
 from shared.django_apps.reports.models import TestInstance
-from sqlalchemy import desc
 
 from app import celery_app
 from celery_config import backfill_test_instances_task_name

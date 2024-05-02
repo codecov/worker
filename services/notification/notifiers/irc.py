@@ -43,7 +43,6 @@ class IRCClient(object):
 
 
 class IRCNotifier(StandardNotifier):
-
     BASE_MESSAGE = " ".join(
         [
             "Coverage for {owner_username}/{repo_name}",

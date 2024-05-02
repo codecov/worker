@@ -9,8 +9,7 @@ from helpers.email import Email
 log = logging.getLogger(__name__)
 
 
-class SMTPServiceError(Exception):
-    ...
+class SMTPServiceError(Exception): ...
 
 
 class SMTPService:

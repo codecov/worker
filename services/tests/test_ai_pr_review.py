@@ -1,9 +1,6 @@
 import json
-from unittest.mock import PropertyMock
 
 import pytest
-from shared.config import ConfigHelper
-from shared.storage.exceptions import FileNotInStorageError
 
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from services.ai_pr_review import Diff, LineInfo, perform_review

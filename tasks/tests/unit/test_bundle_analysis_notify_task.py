@@ -1,5 +1,3 @@
-import pytest
-
 from database.tests.factories import CommitFactory
 from tasks.bundle_analysis_notify import BundleAnalysisNotifyTask
 

@@ -1,5 +1,3 @@
-from io import BytesIO
-
 from services.report.parser import LegacyReportParser
 
 simple_content = b"""./codecov.yaml

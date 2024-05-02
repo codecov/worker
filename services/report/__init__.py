@@ -628,7 +628,6 @@ class ReportService(BaseReportService):
     def get_appropriate_commit_to_carryforward_from(
         self, commit: Commit, max_parenthood_deepness: int = 10
     ) -> Optional[Commit]:
-
         parent_commit = commit.get_parent_commit()
         parent_commit_tracking = []
         count = 1  # `parent_commit` is already the first parent

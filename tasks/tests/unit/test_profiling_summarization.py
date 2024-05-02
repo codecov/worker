@@ -2,8 +2,6 @@ import json
 import re
 from datetime import datetime, timezone
 
-import pytest
-
 from database.tests.factories.profiling import ProfilingCommitFactory
 from tasks.profiling_summarization import ProfilingSummarizationTask
 

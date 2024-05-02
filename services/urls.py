@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 from dataclasses import dataclass
 from enum import Enum

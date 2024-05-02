@@ -1,4 +1,3 @@
-from asyncio import Future
 from datetime import datetime
 
 import pytest

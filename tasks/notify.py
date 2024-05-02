@@ -11,9 +11,7 @@ from shared.celery_config import (
 from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
-from sqlalchemy import desc
 from sqlalchemy.orm.session import Session
-from test_results_parser import Outcome
 
 from app import celery_app
 from database.enums import CommitErrorTypes, Decoration, ReportType
@@ -26,7 +24,6 @@ from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValid
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
-from services.billing import BillingPlan
 from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
@@ -40,7 +37,6 @@ from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
-from services.test_results import latest_test_instances_for_a_given_commit
 from services.yaml import get_current_yaml, read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME
@@ -98,15 +94,17 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     **kwargs,
                 )
         except LockRetry as err:
-            log.info(
-                "Not notifying because there is another notification already happening",
-                extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    error_type=type(err),
-                    lock_acquired=lock_acquired,
+            (
+                log.info(
+                    "Not notifying because there is another notification already happening",
+                    extra=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        error_type=type(err),
+                        lock_acquired=lock_acquired,
+                    ),
                 ),
-            ),
+            )
             self.log_checkpoint(kwargs, UploadFlow.NOTIF_LOCK_ERROR)
             return {
                 "notified": False,

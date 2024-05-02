@@ -128,3 +128,6 @@ background_app/.report.json
 # Vim temporary files
 *.swp
 *.swo
+
+# Pycharm/Intellij
+.idea/

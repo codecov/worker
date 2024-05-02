@@ -1,11 +1,9 @@
 import logging
-from contextlib import nullcontext
 from typing import Dict
 
 from shared.config import get_config
-from shared.helpers.cache import DEFAULT_TTL, NO_VALUE, make_hash_sha256
+from shared.helpers.cache import NO_VALUE, make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError, TorngitError
-from shared.utils.sessions import SessionType
 
 from helpers.cache import cache
 from helpers.match import match

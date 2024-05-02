@@ -2,7 +2,6 @@ import json
 import os
 from pathlib import Path
 
-import pytest
 from redis.exceptions import LockError
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError

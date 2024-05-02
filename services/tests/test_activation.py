@@ -1,10 +1,7 @@
 from datetime import datetime
 
-import pytest
-
 from database.tests.factories import OwnerFactory
 from services.activation import activate_user, get_installation_plan_activated_users
-from services.license import _get_now, is_enterprise
 
 
 class TestActivationServiceTestCase(object):

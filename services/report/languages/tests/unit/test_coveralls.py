@@ -1,4 +1,4 @@
-from json import dumps, loads
+from json import loads
 
 from services.report.languages import coveralls
 from services.report.report_builder import ReportBuilder

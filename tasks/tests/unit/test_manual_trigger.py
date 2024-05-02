@@ -17,7 +17,6 @@ class TestUploadCompletionTask(object):
         mock_redis,
         celery_app,
     ):
-
         mocked_app = mocker.patch.object(
             ManualTriggerTask,
             "app",
@@ -78,7 +77,6 @@ class TestUploadCompletionTask(object):
         mock_redis,
         celery_app,
     ):
-
         mocker.patch.object(
             ManualTriggerTask,
             "app",

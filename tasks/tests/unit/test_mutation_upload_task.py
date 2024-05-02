@@ -1,5 +1,3 @@
-import pytest
-
 from database.models.core import Commit, Repository
 from database.tests.factories.core import CommitFactory, RepositoryFactory
 from services.archive import ArchiveService

@@ -197,7 +197,7 @@ class ReportBuilderSession(object):
         ] = None,
         partials=None,
         missing_branches=None,
-        complexity=None
+        complexity=None,
     ) -> ReportLine:
         coverage_type_str = coverage_type.map_to_string()
         datapoints = (

@@ -1,5 +1,4 @@
 from datetime import datetime
-from os import times
 
 from database.models import MeasurementName
 from database.tests.factories import RepositoryFactory

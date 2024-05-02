@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Tuple
+from typing import Dict
 
 from database.enums import Notification
 from services.notification.notifiers.mixins.status import StatusChangesMixin
@@ -9,7 +9,6 @@ log = logging.getLogger(__name__)
 
 
 class ChangesStatusNotifier(StatusChangesMixin, StatusNotifier):
-
     """This status analyzes the "unexpected changes" (see services/notification/changes.py
         for a better description) and covered lines within it
 

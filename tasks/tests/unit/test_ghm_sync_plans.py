@@ -1,6 +1,3 @@
-import json
-
-import pytest
 from freezegun import freeze_time
 
 from database.models import Owner, Repository

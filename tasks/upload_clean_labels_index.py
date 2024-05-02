@@ -13,7 +13,6 @@ from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.models.core import Commit
-from database.models.reports import CommitReport
 from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import get_repo_provider_service

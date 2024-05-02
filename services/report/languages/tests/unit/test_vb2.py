@@ -1,5 +1,4 @@
 import xml.etree.cElementTree as etree
-from json import dumps
 
 from services.report.languages import vb2
 from test_utils.base import BaseTestCase

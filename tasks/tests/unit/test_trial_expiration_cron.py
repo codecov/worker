@@ -1,8 +1,6 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-import pytest
-
 from celery_config import trial_expiration_task_name
 from database.enums import TrialStatus
 from database.tests.factories.core import OwnerFactory

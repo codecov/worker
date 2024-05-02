@@ -7,7 +7,6 @@ from database.base import CodecovBaseModel
 
 
 class TimeseriesBaseModel(CodecovBaseModel):
-
     __abstract__ = True
 
 

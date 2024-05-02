@@ -64,17 +64,17 @@ update-requirements:
 
 lint.install:
 	echo "Installing..."
-	pip install -Iv black==22.3.0 isort
+	pip install -Iv ruff
 
 lint.run:
-	black .
-	isort --profile black .
+	ruff check --select F401 --select I . --fix
+	ruff format
 
 lint.check:
 	echo "Linting..."
-	black --check .
+	ruff format --check
 	echo "Sorting..."
-	isort --profile black --check .
+	ruff check --select F401 --select I .
 
 build.requirements:
 	# if docker pull succeeds, we have already build this version of

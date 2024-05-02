@@ -1,10 +1,8 @@
 import json
 
 from shared.storage import MinioStorageService
-from shared.storage.exceptions import FileNotInStorageError
 
 from database.tests.factories import RepositoryFactory
-from database.tests.factories.core import CommitFactory
 from services.archive import ArchiveService
 from test_utils.base import BaseTestCase
 

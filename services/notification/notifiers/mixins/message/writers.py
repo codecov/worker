@@ -15,6 +15,7 @@ from services.notification.notifiers.mixins.message.helpers import (
 
 log = logging.getLogger(__name__)
 
+
 # Unlike sections.py, this is an alternative take for creating messages based functionality.
 # This is a plan specific section, so it doesn't adhere to the settings/yaml configurations
 # like other writers do, hence the new file

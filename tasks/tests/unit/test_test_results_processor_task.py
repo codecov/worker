@@ -5,7 +5,7 @@ from mock import call
 from shared.storage.exceptions import FileNotInStorageError
 from test_results_parser import Outcome
 
-from database.models import CommitReport, Repository
+from database.models import CommitReport
 from database.models.reports import Test, TestInstance
 from database.tests.factories import CommitFactory, UploadFactory
 from services.test_results import generate_test_id
@@ -30,7 +30,6 @@ class TestUploadTestProcessorTask(object):
         mock_redis,
         celery_app,
     ):
-
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         assert len(tests) == 0
@@ -123,7 +122,6 @@ class TestUploadTestProcessorTask(object):
         mock_redis,
         celery_app,
     ):
-
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_pytest_reportlog.txt") as f:
             content = f.read()
@@ -189,7 +187,6 @@ class TestUploadTestProcessorTask(object):
         mock_redis,
         celery_app,
     ):
-
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_vitest.txt") as f:
             content = f.read()
@@ -397,7 +394,6 @@ class TestUploadTestProcessorTask(object):
         mock_redis,
         celery_app,
     ):
-
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_vitest.txt") as f:
             content = f.read()
@@ -519,7 +515,6 @@ class TestUploadTestProcessorTask(object):
         mock_redis,
         celery_app,
     ):
-
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.txt") as f:
             content = f.read()
@@ -606,7 +601,6 @@ class TestUploadTestProcessorTask(object):
         mock_redis,
         celery_app,
     ):
-
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.txt") as f:
             content = f.read()

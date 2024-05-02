@@ -30,9 +30,9 @@ class TestGHMarketplaceSyncPlansTask(object):
     def test_purchase_by_existing_owner(
         self, dbsession, mocker, mock_configuration, codecov_vcr
     ):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -72,9 +72,9 @@ class TestGHMarketplaceSyncPlansTask(object):
     def test_purchase_new_owner(
         self, dbsession, mocker, mock_configuration, codecov_vcr
     ):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -110,9 +110,9 @@ class TestGHMarketplaceSyncPlansTask(object):
     def test_purchase_listing_not_found(
         self, dbsession, mocker, mock_configuration, codecov_vcr
     ):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -146,9 +146,9 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner.plan_activated_users is None
 
     def test_cancelled(self, dbsession, mocker, mock_configuration, codecov_vcr):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -230,9 +230,9 @@ class TestGHMarketplaceSyncPlansTask(object):
             assert repo.activated is False
 
     def test_sync_all_plans(self, dbsession, mocker, mock_configuration, codecov_vcr):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
         mock_configuration.params["github"] = {
             "integration": {
                 "pem": "/home/src/certs/github.pem",

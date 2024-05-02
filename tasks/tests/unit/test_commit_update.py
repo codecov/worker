@@ -144,7 +144,6 @@ class TestCommitUpdate(object):
         mock_repo_provider,
         mock_storage,
     ):
-
         mock_update_commit_from_provider = mocker.patch(
             "tasks.commit_update.possibly_update_commit_from_provider_info"
         )

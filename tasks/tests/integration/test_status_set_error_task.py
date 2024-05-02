@@ -1,5 +1,4 @@
 import pytest
-from shared.torngit.status import Status
 
 from database.tests.factories import CommitFactory, RepositoryFactory
 from tasks.status_set_error import StatusSetErrorTask

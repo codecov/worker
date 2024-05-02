@@ -131,9 +131,9 @@ class LabelAnalysisRequestProcessingTask(
             return response
 
         try:
-            lines_relevant_to_diff: Optional[
-                LinesRelevantToChange
-            ] = self._get_lines_relevant_to_diff(label_analysis_request)
+            lines_relevant_to_diff: Optional[LinesRelevantToChange] = (
+                self._get_lines_relevant_to_diff(label_analysis_request)
+            )
             base_report = self._get_base_report(label_analysis_request)
 
             if lines_relevant_to_diff and base_report:
@@ -286,7 +286,6 @@ class LabelAnalysisRequestProcessingTask(
         return {**larq.result, "success": True, "errors": []}
 
     def _lookup_label_ids(self, report: Report, label_ids: Set[int]) -> Set[str]:
-
         labels: Set[str] = set()
         for label_id in label_ids:
             # This can raise shared.reports.exceptions.LabelNotFoundError

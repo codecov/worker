@@ -405,7 +405,6 @@ class TestBaseCodecovTaskHooks(object):
 
 
 class TestBaseCodecovRequest(object):
-
     """
     All in all, this is a really weird class
 
@@ -508,7 +507,6 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_apply_async_override(self, mocker):
-
         mock_get_db_session = mocker.patch("tasks.base.get_db_session")
         mock_celery_task_router = mocker.patch("tasks.base._get_user_plan_from_task")
         mock_route_tasks = mocker.patch(
@@ -538,7 +536,6 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_apply_async_override_with_chain(self, mocker):
-
         mock_get_db_session = mocker.patch("tasks.base.get_db_session")
         mock_celery_task_router = mocker.patch("tasks.base._get_user_plan_from_task")
         mock_route_tasks = mocker.patch(

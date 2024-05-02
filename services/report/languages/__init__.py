@@ -1,3 +1,4 @@
+# ruff: noqa: F401
 from services.report.languages.bullseye import BullseyeProcessor
 from services.report.languages.clover import CloverProcessor
 from services.report.languages.cobertura import CoberturaProcessor

@@ -1,5 +1,3 @@
-import json
-
 import pytest
 from mock import MagicMock
 from shared.reports.editable import EditableReport, EditableReportFile
@@ -14,7 +12,6 @@ from shared.reports.resources import (
 from shared.reports.types import CoverageDatapoint
 from shared.yaml import UserYaml
 
-from database.tests.factories.core import RepositoryFactory
 from helpers.labels import SpecialLabelsEnum
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.report.raw_upload_processor import (
@@ -631,11 +628,11 @@ class TestAdjustSession(BaseTestCase):
                         "code": None,
                         "commit": MagicMock(
                             name="fake_commit",
-                            **{"repository": MagicMock(name="fake_repo")}
+                            **{"repository": MagicMock(name="fake_repo")},
                         ),
-                    }
+                    },
                 )
-            }
+            },
         )
         current_yaml = UserYaml(
             {
@@ -774,11 +771,11 @@ class TestAdjustSession(BaseTestCase):
                         "code": None,
                         "commit": MagicMock(
                             name="fake_commit",
-                            **{"repository": MagicMock(name="fake_repo")}
+                            **{"repository": MagicMock(name="fake_repo")},
                         ),
-                    }
+                    },
                 )
-            }
+            },
         )
         current_yaml = UserYaml(
             {
@@ -1037,11 +1034,11 @@ class TestAdjustSession(BaseTestCase):
                         "code": None,
                         "commit": MagicMock(
                             name="fake_commit",
-                            **{"repository": MagicMock(name="fake_repo")}
+                            **{"repository": MagicMock(name="fake_repo")},
                         ),
-                    }
+                    },
                 )
-            }
+            },
         )
         mocker.patch.object(
             USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,

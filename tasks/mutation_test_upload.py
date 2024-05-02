@@ -1,6 +1,5 @@
 from app import celery_app
 from database.models.core import Repository
-from database.models.reports import Upload
 from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
