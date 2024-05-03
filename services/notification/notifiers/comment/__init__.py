@@ -400,6 +400,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             # private repos excluding those on team plans, only if they signed up after introduction date
             return True
 
+        return False
+
     def _create_welcome_message(self):
         welcome_message = [
             "## Welcome to [Codecov](https://codecov.io) :tada:",
