@@ -42,23 +42,43 @@ def _get_installation_weight(installation: GithubAppInstallation) -> int:
     return max(1, age_hours + 2**age.days)
 
 
+def _can_use_this_app(
+    app: GithubAppInstallation, installation_name: str, repository: Optional[Repository]
+) -> bool:
+    return (
+        app.name == installation_name
+        # We ignore apps that are not configured because those can't be used
+        and app.is_configured()
+        and (
+            # If there is a repo we want only the apps that cover said repo
+            (repository and app.is_repo_covered_by_integration(repository))
+            # If there is no repo we still need some true value
+            or (not repository)
+        )
+    )
+
+
 def _get_apps_from_weighted_selection(
     owner: Owner, installation_name: str, repository: Optional[Repository]
 ) -> List[GithubAppInstallation]:
+    """This function returns an ordered list of GithubAppInstallations that can be used to communicate with GitHub
+    in behalf of the owner. The list is ordered in such a way that the 1st element is the app to be used in Torngit,
+    and the subsequent apps are selected as fallbacks.
+
+    IF the repository is provided, the selected apps also cover the repo.
+    IF installation_name is not the default one, than the default codecov installation
+      is also selected as a possible fallback app.
+
+    Apps are selected randomly but assigned weights based on how recently they were created.
+    This means that older apps are selected more frequently as the main app than newer ones.
+    (up to 10 days, when the probability of being chosen is the same)
+    The random selection is done so we can distribute request load more evenly among apps.
+    """
     # Map GithubAppInstallation.id --> GithubAppInstallation
     ghapp_installations_filter: Dict[int, GithubAppInstallation] = {
         obj.id: obj
         for obj in filter(
-            lambda obj: (
-                obj.name == installation_name
-                and obj.is_configured()
-                and (
-                    # If there is a repo we want only the apps that cover said repo
-                    (repository and obj.is_repo_covered_by_integration(repository))
-                    # If there is no repo we still need some true value
-                    or (not repository)
-                )
-            ),
+            lambda obj: _can_use_this_app(obj, installation_name, repository),
             owner.github_app_installations or [],
         )
     }
@@ -77,21 +97,23 @@ def _get_apps_from_weighted_selection(
     # Obviously apps with a higher weight have a higher change of being selected as the main app (1st selection)
     # But it's important that others are also selected so we can use them as fallbacks
     apps_to_consider = []
-    if keys:
-        while len(keys) > 1:
-            selected_app_id = random.choices(keys, weights, k=1)[0]
-            apps_to_consider.append(ghapp_installations_filter[selected_app_id])
-            # random.choices chooses with replacement
-            # which we are trying to avoid here. So we remove the key selected and its weight from the population.
-            key_idx = keys.index(selected_app_id)
-            keys.pop(key_idx)
-            weights.pop(key_idx)
-        # The app remaining is the last choice
-        apps_to_consider.append(ghapp_installations_filter[keys[0]])
+    apps_to_select = len(keys)
+    selections = 0
+    while selections < apps_to_select:
+        selected_app_id = random.choices(keys, weights, k=1)[0]
+        apps_to_consider.append(ghapp_installations_filter[selected_app_id])
+        # random.choices chooses with replacement
+        # which we are trying to avoid here. So we remove the key selected and its weight from the population.
+        key_idx = keys.index(selected_app_id)
+        keys.pop(key_idx)
+        weights.pop(key_idx)
+        selections += 1
     if installation_name != GITHUB_APP_INSTALLATION_DEFAULT_NAME:
         # Add the default app as the last fallback if the owner is using a different app for the task
         default_apps = filter(
-            lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            lambda obj: _can_use_this_app(
+                obj, GITHUB_APP_INSTALLATION_DEFAULT_NAME, repository
+            ),
             owner.github_app_installations,
         )
         if default_apps:
