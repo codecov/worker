@@ -1,7 +1,6 @@
-from base64 import b64encode
+from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import PropertyMock
-from urllib.parse import urlencode
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -16,9 +15,11 @@ from shared.torngit.exceptions import (
 from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
+from database.enums import TestResultsProcessingError
 from database.models.core import GithubAppInstallation, Pull
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
+from services.billing import BillingPlan
 from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.comparison.types import Comparison, FullCommit
@@ -27,8 +28,6 @@ from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
-    ellipsis,
-    escape_markdown,
     format_number_to_str,
     sort_by_importance,
 )
@@ -4057,6 +4056,40 @@ class TestNewHeaderSectionWriter(object):
         ]
 
     @pytest.mark.asyncio
+    async def test_new_header_section_writer_test_results_error(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+        )
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+        ]
+
+    @pytest.mark.asyncio
     async def test_new_header_section_writer_no_project_coverage(
         self, mocker, sample_comparison
     ):
@@ -4111,6 +4144,39 @@ class TestNewHeaderSectionWriter(object):
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "",
             ":white_check_mark: All tests successful. No failed tests found.",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_header_section_writer_no_project_coverage_test_results_error(
+        self, mocker, sample_comparison
+    ):
+        sample_comparison.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+        )
+        writer = NewHeaderSectionWriter(
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            show_complexity=mocker.MagicMock(),
+            settings={"hide_project_coverage": True},
+            current_yaml=mocker.MagicMock(),
+        )
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.round_number",
+            return_value=Decimal(0),
+        )
+        res = list(
+            await writer.write_section(
+                sample_comparison,
+                None,
+                None,
+                links={"pull": "urlurl", "base": "urlurl"},
+            )
+        )
+        assert res == [
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         ]
 
 
@@ -4865,6 +4931,88 @@ class TestCommentNotifierInNewLayout(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_build_message_team_plan_customer_all_lines_covered_test_results_error(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_coverage_carriedforward,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        sample_comparison_coverage_carriedforward.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+        )
+        comparison = sample_comparison_coverage_carriedforward
+        comparison.repository_service.service = "github"
+        # relevant part of this test
+        comparison.head.commit.repository.owner.plan = "users-teamm"
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                # Irrelevant but they don't overwrite Owner's plan
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        pull = comparison.pull
+        repository = sample_comparison_coverage_carriedforward.head.commit.repository
+        result = await notifier.build_message(comparison)
+
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
+        ]
+        assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_team_plan_customer_all_lines_covered(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison_coverage_carriedforward,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        sample_comparison_coverage_carriedforward.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=None,
+        )
+        comparison = sample_comparison_coverage_carriedforward
+        comparison.repository_service.service = "github"
+        # relevant part of this test
+        comparison.head.commit.repository.owner.plan = "users-teamm"
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                # Irrelevant but they don't overwrite Owner's plan
+                "layout": "newheader, reach, diff, flags, components, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        pull = comparison.pull
+        repository = sample_comparison_coverage_carriedforward.head.commit.repository
+        result = await notifier.build_message(comparison)
+
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
+        ]
+        assert result == expected_result
+
+    @pytest.mark.asyncio
     async def test_build_message_no_patch_or_proj_change(
         self,
         dbsession,
@@ -5231,6 +5379,9 @@ class TestComponentWriterSection(object):
         assert message == expected
 
 
+PROJECT_COVERAGE_CTA = ":information_source: You can also turn on [project coverage checks](https://docs.codecov.com/docs/common-recipe-list#set-project-coverage-checks-on-a-pull-request) and [project coverage reporting on Pull Request comment](https://docs.codecov.com/docs/common-recipe-list#show-project-coverage-changes-on-the-pull-request-comment)"
+
+
 class TestCommentNotifierWelcome:
     @pytest.mark.asyncio
     async def test_build_message(
@@ -5363,3 +5514,143 @@ class TestCommentNotifierWelcome:
 
         pulls_in_db = dbsession.query(Pull).all()
         assert len(pulls_in_db) == 3
+
+    @pytest.mark.asyncio
+    async def test_should_see_project_coverage_cta_public_repo(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        sample_comparison.head.commit.repository.private = False
+
+        before_introduction_date = datetime(2024, 4, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            before_introduction_date
+        )
+
+        dbsession.add_all(
+            [
+                sample_comparison.head.commit.repository,
+                sample_comparison.head.commit.repository.owner,
+            ]
+        )
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA in result
+
+    @pytest.mark.asyncio
+    async def test_should_see_project_coverage_cta_introduction_date(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        sample_comparison.head.commit.repository.private = True
+
+        before_introduction_date = datetime(2024, 4, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            before_introduction_date
+        )
+
+        dbsession.add_all(
+            [
+                sample_comparison.head.commit.repository,
+                sample_comparison.head.commit.repository.owner,
+            ]
+        )
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA not in result
+
+        after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            after_introduction_date
+        )
+
+        dbsession.add(sample_comparison.head.commit.repository.owner)
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA in result
+
+    @pytest.mark.asyncio
+    async def test_should_see_project_coverage_cta_team_plan(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        sample_comparison.head.commit.repository.private = True
+
+        after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            after_introduction_date
+        )
+
+        sample_comparison.head.commit.repository.owner.plan = (
+            BillingPlan.team_yearly.value
+        )
+
+        dbsession.add_all(
+            [
+                sample_comparison.head.commit.repository,
+                sample_comparison.head.commit.repository.owner,
+            ]
+        )
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA not in result
+
+        sample_comparison.head.commit.repository.owner.plan = (
+            BillingPlan.users_free.value
+        )
+
+        dbsession.add(sample_comparison.head.commit.repository.owner)
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA in result

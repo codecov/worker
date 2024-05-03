@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Any, List, Mapping
 
 from shared.torngit.exceptions import (
@@ -8,8 +9,8 @@ from shared.torngit.exceptions import (
 )
 
 from database.enums import Notification
-from database.models import Pull
 from helpers.metrics import metrics
+from services.billing import BillingPlan
 from services.comparison.types import Comparison
 from services.license import requires_license
 from services.notification.notifiers.base import (
@@ -382,14 +383,46 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             comparison, pull_dict, self.notifier_yaml_settings
         )
 
+    def should_see_project_coverage_cta(self):
+        if not self.repository.private:
+            # public repos
+            return True
+
+        introduction_date = datetime(2024, 5, 1, 0, 0, 0).replace(tzinfo=timezone.utc)
+        if (
+            not (
+                self.repository.owner.plan == BillingPlan.team_monthly.value
+                or self.repository.owner.plan == BillingPlan.team_yearly.value
+            )
+            and self.repository.owner.createstamp
+            and self.repository.owner.createstamp > introduction_date
+        ):
+            # private repos excluding those on team plans, only if they signed up after introduction date
+            return True
+
+        return False
+
     def _create_welcome_message(self):
-        return [
+        welcome_message = [
             "## Welcome to [Codecov](https://codecov.io) :tada:",
             "",
             "Once you merge this PR into your default branch, you're all set! Codecov will compare coverage reports and display results in all future pull requests.",
             "",
             "Thanks for integrating Codecov - We've got you covered :open_umbrella:",
         ]
+        project_coverage_cta = [
+            ":information_source: You can also turn on [project coverage checks](https://docs.codecov.com/docs/common-recipe-list#set-project-coverage-checks-on-a-pull-request) "
+            "and [project coverage reporting on Pull Request comment](https://docs.codecov.com/docs/common-recipe-list#show-project-coverage-changes-on-the-pull-request-comment)",
+            "",
+        ]
+
+        if self.should_see_project_coverage_cta():
+            welcome_message_with_project_coverage_cta = (
+                welcome_message[0:4] + project_coverage_cta + welcome_message[4:]
+            )
+            return welcome_message_with_project_coverage_cta
+
+        return welcome_message
 
     def _create_empty_upload_message(self):
         if self.is_passing_empty_upload():

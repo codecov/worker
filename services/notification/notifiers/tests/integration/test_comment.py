@@ -3,6 +3,7 @@ from unittest.mock import PropertyMock
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 
+from database.enums import TestResultsProcessingError
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
@@ -337,7 +338,9 @@ def sample_comparison_for_limited_upload(
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
     async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
-        sample_comparison.context = NotificationContext(all_tests_passed=True)
+        sample_comparison.context = NotificationContext(
+            all_tests_passed=True, test_results_error=None
+        )
         mock_configuration._params["setup"] = {
             "codecov_url": None,
             "codecov_dashboard_url": None,
@@ -361,6 +364,81 @@ class TestCommentNotifierIntegration(object):
             "> Report is 2 commits behind head on main.",
             "",
             ":white_check_mark: All tests successful. No failed tests found.",
+            "",
+            ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
+            "",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=tree)",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
+            "##               main       #9       +/-   ##",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
+            "| [Flag](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
+            "|---|---|---|---|",
+            "| [integration](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/indirect-changes?src=pr&el=tree-more)",
+            "",
+            "------",
+            "",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).",
+            "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "",
+        ]
+        for exp, res in zip(result.data_sent["message"], message):
+            assert exp == res
+        assert result.data_sent["message"] == message
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
+        assert result.data_received == {"id": 1699669247}
+
+    @pytest.mark.asyncio
+    async def test_notify_test_results_error(
+        self, sample_comparison, codecov_vcr, mock_configuration
+    ):
+        sample_comparison.context = NotificationContext(
+            all_tests_passed=False,
+            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+        )
+        mock_configuration._params["setup"] = {
+            "codecov_url": None,
+            "codecov_dashboard_url": None,
+        }
+        comparison = sample_comparison
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.notify(comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        message = [
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=desc).",
+            "> Report is 2 commits behind head on main.",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
             "",
