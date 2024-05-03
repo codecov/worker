@@ -594,6 +594,13 @@ class TestBotsService(BaseTestCase):
         for _ in range(1000):
             installation_dict = get_owner_installation_id(owner, False)
             assert installation_dict is not None
+            # Regardless of the app we choose we want the other one
+            # to be listed as a fallback option
+            assert installation_dict["fallback_installations"] != []
+            assert (
+                installation_dict["installation_id"]
+                != installation_dict["fallback_installations"][0]["installation_id"]
+            )
             id_chosen = installation_dict["installation_id"]
             choices[id_chosen] += 1
         # Assert that both apps can be selected
