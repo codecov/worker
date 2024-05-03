@@ -1,7 +1,6 @@
-from base64 import b64encode
+from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import PropertyMock
-from urllib.parse import urlencode
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -20,6 +19,7 @@ from database.enums import TestResultsProcessingError
 from database.models.core import GithubAppInstallation, Pull
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
+from services.billing import BillingPlan
 from services.comparison import ComparisonProxy, NotificationContext
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.comparison.types import Comparison, FullCommit
@@ -28,8 +28,6 @@ from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
-    ellipsis,
-    escape_markdown,
     format_number_to_str,
     sort_by_importance,
 )
@@ -5381,6 +5379,9 @@ class TestComponentWriterSection(object):
         assert message == expected
 
 
+PROJECT_COVERAGE_CTA = ":information_source: You can also turn on [project coverage checks](https://docs.codecov.com/docs/common-recipe-list#set-project-coverage-checks-on-a-pull-request) and [project coverage reporting on Pull Request comment](https://docs.codecov.com/docs/common-recipe-list#show-project-coverage-changes-on-the-pull-request-comment)"
+
+
 class TestCommentNotifierWelcome:
     @pytest.mark.asyncio
     async def test_build_message(
@@ -5513,3 +5514,143 @@ class TestCommentNotifierWelcome:
 
         pulls_in_db = dbsession.query(Pull).all()
         assert len(pulls_in_db) == 3
+
+    @pytest.mark.asyncio
+    async def test_should_see_project_coverage_cta_public_repo(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        sample_comparison.head.commit.repository.private = False
+
+        before_introduction_date = datetime(2024, 4, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            before_introduction_date
+        )
+
+        dbsession.add_all(
+            [
+                sample_comparison.head.commit.repository,
+                sample_comparison.head.commit.repository.owner,
+            ]
+        )
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA in result
+
+    @pytest.mark.asyncio
+    async def test_should_see_project_coverage_cta_introduction_date(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        sample_comparison.head.commit.repository.private = True
+
+        before_introduction_date = datetime(2024, 4, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            before_introduction_date
+        )
+
+        dbsession.add_all(
+            [
+                sample_comparison.head.commit.repository,
+                sample_comparison.head.commit.repository.owner,
+            ]
+        )
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA not in result
+
+        after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            after_introduction_date
+        )
+
+        dbsession.add(sample_comparison.head.commit.repository.owner)
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA in result
+
+    @pytest.mark.asyncio
+    async def test_should_see_project_coverage_cta_team_plan(
+        self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        sample_comparison.head.commit.repository.private = True
+
+        after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            after_introduction_date
+        )
+
+        sample_comparison.head.commit.repository.owner.plan = (
+            BillingPlan.team_yearly.value
+        )
+
+        dbsession.add_all(
+            [
+                sample_comparison.head.commit.repository,
+                sample_comparison.head.commit.repository.owner,
+            ]
+        )
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA not in result
+
+        sample_comparison.head.commit.repository.owner.plan = (
+            BillingPlan.users_free.value
+        )
+
+        dbsession.add(sample_comparison.head.commit.repository.owner)
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA in result
