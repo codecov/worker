@@ -384,11 +384,16 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         )
 
     def should_see_project_coverage_cta(self):
-        if not self.repository.private:
-            # public repos
+        introduction_date = datetime(2024, 5, 1, 0, 0, 0).replace(tzinfo=timezone.utc)
+
+        if (
+            not self.repository.private
+            and self.repository.owner.createstamp
+            and self.repository.owner.createstamp > introduction_date
+        ):
+            # public repos, only if they signed up after introduction date
             return True
 
-        introduction_date = datetime(2024, 5, 1, 0, 0, 0).replace(tzinfo=timezone.utc)
         if (
             not (
                 self.repository.owner.plan == BillingPlan.team_monthly.value
