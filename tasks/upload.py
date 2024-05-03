@@ -660,6 +660,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         for i in range(0, len(argument_list), chunk_size):
             chunk = argument_list[i : i + chunk_size]
             if chunk:
+                is_final = i == ceil(len(argument_list) / chunk_size) - 1
                 sig = upload_processor_task.signature(
                     args=({},) if i == 0 else (),
                     kwargs=dict(
@@ -669,11 +670,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         arguments_list=chunk,
                         report_code=commit_report.code,
                         in_parallel=False,
-                        is_final=(
-                            True
-                            if i == ceil(len(argument_list) / chunk_size) - 1
-                            else False
-                        ),
+                        is_final=is_final,
                     ),
                 )
                 processing_tasks.append(sig)
