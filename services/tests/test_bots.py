@@ -482,11 +482,9 @@ class TestBotsService(BaseTestCase):
         with pytest.raises(NoConfiguredAppsAvailable):
             get_owner_installation_id(owner, True, installation_name="my_app")
         mock_redis.exists.assert_any_call(
-            f"rate_limited_installations_{installation_0.id}"
+            f"rate_limited_installations_default_app_123456"
         )
-        mock_redis.exists.assert_any_call(
-            f"rate_limited_installations_{installation_1.id}"
-        )
+        mock_redis.exists.assert_any_call(f"rate_limited_installations_1212_12000")
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration_specific_repos(
         self, mocker, dbsession
@@ -596,6 +594,13 @@ class TestBotsService(BaseTestCase):
         for _ in range(1000):
             installation_dict = get_owner_installation_id(owner, False)
             assert installation_dict is not None
+            # Regardless of the app we choose we want the other one
+            # to be listed as a fallback option
+            assert installation_dict["fallback_installations"] != []
+            assert (
+                installation_dict["installation_id"]
+                != installation_dict["fallback_installations"][0]["installation_id"]
+            )
             id_chosen = installation_dict["installation_id"]
             choices[id_chosen] += 1
         # Assert that both apps can be selected

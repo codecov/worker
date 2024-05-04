@@ -102,6 +102,7 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
             "fallback_installations": None,
         }
         assert res.data == expected_data
@@ -157,6 +158,11 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": {
+                "installation_id": 1300,
+                "app_id": 300,
+                "pem_path": "path",
+            },
             "fallback_installations": [
                 {"app_id": 200, "installation_id": 1200, "pem_path": None}
             ],
@@ -189,6 +195,7 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
             "fallback_installations": None,
         }
         assert res.data == expected_data
@@ -221,6 +228,7 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
             "fallback_installations": None,
         }
         assert res.data == expected_data
@@ -254,6 +262,7 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
             "fallback_installations": None,
         }
         assert res.data == expected_data
@@ -306,6 +315,7 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
             "fallback_installations": None,
         }
         assert res.data["repo"] == expected_data["repo"]
@@ -341,6 +351,7 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
             "fallback_installations": None,
         }
         assert res.data == expected_data
@@ -1080,6 +1091,7 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": "123456",
                 "repoid": repo.repoid,
             },
+            "installation": None,
             "fallback_installations": None,
         }
         assert res.data["repo"] == expected_data["repo"]

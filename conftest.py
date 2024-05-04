@@ -212,9 +212,14 @@ def mock_repo_provider(mocker):
 
 @pytest.fixture
 def mock_owner_provider(mocker):
-    m = mocker.patch("services.owner._get_owner_provider_service_instance")
     provider_instance = mocker.MagicMock(GithubHandler)
-    m.return_value = provider_instance
+
+    def side_effect(*args, **kwargs):
+        provider_instance.data = {**kwargs}
+        return provider_instance
+
+    m = mocker.patch("services.owner._get_owner_provider_service_instance")
+    m.side_effect = side_effect
     yield provider_instance
 
 
@@ -320,7 +325,7 @@ def mock_feature(mocker, request):
 
     from shared.rollouts import Feature
 
-    def check_value(self, *, owner_id=None, repo_id=None, default=False):
+    def check_value(self, identifier, default=False):
         return default
 
     return mocker.patch.object(Feature, "check_value", check_value)

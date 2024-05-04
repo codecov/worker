@@ -46,10 +46,15 @@ class TeamPlanWriter:
 
         hide_project_coverage = settings.get("hide_project_coverage", False)
         if hide_project_coverage:
-            if comparison.all_tests_passed():
+            if comparison.test_results_error():
                 lines.append("")
                 lines.append(
-                    ":white_check_mark: All tests successful. No failed tests found :relaxed:"
+                    ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
+                )
+            elif comparison.all_tests_passed():
+                lines.append("")
+                lines.append(
+                    ":white_check_mark: All tests successful. No failed tests found."
                 )
 
         return lines
@@ -136,7 +141,7 @@ class TeamPlanWriter:
         lines.append("")
         lines.append(
             ":loudspeaker: Thoughts on this report? [Let us know!]({0})".format(
-                "https://about.codecov.io/pull-request-comment-report/"
+                "https://github.com/codecov/feedback/issues/255"
             )
         )
 

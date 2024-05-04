@@ -11,6 +11,12 @@ from shared.torngit.exceptions import (
     TorngitError,
     TorngitObjectNotFoundError,
 )
+from shared.typings.torngit import (
+    GithubInstallationInfo,
+    OwnerInfo,
+    RepoInfo,
+    TorngitInstanceData,
+)
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
@@ -64,18 +70,30 @@ def get_repo_provider_service(
         installation_name=installation_name_to_use,
     )
     token, token_owner = get_repo_appropriate_bot_token(repository, installation_info)
-    adapter_params = dict(
-        repo=dict(
+    data = TorngitInstanceData(
+        repo=RepoInfo(
             name=repository.name,
             using_integration=_is_repo_using_integration(repository),
             service_id=repository.service_id,
             repoid=repository.repoid,
         ),
-        owner=dict(
+        owner=OwnerInfo(
             service_id=repository.owner.service_id,
             ownerid=repository.ownerid,
             username=repository.owner.username,
         ),
+        installation=None,
+        fallback_installations=None,
+    )
+    if installation_info:
+        data["installation"] = GithubInstallationInfo(
+            installation_id=installation_info.get("installation_id"),
+            app_id=installation_info.get("app_id"),
+            pem_path=installation_info.get("pem_path"),
+        )
+        data["fallback_installations"] = installation_info.get("fallback_installations")
+
+    adapter_params = dict(
         token=token,
         token_type_mapping=get_token_type_mapping(
             repository, installation_name=installation_name_to_use
@@ -87,9 +105,7 @@ def get_repo_provider_service(
             secret=get_config(service, "client_secret"),
         ),
         on_token_refresh=get_token_refresh_callback(token_owner),
-        fallback_installations=installation_info.get("fallback_installations")
-        if installation_info
-        else None,
+        **data,
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
 

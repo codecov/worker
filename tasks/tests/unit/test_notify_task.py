@@ -4,7 +4,6 @@ from unittest.mock import call
 import pytest
 from celery.exceptions import MaxRetriesExceededError, Retry
 from freezegun import freeze_time
-from redis.exceptions import LockError
 from shared.celery_config import new_user_activated_task_name
 from shared.reports.resources import Report
 from shared.torngit.exceptions import (

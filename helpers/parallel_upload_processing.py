@@ -117,9 +117,10 @@ def save_final_serial_report_results(
         report_code,
         f"serial/chunks<latest_upload_pk:{latest_upload_pk}>",
     )
-    archive_service.write_parallel_experiment_file(
+    report_url = archive_service.write_parallel_experiment_file(
         commitid,
         files_and_sessions,
         report_code,
         f"serial/files_and_sessions<latest_upload_pk:{latest_upload_pk}>",
     )
+    return report_url

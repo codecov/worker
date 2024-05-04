@@ -97,7 +97,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         )
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repoid)
             and in_parallel
         ):
             log.info(
@@ -161,7 +161,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
             except LockError:
                 max_retry = 200 * 3**self.request.retries
-                retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
+                retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
                 log.warning(
                     "Unable to acquire lock for key %s. Retrying",
                     lock_name,
@@ -190,7 +190,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         **kwargs,
     ):
         if (
-            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repoid)
             and in_parallel
         ):
             log.info(
@@ -219,7 +219,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_service = ReportService(commit_yaml)
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repository.repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repository.repoid)
             and in_parallel
         ):
             log.info(
@@ -315,7 +315,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             results_dict = {}
             if (
                 PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                    repo_id=repository.repoid
+                    identifier=repository.repoid
                 )
                 and in_parallel
             ):
@@ -354,27 +354,26 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 # experiment. The report being saved is not necessarily the final
                 # report for the commit, as more uploads can still be made.
                 if is_final and (not in_parallel):
-                    save_final_serial_report_results(
+                    final_serial_report_url = save_final_serial_report_results(
                         report_service, commit, report, report_code, arguments_list
+                    )
+                    log.info(
+                        "Saved final serial report results to storage",
+                        extra=dict(
+                            repoid=repoid,
+                            commit=commitid,
+                            final_serial_result_path=final_serial_report_url,
+                        ),
                     )
 
             for processed_individual_report in processings_so_far:
-                # We delete and rewrite the artifacts when the serial flow runs first. When
-                # the parallel flow runs second, it parses the human readable artifacts instead
-                # since the serial flow already rewrote it
-                if not (
-                    PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                        repo_id=repository.repoid
-                    )
-                    and in_parallel
-                ):
-                    deleted_archive = self._possibly_delete_archive(
+                deleted_archive = self._possibly_delete_archive(
+                    processed_individual_report, report_service, commit
+                )
+                if not deleted_archive:
+                    self._rewrite_raw_report_readable(
                         processed_individual_report, report_service, commit
                     )
-                    if not deleted_archive:
-                        self._rewrite_raw_report_readable(
-                            processed_individual_report, report_service, commit
-                        )
                 processed_individual_report.pop("upload_obj", None)
                 processed_individual_report.pop("raw_report", None)
             log.info(
@@ -396,7 +395,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
             if (
                 PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                    repo_id=repository.repoid
+                    identifier=repository.repoid
                 )
                 and in_parallel
             ):
@@ -503,7 +502,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         )
         try:
             raw_report = report_service.parse_raw_report_from_storage(
-                commit.repository, upload
+                commit.repository, upload, is_error_case=True
             )
             self._rewrite_raw_report_readable(
                 processing_result={"raw_report": raw_report, "upload_object": upload},

@@ -1,11 +1,12 @@
-https://github.com/codecov/shared/archive/8a2fec1557b2a36ac7a9c70f3fec9e37633a3a44.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/039efcfca9c11a5d6d02e1e4d19b86d022a21a72.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz#egg=test-results-parser
-boto3
+boto3>=1.34
 celery>=5.3.6
 click
 codecov-ribs
 coverage
+django-postgres-extra>=2.0.8
 factory-boy
 google-cloud-storage>=2.10.0
 httpx
@@ -20,7 +21,6 @@ pytest-asyncio
 pytest-cov
 pytest-celery
 pytest-django
-django-postgres-extra>=2.0.8
 pytest-mock
 pytest-sqlalchemy
 pytest-freezegun
@@ -41,8 +41,8 @@ stripe
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 urllib3>=1.26.18
 vcrpy
-opentelemetry-instrumentation-celery>=0.41b0
-opentelemetry-sdk>=1.20.0
+opentelemetry-instrumentation-celery>=0.45b0
+opentelemetry-sdk>=1.24.0
 django-admin
 google-cloud-pubsub
 openai
