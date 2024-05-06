@@ -384,6 +384,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         )
 
     def should_see_project_coverage_cta(self):
+        """
+        Why was this check added? We changed our default behavior on 5/1/2024.
+        Change explained on issue 1078
+        """
         introduction_date = datetime(2024, 5, 1, 0, 0, 0).replace(tzinfo=timezone.utc)
 
         if (
