@@ -117,55 +117,69 @@ update_branches_task_name = "app.cron.branches.UpdateBranchesTask"
 
 
 def _beat_schedule():
-    beat_schedule = {
-        "hourly_check": {
-            "task": hourly_check_task_name,
-            "schedule": crontab(minute="0"),
-            "kwargs": {
-                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+    beat_schedule = dict()
+    if get_config("setup", "beat", default=True):
+        beat_schedule = {
+            "hourly_check": {
+                "task": hourly_check_task_name,
+                "schedule": crontab(minute="0"),
+                "kwargs": {
+                    "cron_task_generation_time_iso": BeatLazyFunc(
+                        get_utc_now_as_iso_format
+                    )
+                },
             },
-        },
-        "find_uncollected_profilings": {
-            "task": profiling_finding_task_name,
-            "schedule": crontab(minute="0,15,30,45"),
-            "kwargs": {
-                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            "find_uncollected_profilings": {
+                "task": profiling_finding_task_name,
+                "schedule": crontab(minute="0,15,30,45"),
+                "kwargs": {
+                    "cron_task_generation_time_iso": BeatLazyFunc(
+                        get_utc_now_as_iso_format
+                    )
+                },
             },
-        },
-        "github_app_webhooks_task": {
-            "task": gh_app_webhook_check_task_name,
-            "schedule": crontab(minute="0", hour="0,6,12,18"),
-            "kwargs": {
-                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            "github_app_webhooks_task": {
+                "task": gh_app_webhook_check_task_name,
+                "schedule": crontab(minute="0", hour="0,6,12,18"),
+                "kwargs": {
+                    "cron_task_generation_time_iso": BeatLazyFunc(
+                        get_utc_now_as_iso_format
+                    )
+                },
             },
-        },
-        "trial_expiration_cron": {
-            "task": trial_expiration_cron_task_name,
-            # 4 UTC is 12am EDT
-            "schedule": crontab(minute="0", hour="4"),
-            "kwargs": {
-                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
-            },
-        },
-    }
-
-    if get_config("setup", "health_check", "enabled", default=False):
-        beat_schedule["health_check_task"] = {
-            "task": health_check_task_name,
-            "schedule": timedelta(seconds=get_health_check_interval_seconds()),
-            "kwargs": {
-                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
-            },
-        }
-
-    if get_config("setup", "telemetry", "enabled", default=True):
-        beat_schedule["brolly_stats_rollup"] = {
-            "task": brolly_stats_rollup_task_name,
-            "schedule": crontab(minute="0", hour="2"),
-            "kwargs": {
-                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            "trial_expiration_cron": {
+                "task": trial_expiration_cron_task_name,
+                # 4 UTC is 12am EDT
+                "schedule": crontab(minute="0", hour="4"),
+                "kwargs": {
+                    "cron_task_generation_time_iso": BeatLazyFunc(
+                        get_utc_now_as_iso_format
+                    )
+                },
             },
         }
+
+        if get_config("setup", "health_check", "enabled", default=False):
+            beat_schedule["health_check_task"] = {
+                "task": health_check_task_name,
+                "schedule": timedelta(seconds=get_health_check_interval_seconds()),
+                "kwargs": {
+                    "cron_task_generation_time_iso": BeatLazyFunc(
+                        get_utc_now_as_iso_format
+                    )
+                },
+            }
+
+        if get_config("setup", "telemetry", "enabled", default=True):
+            beat_schedule["brolly_stats_rollup"] = {
+                "task": brolly_stats_rollup_task_name,
+                "schedule": crontab(minute="0", hour="2"),
+                "kwargs": {
+                    "cron_task_generation_time_iso": BeatLazyFunc(
+                        get_utc_now_as_iso_format
+                    )
+                },
+            }
 
     return beat_schedule
 
