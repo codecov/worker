@@ -167,9 +167,14 @@ def test_deal_worker_command(mock_prometheus, mocker, mock_storage):
         ]
     )
 
+
 @mock.patch("main.start_prometheus")
-def test_deal_worker_no_beat(mock_prometheus, mocker, mock_storage):
-    mocker.patch.dict(os.environ, {"HOSTNAME": "simpleworker", "SETUP__CELERY_BEAT_ENABLED": "False"})
+def test_deal_worker_no_beat(
+    mock_prometheus, mocker, mock_storage, empty_configuration
+):
+    mocker.patch.dict(
+        os.environ, {"HOSTNAME": "simpleworker", "SETUP__CELERY_BEAT_ENABLED": "False"}
+    )
     mocked_get_current_version = mocker.patch(
         "main.get_current_version", return_value="some_version_12.3"
     )
@@ -207,9 +212,15 @@ def test_deal_worker_no_beat(mock_prometheus, mocker, mock_storage):
         ]
     )
 
+
 @mock.patch("main.start_prometheus")
-def test_deal_worker_no_queues(mock_prometheus, mocker, mock_storage):
-    mocker.patch.dict(os.environ, {"HOSTNAME": "simpleworker", "SETUP__CELERY_QUEUES_ENABLED": "False"})
+def test_deal_worker_no_queues(
+    mock_prometheus, mocker, mock_storage, empty_configuration
+):
+    mocker.patch.dict(
+        os.environ,
+        {"HOSTNAME": "simpleworker", "SETUP__CELERY_QUEUES_ENABLED": "False"},
+    )
     mocked_get_current_version = mocker.patch(
         "main.get_current_version", return_value="some_version_12.3"
     )
@@ -248,15 +259,24 @@ def test_deal_worker_no_queues(mock_prometheus, mocker, mock_storage):
         ]
     )
 
+
 @mock.patch("main.start_prometheus")
-def test_deal_worker_no_queues_or_beat(mock_prometheus, mocker, mock_storage):
-    mocker.patch.dict(os.environ, {"HOSTNAME": "simpleworker", "SETUP__CELERY_QUEUES_ENABLED": "False", "SETUP__CELERY_BEAT_ENABLED": "False"})
+def test_deal_worker_no_queues_or_beat(
+    mock_prometheus, mocker, mock_storage, empty_configuration
+):
+    env = {
+        "HOSTNAME": "simpleworker",
+        "SETUP__CELERY_QUEUES_ENABLED": "False",
+        "SETUP__CELERY_BEAT_ENABLED": "False",
+    }
     mocked_get_current_version = mocker.patch(
         "main.get_current_version", return_value="some_version_12.3"
     )
     mock_app = mocker.patch("main.app")
     runner = CliRunner()
-    res = runner.invoke(cli, ["worker", "--queue", "simple,one,two", "--queue", "some"])
+    res = runner.invoke(
+        cli, ["worker", "--queue", "simple,one,two", "--queue", "some"], env=env
+    )
     expected_output = "\n".join(
         [
             "",
@@ -285,6 +305,7 @@ def test_deal_worker_no_queues_or_beat(mock_prometheus, mocker, mock_storage):
             "info",
         ]
     )
+
 
 @mock.patch("main.start_prometheus")
 def test_main(mock_prometheus, mocker):

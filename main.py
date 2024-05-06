@@ -110,9 +110,7 @@ def worker(name, concurrency, debug, queue):
         ]
     if get_config("setup", "celery_beat_enabled", default=True):
         args += ["-B", "-s", "/home/codecov/celerybeat-schedule"]
-    return app.celery_app.worker_main(
-        argv=args
-    )
+    return app.celery_app.worker_main(argv=args)
 
 
 def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:
