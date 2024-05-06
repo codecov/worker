@@ -5546,6 +5546,26 @@ class TestCommentNotifierWelcome:
             current_yaml={},
         )
         result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA not in result
+
+        after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            after_introduction_date
+        )
+
+        dbsession.add(sample_comparison.head.commit.repository.owner)
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
 
     @pytest.mark.asyncio
