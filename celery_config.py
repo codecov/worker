@@ -128,7 +128,7 @@ def _beat_schedule():
         },
         "find_uncollected_profilings": {
             "task": profiling_finding_task_name,
-            "schedule": crontab(minute="0,15,30,45"),
+            "schedule": crontab(minute="15"),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },
