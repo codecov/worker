@@ -114,6 +114,7 @@ trial_expiration_task_name = "app.tasks.plan.TrialExpirationTask"
 trial_expiration_cron_task_name = "app.cron.plan.TrialExpirationCronTask"
 
 update_branches_task_name = "app.cron.branches.UpdateBranchesTask"
+update_branches_task_name = "app.cron.test_instances.BackfillTestInstancesTask"
 
 
 def _beat_schedule():
