@@ -303,6 +303,8 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
+    branch = Column(types.Text, nullable=True)
+    commitid = Column(types.Text, nullable=True)
 
 
 class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
@@ -312,3 +314,4 @@ class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     passed = Column(types.Integer)
     skipped = Column(types.Integer)
     failed = Column(types.Integer)
+    error = Column(types.String(100), nullable=True)

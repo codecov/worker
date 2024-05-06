@@ -1,10 +1,12 @@
 import logging
 import random
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 from shared.config import get_config
+from shared.github import is_installation_rate_limited
 from shared.torngit.base import TokenType
+from shared.typings.torngit import GithubInstallationInfo
 
 from database.models import Owner, Repository
 from database.models.core import (
@@ -12,9 +14,14 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from helpers.environment import is_enterprise
-from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
+from helpers.exceptions import (
+    NoConfiguredAppsAvailable,
+    OwnerWithoutValidBotError,
+    RepositoryWithoutValidBotError,
+)
 from services.encryption import encryptor
 from services.github import get_github_integration_token
+from services.redis import get_redis_connection
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +38,87 @@ def _get_installation_weight(installation: GithubAppInstallation) -> int:
         return MAX_GITHUB_APP_SELECTION_WEIGHT
     seconds_in_hour = 3600
     age_hours = (age.seconds // seconds_in_hour) + age.days * 24
-    return age_hours + 2**age.days
+    # Prevent clock differences from making the weight negative
+    return max(1, age_hours + 2**age.days)
+
+
+def _can_use_this_app(
+    app: GithubAppInstallation, installation_name: str, repository: Optional[Repository]
+) -> bool:
+    return (
+        app.name == installation_name
+        # We ignore apps that are not configured because those can't be used
+        and app.is_configured()
+        and (
+            # If there is a repo we want only the apps that cover said repo
+            (repository and app.is_repo_covered_by_integration(repository))
+            # If there is no repo we still need some true value
+            or (not repository)
+        )
+    )
+
+
+def _get_apps_from_weighted_selection(
+    owner: Owner, installation_name: str, repository: Optional[Repository]
+) -> List[GithubAppInstallation]:
+    """This function returns an ordered list of GithubAppInstallations that can be used to communicate with GitHub
+    in behalf of the owner. The list is ordered in such a way that the 1st element is the app to be used in Torngit,
+    and the subsequent apps are selected as fallbacks.
+
+    IF the repository is provided, the selected apps also cover the repo.
+    IF installation_name is not the default one, than the default codecov installation
+      is also selected as a possible fallback app.
+
+    Apps are selected randomly but assigned weights based on how recently they were created.
+    This means that older apps are selected more frequently as the main app than newer ones.
+    (up to 10 days, when the probability of being chosen is the same)
+    The random selection is done so we can distribute request load more evenly among apps.
+    """
+    # Map GithubAppInstallation.id --> GithubAppInstallation
+    ghapp_installations_filter: Dict[int, GithubAppInstallation] = {
+        obj.id: obj
+        for obj in filter(
+            lambda obj: _can_use_this_app(obj, installation_name, repository),
+            owner.github_app_installations or [],
+        )
+    }
+    # We assign weights to the apps based on how long ago they were created.
+    # The idea is that there's a greater chance that a change misconfigured the app,
+    # So apps recently created are selected less frequently than older apps
+    keys = list(ghapp_installations_filter.keys())
+    weights = [
+        min(
+            MAX_GITHUB_APP_SELECTION_WEIGHT,
+            _get_installation_weight(ghapp_installations_filter[key]),
+        )
+        for key in keys
+    ]
+    # We pick apps one by one until all apps have been selected
+    # Obviously apps with a higher weight have a higher change of being selected as the main app (1st selection)
+    # But it's important that others are also selected so we can use them as fallbacks
+    apps_to_consider = []
+    apps_to_select = len(keys)
+    selections = 0
+    while selections < apps_to_select:
+        selected_app_id = random.choices(keys, weights, k=1)[0]
+        apps_to_consider.append(ghapp_installations_filter[selected_app_id])
+        # random.choices chooses with replacement
+        # which we are trying to avoid here. So we remove the key selected and its weight from the population.
+        key_idx = keys.index(selected_app_id)
+        keys.pop(key_idx)
+        weights.pop(key_idx)
+        selections += 1
+    if installation_name != GITHUB_APP_INSTALLATION_DEFAULT_NAME:
+        # Add the default app as the last fallback if the owner is using a different app for the task
+        default_apps = filter(
+            lambda obj: _can_use_this_app(
+                obj, GITHUB_APP_INSTALLATION_DEFAULT_NAME, repository
+            ),
+            owner.github_app_installations,
+        )
+        if default_apps:
+            apps_to_consider.extend(default_apps)
+    return apps_to_consider
 
 
 def get_owner_installation_id(
@@ -59,77 +146,49 @@ def get_owner_installation_id(
     )
 
     if not ignore_installation or deprecated_using_integration:
-        default_app_installation_filter: List[GithubAppInstallation] = list(
+        redis_connection = get_redis_connection()
+        apps_to_consider = _get_apps_from_weighted_selection(
+            owner, installation_name, repository
+        )
+
+        apps_matching_criteria_count = len(apps_to_consider)
+        apps_to_consider = list(
             filter(
-                lambda obj: (
-                    obj.name == installation_name
-                    and obj.is_configured()
-                    and (
-                        # If there is a repo we want only the apps that cover said repo
-                        (repository and obj.is_repo_covered_by_integration(repository))
-                        # If there is no repo we still need some true value
-                        or (not repository)
-                    )
+                lambda obj: not is_installation_rate_limited(
+                    redis_connection, obj.installation_id, app_id=obj.app_id
                 ),
-                owner.github_app_installations or [],
+                apps_to_consider,
             )
         )
-        # We assign weights to the apps based on how long ago they were updated.
-        # The idea is that there's a greater chance that a change misconfigured the app,
-        # So apps recently updated are selected less frequently than older apps
-        weights = [
-            min(MAX_GITHUB_APP_SELECTION_WEIGHT, _get_installation_weight(obj))
-            for obj in default_app_installation_filter
-        ]
-        # Random selection of size 3.
-        # If all apps have roughly the same probability of being selected, the array would have different entries.
-        # If 1 app dominates the probability of selection than it would probably be that app repeated 3 times, BUT
-        # from time to time the less frequent one would be selected.
-        apps_to_consider = (
-            random.choices(default_app_installation_filter, weights=weights, k=3)
-            if len(default_app_installation_filter) > 0
-            else []
-        )
-        already_checked = dict()
-        # filter is an Iterator, so we need to scan matches
-        for app_installation in apps_to_consider:
-            if already_checked.get(app_installation.installation_id):
-                continue
-            already_checked[app_installation.installation_id] = True
-            if repository:
-                if app_installation.is_repo_covered_by_integration(repository):
-                    log.info(
-                        "Selected github installation for repo",
-                        extra=dict(
-                            installation=app_installation.external_id,
-                            installation_name=app_installation.name,
-                            ownerid=owner.ownerid,
-                            repoid=repository.repoid,
-                        ),
-                    )
-                    return {
-                        "installation_id": app_installation.installation_id,
-                        "app_id": app_installation.app_id,
-                        "pem_path": app_installation.pem_path,
-                    }
-                # Not returning None here because we found situations where ghapp installations will mark the
-                # the repo as NOT covered but it is, in fact, covered.
-                # We need to backfill some things.
-            else:
-                # Getting owner installation - not tied to any particular repo
-                log.info(
-                    "Selected github installation for owner",
-                    extra=dict(
-                        installation=app_installation.external_id,
-                        installation_name=app_installation.name,
-                        ownerid=owner.ownerid,
+
+        if apps_to_consider:
+            main_name = apps_to_consider[0].name
+            info_to_get_tokens = list(
+                map(
+                    lambda obj: GithubInstallationInfo(
+                        installation_id=obj.installation_id,
+                        app_id=obj.app_id,
+                        pem_path=obj.pem_path,
                     ),
+                    apps_to_consider,
                 )
-                return {
-                    "installation_id": app_installation.installation_id,
-                    "app_id": app_installation.app_id,
-                    "pem_path": app_installation.pem_path,
-                }
+            )
+            main_selected_info = info_to_get_tokens.pop(0)
+            log.info(
+                "Selected installation to communicate with github",
+                extra=dict(
+                    installation_id=main_selected_info["installation_id"],
+                    installation_name=main_name,
+                    fallback_installations=[
+                        obj["installation_id"] for obj in info_to_get_tokens
+                    ],
+                ),
+            )
+            return {**main_selected_info, "fallback_installations": info_to_get_tokens}
+        elif apps_matching_criteria_count > 0:
+            raise NoConfiguredAppsAvailable(
+                apps_count=apps_matching_criteria_count, all_rate_limited=True
+            )
     # DEPRECATED FLOW - begin
     if owner.integration_id and deprecated_using_integration:
         log.info("Selected owner integration to communicate with github")
@@ -140,13 +199,13 @@ def get_owner_installation_id(
 
 def get_repo_appropriate_bot_token(
     repo: Repository,
-    installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    installation_info: Optional[Dict] = None,
 ) -> Tuple[Dict, Optional[Owner]]:
 
     log.info(
         "Get repo appropriate bot token",
         extra=dict(
-            installation_name_to_use=installation_name_to_use,
+            installation_info=installation_info,
             repoid=repo.repoid,
         ),
     )
@@ -154,19 +213,12 @@ def get_repo_appropriate_bot_token(
     if is_enterprise() and get_config(repo.service, "bot"):
         return get_public_bot_token(repo)
 
-    installation_dict = get_owner_installation_id(
-        repo.owner,
-        repo.using_integration,
-        repository=repo,
-        ignore_installation=False,
-        installation_name=installation_name_to_use,
-    )
-    if installation_dict:
+    if installation_info:
         github_token = get_github_integration_token(
             repo.owner.service,
-            installation_dict["installation_id"],
-            app_id=installation_dict.get("app_id", None),
-            pem_path=installation_dict.get("pem_path", None),
+            installation_info["installation_id"],
+            app_id=installation_info.get("app_id", None),
+            pem_path=installation_info.get("pem_path", None),
         )
         installation_token = dict(key=github_token)
         # The token is not owned by an Owner object, so 2nd arg is None
@@ -185,6 +237,7 @@ def get_public_bot_token(repo):
     tokenless_bot_dict = get_config(
         repo.service, "bots", "tokenless", default=public_bot_dict
     )
+
     if tokenless_bot_dict and tokenless_bot_dict.get("key"):
         log.info(
             "Using tokenless bot as bot fallback",
@@ -192,6 +245,12 @@ def get_public_bot_token(repo):
         )
         # Once again token not owned by an Owner.
         return tokenless_bot_dict, None
+
+    log.error(
+        "No tokenless bot dict in get_public_bot_token",
+        extra=dict(repoid=repo.repoid),
+    )
+    raise RepositoryWithoutValidBotError()
 
 
 def get_repo_particular_bot_token(repo) -> Tuple[Dict, Owner]:
@@ -259,11 +318,8 @@ def _get_repo_appropriate_bot(repo: Repository) -> Owner:
 
 
 def get_owner_appropriate_bot_token(
-    owner, using_integration, ignore_installation: bool = False
+    owner, installation_dict: Optional[Dict] = None
 ) -> Dict:
-    installation_dict = get_owner_installation_id(
-        owner, using_integration, ignore_installation=ignore_installation
-    )
     if installation_dict:
         github_token = get_github_integration_token(
             owner.service,

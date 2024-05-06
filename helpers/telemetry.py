@@ -1,8 +1,10 @@
 import asyncio
+import logging
 from datetime import datetime
 
 import django
 from asgiref.sync import sync_to_async
+from psycopg2 import OperationalError
 from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
 from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 
@@ -10,6 +12,8 @@ from database.engine import get_db_session
 from database.models.core import Commit, Owner, Repository
 
 from .timeseries import timeseries_enabled
+
+log = logging.getLogger(__name__)
 
 
 def fire_and_forget(fn):
@@ -131,18 +135,23 @@ class MetricContext:
         )
 
         if timeseries_enabled():
-            TsSimpleMetric.objects.create(
-                timestamp=timestamp,
-                name=name,
-                value=value,
-                repo_slug=self.repo_slug,
-                owner_slug=self.owner_slug,
-                commit_slug=self.commit_slug,
-            )
+            try:
+                TsSimpleMetric.objects.create(
+                    timestamp=timestamp,
+                    name=name,
+                    value=value,
+                    repo_slug=self.repo_slug,
+                    owner_slug=self.owner_slug,
+                    commit_slug=self.commit_slug,
+                )
+            except OperationalError:
+                log.warning(
+                    "Failed to create TsSimpleMetric object, Timescale may be unavailable. However we will continue the current task."
+                )
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):
-        self.log_simple_metric(name, value)
+        await self.log_simple_metric_async(name, value)
 
 
 class TimeseriesTimer:

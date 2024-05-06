@@ -1,5 +1,9 @@
 import pytest
 
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import OwnerFactory
 from services.owner import get_owner_provider_service
 
@@ -21,10 +25,46 @@ class TestOwnerServiceTestCase(object):
                 "username": owner.username,
             },
             "repo": {},
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.service == "github"
         assert res.data == expected_data
         assert res.token == {"key": "bcaa0dc0c66b4a8c8c65ac919a1a91aa", "secret": None}
+
+    def test_get_owner_provider_service_with_installation(self, dbsession, mocker):
+        mocker.patch(
+            "services.bots.get_github_integration_token",
+            return_value="integration_token",
+        )
+        owner = OwnerFactory.create(
+            service="github",
+            unencrypted_oauth_token="bcaa0dc0c66b4a8c8c65ac919a1a91aa",
+            bot=None,
+        )
+        dbsession.add(owner)
+        installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=1500,
+            repository_service_ids=None,
+            owner=owner,
+        )
+        dbsession.add(installation)
+        dbsession.flush()
+        res = get_owner_provider_service(owner)
+        expected_data = {
+            "owner": {
+                "ownerid": owner.ownerid,
+                "service_id": owner.service_id,
+                "username": owner.username,
+            },
+            "repo": {},
+            "installation": {"installation_id": 1500, "pem_path": None, "app_id": None},
+            "fallback_installations": [],
+        }
+        assert res.service == "github"
+        assert res.data == expected_data
+        assert res.token == {"key": "integration_token"}
 
     def test_get_owner_provider_service_other_service(self, dbsession):
         owner = OwnerFactory.create(
@@ -40,6 +80,8 @@ class TestOwnerServiceTestCase(object):
                 "username": owner.username,
             },
             "repo": {},
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.service == "gitlab"
         assert res.data == expected_data
@@ -61,6 +103,8 @@ class TestOwnerServiceTestCase(object):
                 "username": owner.username,
             },
             "repo": {},
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data["repo"] == expected_data["repo"]
         assert res.data == expected_data

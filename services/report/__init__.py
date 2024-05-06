@@ -297,7 +297,7 @@ class ReportService(BaseReportService):
                 # finisher can build off of it later. Makes the assumption that the CFFs occupy the first
                 # j to i session ids where i is the max id of the CFFs and j is some integer less than i.
                 if await PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value_async(
-                    repo_id=commit.repository.repoid
+                    identifier=commit.repository.repoid
                 ):
                     await self.save_parallel_report_to_archive(
                         commit, report, report_code
@@ -775,7 +775,7 @@ class ReportService(BaseReportService):
             )
             max_parenthood_deepness = (
                 await CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value_async(
-                    owner_id=repo.ownerid, default=10
+                    identifier=repo.ownerid, default=10
                 )
             )
 
@@ -787,7 +787,7 @@ class ReportService(BaseReportService):
                     "Could not find parent for possible carryforward",
                     extra=dict(commit=commit.commitid, repoid=commit.repoid),
                 )
-                metric_context.attempt_log_simple_metric(
+                await metric_context.log_simple_metric_async(
                     "worker_service_report_carryforward_base_not_found", 1
                 )
                 return Report()
@@ -843,16 +843,16 @@ class ReportService(BaseReportService):
             await self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit
             )
-            metric_context.attempt_log_simple_metric(
+            await metric_context.log_simple_metric_async(
                 "worker_service_report_carryforward_success", 1
             )
             return carryforward_report
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(
-        self, repo: Repository, upload: Upload, is_parallel=False
+        self, repo: Repository, upload: Upload, is_parallel=False, is_error_case=False
     ) -> ParsedRawReport:
-        """Pulls the raw uploaded report from storage and parses it do it's
+        """Pulls the raw uploaded report from storage and parses it so it's
         easier to access different parts of the raw upload.
 
         Raises:
@@ -861,14 +861,55 @@ class ReportService(BaseReportService):
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
 
-        # for the parallel experiment: since the parallel version runs after the old behaviour
-        # has finished, the current uploads have already been rewritten in a human readable
-        # format, so we need to use the legacy parser here for the parallel version.
-        parser = get_proper_parser(upload, use_legacy=is_parallel)
-
-        raw_uploaded_report = parser.parse_raw_report_from_bytes(
-            archive_service.read_file(archive_url)
+        # TODO: For the parallel experiment, can remove once finished
+        log.info(
+            "Parsing the raw report from storage",
+            extra=dict(
+                commit=upload.report.commit_id,
+                repoid=repo.repoid,
+                archive_url=archive_url,
+                is_parallel=is_parallel,
+            ),
         )
+
+        # For the parallel upload verification experiment, we need to make a copy of the raw uploaded reports
+        # so that the parallel pipeline can use those to parse. The serial pipeline rewrites the raw uploaded
+        # reports to a human readable version that doesn't include file fixes, so that's why copying is necessary.
+        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            identifier=repo.repoid, default=False
+        ) and (not is_error_case):
+            parallel_url = archive_url.removesuffix(".txt") + "_PARALLEL.txt"
+            log.info(
+                "In the parallel experiment for parsing raw report in storage",
+                extra=dict(
+                    commit=upload.report.commit_id,
+                    repoid=repo.repoid,
+                    parallel_url=parallel_url,
+                    archive_url=archive_url,
+                ),
+            )
+            if not is_parallel:
+                archive_file = archive_service.read_file(archive_url)
+                archive_service.write_file(parallel_url, archive_file)
+                log.info(
+                    "Copied raw report file for parallel experiment to: "
+                    + str(parallel_url),
+                    extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
+                )
+            else:
+                archive_url = parallel_url
+                archive_file = archive_service.read_file(archive_url)
+                log.info(
+                    "Read raw report file for parallel experiment from: "
+                    + str(archive_url),
+                    extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
+                )
+        else:
+            archive_file = archive_service.read_file(archive_url)
+
+        parser = get_proper_parser(upload)
+
+        raw_uploaded_report = parser.parse_raw_report_from_bytes(archive_file)
         return raw_uploaded_report
 
     @sentry_sdk.trace
@@ -913,6 +954,17 @@ class ReportService(BaseReportService):
                 commit.repository, upload, is_parallel=parallel_idx is not None
             )
         except FileNotInStorageError:
+            log.info(
+                "Raw report file was not found",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    reportid=reportid,
+                    commit_yaml=self.current_yaml.to_dict(),
+                    archive_url=archive_url,
+                    in_parallel=parallel_idx is not None,
+                ),
+            )
             return ProcessingResult(
                 report=None,
                 session=session,

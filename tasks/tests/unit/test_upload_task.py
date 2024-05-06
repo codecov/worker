@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import mock
 import pytest
@@ -173,6 +174,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=True,
             ),
         )
         kwargs = dict(
@@ -567,6 +569,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         t2 = upload_processor_task.signature(
@@ -582,6 +585,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         t3 = upload_processor_task.signature(
@@ -596,6 +600,7 @@ class TestUploadTaskIntegration(object):
                 ],
                 report_code=None,
                 in_parallel=False,
+                is_final=False,
             ),
         )
         kwargs = dict(
@@ -1053,16 +1058,24 @@ class TestUploadTaskUnit(object):
         assert b"Some weird value" == content
 
     @pytest.mark.django_db(databases={"default"})
-    def test_schedule_task_with_no_tasks(self, dbsession):
+    def test_schedule_task_with_no_tasks(self, dbsession, mocker):
         commit = CommitFactory.create()
         commit_yaml = UserYaml({})
         argument_list = []
         dbsession.add(commit)
         dbsession.flush()
+        mock_checkpoints = MagicMock(name="checkpoints")
         result = UploadTask().schedule_task(
-            commit, commit_yaml, argument_list, ReportFactory.create(), None, dbsession
+            commit,
+            commit_yaml,
+            argument_list,
+            ReportFactory.create(),
+            None,
+            dbsession,
+            checkpoints=mock_checkpoints,
         )
         assert result is None
+        mock_checkpoints.log.assert_called_with(UploadFlow.NO_REPORTS_FOUND)
 
     @pytest.mark.django_db(databases={"default"})
     def test_schedule_task_with_one_task(self, dbsession, mocker):
@@ -1086,6 +1099,7 @@ class TestUploadTaskUnit(object):
                 arguments_list=argument_list,
                 report_code=None,
                 in_parallel=False,
+                is_final=True,
             ),
         )
         t2 = upload_finisher_task.signature(

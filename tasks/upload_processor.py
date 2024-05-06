@@ -19,6 +19,10 @@ from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit, Upload
 from helpers.metrics import metrics
+from helpers.parallel_upload_processing import (
+    save_final_serial_report_results,
+    save_incremental_report_results,
+)
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.bots import RepositoryWithoutValidBotError
@@ -83,6 +87,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_code=None,
         parallel_idx=None,
         in_parallel=False,
+        is_final=False,
         **kwargs,
     ):
         repoid = int(repoid)
@@ -92,7 +97,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         )
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repoid)
             and in_parallel
         ):
             log.info(
@@ -151,11 +156,12 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         parallel_idx=parallel_idx,
                         parent_task=self.request.parent_id,
                         in_parallel=in_parallel,
+                        is_final=is_final,
                         **kwargs,
                     )
             except LockError:
                 max_retry = 200 * 3**self.request.retries
-                retry_in = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
+                retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
                 log.warning(
                     "Unable to acquire lock for key %s. Retrying",
                     lock_name,
@@ -180,10 +186,11 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_code,
         parallel_idx=None,
         in_parallel=False,
+        is_final=False,
         **kwargs,
     ):
         if (
-            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repoid)
+            not PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repoid)
             and in_parallel
         ):
             log.info(
@@ -212,7 +219,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_service = ReportService(commit_yaml)
 
         if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(repo_id=repository.repoid)
+            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repository.repoid)
             and in_parallel
         ):
             log.info(
@@ -308,14 +315,14 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             results_dict = {}
             if (
                 PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                    repo_id=repository.repoid
+                    identifier=repository.repoid
                 )
                 and in_parallel
             ):
                 with metrics.timer(
                     f"{self.metrics_prefix}.save_incremental_report_results"
                 ):
-                    parallel_incremental_result = self.save_incremental_report_results(
+                    parallel_incremental_result = save_incremental_report_results(
                         report_service, commit, report, parallel_idx, report_code
                     )
                     parallel_incremental_result["upload_pk"] = arguments_list[0].get(
@@ -342,23 +349,31 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         report_code,
                     )
 
-            for processed_individual_report in processings_so_far:
-                # We delete and rewrite the artifacts when the serial flow runs first. When
-                # the parallel flow runs second, it parses the human readable artifacts instead
-                # since the serial flow already rewrote it
-                if not (
-                    PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                        repo_id=repository.repoid
+                # Save the final accumulated result from the serial flow for the
+                # ParallelVerification task to compare with later, for the parallel
+                # experiment. The report being saved is not necessarily the final
+                # report for the commit, as more uploads can still be made.
+                if is_final and (not in_parallel):
+                    final_serial_report_url = save_final_serial_report_results(
+                        report_service, commit, report, report_code, arguments_list
                     )
-                    and in_parallel
-                ):
-                    deleted_archive = self._possibly_delete_archive(
+                    log.info(
+                        "Saved final serial report results to storage",
+                        extra=dict(
+                            repoid=repoid,
+                            commit=commitid,
+                            final_serial_result_path=final_serial_report_url,
+                        ),
+                    )
+
+            for processed_individual_report in processings_so_far:
+                deleted_archive = self._possibly_delete_archive(
+                    processed_individual_report, report_service, commit
+                )
+                if not deleted_archive:
+                    self._rewrite_raw_report_readable(
                         processed_individual_report, report_service, commit
                     )
-                    if not deleted_archive:
-                        self._rewrite_raw_report_readable(
-                            processed_individual_report, report_service, commit
-                        )
                 processed_individual_report.pop("upload_obj", None)
                 processed_individual_report.pop("raw_report", None)
             log.info(
@@ -380,7 +395,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
             if (
                 PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                    repo_id=repository.repoid
+                    identifier=repository.repoid
                 )
                 and in_parallel
             ):
@@ -487,7 +502,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         )
         try:
             raw_report = report_service.parse_raw_report_from_storage(
-                commit.repository, upload
+                commit.repository, upload, is_error_case=True
             )
             self._rewrite_raw_report_readable(
                 processing_result={"raw_report": raw_report, "upload_object": upload},
@@ -592,34 +607,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         res = report_service.save_report(commit, report, report_code)
         db_session.commit()
         return res
-
-    def save_incremental_report_results(
-        self, report_service, commit, report, parallel_idx, report_code
-    ):
-        commitid = commit.commitid
-        archive_service = report_service.get_archive_service(commit.repository)
-
-        # save incremental results to archive storage,
-        # upload_finisher will combine
-        chunks = report.to_archive().encode()
-        _, files_and_sessions = report.to_database()
-
-        chunks_url = archive_service.write_parallel_experiment_file(
-            commitid, chunks, report_code, f"incremental/chunk{parallel_idx}"
-        )
-        files_and_sessions_url = archive_service.write_parallel_experiment_file(
-            commitid,
-            files_and_sessions,
-            report_code,
-            f"incremental/files_and_sessions{parallel_idx}",
-        )
-
-        parallel_incremental_result = {
-            "parallel_idx": parallel_idx,
-            "chunks_path": chunks_url,
-            "files_and_sessions_path": files_and_sessions_url,
-        }
-        return parallel_incremental_result
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())

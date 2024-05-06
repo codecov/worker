@@ -1,8 +1,9 @@
 import logging
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from json import loads
+from math import ceil
 from typing import Any, List, Mapping, Optional
 
 from asgiref.sync import async_to_sync
@@ -11,13 +12,10 @@ from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
-from shared.torngit.exceptions import (
-    TorngitClientError,
-    TorngitObjectNotFoundError,
-    TorngitRepoNotFoundError,
-)
+from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
@@ -143,7 +141,7 @@ class UploadContext:
         and feeds them to the processing code.
 
         This function doesn't go infinite because it keeps emptying the respective key on redis.
-        It will only go arbitrrily long if someone else keeps uploading more and more arguments
+        It will only go arbitrarily long if someone else keeps uploading more and more arguments
         to such list
 
         Args:
@@ -168,7 +166,7 @@ class UploadContext:
         Does things like:
 
             - replacing a redis-stored value with a storage one (by doing an upload)
-            - Removing unecessary sensitive information for the arguments
+            - Removing unnecessary sensitive information for the arguments
         """
         commit_sha = commit.commitid
         reportid = arguments.get("reportid")
@@ -376,9 +374,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             upload_processing_delay = int(upload_processing_delay)
             last_upload_timestamp = upload_context.last_upload_timestamp()
             if last_upload_timestamp is not None:
-                last_upload = datetime.fromtimestamp(float(last_upload_timestamp))
+                last_upload = datetime.fromtimestamp(
+                    float(last_upload_timestamp), timezone.utc
+                )
                 if (
-                    datetime.utcnow() - timedelta(seconds=upload_processing_delay)
+                    datetime.now(timezone.utc)
+                    - timedelta(seconds=upload_processing_delay)
                     < last_upload
                 ):
                     retry_countdown = max(30, upload_processing_delay)
@@ -452,11 +453,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit, repository_service
             )
         else:
+            context = OwnerContext(
+                owner_onboarding_date=repository.owner.createstamp,
+                owner_plan=repository.owner.plan,
+                ownerid=repository.ownerid,
+            )
             commit_yaml = UserYaml.get_final_yaml(
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
-                ownerid=repository.owner.ownerid,
+                owner_context=context,
             )
 
         if report_type == ReportType.COVERAGE:
@@ -519,6 +525,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         else:
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+                checkpoints.log(UploadFlow.NO_REPORTS_FOUND)
             log.info(
                 "Not scheduling task because there were no arguments were found on redis",
                 extra=dict(
@@ -567,11 +574,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 exc_info=True,
             )
             commit_yaml = None
+        context = OwnerContext(
+            owner_onboarding_date=repository.owner.createstamp,
+            owner_plan=repository.owner.plan,
+            ownerid=repository.ownerid,
+        )
         return UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
-            ownerid=repository.owner.ownerid,
+            owner_context=context,
         )
 
     def schedule_task(
@@ -622,6 +634,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 argument_list=argument_list,
             ),
         )
+        if checkpoints:
+            checkpoints.log(UploadFlow.NO_REPORTS_FOUND)
         return None
 
     def _schedule_coverage_processing_task(
@@ -646,6 +660,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         for i in range(0, len(argument_list), chunk_size):
             chunk = argument_list[i : i + chunk_size]
             if chunk:
+                is_final = i == ceil(len(argument_list) / chunk_size) - 1
                 sig = upload_processor_task.signature(
                     args=({},) if i == 0 else (),
                     kwargs=dict(
@@ -655,12 +670,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         arguments_list=chunk,
                         report_code=commit_report.code,
                         in_parallel=False,
+                        is_final=is_final,
                     ),
                 )
                 processing_tasks.append(sig)
 
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-            repo_id=commit.repository.repoid
+            identifier=commit.repository.repoid
         ):
             parallel_chunk_size = 1
             num_sessions = len(argument_list)
@@ -731,6 +747,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                                 i
                             ],  # i + parallel_session_id,
                             in_parallel=True,
+                            is_final=True if i == num_sessions - 1 else False,
                         ),
                     )
                     parallel_processing_tasks.append(sig)
@@ -760,7 +777,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             serial_tasks = chain(*processing_tasks)
 
             if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                repo_id=commit.repository.repoid
+                identifier=commit.repository.repoid
             ):
                 parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
                 parallel_shadow_experiment = serial_tasks | parallel_tasks
@@ -769,7 +786,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 res = serial_tasks.apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling coverage processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -861,7 +878,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             ).apply_async()
 
             log.info(
-                "Scheduling task for %s different reports",
+                "Scheduling test results processing tasks for %s different reports",
                 len(argument_list),
                 extra=dict(
                     repoid=commit.repoid,
@@ -873,7 +890,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             return res
         log.info(
-            "Not scheduling task because there were no reports to be processed found",
+            "Not scheduling test results processing tasks because there were no reports to be processed found",
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,

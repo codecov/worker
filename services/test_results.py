@@ -7,7 +7,7 @@ from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
 from sqlalchemy import desc
 
-from database.enums import ReportType
+from database.enums import FlakeSymptomType, ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
 from services.report import BaseReportService
 from services.repository import (
@@ -120,11 +120,18 @@ class TestResultsNotificationFailure:
 
 
 @dataclass
+class TestResultsNotificationFlake:
+    flake_type: list[FlakeSymptomType]
+    is_new_flake: bool
+
+
+@dataclass
 class TestResultsNotificationPayload:
     failed: int
     passed: int
     skipped: int
     failures: List[TestResultsNotificationFailure]
+    flaky_tests: dict[str, TestResultsNotificationFlake] | None = None
 
 
 class TestResultsNotifier:
@@ -164,24 +171,53 @@ class TestResultsNotifier:
     def generate_test_description(
         self,
         fail: TestResultsNotificationFailure,
+        flake: TestResultsNotificationFlake | None = None,
     ):
         envs = [f"- {env}" for env in fail.envs] or ["- default"]
         env_section = "<br>".join(envs)
         test_description = (
-            f"Testsuite:<br>{fail.testsuite}<br>"
-            f"Test name:<br>{fail.testname}<br>"
-            f"Envs:<br>{env_section}<br>"
+            "<pre>"
+            f"**Testsuite:**<br>{fail.testsuite}<br><br>"
+            f"**Test name:**<br>{fail.testname}<br><br>"
+            f"**Envs:**<br>{env_section}<br>"
+            "</pre>"
         )
+
+        if flake is not None:
+            if flake.is_new_flake:
+                test_description = f":snowflake::card_index_dividers: **Newly Detected Flake**<br>{test_description}"
+            else:
+                test_description = f":snowflake::card_index_dividers: **Known Flaky Test**<br>{test_description}"
+
         return test_description
 
     def generate_failure_info(
         self,
         fail: TestResultsNotificationFailure,
+        flake: TestResultsNotificationFlake | None = None,
     ):
         if fail.failure_message is not None:
-            return fail.failure_message
+            failure_message = fail.failure_message
         else:
-            return "No failure message available"
+            failure_message = "No failure message available"
+
+        if flake is not None:
+
+            flake_messages = []
+            if FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH in flake.flake_type:
+                flake_messages.append("Failure on default branch")
+            if FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES in flake.flake_type:
+                flake_messages.append("Differing outcomes on the same commit")
+            if FlakeSymptomType.UNRELATED_MATCHING_FAILURES in flake.flake_type:
+                flake_messages.append("Matching failures on unrelated branches")
+            flake_section = "".join(
+                [
+                    f":snowflake: :card_index_dividers: **{msg}**<br>"
+                    for msg in flake_messages
+                ]
+            )
+            return f"{flake_section}<pre>{failure_message}</pre>"
+        return f"<pre>{failure_message}</pre>"
 
     def build_message(self, payload: TestResultsNotificationPayload) -> str:
         message = []
@@ -193,9 +229,38 @@ class TestResultsNotifier:
         ]
 
         completed = payload.failed + payload.passed + payload.skipped
-        results = f"Completed {completed} tests with **`{payload.failed} failed`**, {payload.passed} passed and {payload.skipped} skipped."
+        if payload.flaky_tests:
+            new_flakes = 0
+            existing_flakes = 0
 
-        message.append(results)
+            for failure in payload.failures:
+                flake = payload.flaky_tests.get(failure.test_id, None)
+                if flake is not None:
+                    if flake.is_new_flake:
+                        new_flakes += 1
+                    else:
+                        existing_flakes += 1
+            existing_flake_section = (
+                f"{existing_flakes} known flaky" if existing_flakes else ""
+            )
+            comma_section = ", " if new_flakes and existing_flakes else ""
+            new_flake_section = (
+                f"{new_flakes} newly detected flaky" if new_flakes else ""
+            )
+            flake_section = (
+                f"({existing_flake_section}{comma_section}{new_flake_section})"
+                if (existing_flakes or new_flakes)
+                else ""
+            )
+
+            results = [
+                f"Completed {completed} tests with **`{payload.failed} failed`**{flake_section}, {payload.passed} passed and {payload.skipped} skipped.",
+                f"- Total :snowflake:**{len(payload.flaky_tests)} flaky tests.**",
+            ]
+            message += results
+        else:
+            results = f"Completed {completed} tests with **`{payload.failed} failed`**, {payload.passed} passed and {payload.skipped} skipped."
+            message.append(results)
 
         details = [
             "<details><summary>View the full list of failed tests</summary>",
@@ -207,12 +272,12 @@ class TestResultsNotifier:
         message += details
 
         for fail in payload.failures:
-
-            test_description = self.generate_test_description(fail)
-            failure_information = self.generate_failure_info(fail)
-            single_test_row = (
-                f"| <pre>{test_description}</pre> | <pre>{failure_information}</pre> |"
-            )
+            flake = None
+            if payload.flaky_tests is not None:
+                flake = payload.flaky_tests.get(fail.test_id, None)
+            test_description = self.generate_test_description(fail, flake)
+            failure_information = self.generate_failure_info(fail, flake)
+            single_test_row = f"| {test_description} | {failure_information} |"
             message.append(single_test_row)
 
         return "\n".join(message)
@@ -250,6 +315,29 @@ class TestResultsNotifier:
             lines[i] = "<br>".join(line_with_breaks)
 
         return "<br>".join(lines)
+
+    async def error_comment(self):
+        self.repo_service = get_repo_provider_service(
+            self.commit.repository, self.commit
+        )
+
+        await self.get_pull()
+        if self.pull is None:
+            log.info(
+                "Not notifying since there is no pull request associated with this commit",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                ),
+            )
+            return False, "no_pull"
+
+        message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
+
+        sent_to_provider = await self.send_to_provider(message)
+        if sent_to_provider == False:
+            return (False, "torngit_error")
+
+        return (True, "comment_posted")
 
 
 def latest_test_instances_for_a_given_commit(db_session, commit_id):

@@ -102,6 +102,8 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data == expected_data
         assert repo.owner.service == "github"
@@ -111,6 +113,65 @@ class TestRepositoryServiceTestCase(object):
             "username": repo.owner.username,
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
             "secret": None,
+        }
+
+    def test_get_repo_provider_service_github_with_installations(
+        self, dbsession, mocker
+    ):
+        mocker.patch(
+            "services.bots.get_github_integration_token",
+            return_value="installation_token",
+        )
+        repo = RepositoryFactory.create(
+            owner__service="github",
+            name="example-python",
+            using_integration=False,
+        )
+        installation_0 = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=1200,
+            app_id=200,
+            repository_service_ids=None,
+            owner=repo.owner,
+        )
+        installation_1 = GithubAppInstallation(
+            name="my_app",
+            installation_id=1300,
+            app_id=300,
+            pem_path="path",
+            repository_service_ids=None,
+            owner=repo.owner,
+        )
+        repo.owner.github_app_installations = [installation_0, installation_1]
+        dbsession.add_all([repo, installation_0, installation_1])
+        dbsession.flush()
+        res = get_repo_provider_service(repo, installation_name_to_use="my_app")
+        expected_data = {
+            "owner": {
+                "ownerid": repo.owner.ownerid,
+                "service_id": repo.owner.service_id,
+                "username": repo.owner.username,
+            },
+            "repo": {
+                "name": "example-python",
+                "using_integration": True,
+                "service_id": repo.service_id,
+                "repoid": repo.repoid,
+            },
+            "installation": {
+                "installation_id": 1300,
+                "app_id": 300,
+                "pem_path": "path",
+            },
+            "fallback_installations": [
+                {"app_id": 200, "installation_id": 1200, "pem_path": None}
+            ],
+        }
+        assert res.data == expected_data
+        assert repo.owner.service == "github"
+        assert res._on_token_refresh is None
+        assert res.token == {
+            "key": "installation_token",
         }
 
     def test_get_repo_provider_service_bitbucket(self, dbsession):
@@ -134,6 +195,8 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data == expected_data
         assert repo.owner.service == "bitbucket"
@@ -165,6 +228,8 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data == expected_data
         assert res._on_token_refresh is not None
@@ -197,6 +262,8 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data == expected_data
         assert res.token == {
@@ -248,6 +315,8 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data["repo"] == expected_data["repo"]
         assert res.data == expected_data
@@ -282,6 +351,8 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data == expected_data
         assert res.token == {
@@ -1020,6 +1091,8 @@ class TestRepositoryServiceTestCase(object):
                 "service_id": "123456",
                 "repoid": repo.repoid,
             },
+            "installation": None,
+            "fallback_installations": None,
         }
         assert res.data["repo"] == expected_data["repo"]
         assert res.data == expected_data

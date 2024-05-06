@@ -15,32 +15,55 @@ if "timeseries" in DATABASES:
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
 
 # Application definition
-
 INSTALLED_APPS = [
-    "django_scaffold",  # must be first to override migrate command
+    "shared.django_apps.legacy_migrations",
+    "shared.django_apps.codecov_auth",
+    "shared.django_apps.core",
+    "shared.django_apps.reports",
     "shared.django_apps.pg_telemetry",
     "shared.django_apps.ts_telemetry",
     "shared.django_apps.rollouts",
+    "shared.django_apps.user_measurements",
+    "psqlextra",
+    # Needed to install legacy migrations
+    "django.contrib.admin",
+    "django.contrib.contenttypes",
+    "django.contrib.auth",
+    "django.contrib.messages",
+    "django.contrib.sessions",
 ]
 
 TELEMETRY_VANILLA_DB = "default"
 TELEMETRY_TIMESCALE_DB = "timeseries"
 
-DATABASE_ROUTERS = [
-    "shared.django_apps.db_routers.TelemetryDatabaseRouter",
-    "shared.django_apps.db_routers.MultiDatabaseRouter",
-]
-
 SKIP_RISKY_MIGRATION_STEPS = get_config("migrations", "skip_risky_steps", default=False)
 
-MIDDLEWARE = []
+MIDDLEWARE = [
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+]
 
-TEMPLATES = []
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.contrib.auth.context_processors.auth",
+                "django.template.context_processors.request",
+                "django.contrib.messages.context_processors.messages",
+            ]
+        },
+    }
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = []
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
