@@ -8,5 +8,8 @@ class OverlayType(Enum):
 
 
 def get_overlay(overlay_type: OverlayType, comparison, **kwargs):
+    """
+    @param comparison: ComparisonProxy (not imported due to circular imports)
+    """
     if overlay_type == OverlayType.line_execution_count:
         return CriticalPathOverlay.init_from_comparison(comparison, **kwargs)

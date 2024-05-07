@@ -20,7 +20,7 @@ from database.models.core import GithubAppInstallation, Pull
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
 from services.billing import BillingPlan
-from services.comparison import ComparisonProxy, NotificationContext
+from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import Decoration
@@ -4028,7 +4028,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_test_results_setup(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(all_tests_passed=True)
+        sample_comparison.context = ComparisonContext(all_tests_passed=True)
         writer = NewHeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -4059,7 +4059,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_test_results_error(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(
+        sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
@@ -4120,7 +4120,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_no_project_coverage_test_results_setup(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(all_tests_passed=True)
+        sample_comparison.context = ComparisonContext(all_tests_passed=True)
         writer = NewHeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -4150,7 +4150,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_no_project_coverage_test_results_error(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(
+        sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
@@ -4898,7 +4898,7 @@ class TestCommentNotifierInNewLayout(object):
         sample_comparison_coverage_carriedforward,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
-        sample_comparison_coverage_carriedforward.context = NotificationContext(
+        sample_comparison_coverage_carriedforward.context = ComparisonContext(
             all_tests_passed=True
         )
         comparison = sample_comparison_coverage_carriedforward
@@ -4939,7 +4939,7 @@ class TestCommentNotifierInNewLayout(object):
         sample_comparison_coverage_carriedforward,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
-        sample_comparison_coverage_carriedforward.context = NotificationContext(
+        sample_comparison_coverage_carriedforward.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
@@ -4981,7 +4981,7 @@ class TestCommentNotifierInNewLayout(object):
         sample_comparison_coverage_carriedforward,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
-        sample_comparison_coverage_carriedforward.context = NotificationContext(
+        sample_comparison_coverage_carriedforward.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=None,
         )
