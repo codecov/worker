@@ -28,7 +28,7 @@ from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
 from services.billing import BillingPlan
 from services.commit_status import RepositoryCIFilter
-from services.comparison import ComparisonProxy, NotificationContext
+from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
 from services.lock_manager import LockManager, LockRetry, LockType
@@ -293,7 +293,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 **kwargs,
             )
 
-        report_service = ReportService(current_yaml)
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
+        )
         head_report = report_service.get_existing_report_for_commit(
             commit, report_class=ReadOnlyReport
         )
@@ -462,8 +464,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
                 current_yaml=current_yaml,
             ),
-            context=NotificationContext(
-                all_tests_passed=all_tests_passed, test_results_error=test_results_error
+            context=ComparisonContext(
+                all_tests_passed=all_tests_passed,
+                test_results_error=test_results_error,
+                gh_app_installation_name=installation_name_to_use,
             ),
         )
 

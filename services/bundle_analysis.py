@@ -23,6 +23,7 @@ from shared.yaml import UserYaml
 
 from database.enums import ReportType
 from database.models import Commit, CommitReport, Repository, Upload, UploadError
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from services.archive import ArchiveService
 from services.report import BaseReportService
 from services.repository import (
@@ -275,9 +276,17 @@ class BundleRows:
 
 
 class Notifier:
-    def __init__(self, commit: Commit, current_yaml: UserYaml):
+    def __init__(
+        self,
+        commit: Commit,
+        current_yaml: UserYaml,
+        gh_app_installation_name: str | None = None,
+    ):
         self.commit = commit
         self.current_yaml = current_yaml
+        self.gh_app_installation_name = (
+            gh_app_installation_name or GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
 
     @cached_property
     def repository(self) -> Repository:
@@ -289,7 +298,10 @@ class Notifier:
 
     @cached_property
     def repository_service(self) -> TorngitBaseAdapter:
-        return get_repo_provider_service(self.commit.repository)
+        return get_repo_provider_service(
+            self.commit.repository,
+            installation_name_to_use=self.gh_app_installation_name,
+        )
 
     @cached_property
     def bundle_analysis_loader(self):

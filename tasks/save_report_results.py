@@ -9,6 +9,7 @@ from database.enums import ReportType
 from database.models import Commit, Pull
 from database.models.reports import CommitReport, ReportResults
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.notification.notifiers.status.patch import PatchStatusNotifier
@@ -32,7 +33,12 @@ class SaveReportResultsTask(
         commit = self.fetch_commit(db_session, repoid, commitid)
 
         try:
-            repository_service = get_repo_provider_service(commit.repository)
+            installation_name_to_use = get_installation_name_for_owner_for_task(
+                db_session, self.name, commit.repository.owner
+            )
+            repository_service = get_repo_provider_service(
+                commit.repository, installation_name_to_use=installation_name_to_use
+            )
         except RepositoryWithoutValidBotError:
             return {
                 "report_results_saved": False,
@@ -119,7 +125,7 @@ class SaveReportResultsTask(
             current_yaml = UserYaml.from_dict(current_yaml)
         return current_yaml
 
-    def fetch_commit(self, db_session, repoid, commitid):
+    def fetch_commit(self, db_session, repoid, commitid) -> Commit | None:
         commits_query = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
         )

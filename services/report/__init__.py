@@ -190,9 +190,12 @@ class BaseReportService:
 class ReportService(BaseReportService):
     metrics_prefix = "services.report"
 
-    def __init__(self, current_yaml: UserYaml):
+    def __init__(
+        self, current_yaml: UserYaml, gh_app_installation_name: str | None = None
+    ):
         super().__init__(current_yaml)
         self.flag_dict = None
+        self.gh_app_installation_name = gh_app_installation_name
 
     def has_initialized_report(self, commit: Commit) -> bool:
         """Says whether a commit has already initialized its report or not
@@ -713,14 +716,15 @@ class ReportService(BaseReportService):
         ):
             try:
                 provider_service = get_repo_provider_service(
-                    repository=head_commit.repository
+                    repository=head_commit.repository,
+                    installation_name_to_use=self.gh_app_installation_name,
                 )
                 diff = (
                     await provider_service.get_compare(
                         base=base_commit.commitid, head=head_commit.commitid
                     )
                 )["diff"]
-                # Volitile function, alters carryforward_report
+                # Volatile function, alters carryforward_report
                 carryforward_report.shift_lines_by_diff(diff)
             except (RepositoryWithoutValidBotError, OwnerWithoutValidBotError) as exp:
                 log.error(
@@ -918,7 +922,7 @@ class ReportService(BaseReportService):
     ) -> ProcessingResult:
         """
             Processes an upload on top of an existing report `master` and returns
-                a result, which could be succesful or not
+                a result, which could be successful or not
 
             Note that this function does not modify the `upload` object, as this should
                 be done by a separate function
@@ -1209,7 +1213,11 @@ class ReportService(BaseReportService):
 
         # Attempt to calculate diff of report (which uses commit info from the git provider), but it it fails to do so, it just moves on without such diff
         try:
-            repository_service = get_repo_provider_service(repository, commit)
+            repository_service = get_repo_provider_service(
+                repository,
+                commit,
+                installation_name_to_use=self.gh_app_installation_name,
+            )
             report.apply_diff(await repository_service.get_commit_diff(commitid))
         except TorngitError:
             # When this happens, we have that commit.totals["diff"] is not available.

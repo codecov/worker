@@ -1,7 +1,6 @@
 import pytest
 from redis.exceptions import LockError
 from shared.reports.types import ReportTotals, SessionTotalsArray
-from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 
 from database.models.reports import Upload
 from database.tests.factories.core import (
@@ -224,7 +223,7 @@ class TestPreProcessUpload(object):
         )
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
         commit = CommitFactory.create()
-        repo_provider = PreProcessUpload().get_repo_service(commit)
+        repo_provider = PreProcessUpload().get_repo_service(commit, None)
         assert repo_provider is None
 
     def test_preprocess_upload_fail_no_provider_service(self, dbsession, mocker):

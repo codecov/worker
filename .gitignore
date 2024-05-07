@@ -25,6 +25,7 @@ wheels/
 *.egg
 MANIFEST
 .mutmut-cache
+gha-creds-*.json
 
 *.pem
 

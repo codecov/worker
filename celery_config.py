@@ -126,13 +126,6 @@ def _beat_schedule():
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },
         },
-        "find_uncollected_profilings": {
-            "task": profiling_finding_task_name,
-            "schedule": crontab(minute="0,15,30,45"),
-            "kwargs": {
-                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
-            },
-        },
         "github_app_webhooks_task": {
             "task": gh_app_webhook_check_task_name,
             "schedule": crontab(minute="0", hour="0,6,12,18"),
@@ -149,6 +142,15 @@ def _beat_schedule():
             },
         },
     }
+
+    if get_config("setup", "find_uncollected_profilings", "enabled", default=True):
+        beat_schedule["find_uncollected_profilings"] = {
+            "task": profiling_finding_task_name,
+            "schedule": crontab(minute="0,15,30,45"),
+            "kwargs": {
+                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            },
+        }
 
     if get_config("setup", "health_check", "enabled", default=False):
         beat_schedule["health_check_task"] = {

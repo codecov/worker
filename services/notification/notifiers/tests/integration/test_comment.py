@@ -5,7 +5,7 @@ from shared.reports.readonly import ReadOnlyReport
 
 from database.enums import TestResultsProcessingError
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.comparison import ComparisonProxy, NotificationContext
+from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.comment import CommentNotifier
@@ -338,7 +338,7 @@ def sample_comparison_for_limited_upload(
 class TestCommentNotifierIntegration(object):
     @pytest.mark.asyncio
     async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
-        sample_comparison.context = NotificationContext(
+        sample_comparison.context = ComparisonContext(
             all_tests_passed=True, test_results_error=None
         )
         mock_configuration._params["setup"] = {
@@ -412,7 +412,7 @@ class TestCommentNotifierIntegration(object):
     async def test_notify_test_results_error(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
-        sample_comparison.context = NotificationContext(
+        sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
