@@ -335,10 +335,10 @@ class ReportService(BaseReportService):
         owner = repository.owner
 
         insert_coverage_measurement(
-            owner=owner,
-            repo=repository,
-            commit=commit,
-            upload=upload,
+            owner_id=owner.ownerid,
+            repo_id=repository.repoid,
+            commit_id=commit.id,
+            upload_id=upload.id,
             # CLI precreates the upload in API so this defaults to Legacy
             uploader_used=UploaderType.LEGACY.value,
             private_repo=repository.private,
