@@ -25,15 +25,15 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class NotificationContext(object):
+class ComparisonContext(object):
     """Extra information not necessarily related to coverage that may affect notifications"""
 
-    all_tests_passed: bool
+    all_tests_passed: bool | None = None
     test_results_error: TestResultsProcessingError | None = None
+    gh_app_installation_name: str | None = None
 
 
 class ComparisonProxy(object):
-
     """The idea of this class is to produce a wrapper around Comparison with functionalities that
         are useful to the notifications context.
 
@@ -52,7 +52,7 @@ class ComparisonProxy(object):
     """
 
     def __init__(
-        self, comparison: Comparison, context: Optional[NotificationContext] = None
+        self, comparison: Comparison, context: Optional[ComparisonContext] = None
     ):
         self.comparison = comparison
         self._repository_service = None
@@ -68,7 +68,7 @@ class ComparisonProxy(object):
         self._behind_by_lock = asyncio.Lock()
         self._archive_service = None
         self._overlays = {}
-        self.context = context
+        self.context = context or ComparisonContext()
 
     def get_archive_service(self):
         if self._archive_service is None:
@@ -87,7 +87,8 @@ class ComparisonProxy(object):
     def repository_service(self):
         if self._repository_service is None:
             self._repository_service = get_repo_provider_service(
-                self.comparison.head.commit.repository
+                self.comparison.head.commit.repository,
+                installation_name_to_use=self.context.gh_app_installation_name,
             )
         return self._repository_service
 
@@ -291,11 +292,13 @@ class FilteredComparison(object):
         self._changes = None
         self.project_coverage_base = FullCommit(
             commit=real_comparison.project_coverage_base.commit,
-            report=real_comparison.project_coverage_base.report.filter(
-                flags=flags, paths=path_patterns
-            )
-            if self.has_project_coverage_base_report()
-            else None,
+            report=(
+                real_comparison.project_coverage_base.report.filter(
+                    flags=flags, paths=path_patterns
+                )
+                if self.has_project_coverage_base_report()
+                else None
+            ),
         )
         self.head = FullCommit(
             commit=real_comparison.head.commit,

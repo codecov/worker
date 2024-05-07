@@ -8,11 +8,13 @@ from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundErr
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
+from sqlalchemy.orm import Session
 
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -28,7 +30,6 @@ log = logging.getLogger(__name__)
 
 
 class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"):
-
     """
     The main goal for this task is to carry forward flags from previous uploads
     and save the new carried-forawrded upload in the db,as a pre-step for
@@ -103,7 +104,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         commit = commits.first()
         assert commit, "Commit not found in database."
 
-        repository_service = self.get_repo_service(commit)
+        repository_service = self.get_repo_service(db_session, commit)
         if repository_service is None:
             log.warning(
                 "Failed to get repository_service",
@@ -135,10 +136,19 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             "updated_commit": updated_commit,
         }
 
-    def get_repo_service(self, commit) -> Optional[TorngitBaseAdapter]:
+    def get_repo_service(
+        self, db_session: Session, commit: Commit
+    ) -> Optional[TorngitBaseAdapter]:
         repository_service = None
         try:
-            repository_service = get_repo_provider_service(commit.repository, commit)
+            installation_name_to_use = get_installation_name_for_owner_for_task(
+                db_session, self.name, commit.repository.owner
+            )
+            repository_service = get_repo_provider_service(
+                commit.repository,
+                commit,
+                installation_name_to_use=installation_name_to_use,
+            )
         except RepositoryWithoutValidBotError:
             save_commit_error(
                 commit,

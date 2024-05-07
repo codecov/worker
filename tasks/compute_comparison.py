@@ -13,9 +13,10 @@ from app import celery_app
 from database.enums import CompareCommitError, CompareCommitState
 from database.models import CompareCommit, CompareComponent, CompareFlag
 from database.models.reports import ReportLevelTotals, RepositoryFlag
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
 from services.archive import ArchiveService
-from services.comparison import ComparisonProxy, FilteredComparison
+from services.comparison import ComparisonContext, ComparisonProxy, FilteredComparison
 from services.comparison.types import Comparison, FullCommit
 from services.report import ReportService
 from services.repository import get_repo_provider_service
@@ -32,9 +33,14 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
         log.info("Computing comparison", extra=log_extra)
         current_yaml = self.get_yaml_commit(comparison.compare_commit)
+        installation_name_to_use = get_installation_name_for_owner_for_task(
+            db_session, self.name, repo.owner
+        )
 
         with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
-            comparison_proxy = self.get_comparison_proxy(comparison, current_yaml)
+            comparison_proxy = self.get_comparison_proxy(
+                comparison, current_yaml, installation_name_to_use
+            )
         if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
         elif not comparison_proxy.has_head_report():
@@ -254,7 +260,9 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
     def get_yaml_commit(self, commit):
         return get_repo_yaml(commit.repository)
 
-    def get_comparison_proxy(self, comparison, current_yaml):
+    def get_comparison_proxy(
+        self, comparison, current_yaml, installation_name_to_use: str | None = None
+    ):
         compare_commit = comparison.compare_commit
         base_commit = comparison.base_commit
         report_service = ReportService(current_yaml)
@@ -275,7 +283,10 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
                     commit=base_commit, report=base_report
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
-            )
+            ),
+            context=ComparisonContext(
+                gh_app_installation_name=installation_name_to_use
+            ),
         )
 
     def serialize_impacted_files(self, comparison_proxy):

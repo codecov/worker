@@ -25,6 +25,7 @@ from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
 from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
@@ -421,7 +422,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         repository_service = None
         was_updated, was_setup = False, False
         try:
-            repository_service = get_repo_provider_service(repository, commit)
+            installation_name_to_use = get_installation_name_for_owner_for_task(
+                db_session, self.name, repository.owner
+            )
+            repository_service = get_repo_provider_service(
+                repository, commit, installation_name_to_use=installation_name_to_use
+            )
             was_updated = async_to_sync(possibly_update_commit_from_provider_info)(
                 commit, repository_service
             )

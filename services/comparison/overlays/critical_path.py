@@ -83,7 +83,8 @@ class CriticalPathOverlay(object):
         current_yaml = self._comparison.comparison.current_yaml
         if current_yaml is None:
             repo = self._comparison.head.commit.repository
-            repo_provider = get_repo_provider_service(repo)
+            gh_app_installation_name = self._comparison.context.gh_app_installation_name
+            repo_provider = get_repo_provider_service(repo, gh_app_installation_name)
             current_yaml = await get_current_yaml(
                 self._comparison.head.commit, repo_provider
             )
