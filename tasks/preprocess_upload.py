@@ -103,8 +103,10 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         )
         commit = commits.first()
         assert commit, "Commit not found in database."
-
-        repository_service = self.get_repo_service(db_session, commit)
+        installation_name_to_use = get_installation_name_for_owner_for_task(
+            db_session, self.name, commit.repository.owner
+        )
+        repository_service = self.get_repo_service(commit, installation_name_to_use)
         if repository_service is None:
             log.warning(
                 "Failed to get repository_service",
@@ -123,7 +125,9 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         commit_yaml = self.fetch_commit_yaml_and_possibly_store(
             commit, repository_service
         )
-        report_service = ReportService(commit_yaml)
+        report_service = ReportService(
+            commit_yaml, gh_app_installation_name=installation_name_to_use
+        )
         # For parallel upload processing experiment, saving the report to GCS happens here
         commit_report = async_to_sync(report_service.initialize_and_save_report)(
             commit, report_code
@@ -137,13 +141,10 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         }
 
     def get_repo_service(
-        self, db_session: Session, commit: Commit
+        self, commit: Commit, installation_name_to_use: str
     ) -> Optional[TorngitBaseAdapter]:
         repository_service = None
         try:
-            installation_name_to_use = get_installation_name_for_owner_for_task(
-                db_session, self.name, commit.repository.owner
-            )
             repository_service = get_repo_provider_service(
                 commit.repository,
                 commit,

@@ -293,7 +293,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 **kwargs,
             )
 
-        report_service = ReportService(current_yaml)
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
+        )
         head_report = report_service.get_existing_report_for_commit(
             commit, report_class=ReadOnlyReport
         )

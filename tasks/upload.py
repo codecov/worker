@@ -473,7 +473,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         if report_type == ReportType.COVERAGE:
             # TODO: consider renaming class to `CoverageReportService`
-            report_service = ReportService(commit_yaml)
+            report_service = ReportService(
+                commit_yaml, gh_app_installation_name=installation_name_to_use
+            )
         elif report_type == ReportType.BUNDLE_ANALYSIS:
             report_service = BundleAnalysisReportService(commit_yaml)
         elif report_type == ReportType.TEST_RESULTS:

@@ -265,7 +265,9 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
     ):
         compare_commit = comparison.compare_commit
         base_commit = comparison.base_commit
-        report_service = ReportService(current_yaml)
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
+        )
         base_report = report_service.get_existing_report_for_commit(
             base_commit, report_class=ReadOnlyReport
         )

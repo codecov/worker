@@ -157,7 +157,9 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "reason": "not_in_provider",
             }
         self.trigger_ai_pr_review(enriched_pull, current_yaml)
-        report_service = ReportService(current_yaml)
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
+        )
         head_commit = pull.get_head_commit()
         if head_commit is None:
             log.info(
