@@ -1,6 +1,22 @@
 from datetime import datetime, timedelta
 
 import pytest
+from shared.django_apps.codecov_auth.tests.factories import (
+    OwnerFactory as DjangoOwnerFactory,
+)
+from shared.django_apps.core.tests.factories import CommitFactory as DjangoCommitFactory
+from shared.django_apps.core.tests.factories import (
+    RepositoryFactory as DjangoRepositoryFactory,
+)
+from shared.django_apps.reports.models import ReportSession, ReportType
+from shared.django_apps.reports.tests.factories import CommitReportFactory
+from shared.django_apps.reports.tests.factories import (
+    UploadFactory as DjangoUploadFactory,
+)
+from shared.django_apps.user_measurements.models import UserMeasurement
+from shared.plan.constants import PlanName
+from shared.plan.service import PlanService
+from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.test_utils import mock_config_helper
 
 from database.enums import TrialStatus
@@ -177,6 +193,7 @@ def gitlab_enriched_pull_root(dbsession, gitlab_root_group):
 
 
 class TestDecorationServiceTestCase(object):
+    @pytest.mark.django_db
     def test_decoration_type_basic_plan_upload_limit(
         self, enriched_pull, dbsession, mocker
     ):
@@ -198,10 +215,21 @@ class TestDecorationServiceTestCase(object):
             timestamp=datetime.now(),
         )
 
-        report = ReportFactory.create(commit=commit)
+        report = ReportFactory.create(
+            commit=commit, report_type=ReportType.COVERAGE.value
+        )
         for i in range(249):
             upload = UploadFactory.create(report=report, storage_path="url")
             dbsession.add(upload)
+            insert_coverage_measurement(
+                owner_id=enriched_pull.database_pull.repository.owner.ownerid,
+                repo_id=enriched_pull.database_pull.repository.repoid,
+                commit_id=commit.id,
+                upload_id=upload.id,
+                uploader_used=UploaderType.LEGACY.value,
+                private_repo=enriched_pull.database_pull.repository.private,
+                report_type=report.report_type,
+            )
         dbsession.flush()
 
         decoration_details = determine_decoration_details(enriched_pull)
@@ -212,10 +240,21 @@ class TestDecorationServiceTestCase(object):
         dbsession.add(upload)
         dbsession.flush()
 
+        insert_coverage_measurement(
+            owner_id=enriched_pull.database_pull.repository.owner.ownerid,
+            repo_id=enriched_pull.database_pull.repository.repoid,
+            commit_id=commit.id,
+            upload_id=upload.id,
+            uploader_used=UploaderType.LEGACY.value,
+            private_repo=enriched_pull.database_pull.repository.private,
+            report_type=report.report_type,
+        )
+
         decoration_details = determine_decoration_details(enriched_pull)
         assert decoration_details.decoration_type == Decoration.upload_limit
         assert decoration_details.reason == "Org has exceeded the upload limit"
 
+    @pytest.mark.django_db
     def test_decoration_type_team_plan_upload_limit(
         self, enriched_pull, dbsession, mocker
     ):
@@ -237,10 +276,21 @@ class TestDecorationServiceTestCase(object):
             timestamp=datetime.now(),
         )
 
-        report = ReportFactory.create(commit=commit)
+        report = ReportFactory.create(
+            commit=commit, report_type=ReportType.COVERAGE.value
+        )
         for i in range(2499):
             upload = UploadFactory.create(report=report, storage_path="url")
             dbsession.add(upload)
+            insert_coverage_measurement(
+                owner_id=enriched_pull.database_pull.repository.owner.ownerid,
+                repo_id=enriched_pull.database_pull.repository.repoid,
+                commit_id=commit.id,
+                upload_id=upload.id,
+                uploader_used=UploaderType.LEGACY.value,
+                private_repo=enriched_pull.database_pull.repository.private,
+                report_type=report.report_type,
+            )
         dbsession.flush()
 
         decoration_details = determine_decoration_details(enriched_pull)
@@ -250,11 +300,21 @@ class TestDecorationServiceTestCase(object):
         upload = UploadFactory.create(report=report, storage_path="url")
         dbsession.add(upload)
         dbsession.flush()
+        insert_coverage_measurement(
+            owner_id=enriched_pull.database_pull.repository.owner.ownerid,
+            repo_id=enriched_pull.database_pull.repository.repoid,
+            commit_id=commit.id,
+            upload_id=upload.id,
+            uploader_used=UploaderType.LEGACY.value,
+            private_repo=enriched_pull.database_pull.repository.private,
+            report_type=report.report_type,
+        )
 
         decoration_details = determine_decoration_details(enriched_pull)
         assert decoration_details.decoration_type == Decoration.upload_limit
         assert decoration_details.reason == "Org has exceeded the upload limit"
 
+    @pytest.mark.django_db
     def test_decoration_type_unlimited_upload_on_enterprise(
         self, enriched_pull, dbsession, mocker, mock_configuration
     ):
@@ -286,6 +346,15 @@ class TestDecorationServiceTestCase(object):
         for i in range(250):
             upload = UploadFactory.create(report=report, storage_path="url")
             dbsession.add(upload)
+            insert_coverage_measurement(
+                owner_id=enriched_pull.database_pull.repository.owner.ownerid,
+                repo_id=enriched_pull.database_pull.repository.repoid,
+                commit_id=commit.id,
+                upload_id=upload.id,
+                uploader_used=UploaderType.LEGACY.value,
+                private_repo=enriched_pull.database_pull.repository.private,
+                report_type=report.report_type,
+            )
         dbsession.flush()
 
         decoration_details = determine_decoration_details(enriched_pull)
@@ -293,49 +362,75 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.decoration_type != Decoration.upload_limit
         assert decoration_details.reason != "Org has exceeded the upload limit"
 
-    def test_uploads_used_with_expired_trial(self, mocker, dbsession):
-        owner = OwnerFactory.create(
+    @pytest.mark.django_db
+    def test_uploads_used_with_expired_trial(self, mocker):
+        owner = DjangoOwnerFactory(
             service="github",
             trial_status=TrialStatus.EXPIRED.value,
             trial_start_date=datetime.now() + timedelta(days=-10),
             trial_end_date=datetime.now() + timedelta(days=-2),
+            plan=PlanName.BASIC_PLAN_NAME.value,
         )
-        dbsession.add(owner)
-        dbsession.flush()
-
-        repository = RepositoryFactory.create(
-            owner=owner,
+        repository = DjangoRepositoryFactory(
+            author=owner,
             private=True,
         )
-        dbsession.add(repository)
-        dbsession.flush()
-
-        commit = CommitFactory.create(
+        commit = DjangoCommitFactory(
             repository=repository,
             author__service="github",
             timestamp=datetime.now(),
         )
+        report = CommitReportFactory(
+            commit=commit, report_type=ReportType.COVERAGE.value
+        )
 
-        report = ReportFactory.create(commit=commit)
-        report_before_trial = UploadFactory.create(report=report, storage_path="url")
+        report_before_trial = DjangoUploadFactory(report=report, storage_path="url")
         report_before_trial.created_at += timedelta(days=-12)
-        dbsession.add(report_before_trial)
-        dbsession.flush()
+        report_before_trial.save()
+        upload_before_trial = insert_coverage_measurement(
+            owner_id=owner.ownerid,
+            repo_id=repository.repoid,
+            commit_id=commit.id,
+            upload_id=report_before_trial.id,
+            uploader_used=UploaderType.LEGACY.value,
+            private_repo=repository.private,
+            report_type=report.report_type,
+        )
+        upload_before_trial.created_at += timedelta(days=-12)
+        upload_before_trial.save()
 
-        report_during_trial = UploadFactory.create(report=report, storage_path="url")
+        report_during_trial = DjangoUploadFactory(report=report, storage_path="url")
         report_during_trial.created_at += timedelta(days=-5)
-        dbsession.add(report_during_trial)
-        dbsession.flush()
+        report_during_trial.save()
+        upload_during_trial = insert_coverage_measurement(
+            owner_id=owner.ownerid,
+            repo_id=repository.repoid,
+            commit_id=commit.id,
+            upload_id=report_during_trial.id,
+            uploader_used=UploaderType.LEGACY.value,
+            private_repo=repository.private,
+            report_type=report.report_type,
+        )
+        upload_during_trial.created_at += timedelta(days=-5)
+        upload_during_trial.save()
 
-        report_after_trial = UploadFactory.create(report=report, storage_path="url")
-        dbsession.add(report_after_trial)
-        dbsession.flush()
+        report_after_trial = DjangoUploadFactory(report=report, storage_path="url")
+        insert_coverage_measurement(
+            owner_id=owner.ownerid,
+            repo_id=repository.repoid,
+            commit_id=commit.id,
+            upload_id=report_after_trial.id,
+            uploader_used=UploaderType.LEGACY.value,
+            private_repo=repository.private,
+            report_type=report.report_type,
+        )
 
-        uploads_present = dbsession.query(Upload).all()
+        uploads_present = ReportSession.objects.all()
         assert len(uploads_present) == 3
 
         mock_config_helper(mocker, configs={"setup.upload_throttling_enabled": True})
-        uploads_used = determine_uploads_used(dbsession, owner)
+        plan_service = PlanService(current_org=owner)
+        uploads_used = determine_uploads_used(plan_service=plan_service)
 
         assert uploads_used == 2
 
@@ -497,8 +592,6 @@ class TestDecorationServiceTestCase(object):
             pr_author.email = value
         elif is_bot and param == "service_id":
             pr_author.service_id = value
-        print(pr_author.email)
-        print(pr_author.service_id)
         assert _is_bot_account(pr_author) == is_bot
 
     def test_get_decoration_type_bot(self, dbsession, mocker, enriched_pull):
@@ -800,42 +893,35 @@ class TestDecorationServiceGitLabTestCase(object):
         assert decoration_details.activation_author_ownerid == pr_author.ownerid
         assert enriched_pull.database_pull.repository.owner.plan_activated_users is None
 
+    @pytest.mark.django_db
     def test_uploads_used_with_expired_trial(self, mocker, dbsession):
-        owner = OwnerFactory.create(
-            service="github",
+        owner = DjangoOwnerFactory(
+            service="gitlab",
             trial_status=TrialStatus.EXPIRED.value,
             trial_start_date=datetime.now() + timedelta(days=-10),
             trial_end_date=datetime.now() + timedelta(days=-2),
+            plan=PlanName.BASIC_PLAN_NAME.value,
         )
-        dbsession.add(owner)
-        dbsession.flush()
-
-        repository = RepositoryFactory.create(
-            owner=owner,
+        repository = DjangoRepositoryFactory(
+            author=owner,
             private=True,
         )
-        dbsession.add(repository)
-        dbsession.flush()
-
-        commit = CommitFactory.create(
+        commit = DjangoCommitFactory(
             repository=repository,
-            author__service="github",
+            author__service="gitlab",
             timestamp=datetime.now(),
         )
+        report = CommitReportFactory(
+            commit=commit, report_type=ReportType.COVERAGE.value
+        )
+        DjangoUploadFactory(report=report, storage_path="url")
+        DjangoUploadFactory(report=report, storage_path="url")
 
-        report = ReportFactory.create(commit=commit)
-        upload_1 = UploadFactory.create(report=report, storage_path="url")
-        dbsession.add(upload_1)
-        dbsession.flush()
-
-        upload_2 = UploadFactory.create(report=report, storage_path="url")
-        dbsession.add(upload_2)
-        dbsession.flush()
-
-        uploads_present = dbsession.query(Upload).all()
+        uploads_present = ReportSession.objects.all()
         assert len(uploads_present) == 2
 
         mock_config_helper(mocker, configs={"setup.upload_throttling_enabled": False})
-        uploads_used = determine_uploads_used(dbsession, owner)
+        plan_service = PlanService(current_org=owner)
+        uploads_used = determine_uploads_used(plan_service=plan_service)
 
         assert uploads_used == 0

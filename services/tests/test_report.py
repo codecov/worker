@@ -1,5 +1,3 @@
-import json
-import pprint
 from asyncio import Future
 from decimal import Decimal
 
@@ -23,7 +21,6 @@ from database.tests.factories import (
     UploadLevelTotalsFactory,
 )
 from helpers.exceptions import RepositoryWithoutValidBotError
-from helpers.labels import SpecialLabelsEnum
 from services.archive import ArchiveService
 from services.report import (
     NotReadyToBuildReportYetError,
@@ -2367,7 +2364,6 @@ class TestReportService(BaseTestCase):
                 "s": 1,
             },
         }
-        print(readable_report["archive"])
         assert expected_results["report"]["files"] == readable_report["report"]["files"]
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
@@ -2467,7 +2463,6 @@ class TestReportService(BaseTestCase):
                 "s": 1,
             },
         }
-        pprint.pprint(readable_report)
         assert (
             readable_report["report"]["sessions"]
             == expected_results["report"]["sessions"]
@@ -4041,7 +4036,6 @@ class TestReportService(BaseTestCase):
         assert commit.report_json["sessions"] == expected["sessions"]
         assert commit.report_json == expected
         assert res["url"] in mock_storage.storage["archive"]
-        print(mock_storage.storage["archive"][res["url"]])
         expected_content = "\n".join(
             [
                 "{}",
@@ -4136,7 +4130,6 @@ class TestReportService(BaseTestCase):
         f3 = ReportFile("pulse.py")
         f3.append(2, ReportLine.create(1))
         sample_report.append(f3)
-        print(sample_report.files)
         del sample_report["file_2.py"]
         del sample_report["hahafile.txt"]
         del sample_report["pulse.py"]
@@ -4289,7 +4282,6 @@ class TestReportService(BaseTestCase):
         assert commit.report_json["files"] == expected["files"]
         assert commit.report_json == expected
         assert res["url"] in mock_storage.storage["archive"]
-        print(mock_storage.storage["archive"][res["url"]])
         expected_content = "\n".join(
             [
                 "{}",
@@ -4530,7 +4522,6 @@ class TestReportService(BaseTestCase):
         assert r.details is not None
         assert len(r.uploads) == 4
         first_upload = dbsession.query(Upload).filter_by(order_number=0).first()
-        print(first_upload.flags)
         assert sorted([f.flag_name for f in first_upload.flags]) == []
         second_upload = dbsession.query(Upload).filter_by(order_number=1).first()
         assert sorted([f.flag_name for f in second_upload.flags]) == ["unit"]
@@ -4547,7 +4538,6 @@ class TestReportService(BaseTestCase):
             .count()
             == 2
         )
-        print(r.details)
         assert r.details.files_array == [
             {
                 "filename": "file_00.py",
@@ -4783,6 +4773,7 @@ class TestReportService(BaseTestCase):
         assert res == current_report_row
         assert not mocker_save_full_report.called
 
+    @pytest.mark.django_db
     def test_create_report_upload(self, dbsession):
         arguments = {
             "branch": "master",
@@ -4946,8 +4937,6 @@ class TestReportService(BaseTestCase):
             sample_report, parent_commit, commit
         )
         readable_report = self.convert_report_to_better_readable(result)
-        print(readable_report["archive"])
-        print(result.get("file_1.go")._lines)
         assert readable_report["archive"] == {
             "file_1.go": [
                 (1, 1, None, [[0, 1, None, None, None]], None, (10, 2)),
@@ -5057,7 +5046,6 @@ class TestReportService(BaseTestCase):
         )
         assert mock_get_report.call_count == 1
         readable_report = self.convert_report_to_better_readable(result)
-        print(readable_report["archive"])
         assert readable_report["archive"] == {
             "file_1.go": [
                 (1, 1, None, [[0, 1, None, None, None]], None, (10, 2)),

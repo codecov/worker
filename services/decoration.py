@@ -1,15 +1,14 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 
 from shared.config import get_config
+from shared.plan.service import PlanService
+from shared.upload.utils import query_monthly_coverage_measurements
 from sqlalchemy import func
 
-from conftest import dbsession
-from database.enums import Decoration, ReportType, TrialStatus
-from database.models import Commit, Owner, Repository
-from database.models.reports import CommitReport, Upload
-from services.billing import BillingPlan, is_pr_billing_plan
+from database.enums import Decoration
+from database.models import Owner
+from services.billing import is_pr_billing_plan
 from services.license import requires_license
 from services.repository import EnrichedPull
 
@@ -26,12 +25,6 @@ BOT_USER_EMAILS = [
 BOT_USER_IDS = ["29139614"]  # renovate[bot] github
 USER_BASIC_LIMIT_UPLOAD = 250
 
-PLANS_WITH_UPLOAD_LIMIT = {
-    "users-basic": 250,
-    "users-teamm": 2500,
-    "users-teamy": 2500,
-}
-
 
 @dataclass
 class DecorationDetails(object):
@@ -46,42 +39,13 @@ def _is_bot_account(author: Owner) -> bool:
     return author.email in BOT_USER_EMAILS or author.service_id in BOT_USER_IDS
 
 
-def determine_uploads_used(db_session, org: Owner) -> int:
+def determine_uploads_used(plan_service: PlanService) -> int:
     # This query takes an absurdly long time to run and in some environments we
     # would like to disable it
     if not get_config("setup", "upload_throttling_enabled", default=True):
         return 0
 
-    query = (
-        db_session.query(Upload)
-        .join(CommitReport)
-        .join(Commit)
-        .join(Repository)
-        .filter(
-            Upload.upload_type == "uploaded",
-            Repository.ownerid == org.ownerid,
-            Repository.private == True,
-            Upload.created_at >= (datetime.now() - timedelta(days=30)),
-            Commit.timestamp >= (datetime.now() - timedelta(days=60)),
-            (CommitReport.report_type == None)
-            | (CommitReport.report_type == ReportType.COVERAGE.value),
-        )
-    )
-
-    if (
-        org.trial_status == TrialStatus.EXPIRED.value
-        and org.trial_start_date
-        and org.trial_end_date
-    ):
-        query = query.filter(
-            (Upload.created_at >= org.trial_end_date)
-            | (Upload.created_at <= org.trial_start_date)
-        )
-
-    # Upload limit of the user's plan, default to USER_BASIC_LIMIT_UPLOAD if not found
-    plan_allowed_limit = PLANS_WITH_UPLOAD_LIMIT.get(org.plan, USER_BASIC_LIMIT_UPLOAD)
-
-    return query.limit(plan_allowed_limit).count()
+    return query_monthly_coverage_measurements(plan_service=plan_service)
 
 
 def determine_decoration_details(
@@ -170,18 +134,19 @@ def determine_decoration_details(
                 reason="PR author not found in database",
             )
 
-        # TODO declare this to be shared between codecov-api and worker
-        uploads_used = determine_uploads_used(db_session=db_session, org=org)
+        plan_service = PlanService(current_org=org)
+        monthly_limit = plan_service.monthly_uploads_limit
+        if monthly_limit is not None:
+            uploads_used = determine_uploads_used(plan_service=plan_service)
 
-        if (
-            org.plan in PLANS_WITH_UPLOAD_LIMIT
-            and uploads_used >= PLANS_WITH_UPLOAD_LIMIT[org.plan]
-            and not requires_license()
-        ):
-            return DecorationDetails(
-                decoration_type=Decoration.upload_limit,
-                reason="Org has exceeded the upload limit",
-            )
+            if (
+                uploads_used >= plan_service.monthly_uploads_limit
+                and not requires_license()
+            ):
+                return DecorationDetails(
+                    decoration_type=Decoration.upload_limit,
+                    reason="Org has exceeded the upload limit",
+                )
 
         if (
             org.plan_activated_users is not None
