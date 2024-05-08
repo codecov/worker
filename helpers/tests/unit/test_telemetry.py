@@ -88,21 +88,12 @@ class TestMetricContext:
         assert mc.repo_id is not None
         assert mc.owner_id is not None
         assert mc.commit_sha is not None
-        assert mc.repo_slug is None
-        assert mc.owner_slug is None
         assert mc.commit_id is None
-        assert mc.commit_slug is None
         assert mc.populated == False
 
         mocker.patch("helpers.telemetry.get_db_session", return_value=dbsession)
         mc.populate()
 
-        assert mc.repo_slug == "github/codecove2e/example-python"
-        assert mc.owner_slug == "github/codecove2e"
-        assert (
-            mc.commit_slug
-            == "github/codecove2e/example-python/c5b67303452bbff57cc1f49984339cde39eb1db5"
-        )
         assert mc.commit_id is not None
 
     @pytest.mark.real_metric_context
@@ -113,9 +104,6 @@ class TestMetricContext:
         mocker.patch("helpers.telemetry.get_db_session", return_value=dbsession)
         mc.populate()
 
-        assert mc.repo_slug is None
-        assert mc.owner_slug == "github/codecove2e"
-        assert mc.commit_slug is None
         assert mc.commit_id is None
 
     @pytest.mark.django_db(databases={"default"})

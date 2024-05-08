@@ -7,7 +7,7 @@ from asgiref.sync import sync_to_async
 from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
 
 from database.engine import get_db_session
-from database.models.core import Commit, Owner, Repository
+from database.models.core import Commit, Repository
 
 log = logging.getLogger(__name__)
 
@@ -62,9 +62,6 @@ class MetricContext:
         self.commit_id = commit_id
         self.commit_sha = commit_sha
         self.owner_id = owner_id
-        self.repo_slug = None
-        self.owner_slug = None
-        self.commit_slug = None
         self.populated = False
 
     def populate(self):
@@ -72,21 +69,19 @@ class MetricContext:
             return
 
         repo = None
-        owner = None
         commit = None
         dbsession = get_db_session()
 
         if self.repo_id:
-            repo = (
-                dbsession.query(Repository)
-                .filter(Repository.repoid == self.repo_id)
-                .first()
-            )
-            owner = repo.owner
             if not self.owner_id:
-                self.owner_id = owner.ownerid
+                repo = (
+                    dbsession.query(Repository)
+                    .filter(Repository.repoid == self.repo_id)
+                    .first()
+                )
+                self.owner_id = repo.ownerid
 
-            if self.commit_sha:
+            if self.commit_sha and not self.commit_id:
                 commit = (
                     dbsession.query(Commit)
                     .filter(
@@ -96,18 +91,6 @@ class MetricContext:
                     .first()
                 )
                 self.commit_id = commit.id_
-        elif self.owner_id:
-            owner = (
-                dbsession.query(Owner).filter(Owner.ownerid == self.owner_id).first()
-            )
-
-        self.owner_slug = f"{owner.service}/{owner.username}" if owner else None
-        self.repo_slug = (
-            f"{self.owner_slug}/{repo.name}" if self.owner_slug and repo else None
-        )
-        self.commit_slug = (
-            f"{self.repo_slug}/{commit.commitid}" if self.repo_slug and commit else None
-        )
 
         self.populated = True
 
