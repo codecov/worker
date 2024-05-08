@@ -7,7 +7,6 @@ from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import backref, relationship
-from test_results_parser import Outcome
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Commit, CompareCommit, Repository

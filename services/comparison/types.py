@@ -4,7 +4,7 @@ from typing import Optional
 from shared.reports.resources import Report
 from shared.yaml import UserYaml
 
-from database.models import Commit, Pull
+from database.models import Commit
 from services.repository import EnrichedPull
 
 

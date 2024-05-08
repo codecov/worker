@@ -6,10 +6,7 @@ from typing import List, Optional
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
 from shared.reports.types import Change
 from shared.torngit.exceptions import (
-    TorngitClientError,
     TorngitClientGeneralError,
-    TorngitError,
-    TorngitObjectNotFoundError,
 )
 
 from database.enums import CompareCommitState, TestResultsProcessingError

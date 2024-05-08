@@ -1,7 +1,7 @@
 import logging
 import random
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import Dict, List, Optional, Tuple
 
 from shared.config import get_config
 from shared.github import is_installation_rate_limited
@@ -131,9 +131,8 @@ def get_owner_installation_id(
     # using the installations to list these values
     # We have this secondary value because `deprecated_using_integration` is... deprecated
     # And might get out-of-sync soon
-    ignore_installation: bool = False
+    ignore_installation: bool = False,
 ) -> Optional[Dict]:
-
     log.info(
         "Getting owner installation id",
         extra=dict(
@@ -201,7 +200,6 @@ def get_repo_appropriate_bot_token(
     repo: Repository,
     installation_info: Optional[Dict] = None,
 ) -> Tuple[Dict, Optional[Owner]]:
-
     log.info(
         "Get repo appropriate bot token",
         extra=dict(

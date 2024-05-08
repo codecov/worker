@@ -6,7 +6,6 @@ from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
-    CoverageType,
     ReportBuilder,
     ReportBuilderSession,
 )

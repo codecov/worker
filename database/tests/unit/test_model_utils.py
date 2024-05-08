@@ -2,7 +2,6 @@ import json
 from unittest.mock import PropertyMock
 
 from shared.storage.exceptions import FileNotInStorageError
-from shared.utils.ReportEncoder import ReportEncoder
 
 from database.models.core import Commit
 from database.tests.factories.core import CommitFactory
@@ -11,7 +10,6 @@ from database.utils import ArchiveField, ArchiveFieldInterface
 
 class TestArchiveField(object):
     class ClassWithArchiveField(object):
-
         commit: Commit
         id = 1
         external_id = "external_id"

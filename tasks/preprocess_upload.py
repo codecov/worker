@@ -4,11 +4,10 @@ from typing import Optional
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.torngit.base import TorngitBaseAdapter
-from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.torngit.exceptions import TorngitClientError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
-from sqlalchemy.orm import Session
 
 from app import celery_app
 from database.enums import CommitErrorTypes

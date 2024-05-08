@@ -23,7 +23,7 @@ class SyncRepoLanguagesGQLTask(BaseCodecovTask, name=sync_repo_languages_gql_tas
         org_username: String,
         current_owner_id=int,
         *args,
-        **kwargs
+        **kwargs,
     ):
         # Fetch current owner and org of interest from DB
         current_owner: Owner = (

@@ -18,7 +18,7 @@ class UpdateBranchesTask(BaseCodecovTask, name=update_branches_task_name):
         branch_name=None,
         incorrect_commitid=None,
         dry_run=True,
-        **kwargs
+        **kwargs,
     ):
         if branch_name is None:
             log.warning("No branch name specified, not updating any branches")

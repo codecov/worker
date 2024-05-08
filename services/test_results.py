@@ -14,7 +14,6 @@ from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
-from services.urls import get_pull_url
 
 log = logging.getLogger(__name__)
 
@@ -202,7 +201,6 @@ class TestResultsNotifier:
             failure_message = "No failure message available"
 
         if flake is not None:
-
             flake_messages = []
             if FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH in flake.flake_type:
                 flake_messages.append("Failure on default branch")

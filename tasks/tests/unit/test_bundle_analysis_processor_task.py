@@ -6,7 +6,6 @@ from shared.bundle_analysis.storage import get_bucket_name
 
 from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
-from services.bundle_analysis import sentry_metrics
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
 
 

@@ -3,7 +3,6 @@ from datetime import datetime
 
 from asgiref.sync import async_to_sync
 from shared.celery_config import sync_teams_task_name
-from sqlalchemy.dialects.postgresql import insert
 
 from app import celery_app
 from database.models import Owner

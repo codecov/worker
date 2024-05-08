@@ -6,7 +6,6 @@ from typing import Any, Mapping
 from urllib.parse import urlparse
 
 import httpx
-from requests.exceptions import RequestException
 from shared.config import get_config
 
 from helpers.match import match

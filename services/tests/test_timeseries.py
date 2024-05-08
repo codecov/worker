@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from time import time
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
@@ -702,7 +701,6 @@ class TestTimeseriesService(object):
         ]
 
     def test_backfill_batch_size(self, repository, mocker):
-
         dbsession = repository.get_db_session()
         coverage_dataset = (
             dbsession.query(Dataset.name)

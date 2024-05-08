@@ -7,7 +7,6 @@ from mock import PropertyMock
 from database.models import Pull
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
-from services.notification.notifiers.base import NotificationResult
 from tasks.notify import NotifyTask
 
 sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
@@ -37,9 +36,9 @@ class TestNotifyTask(object):
     ):
         mock_requests_post.return_value.status_code = 200
         mock_redis.get.return_value = False
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://codecov.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -161,9 +160,9 @@ class TestNotifyTask(object):
         mock_configuration,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://codecov.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -346,9 +345,9 @@ class TestNotifyTask(object):
         mock_configuration,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://myexamplewebsite.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://myexamplewebsite.io"
+        )
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
             owner__service="github",
@@ -572,9 +571,9 @@ class TestNotifyTask(object):
         mock_configuration,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://myexamplewebsite.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://myexamplewebsite.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -788,9 +787,9 @@ class TestNotifyTask(object):
         is_not_first_pull,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://myexamplewebsite.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://myexamplewebsite.io"
+        )
         mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -1243,9 +1242,9 @@ class TestNotifyTask(object):
     def test_notifier_call_no_head_commit_report(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://codecov.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,

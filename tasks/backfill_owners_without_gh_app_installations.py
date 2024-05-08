@@ -100,7 +100,7 @@ class BackfillOwnersWithoutGHAppInstallations(
         db_session: Session,
         owner_ids: Optional[List[int]] = None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         log.info(
             "Starting backfill for owners without gh app task",

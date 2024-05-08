@@ -1,4 +1,4 @@
-from database.enums import Decoration, Notification
+from database.enums import Notification
 from helpers.metrics import metrics
 from services.notification.notifiers.base import Comparison
 from services.notification.notifiers.checks.base import ChecksNotifier
@@ -7,7 +7,6 @@ from services.yaml import read_yaml_field
 
 
 class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
-
     context = "patch"
 
     @property

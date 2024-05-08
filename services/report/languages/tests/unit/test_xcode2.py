@@ -1,5 +1,3 @@
-from json import dumps, loads
-
 from services.report.languages import xcode
 from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase

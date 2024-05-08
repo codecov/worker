@@ -3,7 +3,6 @@ import gc
 import logging
 import logging.config
 import os
-import re
 from datetime import timedelta
 
 from celery import signals

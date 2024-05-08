@@ -2,7 +2,6 @@ import logging
 from typing import Any, Dict
 
 from asgiref.sync import async_to_sync
-from shared.celery_config import notify_task_name
 from shared.yaml import UserYaml
 
 from app import celery_app

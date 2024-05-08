@@ -7,7 +7,6 @@ from services.urls import get_commit_url, get_graph_url
 
 
 class SlackNotifier(RequestsYamlBasedNotifier):
-
     BASE_MESSAGE = " ".join(
         [
             "Coverage for <{head_url}|{owner_username}/{repo_name}>",

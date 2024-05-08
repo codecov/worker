@@ -41,9 +41,9 @@ class BackfillExistingGHAppInstallationsTask(
                 GithubAppInstallation.ownerid.in_(owner_ids)
             )
 
-        gh_app_installations: List[
-            GithubAppInstallation
-        ] = gh_app_installations_query.yield_per(YIELD_AMOUNT)
+        gh_app_installations: List[GithubAppInstallation] = (
+            gh_app_installations_query.yield_per(YIELD_AMOUNT)
+        )
 
         for gh_app_installation in gh_app_installations:
             # Check if gh app has 'all' repositories selected
@@ -82,7 +82,7 @@ class BackfillExistingGHAppInstallationsTask(
         db_session: Session,
         owner_ids: Optional[List[int]] = None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         log.info(
             "Starting Existing GH App backfill task",

@@ -2,16 +2,12 @@ import logging
 
 from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
-from openai import AsyncOpenAI
-from shared.config import get_config
-from shared.torngit.base import TokenType
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.ai_pr_review import perform_review
-from services.repository import get_repo_provider_service
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)

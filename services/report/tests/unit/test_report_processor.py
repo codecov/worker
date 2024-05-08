@@ -74,7 +74,7 @@ class TestReportTypeMatching(object):
                 ParsedUploadedReportFile(
                     filename="name",
                     file_contents=BytesIO(
-                        '\uFEFF<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
+                        '\ufeff<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
                     ),
                 )
             )[1]

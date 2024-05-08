@@ -12,7 +12,6 @@ from shared.reports.resources import (
 from shared.reports.types import CoverageDatapoint
 from shared.yaml import UserYaml
 
-from database.tests.factories.core import RepositoryFactory
 from helpers.labels import SpecialLabelsEnum
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.report.raw_upload_processor import (
@@ -481,11 +480,11 @@ class TestAdjustSession(BaseTestCase):
                         "code": None,
                         "commit": MagicMock(
                             name="fake_commit",
-                            **{"repository": MagicMock(name="fake_repo")}
+                            **{"repository": MagicMock(name="fake_repo")},
                         ),
-                    }
+                    },
                 )
-            }
+            },
         )
         assert _adjust_sessions(
             sample_first_report,

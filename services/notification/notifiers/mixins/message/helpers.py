@@ -46,20 +46,20 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
                 yaml, after.coverage, style="{0}%", if_null="\u2205"
             ),
             relative=format_number_to_str(
-                yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xF8"
+                yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xf8"
             ),
             impact=format_number_to_str(
                 yaml,
                 coverage_change,
                 style="{0}%",
-                if_zero="\xF8",
+                if_zero="\xf8",
                 if_null="\u2205",
                 plus=True,
             )
             if before
             else "?"
             if before is None
-            else "\xF8",
+            else "\xf8",
         )
 
         if show_complexity:
@@ -75,15 +75,15 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
                 absolute=style.format(format_number_to_str(yaml, after.complexity)),
                 relative=style.format(
                     format_number_to_str(
-                        yaml, relative.complexity if relative else 0, if_null="\xF8"
+                        yaml, relative.complexity if relative else 0, if_null="\xf8"
                     )
                 ),
                 impact=style.format(
                     format_number_to_str(
                         yaml,
                         complexity_change,
-                        if_zero="\xF8",
-                        if_null="\xF8",
+                        if_zero="\xf8",
+                        if_null="\xf8",
                         plus=True,
                     )
                     if before
@@ -129,7 +129,7 @@ def make_patch_only_metrics(before, after, relative, show_complexity, yaml, pull
 
     else:
         patch_cov = format_number_to_str(
-            yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xF8"
+            yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xf8"
         )
         coverage = f" {patch_cov} |"
         missing_lines = relative.misses if relative else 0
@@ -150,7 +150,6 @@ def make_patch_only_metrics(before, after, relative, show_complexity, yaml, pull
 
 
 def get_table_header(show_complexity):
-
     return (
         "| Coverage \u0394 |"
         + (" Complexity \u0394 |" if show_complexity else "")

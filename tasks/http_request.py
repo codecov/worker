@@ -23,7 +23,7 @@ class HTTPRequestTask(BaseCodecovTask, name="app.tasks.http_request.HTTPRequest"
         timeout=None,
         data=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         if timeout is None:
             timeout = get_config("setup", "http", "timeouts", "external", default=10)

@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
 from tasks.sync_pull import PullSyncTask

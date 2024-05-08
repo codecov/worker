@@ -4,7 +4,6 @@ from asgiref.sync import async_to_sync
 from shared.celery_config import commit_update_task_name
 from shared.torngit.exceptions import (
     TorngitClientError,
-    TorngitObjectNotFoundError,
     TorngitRepoNotFoundError,
 )
 

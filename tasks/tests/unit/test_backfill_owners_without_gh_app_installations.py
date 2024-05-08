@@ -1,4 +1,3 @@
-from mock import patch
 from sqlalchemy.orm.session import Session
 
 from database.models.core import GithubAppInstallation

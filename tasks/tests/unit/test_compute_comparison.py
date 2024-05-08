@@ -1,6 +1,5 @@
 import json
 
-import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report
 from shared.torngit.exceptions import TorngitRateLimitError

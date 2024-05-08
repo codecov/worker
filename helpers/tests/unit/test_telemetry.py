@@ -4,10 +4,7 @@ from datetime import datetime, timezone
 from unittest.mock import Mock
 
 import pytest
-from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
-from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 
-from database.models import Commit
 from database.tests.factories.core import CommitFactory, OwnerFactory, RepositoryFactory
 from helpers.telemetry import MetricContext, TimeseriesTimer, fire_and_forget
 

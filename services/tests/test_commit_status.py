@@ -14,9 +14,9 @@ class TestCommitStatus(object):
         assert _ci_providers() == ["ser_1", "la_3", "something_4"]
 
     def test_ci_providers_config_string(self, mock_configuration):
-        mock_configuration.params["services"][
-            "ci_providers"
-        ] = "ser_1, la_3, something_4"
+        mock_configuration.params["services"]["ci_providers"] = (
+            "ser_1, la_3, something_4"
+        )
         assert sorted(_ci_providers()) == sorted(["ser_1", "la_3", "something_4"])
 
 
