@@ -1,5 +1,3 @@
-import pytest
-
 from database.enums import TrialStatus
 from database.tests.factories.core import OwnerFactory
 from services.billing import BillingPlan

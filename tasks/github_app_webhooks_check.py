@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Iterable, List, Tuple
+from typing import Iterable, List
 
 from asgiref.sync import async_to_sync
 from shared.celery_config import gh_app_webhook_check_task_name

@@ -2,8 +2,6 @@ import collections
 import operator
 from difflib import SequenceMatcher
 
-from .utils import _extract_match
-
 
 class Tree:
     def __init__(self, *args, **kwargs):

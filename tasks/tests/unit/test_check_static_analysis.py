@@ -1,4 +1,3 @@
-import pytest
 from shared.staticanalysis import StaticAnalysisSingleFileSnapshotState
 
 from database.tests.factories.staticanalysis import (

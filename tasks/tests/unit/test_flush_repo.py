@@ -1,5 +1,3 @@
-import pytest
-
 from database.tests.factories import (
     BranchFactory,
     CommitFactory,

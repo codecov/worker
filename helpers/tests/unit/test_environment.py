@@ -1,8 +1,6 @@
 import os
 from pathlib import PosixPath
 
-from shared.config import get_config
-
 from helpers.environment import (
     Environment,
     _calculate_current_env,

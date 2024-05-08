@@ -1,8 +1,6 @@
 import os
 
-import pytest
-
-import database.events
+import database.events  # noqa: F401
 from database.tests.factories import RepositoryFactory
 
 

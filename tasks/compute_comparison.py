@@ -1,5 +1,5 @@
 import logging
-from typing import List, Mapping
+from typing import List
 
 from asgiref.sync import async_to_sync
 from shared.celery_config import compute_comparison_task_name
@@ -19,7 +19,6 @@ from services.archive import ArchiveService
 from services.comparison import ComparisonContext, ComparisonProxy, FilteredComparison
 from services.comparison.types import Comparison, FullCommit
 from services.report import ReportService
-from services.repository import get_repo_provider_service
 from services.yaml import get_current_yaml, get_repo_yaml
 from tasks.base import BaseCodecovTask
 

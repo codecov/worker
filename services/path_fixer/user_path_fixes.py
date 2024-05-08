@@ -5,7 +5,6 @@ from services.path_fixer.fixpaths import _fixpaths_regs, first_not_null_index
 
 
 class UserPathFixes(object):
-
     """
         This class contains the logic for apply path-fixes to the user, as described in
         https://docs.codecov.io/docs/fixing-paths

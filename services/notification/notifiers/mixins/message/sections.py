@@ -290,7 +290,7 @@ class FooterSectionWriter(BaseSectionWriter):
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)"
         )
         yield (
-            "> `\u0394 = absolute <relative> (impact)`, `\xF8 = not affected`, `? = missing data`"
+            "> `\u0394 = absolute <relative> (impact)`, `\xf8 = not affected`, `? = missing data`"
         )
         yield (
             "> Powered by [Codecov]({pull}?dropdown=coverage&src=pr&el=footer). Last update [{base}...{head}]({pull}?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(

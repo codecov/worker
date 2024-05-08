@@ -1,5 +1,3 @@
-import pytest
-
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     GithubAppInstallation,

@@ -22,7 +22,7 @@ class SaveCommitMeasurementsTask(
         repoid: int,
         dataset_names: Iterable[int] = None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         log.info(
             "Received save_commit_measurements task",

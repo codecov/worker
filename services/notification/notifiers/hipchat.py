@@ -10,7 +10,6 @@ from services.yaml.reader import round_number
 
 
 class HipchatNotifier(RequestsYamlBasedNotifier):
-
     # TODO (Thiago): Fix base message
     BASE_MESSAGE = " ".join(
         [
@@ -54,7 +53,7 @@ class HipchatNotifier(RequestsYamlBasedNotifier):
                 ]
             card = {
                 "id": commitid,
-                "title": f"Codecov \u22C5 {repository.slug} on {head_commit.branch}",
+                "title": f"Codecov \u22c5 {repository.slug} on {head_commit.branch}",
                 "style": "application",
                 "format": "compact",
                 "url": head_url,

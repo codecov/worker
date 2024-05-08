@@ -5,11 +5,10 @@ from datetime import datetime, timedelta
 from shared.config import get_config
 from sqlalchemy import func
 
-from conftest import dbsession
 from database.enums import Decoration, ReportType, TrialStatus
 from database.models import Commit, Owner, Repository
 from database.models.reports import CommitReport, Upload
-from services.billing import BillingPlan, is_pr_billing_plan
+from services.billing import is_pr_billing_plan
 from services.license import requires_license
 from services.repository import EnrichedPull
 

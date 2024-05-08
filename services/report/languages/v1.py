@@ -9,7 +9,6 @@ from services.report.report_builder import (
     ReportBuilder,
     ReportBuilderSession,
 )
-from services.yaml import read_yaml_field
 
 
 class VOneProcessor(BaseLanguageProcessor):
@@ -19,7 +18,6 @@ class VOneProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-
         if "RSpec" in content:
             content = content["RSpec"]
 
@@ -55,7 +53,6 @@ def _list_to_dict(lines):
 
 
 def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
-
     if type(json["coverage"]) is dict:
         # messages = json.get('messages', {})
         for fn, lns in json["coverage"].items():
@@ -92,10 +89,10 @@ def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
                             if type(cov) in (str, bool)
                             else CoverageType.line
                         )
-                        report_file_obj[
-                            line_number
-                        ] = report_builder_session.create_coverage_line(
-                            filename=fn, coverage=cov, coverage_type=coverage_type
+                        report_file_obj[line_number] = (
+                            report_builder_session.create_coverage_line(
+                                filename=fn, coverage=cov, coverage_type=coverage_type
+                            )
                         )
 
                 report_builder_session.append(report_file_obj)

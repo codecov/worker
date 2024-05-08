@@ -4,12 +4,10 @@ from base64 import b16encode
 from datetime import datetime
 from enum import Enum
 from hashlib import md5
-from typing import Dict, Optional
 from uuid import uuid4
 
 from shared.config import get_config
 from shared.storage.base import BaseStorageService
-from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
 
 from helpers.metrics import metrics
@@ -40,7 +38,6 @@ class MinioEndpoints(Enum):
 # Service class for performing archive operations. Meant to work against the
 # underlying StorageService
 class ArchiveService(object):
-
     """
     The root level of the archive. In s3 terms,
     this would be the name of the bucket

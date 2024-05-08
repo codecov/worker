@@ -73,7 +73,7 @@ class FailureNormalizer:
         ignore_predefined=False,
         override_predefined=False,
         *,
-        key_analysis_order: Optional[List[str]] = None
+        key_analysis_order: Optional[List[str]] = None,
     ):
         flags = regex.MULTILINE
 

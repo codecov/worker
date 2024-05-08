@@ -285,9 +285,13 @@ def iter_changed_lines(
                         # we have a head line
                         if line_has_changed(base_line, head_line):
                             # unexpected: coverage data changed
-                            yield ln if yield_line_numbers else (
-                                base_line.coverage,
-                                head_line.coverage,
+                            yield (
+                                ln
+                                if yield_line_numbers
+                                else (
+                                    base_line.coverage,
+                                    head_line.coverage,
+                                )
                             )
                         # coverage data remains the same
                     else:

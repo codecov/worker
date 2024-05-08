@@ -6,7 +6,7 @@ from mock import AsyncMock, call
 from shared.torngit.exceptions import TorngitClientError
 from test_results_parser import Outcome
 
-from database.enums import ReportType, TestResultsProcessingError
+from database.enums import ReportType
 from database.models import CommitReport, RepositoryFlag, Test, TestInstance
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from services.repository import EnrichedPull

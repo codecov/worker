@@ -1,7 +1,6 @@
 import logging
 import os.path
 import random
-import typing
 from collections import defaultdict
 from pathlib import PurePath
 from typing import Optional, Sequence

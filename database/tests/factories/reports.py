@@ -5,7 +5,6 @@ from database.tests.factories.core import CompareCommitFactory, RepositoryFactor
 
 
 class RepositoryFlagFactory(factory.Factory):
-
     repository = factory.SubFactory(RepositoryFactory)
     flag_name = factory.Sequence(lambda n: f"flag{n}")
 

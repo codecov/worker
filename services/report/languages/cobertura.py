@@ -1,7 +1,6 @@
 import logging
 import re
 import typing
-from os import path
 from typing import List
 
 from shared.reports.resources import Report

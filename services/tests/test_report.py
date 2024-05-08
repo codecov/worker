@@ -1,4 +1,3 @@
-import json
 import pprint
 from asyncio import Future
 from decimal import Decimal
@@ -23,7 +22,6 @@ from database.tests.factories import (
     UploadLevelTotalsFactory,
 )
 from helpers.exceptions import RepositoryWithoutValidBotError
-from helpers.labels import SpecialLabelsEnum
 from services.archive import ArchiveService
 from services.report import (
     NotReadyToBuildReportYetError,

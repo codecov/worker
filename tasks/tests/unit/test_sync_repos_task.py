@@ -1,8 +1,7 @@
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import call
 
-import httpx
 import pytest
 import respx
 import vcr
@@ -21,7 +20,6 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from database.tests.factories import OwnerFactory, RepositoryFactory
-from tasks.sync_repo_languages import SyncRepoLanguagesTask
 from tasks.sync_repo_languages_gql import SyncRepoLanguagesGQLTask
 from tasks.sync_repos import LIST_REPOS_GENERATOR_BY_OWNER_ID, SyncReposTask
 
@@ -418,7 +416,6 @@ class TestSyncReposTaskUnit(object):
     def test_only_public_repos_already_in_db(
         self, mocker, mock_configuration, dbsession, codecov_vcr, mock_redis
     ):
-
         mocker.patch.object(
             LIST_REPOS_GENERATOR_BY_OWNER_ID, "check_value", return_value=False
         )
@@ -1031,7 +1028,6 @@ class TestSyncReposTaskUnit(object):
         mock_owner_provider,
         mock_redis,
     ):
-
         user = OwnerFactory.create(
             organizations=[],
             service="github",

@@ -1,7 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from functools import cached_property
 from logging import getLogger
 from sys import getsizeof
 

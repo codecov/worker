@@ -12,7 +12,10 @@ from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
-from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.torngit.exceptions import (
+    TorngitClientError,
+    TorngitRepoNotFoundError,
+)
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
@@ -26,14 +29,12 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.metrics import metrics
 from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
 from services.redis import (
-    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
     Redis,
     download_archive_from_redis,
     get_parallel_upload_processing_session_counter_redis_key,
@@ -872,7 +873,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 )
                 processor_task_group.append(sig)
         if processor_task_group:
-
             res = chord(
                 processor_task_group,
                 test_results_finisher_task.signature(

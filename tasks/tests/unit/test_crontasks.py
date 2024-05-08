@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from redis.exceptions import LockError
 
 from tasks.crontasks import CodecovCronTask

@@ -1,7 +1,6 @@
 from datetime import datetime
 from unittest.mock import Mock
 
-import pytest
 from shared.torngit.exceptions import TorngitError, TorngitRateLimitError
 from shared.utils.enums import TaskConfigGroup
 

@@ -1,7 +1,5 @@
 from shared.rollouts import Feature
 
-from database.models import Owner, Repository
-
 # Declare the feature variants and parameters via Django Admin
 LIST_REPOS_GENERATOR_BY_OWNER_ID = Feature("list_repos_generator")
 

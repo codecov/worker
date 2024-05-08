@@ -42,7 +42,6 @@ def make_sample_comparison(adjusted_base=False):
 
 
 class TestComparisonProxy(object):
-
     compare_url = "https://api.github.com/repos/{}/compare/{}...{}"
 
     @pytest.mark.asyncio

@@ -18,7 +18,7 @@ from shared.storage.exceptions import FileNotInStorageError
 from shared.yaml import UserYaml
 
 from app import celery_app
-from database.models import Commit, Pull, Upload
+from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -33,7 +33,6 @@ from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.parallel_verification import parallel_verification_task
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
-from tasks.upload_processor import UploadProcessorTask
 
 log = logging.getLogger(__name__)
 
@@ -445,7 +444,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 files_and_sessions["sessions"],
                 None,
             )
-        except FileNotInStorageError:  # there were no CFFs, so no report was stored in GCS
+        except (
+            FileNotInStorageError
+        ):  # there were no CFFs, so no report was stored in GCS
             log.info(
                 "No base report found for parallel upload processing, using an empty report",
                 extra=dict(commit=commitid, repoid=repoid),

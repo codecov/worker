@@ -1,5 +1,5 @@
 import typing
-from typing import Any, Callable, Mapping
+from typing import Any
 
 from shared.reports.resources import Report
 

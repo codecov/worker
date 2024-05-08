@@ -4,7 +4,6 @@ from datetime import datetime
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
 from django.db import transaction as django_transaction
-from prometheus_client import REGISTRY
 from shared.celery_router import route_tasks_based_on_user_plan
 from shared.metrics import Counter, Histogram
 from sqlalchemy.exc import (

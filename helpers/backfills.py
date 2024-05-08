@@ -8,6 +8,7 @@ from database.models.core import GithubAppInstallation, Repository
 
 log = logging.getLogger(__name__)
 
+
 # GH App Backfills
 # Looping and adding all repositories in the installation app
 def add_repos_service_ids_from_provider(

@@ -1,5 +1,3 @@
-import os
-
 from helpers.environment import Environment
 from helpers.logging_config import (
     CustomLocalJsonFormatter,

@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.reports.enums import UploadState
