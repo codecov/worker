@@ -13,14 +13,12 @@ from shared.django_apps.reports.tests.factories import CommitReportFactory
 from shared.django_apps.reports.tests.factories import (
     UploadFactory as DjangoUploadFactory,
 )
-from shared.django_apps.user_measurements.models import UserMeasurement
 from shared.plan.constants import PlanName
 from shared.plan.service import PlanService
 from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.test_utils import mock_config_helper
 
 from database.enums import TrialStatus
-from database.models.reports import Upload
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
