@@ -118,35 +118,29 @@ class TestMetricContext:
         assert mc.commit_slug is None
         assert mc.commit_id is None
 
-    @pytest.mark.django_db(databases={"default", "timeseries"})
+    @pytest.mark.django_db(databases={"default"})
     @pytest.mark.real_metric_context
     def test_log_simple_metric(self, dbsession, mocker):
         mc = make_metric_context(dbsession)
 
         desired_time = datetime.now().replace(tzinfo=timezone.utc)
-        mock_datetime = mocker.patch("helpers.telemetry.datetime")
+        mock_datetime = mocker.patch("django.utils.timezone")
         mock_datetime.now.return_value = desired_time
 
         mocker.patch("helpers.telemetry.get_db_session", return_value=dbsession)
+        mock_model_create = mocker.patch(
+            "helpers.telemetry.PgSimpleMetric.objects.create"
+        )
         mc.log_simple_metric("test", 5.0)
 
-        """
-        fetched_pg = PgSimpleMetric.objects.get(timestamp=desired_time)
-        assert fetched_pg.name == "test"
-        assert fetched_pg.value == 5.0
-        assert fetched_pg.timestamp == desired_time
-        assert fetched_pg.repo_id == mc.repo_id
-        assert fetched_pg.owner_id == mc.owner_id
-        assert fetched_pg.commit_id == mc.commit_id
-
-        fetched_ts = TsSimpleMetric.objects.get(timestamp=desired_time)
-        assert fetched_ts.name == "test"
-        assert fetched_ts.value == 5.0
-        assert fetched_ts.timestamp == desired_time
-        assert fetched_ts.repo_slug == mc.repo_slug
-        assert fetched_ts.owner_slug == mc.owner_slug
-        assert fetched_ts.commit_slug == mc.commit_slug
-        """
+        mock_model_create.assert_called_with(
+            name="test",
+            value=5.0,
+            timestamp=desired_time,
+            repo_id=mc.repo_id,
+            owner_id=mc.owner_id,
+            commit_id=mc.commit_id,
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.real_metric_context
