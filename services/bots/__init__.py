@@ -32,7 +32,7 @@ def get_adapter_auth_information(
     owner: Owner,
     repository: Optional[Repository] = None,
     *,
-    ignored_installations: bool = False,
+    ignore_installations: bool = False,
     installation_name_to_use: str | None = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> AdapterAuthInformation:
     """Gets all the auth information needed to send requests to the provider"""
@@ -42,7 +42,7 @@ def get_adapter_auth_information(
     if (
         Service(owner.service) in [Service.GITHUB, Service.GITHUB_ENTERPRISE]
         # in sync_teams and sync_repos we might prefer to use the owner's OAuthToken instead of installation
-        and not ignored_installations
+        and not ignore_installations
     ):
         installations_available_info = get_github_app_info_for_owner(
             owner,

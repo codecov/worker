@@ -21,7 +21,7 @@ def get_owner_provider_service(owner, *, ignore_installation=False):
     ]
     service = Service(owner.service)
     adapter_auth_info = get_adapter_auth_information(
-        owner, ignored_installations=ignore_installation
+        owner, ignore_installations=ignore_installation
     )
     data = TorngitInstanceData(
         owner=OwnerInfo(
