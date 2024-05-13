@@ -960,6 +960,7 @@ class TestRepositoryServiceTestCase(object):
             _report_json=None,
             repository=possible_parent_commit.repository,
         )
+        commit.branch = "main"
         dbsession.add(possible_parent_commit)
         dbsession.add(commit)
         dbsession.flush()
@@ -993,7 +994,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.pullid == 1
         assert commit.totals is None
         assert commit.report_json == {}
-        assert commit.branch == f"some-guy/{commit.repository.name}:main"
+        assert commit.branch == "main"
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == "complete"
         assert commit.author is not None

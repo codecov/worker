@@ -253,9 +253,19 @@ async def update_commit_from_provider_info(repository_service, commit):
             # so we append the branch name with the fork slug
             branch_name = commit_updates["head"]["branch"]
             # TODO: 'slug' is in a `.get` because currently only GitHub returns that info
+
             if commit_updates["head"].get("slug") != commit_updates["base"].get("slug"):
-                branch_name = commit_updates["head"]["slug"] + ":" + branch_name
+                # get rid of repo name in head.slug
+                try:
+                    username = commit_updates["head"]["slug"].split("/")[0]
+                    branch_name = username + ":" + branch_name
+                except:
+                    log.error(
+                        "Error updating branch name for commit originating from fork",
+                        extra=dict(repoid=commit.repoid, commit=commit.commitid),
+                    )
             commit.branch = branch_name
+
             commit.merged = False
         else:
             possible_branches = await repository_service.get_best_effort_branches(
