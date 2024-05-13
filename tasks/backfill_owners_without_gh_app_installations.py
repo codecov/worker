@@ -20,14 +20,16 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
-YIELD_AMOUNT = 100
-
 
 class BackfillOwnersWithoutGHAppInstallations(
     BaseCodecovTask, name=backfill_owners_without_gh_app_installations_name
 ):
     def backfill_owners_with_integration_without_gh_app(
-        self, db_session: Session, owner_ids: List[int] = None, missed_owner_ids=[]
+        self,
+        db_session: Session,
+        owner_ids: List[int] = None,
+        missed_owner_ids=[],
+        yield_amount: int = 1000,
     ):
         owners_with_integration_id_without_gh_app_query = (
             db_session.query(Owner)
@@ -50,7 +52,7 @@ class BackfillOwnersWithoutGHAppInstallations(
             )
 
         owners: List[Owner] = owners_with_integration_id_without_gh_app_query.yield_per(
-            YIELD_AMOUNT
+            yield_amount
         )
 
         for owner in owners:
