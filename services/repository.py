@@ -2,7 +2,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
@@ -27,10 +27,10 @@ from database.models.core import (
 )
 from helpers.token_refresh import get_token_refresh_callback
 from services.bots import (
-    get_github_app_info_for_owner,
     get_repo_appropriate_bot_token,
     get_token_type_mapping,
 )
+from services.bots.github_apps import get_github_app_info_for_owner
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -54,7 +54,6 @@ def _is_repo_using_integration(repo: Repository) -> bool:
 
 def get_repo_provider_service(
     repository: Repository,
-    commit=None,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> torngit.base.TorngitBaseAdapter:
     _timeouts = [
@@ -62,8 +61,9 @@ def get_repo_provider_service(
         get_config("setup", "http", "timeouts", "receive", default=60),
     ]
     service = repository.owner.service
-    installation_info = None
-    fallback_installations = None
+    installation_info: GithubInstallationInfo | None = None
+    token_type_mapping = None
+    fallback_installations: List[GithubInstallationInfo] | None = None
     if Service(repository.service) in [Service.GITHUB, Service.GITHUB_ENTERPRISE]:
         installations_available_info = get_github_app_info_for_owner(
             repository.owner,
@@ -96,12 +96,12 @@ def get_repo_provider_service(
             pem_path=installation_info.get("pem_path"),
         )
         data["fallback_installations"] = fallback_installations
+    else:
+        token_type_mapping = get_token_type_mapping(repository)
 
     adapter_params = dict(
         token=token,
-        token_type_mapping=get_token_type_mapping(
-            repository, installation_name=installation_name_to_use
-        ),
+        token_type_mapping=token_type_mapping,
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts,
         oauth_consumer_token=dict(

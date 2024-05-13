@@ -64,7 +64,7 @@ class CleanLabelsIndexTask(
         # Collect as much info as possible outside the lock
         # so that the time we stay with the lock is as small as possible
         commit = self._get_commit_or_fail(db_session, repoid, commitid)
-        repository_service = get_repo_provider_service(commit.repository, commit)
+        repository_service = get_repo_provider_service(commit.repository)
         commit_yaml = self._get_best_effort_commit_yaml(commit, repository_service)
         read_only_args = ReadOnlyArgs(
             commit=commit, commit_yaml=commit_yaml, report_code=report_code

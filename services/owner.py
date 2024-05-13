@@ -10,7 +10,8 @@ from shared.typings.torngit import (
 )
 
 from helpers.token_refresh import get_token_refresh_callback
-from services.bots import get_github_app_info_for_owner, get_owner_appropriate_bot_token
+from services.bots import get_owner_appropriate_bot_token
+from services.bots.github_apps import get_github_app_info_for_owner
 
 log = logging.getLogger(__name__)
 

@@ -1194,7 +1194,6 @@ class ReportService(BaseReportService):
         try:
             repository_service = get_repo_provider_service(
                 repository,
-                commit,
                 installation_name_to_use=self.gh_app_installation_name,
             )
             report.apply_diff(await repository_service.get_commit_diff(commitid))

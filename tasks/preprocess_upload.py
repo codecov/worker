@@ -146,7 +146,6 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         try:
             repository_service = get_repo_provider_service(
                 commit.repository,
-                commit,
                 installation_name_to_use=installation_name_to_use,
             )
         except RepositoryWithoutValidBotError:

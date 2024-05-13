@@ -8,20 +8,14 @@ from shared.typings.oauth_token_types import Token
 from shared.typings.torngit import GithubInstallationInfo
 
 from database.models import Owner, Repository
-from database.models.core import (
-    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-)
 from helpers.environment import is_enterprise
 from helpers.exceptions import (
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
 )
-from services.bots.github_apps import (
-    get_github_app_info_for_owner,
-    get_github_app_token,
-)
+from services.bots.github_apps import get_github_app_token
 from services.bots.tokenless import get_public_bot_token
-from services.bots.types import TokenWithOwner
+from services.bots.types import TokenTypeMapping, TokenWithOwner
 from services.encryption import encryptor
 
 log = logging.getLogger(__name__)
@@ -63,18 +57,16 @@ def get_repo_particular_bot_token(repo) -> TokenWithOwner:
     return token_dict, appropriate_bot
 
 
-def get_token_type_mapping(
-    repo: Repository, installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME
-):
+def get_token_type_mapping(repo: Repository) -> TokenTypeMapping | None:
+    """Gets the fallback tokens configured via install YAML per function.
+
+    This only affects _public_ repos, as private ones need a token defined.
+    A public repo might have a token defined (the admin_bot), in which case it is used for all functions,
+    except comment.
+    """
     if repo.private:
         return None
-    installation_dict = get_github_app_info_for_owner(
-        repo.owner,
-        repository=repo,
-        installation_name=installation_name,
-    )
-    if installation_dict:
-        return None
+
     admin_bot = None
     try:
         admin_bot, _ = get_repo_particular_bot_token(repo)

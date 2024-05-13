@@ -13,12 +13,14 @@ from services.bots import (
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
     TokenType,
-    get_github_app_info_for_owner,
     get_owner_appropriate_bot_token,
     get_repo_appropriate_bot_token,
     get_token_type_mapping,
 )
-from services.bots.github_apps import _get_installation_weight
+from services.bots.github_apps import (
+    _get_installation_weight,
+    get_github_app_info_for_owner,
+)
 from test_utils.base import BaseTestCase
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
@@ -907,27 +909,6 @@ class TestBotsService(BaseTestCase):
             bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
                 unencrypted_oauth_token="not_so_simple_code",
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token="now_that_code_is_complex"
-                ),
-            ),
-        )
-        dbsession.add(repo)
-        dbsession.flush()
-        assert get_token_type_mapping(repo) is None
-
-    def test_get_token_type_mapping_public_repo_integration(
-        self, mock_configuration, dbsession
-    ):
-        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
-        repo = RepositoryFactory.create(
-            private=False,
-            using_integration=True,
-            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
-            owner=OwnerFactory.create(
-                service="github",
-                unencrypted_oauth_token="not_so_simple_code",
-                integration_id=90,
                 bot=OwnerFactory.create(
                     unencrypted_oauth_token="now_that_code_is_complex"
                 ),

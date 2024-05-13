@@ -3,7 +3,8 @@ import requests
 
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.bots import get_github_app_info_for_owner, get_repo_appropriate_bot_token
+from services.bots import get_repo_appropriate_bot_token
+from services.bots.github_apps import get_github_app_info_for_owner
 
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDCFqq2ygFh9UQU/6PoDJ6L9e4ovLPCHtlBt7vzDwyfwr3XGxln

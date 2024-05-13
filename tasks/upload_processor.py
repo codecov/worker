@@ -562,7 +562,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 db_session, self.name, repository.owner
             )
             repository_service = get_repo_provider_service(
-                repository, commit, installation_name_to_use=installation_name_to_use
+                repository, installation_name_to_use=installation_name_to_use
             )
             report.apply_diff(
                 async_to_sync(repository_service.get_commit_diff)(commitid)
