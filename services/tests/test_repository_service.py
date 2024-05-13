@@ -994,7 +994,7 @@ class TestRepositoryServiceTestCase(object):
         assert commit.pullid == 1
         assert commit.totals is None
         assert commit.report_json == {}
-        assert commit.branch == "main"
+        assert commit.branch == "some-guy:main"
         assert commit.parent_commit_id == possible_parent_commit.commitid
         assert commit.state == "complete"
         assert commit.author is not None
