@@ -13,12 +13,12 @@ from services.bots import (
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
     TokenType,
-    _get_installation_weight,
+    get_github_app_info_for_owner,
     get_owner_appropriate_bot_token,
-    get_owner_installation_id,
     get_repo_appropriate_bot_token,
     get_token_type_mapping,
 )
+from services.bots.github_apps import _get_installation_weight
 from test_utils.base import BaseTestCase
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
@@ -283,13 +283,9 @@ class TestBotsService(BaseTestCase):
             ),
         )
         expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
-        installation_info = get_owner_installation_id(
-            repo.owner, repo.using_integration, ignore_installation=False
-        )
-        assert installation_info == {"installation_id": 1654873}
-        assert (
-            get_repo_appropriate_bot_token(repo, installation_info) == expected_result
-        )
+        installations = get_github_app_info_for_owner(repo.owner, repository=repo)
+        assert installations == [{"installation_id": 1654873}]
+        assert get_repo_appropriate_bot_token(repo, installations[0]) == expected_result
 
     def test_get_repo_appropriate_bot_token_via_installation_covered_repo(
         self, mock_configuration, dbsession, mocker
@@ -313,19 +309,18 @@ class TestBotsService(BaseTestCase):
         assert installation.is_repo_covered_by_integration(repo)
 
         mock_get_github_integration_token = mocker.patch(
-            "services.bots.get_github_integration_token",
+            "services.bots.github_apps.get_github_integration_token",
             return_value="installation_token",
         )
-        installation_info = get_owner_installation_id(
-            repo.owner, repo.using_integration, ignore_installation=False
-        )
-        assert installation_info == {
-            "installation_id": 12341234,
-            "app_id": None,
-            "pem_path": None,
-            "fallback_installations": [],
-        }
-        response = get_repo_appropriate_bot_token(repo, installation_info)
+        installations = get_github_app_info_for_owner(repo.owner)
+        assert installations == [
+            {
+                "installation_id": 12341234,
+                "app_id": None,
+                "pem_path": None,
+            }
+        ]
+        response = get_repo_appropriate_bot_token(repo, installations[0])
         mock_get_github_integration_token.assert_called_with(
             "github", 12341234, app_id=None, pem_path=None
         )
@@ -384,11 +379,9 @@ class TestBotsService(BaseTestCase):
         )
 
         expected_result = {"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}
-        integration_dict = get_owner_installation_id(
-            owner, True, ignore_installation=False
-        )
+        installations = get_github_app_info_for_owner(owner)
         assert (
-            get_owner_appropriate_bot_token(owner, integration_dict) == expected_result
+            get_owner_appropriate_bot_token(owner, installations[0]) == expected_result
         )
 
     def test_get_owner_installation_id_no_installation_no_legacy_integration(
@@ -396,14 +389,14 @@ class TestBotsService(BaseTestCase):
     ):
         owner = OwnerFactory(service="github", integration_id=None)
         assert owner.github_app_installations == []
-        assert get_owner_installation_id(owner, True) is None
+        assert get_github_app_info_for_owner(owner) == []
 
     def test_get_owner_installation_id_no_installation_yes_legacy_integration(
         self, mocker, dbsession
     ):
         owner = OwnerFactory(service="github", integration_id=12341234)
         assert owner.github_app_installations == []
-        assert get_owner_installation_id(owner, True) == {"installation_id": 12341234}
+        assert get_github_app_info_for_owner(owner) == [{"installation_id": 12341234}]
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration(
         self, mocker, dbsession
@@ -418,12 +411,13 @@ class TestBotsService(BaseTestCase):
         dbsession.add(installation)
         dbsession.flush()
         assert owner.github_app_installations == [installation]
-        assert get_owner_installation_id(owner, True) == {
-            "installation_id": 123456,
-            "app_id": None,
-            "pem_path": None,
-            "fallback_installations": [],
-        }
+        assert get_github_app_info_for_owner(owner) == [
+            {
+                "installation_id": 123456,
+                "app_id": None,
+                "pem_path": None,
+            }
+        ]
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration_yes_fallback(
         self, mocker, dbsession
@@ -446,14 +440,14 @@ class TestBotsService(BaseTestCase):
         dbsession.add(installation_0)
         dbsession.flush()
         assert owner.github_app_installations == [installation_0, installation_1]
-        assert get_owner_installation_id(owner, True, installation_name="my_app") == {
-            "installation_id": 12000,
-            "app_id": 1212,
-            "pem_path": "path",
-            "fallback_installations": [
-                {"installation_id": 123456, "app_id": None, "pem_path": None}
-            ],
-        }
+        assert get_github_app_info_for_owner(owner, installation_name="my_app") == [
+            {
+                "installation_id": 12000,
+                "app_id": 1212,
+                "pem_path": "path",
+            },
+            {"installation_id": 123456, "app_id": None, "pem_path": None},
+        ]
 
     def test_get_owner_installation_id_yes_installation_all_rate_limited(
         self, mocker, dbsession, mock_redis
@@ -478,7 +472,7 @@ class TestBotsService(BaseTestCase):
         dbsession.flush()
         assert owner.github_app_installations == [installation_0, installation_1]
         with pytest.raises(NoConfiguredAppsAvailable):
-            get_owner_installation_id(owner, True, installation_name="my_app")
+            get_github_app_info_for_owner(owner, installation_name="my_app")
         mock_redis.exists.assert_any_call(
             f"rate_limited_installations_default_app_123456"
         )
@@ -505,23 +499,22 @@ class TestBotsService(BaseTestCase):
         dbsession.add(installation)
         dbsession.flush()
         assert owner.github_app_installations == [installation]
-        assert get_owner_installation_id(
+        assert get_github_app_info_for_owner(
             owner,
-            repo_covered_by_installation.using_integration,
             repository=repo_covered_by_installation,
-        ) == {
-            "installation_id": 123456,
-            "app_id": 123,
-            "pem_path": "some_path",
-            "fallback_installations": [],
-        }
+        ) == [
+            {
+                "installation_id": 123456,
+                "app_id": 123,
+                "pem_path": "some_path",
+            }
+        ]
         # Notice that the installation object overrides the `Repository.using_integration` column completely
         # ^ Not true anymore. We decided against it because there are some edge cases in filling up the list
-        assert get_owner_installation_id(
+        assert get_github_app_info_for_owner(
             owner,
-            repo_not_covered_by_installation.using_integration,
             repository=repo_not_covered_by_installation,
-        ) == {"installation_id": 12341234}
+        ) == [{"installation_id": 12341234}]
 
     @pytest.mark.parametrize(
         "time_edited_days,expected_weight",
@@ -590,16 +583,13 @@ class TestBotsService(BaseTestCase):
         choices[installation_new.installation_id] = 0
         # We select apps 1K times to reduce margin of test flakiness
         for _ in range(1000):
-            installation_dict = get_owner_installation_id(owner, False)
-            assert installation_dict is not None
+            installations = get_github_app_info_for_owner(owner)
+            assert installations is not None
             # Regardless of the app we choose we want the other one
             # to be listed as a fallback option
-            assert installation_dict["fallback_installations"] != []
-            assert (
-                installation_dict["installation_id"]
-                != installation_dict["fallback_installations"][0]["installation_id"]
-            )
-            id_chosen = installation_dict["installation_id"]
+            assert len(installations) == 2
+            assert installations[0] != installations[1]
+            id_chosen = installations[0]["installation_id"]
             choices[id_chosen] += 1
         # Assert that both apps can be selected
         assert choices[installation_old.installation_id] > 0
@@ -935,6 +925,7 @@ class TestBotsService(BaseTestCase):
             using_integration=True,
             bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
+                service="github",
                 unencrypted_oauth_token="not_so_simple_code",
                 integration_id=90,
                 bot=OwnerFactory.create(

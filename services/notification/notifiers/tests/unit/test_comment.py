@@ -109,7 +109,7 @@ def sample_comparison_bunch_empty_flags(request, dbsession, mocker):
     )
     base_report.append(file_2)
     mocker.patch(
-        "services.bots.get_github_integration_token",
+        "services.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     return generate_sample_comparison(

@@ -6,6 +6,7 @@ from typing import Any, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
+from shared.django_apps.codecov_auth.models import Service
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitError,
@@ -26,7 +27,7 @@ from database.models.core import (
 )
 from helpers.token_refresh import get_token_refresh_callback
 from services.bots import (
-    get_owner_installation_id,
+    get_github_app_info_for_owner,
     get_repo_appropriate_bot_token,
     get_token_type_mapping,
 )
@@ -52,7 +53,7 @@ def _is_repo_using_integration(repo: Repository) -> bool:
 
 
 def get_repo_provider_service(
-    repository,
+    repository: Repository,
     commit=None,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> torngit.base.TorngitBaseAdapter:
@@ -61,13 +62,17 @@ def get_repo_provider_service(
         get_config("setup", "http", "timeouts", "receive", default=60),
     ]
     service = repository.owner.service
-    installation_info = get_owner_installation_id(
-        repository.owner,
-        repository.using_integration,
-        repository=repository,
-        ignore_installation=False,
-        installation_name=installation_name_to_use,
-    )
+    installation_info = None
+    fallback_installations = None
+    if Service(repository.service) in [Service.GITHUB, Service.GITHUB_ENTERPRISE]:
+        installations_available_info = get_github_app_info_for_owner(
+            repository.owner,
+            repository=repository,
+            installation_name=installation_name_to_use,
+        )
+        if installations_available_info != []:
+            installation_info, *fallback_installations = installations_available_info
+
     token, token_owner = get_repo_appropriate_bot_token(repository, installation_info)
     data = TorngitInstanceData(
         repo=RepoInfo(
@@ -90,7 +95,7 @@ def get_repo_provider_service(
             app_id=installation_info.get("app_id"),
             pem_path=installation_info.get("pem_path"),
         )
-        data["fallback_installations"] = installation_info.get("fallback_installations")
+        data["fallback_installations"] = fallback_installations
 
     adapter_params = dict(
         token=token,

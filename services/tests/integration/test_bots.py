@@ -3,7 +3,7 @@ import requests
 
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.bots import get_owner_installation_id, get_repo_appropriate_bot_token
+from services.bots import get_github_app_info_for_owner, get_repo_appropriate_bot_token
 
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDCFqq2ygFh9UQU/6PoDJ6L9e4ovLPCHtlBt7vzDwyfwr3XGxln
@@ -60,7 +60,5 @@ class TestRepositoryServiceIntegration(object):
         dbsession.add(repo)
         dbsession.flush()
         with pytest.raises(requests.exceptions.HTTPError):
-            info = get_owner_installation_id(
-                repo.owner, repo.using_integration, ignore_installation=False
-            )
-            get_repo_appropriate_bot_token(repo, info)
+            info = get_github_app_info_for_owner(repo.owner)
+            get_repo_appropriate_bot_token(repo, info[0])

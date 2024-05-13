@@ -560,7 +560,7 @@ class TestSyncReposTaskUnit(object):
 
         mock_redis.exists.return_value = False
         mocker.patch(
-            "services.bots.get_github_integration_token",
+            "services.bots.github_apps.get_github_integration_token",
             return_value="installation_token",
         )
 
