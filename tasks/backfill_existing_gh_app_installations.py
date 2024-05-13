@@ -51,9 +51,7 @@ class BackfillExistingGHAppInstallationsTask(
             ownerid = gh_app_installation.owner.ownerid
 
             try:
-                owner_service = get_owner_provider_service(
-                    owner=owner, using_integration=True
-                )
+                owner_service = get_owner_provider_service(owner=owner)
                 is_selection_all = maybe_set_installation_to_all_repos(
                     db_session=db_session,
                     owner_service=owner_service,

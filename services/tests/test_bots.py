@@ -13,9 +13,9 @@ from services.bots import (
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
     TokenType,
-    get_owner_appropriate_bot_token,
-    get_repo_appropriate_bot_token,
-    get_token_type_mapping,
+    _get_owner_appropriate_bot_token,
+    _get_repo_appropriate_bot_token,
+    _get_token_type_mapping,
 )
 from services.bots.github_apps import (
     _get_installation_weight,
@@ -72,7 +72,7 @@ class TestBotsService(BaseTestCase):
             },
             None,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_enterprise_yes_bot(
         self, mock_configuration, mocker
@@ -92,7 +92,7 @@ class TestBotsService(BaseTestCase):
             ),
         )
         expected_result = ({"key": "somekey"}, None)
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_enterprise_no_bot(
         self, mock_configuration, mocker
@@ -118,7 +118,7 @@ class TestBotsService(BaseTestCase):
             },
             repo.bot,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_public_bot_without_key(
         self, mock_configuration
@@ -143,7 +143,7 @@ class TestBotsService(BaseTestCase):
             },
             repo.bot,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_valid_bot(self):
         repo = RepositoryFactory.create(
@@ -164,7 +164,7 @@ class TestBotsService(BaseTestCase):
             },
             repo.bot,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_invalid_bot_valid_owner_bot(self):
         repo = RepositoryFactory.create(
@@ -185,7 +185,7 @@ class TestBotsService(BaseTestCase):
             },
             repo.owner.bot,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_bot_valid_owner_bot(self):
         repo = RepositoryFactory.create(
@@ -206,7 +206,7 @@ class TestBotsService(BaseTestCase):
             },
             repo.owner.bot,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_bot_invalid_owner_bot(self):
         repo = RepositoryFactory.create(
@@ -225,7 +225,7 @@ class TestBotsService(BaseTestCase):
             },
             repo.owner,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_no_oauth_token_at_all(self):
         repo = RepositoryFactory.create(
@@ -237,7 +237,7 @@ class TestBotsService(BaseTestCase):
             ),
         )
         with pytest.raises(RepositoryWithoutValidBotError):
-            get_repo_appropriate_bot_token(repo)
+            _get_repo_appropriate_bot_token(repo)
 
     def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_not_using_it(
         self,
@@ -259,7 +259,7 @@ class TestBotsService(BaseTestCase):
             },
             repo.owner,
         )
-        assert get_repo_appropriate_bot_token(repo) == expected_result
+        assert _get_repo_appropriate_bot_token(repo) == expected_result
 
     @pytest.mark.integration
     def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_using_it(
@@ -287,7 +287,9 @@ class TestBotsService(BaseTestCase):
         expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
         installations = get_github_app_info_for_owner(repo.owner, repository=repo)
         assert installations == [{"installation_id": 1654873}]
-        assert get_repo_appropriate_bot_token(repo, installations[0]) == expected_result
+        assert (
+            _get_repo_appropriate_bot_token(repo, installations[0]) == expected_result
+        )
 
     def test_get_repo_appropriate_bot_token_via_installation_covered_repo(
         self, mock_configuration, dbsession, mocker
@@ -322,7 +324,7 @@ class TestBotsService(BaseTestCase):
                 "pem_path": None,
             }
         ]
-        response = get_repo_appropriate_bot_token(repo, installations[0])
+        response = _get_repo_appropriate_bot_token(repo, installations[0])
         mock_get_github_integration_token.assert_called_with(
             "github", 12341234, app_id=None, pem_path=None
         )
@@ -335,10 +337,13 @@ class TestBotsService(BaseTestCase):
         owner = OwnerFactory.create(
             unencrypted_oauth_token="owner_token", integration_id=None, bot=None
         )
-        assert get_owner_appropriate_bot_token(owner, None) == {
-            "key": "owner_token",
-            "secret": None,
-        }
+        assert _get_owner_appropriate_bot_token(owner, None) == (
+            {
+                "key": "owner_token",
+                "secret": None,
+            },
+            owner,
+        )
 
     def test_get_owner_appropriate_bot_token_owner_has_bot_no_integration(self):
         owner = OwnerFactory.create(
@@ -346,10 +351,13 @@ class TestBotsService(BaseTestCase):
             integration_id=None,
             bot=OwnerFactory.create(unencrypted_oauth_token="bot_token"),
         )
-        assert get_owner_appropriate_bot_token(owner, None) == {
-            "key": "bot_token",
-            "secret": None,
-        }
+        assert _get_owner_appropriate_bot_token(owner, None) == (
+            {
+                "key": "bot_token",
+                "secret": None,
+            },
+            owner.bot,
+        )
 
     def test_get_owner_appropriate_bot_token_repo_with_no_oauth_token_at_all(self):
         owner = OwnerFactory.create(
@@ -358,7 +366,7 @@ class TestBotsService(BaseTestCase):
             bot=OwnerFactory.create(unencrypted_oauth_token=None),
         )
         with pytest.raises(OwnerWithoutValidBotError):
-            get_owner_appropriate_bot_token(owner, None)
+            _get_owner_appropriate_bot_token(owner, None)
 
     def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(
         self, mock_configuration, codecov_vcr
@@ -380,10 +388,10 @@ class TestBotsService(BaseTestCase):
             bot=OwnerFactory.create(unencrypted_oauth_token=None),
         )
 
-        expected_result = {"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}
+        expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
         installations = get_github_app_info_for_owner(owner)
         assert (
-            get_owner_appropriate_bot_token(owner, installations[0]) == expected_result
+            _get_owner_appropriate_bot_token(owner, installations[0]) == expected_result
         )
 
     def test_get_owner_installation_id_no_installation_no_legacy_integration(
@@ -625,7 +633,7 @@ class TestBotsService(BaseTestCase):
             TokenType.status: None,
             TokenType.tokenless: None,
         }
-        assert expected_result == get_token_type_mapping(repo)
+        assert expected_result == _get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_public_repo_only_tokenless_configuration_no_particular_bot(
         self, mock_configuration, dbsession
@@ -657,7 +665,7 @@ class TestBotsService(BaseTestCase):
             TokenType.status: None,
             TokenType.tokenless: {"key": "sometokenlesskey"},
         }
-        assert expected_result == get_token_type_mapping(repo)
+        assert expected_result == _get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_public_repo_no_configuration(
         self, mock_configuration, dbsession
@@ -700,7 +708,7 @@ class TestBotsService(BaseTestCase):
             },
         }
 
-        assert expected_result == get_token_type_mapping(repo)
+        assert expected_result == _get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_public_repo_some_configuration(
         self, mock_configuration, dbsession
@@ -754,7 +762,7 @@ class TestBotsService(BaseTestCase):
                 "username": repo.bot.username,
             },
         }
-        assert expected_result == get_token_type_mapping(repo)
+        assert expected_result == _get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_public_repo_some_configuration_no_particular_bot(
         self, mock_configuration, dbsession
@@ -791,7 +799,7 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: {"key": "nada"},
             TokenType.tokenless: {"key": "tokenlessKey"},
         }
-        assert expected_result == get_token_type_mapping(repo)
+        assert expected_result == _get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_public_repo_some_configuration_not_github_no_particular_bot(
         self, mock_configuration, dbsession
@@ -835,7 +843,7 @@ class TestBotsService(BaseTestCase):
             TokenType.status: None,
             TokenType.tokenless: {"key": "tokenlessKey", "username": "aa"},
         }
-        assert expected_result == get_token_type_mapping(repo)
+        assert expected_result == _get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_public_repo_some_configuration_not_github(
         self, mock_configuration, dbsession
@@ -897,7 +905,7 @@ class TestBotsService(BaseTestCase):
                 "username": repo.bot.username,
             },
         }
-        assert expected_result == get_token_type_mapping(repo)
+        assert expected_result == _get_token_type_mapping(repo)
 
     def test_get_token_type_mapping_private_repo_no_configuration(
         self, mock_configuration, dbsession
@@ -916,7 +924,7 @@ class TestBotsService(BaseTestCase):
         )
         dbsession.add(repo)
         dbsession.flush()
-        assert get_token_type_mapping(repo) is None
+        assert _get_token_type_mapping(repo) is None
 
     def test_get_token_type_mapping_public_repo_no_integration_no_bot(
         self, mock_configuration, dbsession
@@ -942,7 +950,7 @@ class TestBotsService(BaseTestCase):
         )
         dbsession.add(repo)
         dbsession.flush()
-        assert get_token_type_mapping(repo) == {
+        assert _get_token_type_mapping(repo) == {
             TokenType.read: {"key": "aaaa", "username": "aaaa"},
             TokenType.admin: None,
             TokenType.comment: None,

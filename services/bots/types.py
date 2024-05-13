@@ -1,7 +1,8 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 from shared.torngit.base import TokenType
 from shared.typings.oauth_token_types import Token
+from shared.typings.torngit import GithubInstallationInfo
 
 from database.models.core import Owner
 
@@ -10,3 +11,19 @@ from database.models.core import Owner
 type TokenWithOwner = Tuple[Token, Optional[Owner]]
 
 type TokenTypeMapping = Dict[TokenType, Token]
+
+
+class AdapterAuthInformation(TypedDict):
+    # This is the Authentication used with the git provider
+    token: Token
+    # token_owner is used to decide on token_refresh functions
+    token_owner: Owner | None
+    # GitHub app info - exclusive for GitHub (duh)
+    # Preferred method of authentication (if available)
+    # selected_installation_info is used to mark installations as rate-limited
+    # fallback_installations are used if multi-apps are available and the selected one becomes rate-limited
+    selected_installation_info: GithubInstallationInfo | None
+    fallback_installations: List[GithubInstallationInfo] | None
+    # TokenTypeMapping
+    # exclusive for public repos not using an installation. Fallback tokens per action
+    token_type_mapping: TokenTypeMapping | None

@@ -3,7 +3,7 @@ import requests
 
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.bots import get_repo_appropriate_bot_token
+from services.bots import _get_repo_appropriate_bot_token
 from services.bots.github_apps import get_github_app_info_for_owner
 
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
@@ -43,7 +43,7 @@ class TestRepositoryServiceIntegration(object):
         dbsession.add(repo)
         dbsession.flush()
         with pytest.raises(RepositoryWithoutValidBotError):
-            get_repo_appropriate_bot_token(repo)
+            _get_repo_appropriate_bot_token(repo)
 
     @pytest.mark.asyncio
     async def test_get_repo_appropriate_bot_token_bad_data(
@@ -62,4 +62,4 @@ class TestRepositoryServiceIntegration(object):
         dbsession.flush()
         with pytest.raises(requests.exceptions.HTTPError):
             info = get_github_app_info_for_owner(repo.owner)
-            get_repo_appropriate_bot_token(repo, info[0])
+            _get_repo_appropriate_bot_token(repo, info[0])

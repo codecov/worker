@@ -93,7 +93,7 @@ class TestOwnerServiceTestCase(object):
         )
         dbsession.add(owner)
         dbsession.flush()
-        res = get_owner_provider_service(owner, using_integration=False)
+        res = get_owner_provider_service(owner, ignore_installation=True)
         expected_data = {
             "owner": {
                 "ownerid": owner.ownerid,

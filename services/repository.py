@@ -2,18 +2,16 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
-from shared.django_apps.codecov_auth.models import Service
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitError,
     TorngitObjectNotFoundError,
 )
 from shared.typings.torngit import (
-    GithubInstallationInfo,
     OwnerInfo,
     RepoInfo,
     TorngitInstanceData,
@@ -27,10 +25,8 @@ from database.models.core import (
 )
 from helpers.token_refresh import get_token_refresh_callback
 from services.bots import (
-    get_repo_appropriate_bot_token,
-    get_token_type_mapping,
+    get_adapter_auth_information,
 )
-from services.bots.github_apps import get_github_app_info_for_owner
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -61,19 +57,11 @@ def get_repo_provider_service(
         get_config("setup", "http", "timeouts", "receive", default=60),
     ]
     service = repository.owner.service
-    installation_info: GithubInstallationInfo | None = None
-    token_type_mapping = None
-    fallback_installations: List[GithubInstallationInfo] | None = None
-    if Service(repository.service) in [Service.GITHUB, Service.GITHUB_ENTERPRISE]:
-        installations_available_info = get_github_app_info_for_owner(
-            repository.owner,
-            repository=repository,
-            installation_name=installation_name_to_use,
-        )
-        if installations_available_info != []:
-            installation_info, *fallback_installations = installations_available_info
-
-    token, token_owner = get_repo_appropriate_bot_token(repository, installation_info)
+    adapter_auth_info = get_adapter_auth_information(
+        repository.owner,
+        repository=repository,
+        installation_name_to_use=installation_name_to_use,
+    )
     data = TorngitInstanceData(
         repo=RepoInfo(
             name=repository.name,
@@ -86,29 +74,20 @@ def get_repo_provider_service(
             ownerid=repository.ownerid,
             username=repository.owner.username,
         ),
-        installation=None,
-        fallback_installations=None,
+        installation=adapter_auth_info["selected_installation_info"],
+        fallback_installations=adapter_auth_info["fallback_installations"],
     )
-    if installation_info:
-        data["installation"] = GithubInstallationInfo(
-            installation_id=installation_info.get("installation_id"),
-            app_id=installation_info.get("app_id"),
-            pem_path=installation_info.get("pem_path"),
-        )
-        data["fallback_installations"] = fallback_installations
-    else:
-        token_type_mapping = get_token_type_mapping(repository)
 
     adapter_params = dict(
-        token=token,
-        token_type_mapping=token_type_mapping,
+        token=adapter_auth_info["token"],
+        token_type_mapping=adapter_auth_info["token_type_mapping"],
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts,
         oauth_consumer_token=dict(
             key=get_config(service, "client_id"),
             secret=get_config(service, "client_secret"),
         ),
-        on_token_refresh=get_token_refresh_callback(token_owner),
+        on_token_refresh=get_token_refresh_callback(adapter_auth_info["token_owner"]),
         **data,
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
