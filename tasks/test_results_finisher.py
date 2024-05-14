@@ -10,6 +10,8 @@ from test_results_parser import Outcome
 from app import celery_app
 from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
 from database.models import Commit, TestResultReportTotals
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from rollouts import FLAKY_TEST_DETECTION
 from services.failure_normalizer import FailureNormalizer
@@ -134,6 +136,10 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 parent_task=self.request.parent_id,
             ),
         )
+
+        checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
+
+        checkpoints.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
 
         commit: Commit = (
             db_session.query(Commit).filter_by(repoid=repoid, commitid=commitid).first()
@@ -270,6 +276,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         )
 
         with metrics.timing("test_results.finisher.notification"):
+            checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
             success, reason = async_to_sync(notifier.notify)(payload)
 
         log.info(
@@ -301,7 +308,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             )
             with metrics.timing("test_results.finisher.run_flaky_test_detection"):
                 success, reason = self.run_flaky_test_detection(
-                    db_session, repoid, notifier, payload
+                    db_session, repoid, notifier, payload, checkpoints=checkpoints
                 )
 
             metrics.incr(
@@ -321,6 +328,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid,
         notifier: TestResultsNotifier,
         payload: TestResultsNotificationPayload,
+        checkpoints=None,
     ):
         ignore_predefined = read_yaml_field(
             "test_analytics", "ignore_predefined", _else=False
@@ -375,6 +383,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             )
             db_session.flush()
 
+        if checkpoints:
+            checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
         success, reason = async_to_sync(notifier.notify)(payload)
         log.info(
             "Added flaky test information to the PR comment",
