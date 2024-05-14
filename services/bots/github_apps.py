@@ -46,12 +46,8 @@ def _can_use_this_app(
         app.name == installation_name
         # We ignore apps that are not configured because those can't be used
         and app.is_configured()
-        and (
-            # If there is a repo we want only the apps that cover said repo
-            (repository and app.is_repo_covered_by_integration(repository))
-            # If there is no repo we still need some true value
-            or (not repository)
-        )
+        # If repository is provided, the installation needs to cover it
+        and ((not repository) or app.is_repo_covered_by_integration(repository))
     )
 
 

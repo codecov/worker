@@ -20,7 +20,8 @@ class AdapterAuthInformation(TypedDict):
     token_owner: Owner | None
     # GitHub app info - exclusive for GitHub (duh)
     # Preferred method of authentication (if available)
-    # selected_installation_info is used to mark installations as rate-limited
+    # selected_installation_info is the installation being used to communicate with github. We save this info in the TorngitAdapter.
+    #   If this installation becomes rate-limited the TorngitAdapter uses the info to mark it so (so we don't select it for a while)
     # fallback_installations are used if multi-apps are available and the selected one becomes rate-limited
     selected_installation_info: GithubInstallationInfo | None
     fallback_installations: List[GithubInstallationInfo] | None

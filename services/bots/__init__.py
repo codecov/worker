@@ -73,27 +73,32 @@ def _get_repo_appropriate_bot_token(
     repo: Repository,
     installation_info: Optional[Dict] = None,
 ) -> TokenWithOwner:
+    extra_info_to_log = dict(
+        repoid=repo.repoid, is_private=repo.private, service=repo.service
+    )
     log.info(
         "Get repo appropriate bot token",
-        extra=dict(
-            installation_info=installation_info,
-            repoid=repo.repoid,
-            service=repo.service,
-        ),
+        extra={"installation_info": installation_info, **extra_info_to_log},
     )
 
     service = Service(repo.service)
 
     if is_enterprise() and get_config(repo.service, "bot"):
+        log.info(
+            "Using enterprise-configured bot for the service", extra=extra_info_to_log
+        )
         return get_public_bot_token(service, repo.repoid)
 
     if installation_info:
+        log.info("Using github installation", extra=extra_info_to_log)
         return get_github_app_token(service, installation_info)
     try:
         token_dict, appropriate_bot = _get_repo_particular_bot_token(repo)
+        log.info("Using repo particular bot", extra=extra_info_to_log)
         return token_dict, appropriate_bot
     except RepositoryWithoutValidBotError as e:
         if not repo.private:
+            log.info("Using YAML-configured public bot", extra=extra_info_to_log)
             return get_public_bot_token(service, repo.repoid)
         raise e
 
