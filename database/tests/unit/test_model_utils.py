@@ -99,6 +99,42 @@ class TestArchiveField(object):
         mock_read_file.assert_called_with("gcs_path")
         mock_archive_service.assert_called_with(repository=commit.repository)
 
+    def test_archive_getter_file_not_in_storage(self, db, mocker):
+        mocker.patch(
+            "database.utils.ArchiveField.read_timeout",
+            new_callable=PropertyMock,
+            return_value=5.1,
+        )
+        mock_read_file = mocker.MagicMock(side_effect=FileNotInStorageError())
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
+        mock_archive_service.return_value.read_file = mock_read_file
+        commit = CommitFactory()
+        test_class = self.ClassWithArchiveField(commit, None, "gcs_path")
+
+        assert test_class._archive_field == None
+        assert test_class._archive_field_storage_path == "gcs_path"
+        assert test_class.archive_field == None
+        mock_read_file.assert_called_with("gcs_path")
+        mock_archive_service.assert_called_with(repository=commit.repository)
+
+    def test_archive_getter_file_not_in_storage(self, db, mocker):
+        mocker.patch(
+            "database.utils.ArchiveField.read_timeout",
+            new_callable=PropertyMock,
+            return_value=0.1,
+        )
+        mock_read_file = mocker.MagicMock(side_effect=FileNotInStorageError())
+        mock_archive_service = mocker.patch("database.utils.ArchiveService")
+        mock_archive_service.return_value.read_file = mock_read_file
+        commit = CommitFactory()
+        test_class = self.ClassWithArchiveField(commit, None, "gcs_path")
+
+        assert test_class._archive_field == None
+        assert test_class._archive_field_storage_path == "gcs_path"
+        assert test_class.archive_field == None
+        mock_read_file.assert_called_with("gcs_path")
+        mock_archive_service.assert_called_with(repository=commit.repository)
+
     def test_archive_setter_db_field(self, db, mocker):
         commit = CommitFactory()
         test_class = self.ClassWithArchiveField(commit, "db_value", "gcs_path", False)
