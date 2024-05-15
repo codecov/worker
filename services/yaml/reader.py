@@ -1,10 +1,11 @@
 import logging
-from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_EVEN, Decimal
+from decimal import Decimal
 from typing import Any, List, Mapping
 
 from shared.yaml.user_yaml import UserYaml
 
 from helpers.components import Component
+from helpers.number import precise_round
 
 log = logging.getLogger(__name__)
 
@@ -32,14 +33,10 @@ def get_minimum_precision(yaml_dict: Mapping[str, Any]) -> Decimal:
     return Decimal("0.1") ** precision
 
 
-def round_number(yaml_dict: UserYaml, number: Decimal):
+def round_number(yaml_dict: UserYaml, number: Decimal) -> Decimal:
     rounding = read_yaml_field(yaml_dict, ("coverage", "round"), "nearest")
-    quantizer = get_minimum_precision(yaml_dict)
-    if rounding == "up":
-        return number.quantize(quantizer, rounding=ROUND_CEILING)
-    if rounding == "down":
-        return number.quantize(quantizer, rounding=ROUND_FLOOR)
-    return number.quantize(quantizer, rounding=ROUND_HALF_EVEN)
+    precision = read_yaml_field(yaml_dict, ("coverage", "precision"), 2)
+    return precise_round(number, precision=precision, rounding=rounding)
 
 
 def get_paths_from_flags(yaml_dict: UserYaml, flags):
