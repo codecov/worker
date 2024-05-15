@@ -8,4 +8,3 @@ fi
 
 $prefix python manage.py migrate --database timeseries rollouts
 $prefix python manage.py migrate --database timeseries pg_telemetry
-$prefix python manage.py migrate --database timeseries ts_telemetry
