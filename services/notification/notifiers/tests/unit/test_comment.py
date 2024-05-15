@@ -35,10 +35,10 @@ from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
     ComponentsSectionWriter,
     FileSectionWriter,
+    HeaderSectionWriter,
     ImpactedEntrypointsSectionWriter,
     NewFilesSectionWriter,
     NewFooterSectionWriter,
-    NewHeaderSectionWriter,
     _get_tree_cell,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
@@ -1438,7 +1438,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1509,7 +1509,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -3970,7 +3970,7 @@ class TestImpactedEndpointWriter(object):
 class TestNewHeaderSectionWriter(object):
     @pytest.mark.asyncio
     async def test_new_header_section_writer(self, mocker, sample_comparison):
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -3998,7 +3998,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_with_behind_by(
         self, mocker, sample_comparison
     ):
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4029,7 +4029,7 @@ class TestNewHeaderSectionWriter(object):
         self, mocker, sample_comparison
     ):
         sample_comparison.context = ComparisonContext(all_tests_passed=True)
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4063,7 +4063,7 @@ class TestNewHeaderSectionWriter(object):
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4093,7 +4093,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_no_project_coverage(
         self, mocker, sample_comparison
     ):
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4121,7 +4121,7 @@ class TestNewHeaderSectionWriter(object):
         self, mocker, sample_comparison
     ):
         sample_comparison.context = ComparisonContext(all_tests_passed=True)
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4154,7 +4154,7 @@ class TestNewHeaderSectionWriter(object):
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4504,7 +4504,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -4570,7 +4570,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
