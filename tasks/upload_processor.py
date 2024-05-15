@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit, Upload
+from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
 from helpers.parallel_upload_processing import (
@@ -26,7 +27,6 @@ from helpers.parallel_upload_processing import (
 )
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
-from services.bots import RepositoryWithoutValidBotError
 from services.redis import get_redis_connection
 from services.report import ProcessingResult, Report, ReportService
 from services.repository import get_repo_provider_service

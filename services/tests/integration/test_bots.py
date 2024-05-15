@@ -3,8 +3,8 @@ import requests
 
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.bots import _get_repo_appropriate_bot_token
 from services.bots.github_apps import get_github_app_info_for_owner
+from services.bots.repo_bots import get_repo_appropriate_bot_token
 
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDCFqq2ygFh9UQU/6PoDJ6L9e4ovLPCHtlBt7vzDwyfwr3XGxln
@@ -25,7 +25,7 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 
 class TestRepositoryServiceIntegration(object):
     @pytest.mark.asyncio
-    async def test_get_repo_appropriate_bot_token_non_existing_integration(
+    async def test_get_token_type_mapping_non_existing_integration(
         self, dbsession, codecov_vcr, mock_configuration, mocker
     ):
         # this test was done with valid integration_id, pem and then the data was scrubbed
@@ -43,10 +43,10 @@ class TestRepositoryServiceIntegration(object):
         dbsession.add(repo)
         dbsession.flush()
         with pytest.raises(RepositoryWithoutValidBotError):
-            _get_repo_appropriate_bot_token(repo)
+            get_repo_appropriate_bot_token(repo)
 
     @pytest.mark.asyncio
-    async def test_get_repo_appropriate_bot_token_bad_data(
+    async def test_get_token_type_mapping_bad_data(
         self, dbsession, codecov_vcr, mock_configuration, mocker
     ):
         mocker.patch("shared.github.get_pem", return_value=fake_private_key)
@@ -62,4 +62,4 @@ class TestRepositoryServiceIntegration(object):
         dbsession.flush()
         with pytest.raises(requests.exceptions.HTTPError):
             info = get_github_app_info_for_owner(repo.owner)
-            _get_repo_appropriate_bot_token(repo, info[0])
+            get_repo_appropriate_bot_token(repo, info[0])

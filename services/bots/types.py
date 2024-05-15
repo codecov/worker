@@ -14,6 +14,11 @@ type TokenTypeMapping = Dict[TokenType, Token]
 
 
 class AdapterAuthInformation(TypedDict):
+    """This class is just a type annotation for the return value of services.bots.get_adapter_auth_information
+    It is a container with all the information we need to authenticate a given repo/owner with the git provider.
+    Specific fields have comments to document them further
+    """
+
     # This is the Authentication used with the git provider
     token: Token
     # token_owner is used to decide on token_refresh functions

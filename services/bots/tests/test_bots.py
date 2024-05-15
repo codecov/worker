@@ -368,47 +368,41 @@ class TestGettingAdapterAuthInformation(object):
             )
             assert get_adapter_auth_information(repo.owner, repo) == expected
 
-        def test_select_repo_bot_info_public_repo(self, dbsession):
+        def test_select_repo_bot_info_public_repo(self, dbsession, mock_configuration):
             repo = self._generate_test_repo(
                 dbsession, with_owner_bot=True, with_bot=True
             )
+            mock_configuration.set_params(
+                {
+                    "github": {
+                        "bot": {"key": "some_key"},
+                        "bots": {
+                            "read": {"key": "read_bot_key"},
+                            "status": {"key": "status_bot_key"},
+                            "comment": {"key": "commenter_bot_key"},
+                        },
+                    }
+                }
+            )
             repo.private = False
+
+            repo_bot_token = Token(
+                key="repo_bot_token",
+                refresh_token="repo_bot_refresh_token",
+                secret=None,
+                username=repo.bot.username,
+            )
             expected = AdapterAuthInformation(
-                token=Token(
-                    key="repo_bot_token",
-                    refresh_token="repo_bot_refresh_token",
-                    secret=None,
-                    username=repo.bot.username,
-                ),
+                token=repo_bot_token,
                 token_owner=repo.bot,
                 selected_installation_info=None,
                 fallback_installations=None,
                 token_type_mapping={
-                    TokenType.comment: None,
-                    TokenType.read: Token(
-                        key="repo_bot_token",
-                        refresh_token="repo_bot_refresh_token",
-                        secret=None,
-                        username=repo.bot.username,
-                    ),
-                    TokenType.admin: Token(
-                        key="repo_bot_token",
-                        refresh_token="repo_bot_refresh_token",
-                        secret=None,
-                        username=repo.bot.username,
-                    ),
-                    TokenType.status: Token(
-                        key="repo_bot_token",
-                        refresh_token="repo_bot_refresh_token",
-                        secret=None,
-                        username=repo.bot.username,
-                    ),
-                    TokenType.tokenless: Token(
-                        key="repo_bot_token",
-                        refresh_token="repo_bot_refresh_token",
-                        secret=None,
-                        username=repo.bot.username,
-                    ),
+                    TokenType.comment: Token(key="commenter_bot_key"),
+                    TokenType.read: repo_bot_token,
+                    TokenType.admin: repo_bot_token,
+                    TokenType.status: repo_bot_token,
+                    TokenType.tokenless: repo_bot_token,
                 },
             )
             assert get_adapter_auth_information(repo.owner, repo) == expected
