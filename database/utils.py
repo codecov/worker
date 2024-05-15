@@ -116,18 +116,28 @@ class ArchiveField:
                         )
                     return result
                 except FileNotInStorageError:
-                    log.error(
-                        "Archive enabled field not in storage",
-                        extra=dict(
-                            storage_path=archive_field,
-                            object_id=obj.id,
-                            commit=obj.get_commitid(),
-                        ),
-                    )
-                    error = True
-                    # sleep a little but so we're not hammering the archive service
-                    # in a tight loop
-                    time.sleep(self.read_timeout / 10)
+                    if not time.time() < start_time + self.read_timeout:
+                        log.error(
+                            "Archive enabled field not in storage",
+                            extra=dict(
+                                storage_path=archive_field,
+                                object_id=obj.id,
+                                commit=obj.get_commitid(),
+                            ),
+                        )
+                    else:
+                        log.warning(
+                            "Archive enabled not found, retrying soon",
+                            extra=dict(
+                                storage_path=archive_field,
+                                object_id=obj.id,
+                                commit=obj.get_commitid(),
+                            ),
+                        )
+                        error = True
+                        # sleep a little but so we're not hammering the archive service
+                        # in a tight loop
+                        time.sleep(self.read_timeout / 10)
 
         else:
             log.debug(
