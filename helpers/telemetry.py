@@ -102,16 +102,22 @@ class MetricContext:
         # Timezone-aware timestamp in UTC
         timestamp = django.utils.timezone.now()
 
-        self.populate()
+        try:
+            self.populate()
+        except Exception:
+            log.exception("Failed to populate metric context")
 
-        PgSimpleMetric.objects.create(
-            timestamp=timestamp,
-            name=name,
-            value=value,
-            repo_id=self.repo_id,
-            owner_id=self.owner_id,
-            commit_id=self.commit_id,
-        )
+        try:
+            PgSimpleMetric.objects.create(
+                timestamp=timestamp,
+                name=name,
+                value=value,
+                repo_id=self.repo_id,
+                owner_id=self.owner_id,
+                commit_id=self.commit_id,
+            )
+        except Exception:
+            log.exception("Failed to create telemetry_simple record")
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):
