@@ -13,6 +13,7 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
+from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
 from services.bots import get_adapter_auth_information
 from services.bots.types import AdapterAuthInformation
 
@@ -159,20 +160,16 @@ class TestGettingAdapterAuthInformation(object):
             "services.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
-        def test_select_owner_deprecated_using_integration(self, dbsession):
+        def test_select_owner_deprecated_using_integration_raises(self, dbsession):
             owner = self._generate_test_owner(
                 dbsession, with_bot=False, integration_id=1500
             )
-            expected = AdapterAuthInformation(
-                token=Token(
-                    key="installation_token_1500_None",
-                ),
-                token_owner=None,
-                selected_installation_info=GithubInstallationInfo(installation_id=1500),
-                fallback_installations=[],
-                token_type_mapping=None,
-            )
-            assert get_adapter_auth_information(owner) == expected
+            owner.oauth_token = None
+            # Owner has no GithubApp, no token, and no bot configured
+            # The integration_id is no longer verified
+            # So we fail with exception
+            with pytest.raises(OwnerWithoutValidBotError):
+                get_adapter_auth_information(owner)
 
         @patch(
             "services.bots.github_apps.get_github_integration_token",
@@ -449,16 +446,13 @@ class TestGettingAdapterAuthInformation(object):
             repo = self._generate_test_repo(
                 dbsession, with_bot=False, integration_id=1500, with_owner_bot=False
             )
-            expected = AdapterAuthInformation(
-                token=Token(
-                    key="installation_token_1500_None",
-                ),
-                token_owner=None,
-                selected_installation_info=GithubInstallationInfo(installation_id=1500),
-                fallback_installations=[],
-                token_type_mapping=None,
-            )
-            assert get_adapter_auth_information(repo.owner, repo) == expected
+            repo.owner.oauth_token = None
+            # Repo's owner has no GithubApp, no token, and no bot configured
+            # The repo has not a bot configured
+            # The integration_id is no longer verified
+            # So we fail with exception
+            with pytest.raises(RepositoryWithoutValidBotError):
+                get_adapter_auth_information(repo.owner, repo)
 
         @patch(
             "services.bots.github_apps.get_github_integration_token",

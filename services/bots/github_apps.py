@@ -225,14 +225,4 @@ def get_github_app_info_for_owner(
         raise NoConfiguredAppsAvailable(
             apps_count=apps_matching_criteria_count, all_rate_limited=True
         )
-    # DEPRECATED FLOW - begin
-    if owner.integration_id and (
-        (repository and repository.using_integration) or (repository is None)
-    ):
-        log.info(
-            "Selected deprecated owner.integration_id to communicate with github",
-            extra=extra_info_to_log,
-        )
-        return [GithubInstallationInfo(installation_id=owner.integration_id)]
-    # DEPRECATED FLOW - end
     return []

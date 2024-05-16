@@ -261,34 +261,6 @@ class TestBotsService(BaseTestCase):
         )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
-    @pytest.mark.integration
-    def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_using_it(
-        self, mock_configuration, codecov_vcr
-    ):
-        mock_configuration._params["github"] = {
-            "integration": {
-                "pem": "/home/src/certs/github.pem",
-                "id": 251234,  # Fake integration id, tested with a real one
-            }
-        }
-        mock_configuration.loaded_files[("github", "integration", "pem")] = (
-            fake_private_key
-        )
-        repo = RepositoryFactory.create(
-            using_integration=True,
-            bot=None,
-            owner=OwnerFactory.create(
-                service="github",
-                integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
-                unencrypted_oauth_token=None,
-                bot=OwnerFactory.create(unencrypted_oauth_token=None),
-            ),
-        )
-        expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
-        installations = get_github_app_info_for_owner(repo.owner, repository=repo)
-        assert installations == [{"installation_id": 1654873}]
-        assert get_repo_appropriate_bot_token(repo, installations[0]) == expected_result
-
     def test_get_repo_appropriate_bot_token_via_installation_covered_repo(
         self, mock_configuration, dbsession, mocker
     ):
@@ -366,45 +338,12 @@ class TestBotsService(BaseTestCase):
         with pytest.raises(OwnerWithoutValidBotError):
             get_owner_appropriate_bot_token(owner, None)
 
-    def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(
-        self, mock_configuration, codecov_vcr
-    ):
-        mock_configuration._params["github"] = {
-            "integration": {
-                "pem": "/home/src/certs/github.pem",
-                "id": 251234,  # Fake integration id, tested with a real one
-            }
-        }
-        mock_configuration.loaded_files[("github", "integration", "pem")] = (
-            fake_private_key
-        )
-
-        owner = OwnerFactory.create(
-            service="github",
-            integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
-            unencrypted_oauth_token="owner_token",
-            bot=OwnerFactory.create(unencrypted_oauth_token=None),
-        )
-
-        expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
-        installations = get_github_app_info_for_owner(owner)
-        assert (
-            get_owner_appropriate_bot_token(owner, installations[0]) == expected_result
-        )
-
     def test_get_owner_installation_id_no_installation_no_legacy_integration(
         self, mocker, dbsession
     ):
         owner = OwnerFactory(service="github", integration_id=None)
         assert owner.github_app_installations == []
         assert get_github_app_info_for_owner(owner) == []
-
-    def test_get_owner_installation_id_no_installation_yes_legacy_integration(
-        self, mocker, dbsession
-    ):
-        owner = OwnerFactory(service="github", integration_id=12341234)
-        assert owner.github_app_installations == []
-        assert get_github_app_info_for_owner(owner) == [{"installation_id": 12341234}]
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration(
         self, mocker, dbsession
@@ -485,44 +424,6 @@ class TestBotsService(BaseTestCase):
             f"rate_limited_installations_default_app_123456"
         )
         mock_redis.exists.assert_any_call(f"rate_limited_installations_1212_12000")
-
-    def test_get_owner_installation_id_yes_installation_yes_legacy_integration_specific_repos(
-        self, mocker, dbsession
-    ):
-        owner = OwnerFactory(service="github", integration_id=12341234)
-        repo_covered_by_installation = RepositoryFactory(
-            owner=owner, using_integration=True
-        )
-        repo_not_covered_by_installation = RepositoryFactory(
-            owner=owner, using_integration=True
-        )
-        installation = GithubAppInstallation(
-            owner=owner,
-            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-            repository_service_ids=[repo_covered_by_installation.service_id],
-            installation_id=123456,
-            app_id=123,
-            pem_path="some_path",
-        )
-        dbsession.add(installation)
-        dbsession.flush()
-        assert owner.github_app_installations == [installation]
-        assert get_github_app_info_for_owner(
-            owner,
-            repository=repo_covered_by_installation,
-        ) == [
-            {
-                "installation_id": 123456,
-                "app_id": 123,
-                "pem_path": "some_path",
-            }
-        ]
-        # Notice that the installation object overrides the `Repository.using_integration` column completely
-        # ^ Not true anymore. We decided against it because there are some edge cases in filling up the list
-        assert get_github_app_info_for_owner(
-            owner,
-            repository=repo_not_covered_by_installation,
-        ) == [{"installation_id": 12341234}]
 
     @pytest.mark.parametrize(
         "time_edited_days,expected_weight",

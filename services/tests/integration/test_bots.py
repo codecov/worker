@@ -1,6 +1,10 @@
 import pytest
 import requests
 
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.bots.github_apps import get_github_app_info_for_owner
@@ -54,12 +58,20 @@ class TestRepositoryServiceIntegration(object):
         repo = RepositoryFactory.create(
             owner__username="ThiagoCodecov",
             owner__service="github",
-            owner__integration_id=5944641,
+            owner__integration_id=None,
             name="example-python",
-            using_integration=True,
+            using_integration=False,
         )
-        dbsession.add(repo)
+        app = GithubAppInstallation(
+            repository_service_ids=None,
+            installation_id=5944641,
+            app_id=999,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            owner=repo.owner,
+        )
+        dbsession.add_all([repo, app])
         dbsession.flush()
+        assert repo.owner.github_app_installations == [app]
         with pytest.raises(requests.exceptions.HTTPError):
             info = get_github_app_info_for_owner(repo.owner)
             get_repo_appropriate_bot_token(repo, info[0])
