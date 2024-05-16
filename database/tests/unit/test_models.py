@@ -135,7 +135,6 @@ class TestPullModel(object):
 
 
 class TestReportDetailsModel(object):
-
     sample_files_array = [
         {
             "filename": "file_1.go",

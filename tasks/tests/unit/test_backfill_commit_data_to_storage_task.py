@@ -1,7 +1,5 @@
 from unittest.mock import call, patch
 
-import pytest
-
 from database.models.core import Commit
 from database.models.reports import CommitReport, ReportDetails
 from database.tests.factories.core import CommitFactory, ReportDetailsFactory

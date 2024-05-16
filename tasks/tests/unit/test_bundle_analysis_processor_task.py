@@ -7,7 +7,6 @@ from shared.storage.exceptions import PutRequestRateLimitError
 
 from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
-from services.bundle_analysis import sentry_metrics
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
 
 

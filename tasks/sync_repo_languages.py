@@ -10,6 +10,7 @@ from app import celery_app
 from database.models.core import Repository
 from helpers.clock import get_utc_now
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.repository import get_repo_provider_service
 from tasks.base import BaseCodecovTask
 
@@ -53,7 +54,12 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
                     repository_id=repository.repoid,
                 )
                 log.info("Syncing repository languages", extra=log_extra)
-                repository_service = get_repo_provider_service(repository)
+                installation_name_to_use = get_installation_name_for_owner_for_task(
+                    db_session, self.name, repository.owner
+                )
+                repository_service = get_repo_provider_service(
+                    repository, installation_name_to_use=installation_name_to_use
+                )
                 is_bitbucket_call = (
                     repository.owner.service == "bitbucket"
                     or repository.owner.service == "bitbucket_server"

@@ -20,7 +20,6 @@ from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
 from services.report import ReportService
 from services.report.parser.legacy import LegacyReportParser
-from services.report.parser.types import LegacyParsedRawReport
 from services.report.raw_upload_processor import UploadProcessingResult
 from tasks.upload_processor import UploadProcessorTask
 

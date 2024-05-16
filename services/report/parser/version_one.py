@@ -26,9 +26,7 @@ class VersionOneReportParser(object):
             ],
             report_fixes=self._parse_report_fixes(
                 # want backwards compatibility with older versions of the CLI that still name this section path_fixes
-                data["report_fixes"]
-                if "report_fixes" in data
-                else data["path_fixes"]
+                data["report_fixes"] if "report_fixes" in data else data["path_fixes"]
             ),
         )
 

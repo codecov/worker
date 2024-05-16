@@ -2,12 +2,12 @@ import logging
 from typing import Any, Dict
 
 from asgiref.sync import async_to_sync
-from shared.celery_config import notify_task_name
 from shared.yaml import UserYaml
 
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.bundle_analysis import Notifier
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
@@ -101,7 +101,12 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
 
         success = None
         if notify:
-            notifier = Notifier(commit, commit_yaml)
+            installation_name_to_use = get_installation_name_for_owner_for_task(
+                db_session, self.name, commit.repository.owner
+            )
+            notifier = Notifier(
+                commit, commit_yaml, gh_app_installation_name=installation_name_to_use
+            )
             success = async_to_sync(notifier.notify)()
 
         log.info(

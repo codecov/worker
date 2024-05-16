@@ -1,3 +1,4 @@
+# ruff: noqa: F401
 from app import celery_app
 from tasks.ai_pr_review import ai_pr_view_task
 from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task

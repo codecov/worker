@@ -309,7 +309,7 @@ def _jscoverage_eval_partial(partial):
             "{0}/2".format(
                 (1 if partial["evalTrue"] else 0) + (1 if partial["evalFalse"] else 0)
             )
-        )
+        ),
         # It seems like the above line on Python2 would make something in `partials_to_line` always return True
     ]
 

@@ -1,6 +1,6 @@
-""" Tests for pycoverage language processor that output actual labels.
-    This is going to be deprecated soon.
-    For the tests with encoded labels see services/report/languages/tests/unit/test_pycoverage_encoded_labels.py
+"""Tests for pycoverage language processor that output actual labels.
+This is going to be deprecated soon.
+For the tests with encoded labels see services/report/languages/tests/unit/test_pycoverage_encoded_labels.py
 """
 
 from services.report.languages.pycoverage import PyCoverageProcessor

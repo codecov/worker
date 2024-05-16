@@ -154,6 +154,14 @@ def mock_configuration(mocker):
 
 
 @pytest.fixture
+def empty_configuration(mocker):
+    m = mocker.patch("shared.config._get_config_instance")
+    mock_config = ConfigHelper()
+    m.return_value = mock_config
+    return mock_config
+
+
+@pytest.fixture
 def codecov_vcr(request):
     current_path = Path(request.node.fspath)
     current_path_name = current_path.name.replace(".py", "")

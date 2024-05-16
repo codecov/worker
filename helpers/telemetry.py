@@ -4,14 +4,10 @@ from datetime import datetime
 
 import django
 from asgiref.sync import sync_to_async
-from psycopg2 import OperationalError
 from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
-from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 
 from database.engine import get_db_session
-from database.models.core import Commit, Owner, Repository
-
-from .timeseries import timeseries_enabled
+from database.models.core import Commit, Repository
 
 log = logging.getLogger(__name__)
 
@@ -66,9 +62,6 @@ class MetricContext:
         self.commit_id = commit_id
         self.commit_sha = commit_sha
         self.owner_id = owner_id
-        self.repo_slug = None
-        self.owner_slug = None
-        self.commit_slug = None
         self.populated = False
 
     def populate(self):
@@ -76,21 +69,19 @@ class MetricContext:
             return
 
         repo = None
-        owner = None
         commit = None
         dbsession = get_db_session()
 
         if self.repo_id:
-            repo = (
-                dbsession.query(Repository)
-                .filter(Repository.repoid == self.repo_id)
-                .first()
-            )
-            owner = repo.owner
             if not self.owner_id:
-                self.owner_id = owner.ownerid
+                repo = (
+                    dbsession.query(Repository)
+                    .filter(Repository.repoid == self.repo_id)
+                    .first()
+                )
+                self.owner_id = repo.ownerid
 
-            if self.commit_sha:
+            if self.commit_sha and not self.commit_id:
                 commit = (
                     dbsession.query(Commit)
                     .filter(
@@ -100,18 +91,6 @@ class MetricContext:
                     .first()
                 )
                 self.commit_id = commit.id_
-        elif self.owner_id:
-            owner = (
-                dbsession.query(Owner).filter(Owner.ownerid == self.owner_id).first()
-            )
-
-        self.owner_slug = f"{owner.service}/{owner.username}" if owner else None
-        self.repo_slug = (
-            f"{self.owner_slug}/{repo.name}" if self.owner_slug and repo else None
-        )
-        self.commit_slug = (
-            f"{self.repo_slug}/{commit.commitid}" if self.repo_slug and commit else None
-        )
 
         self.populated = True
 
@@ -133,21 +112,6 @@ class MetricContext:
             owner_id=self.owner_id,
             commit_id=self.commit_id,
         )
-
-        if timeseries_enabled():
-            try:
-                TsSimpleMetric.objects.create(
-                    timestamp=timestamp,
-                    name=name,
-                    value=value,
-                    repo_slug=self.repo_slug,
-                    owner_slug=self.owner_slug,
-                    commit_slug=self.commit_slug,
-                )
-            except OperationalError:
-                log.warning(
-                    "Failed to create TsSimpleMetric object, Timescale may be unavailable. However we will continue the current task."
-                )
 
     @fire_and_forget
     async def attempt_log_simple_metric(self, name: str, value: float):

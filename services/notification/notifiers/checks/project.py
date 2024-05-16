@@ -1,5 +1,3 @@
-from typing import Any, Tuple
-
 from database.enums import Notification
 from helpers.metrics import metrics
 from services.notification.notifiers.base import Comparison
@@ -10,7 +8,6 @@ from services.yaml.reader import read_yaml_field
 
 
 class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
-
     context = "project"
 
     @property

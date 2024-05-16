@@ -1,7 +1,5 @@
 from datetime import datetime
 
-import pytest
-
 from database.tests.factories.profiling import (
     ProfilingCommitFactory,
     ProfilingUploadFactory,

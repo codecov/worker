@@ -12,7 +12,6 @@ class AntecessorFindingResult(Enum):
 
 
 class SingleFileSnapshotAnalyzer(object):
-
     """
     This is an analyzer for a single snapshot of a file (meaning a version of a file in
         a particular moment of time)

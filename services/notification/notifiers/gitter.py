@@ -9,7 +9,6 @@ from services.urls import get_commit_url
 
 
 class GitterNotifier(RequestsYamlBasedNotifier):
-
     # TODO (Thiago): Fix base message
     BASE_MESSAGE = " ".join(
         [

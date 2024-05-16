@@ -1,4 +1,3 @@
-from asyncio import Future
 from copy import deepcopy
 from unittest.mock import Mock
 from urllib.parse import quote_plus

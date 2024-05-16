@@ -1,5 +1,6 @@
 import logging
 import uuid
+from decimal import Decimal
 from functools import cached_property
 
 from shared.reports.types import ReportTotals, SessionTotalsArray
@@ -7,13 +8,13 @@ from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import backref, relationship
-from test_results_parser import Outcome
 
 from database.base import CodecovBaseModel, MixinBaseClass
 from database.models.core import Commit, CompareCommit, Repository
 from database.utils import ArchiveField
 from helpers.clock import get_utc_now
 from helpers.config import should_write_data_to_storage_config_check
+from helpers.number import precise_round
 
 log = logging.getLogger(__name__)
 
@@ -197,10 +198,16 @@ class AbstractTotals(MixinBaseClass):
     partials = Column(types.Integer)
     files = Column(types.Integer)
 
-    def update_from_totals(self, totals):
+    def update_from_totals(self, totals, precision=2, rounding="down"):
         self.branches = totals.branches
+        if totals.coverage is not None:
+            coverage: Decimal = Decimal(totals.coverage)
+            self.coverage = precise_round(
+                coverage, precision=precision, rounding=rounding
+            )
         # Temporary until the table starts accepting NULLs
-        self.coverage = totals.coverage if totals.coverage is not None else 0
+        else:
+            self.coverage = 0
         self.hits = totals.hits
         self.lines = totals.lines
         self.methods = totals.methods
@@ -303,6 +310,8 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
+    branch = Column(types.Text, nullable=True)
+    commitid = Column(types.Text, nullable=True)
 
 
 class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):

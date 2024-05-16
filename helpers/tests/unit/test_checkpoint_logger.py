@@ -1,10 +1,9 @@
 import json
 import unittest
-from enum import Enum, auto
-from unittest.mock import ANY, patch
+from enum import auto
+from unittest.mock import patch
 
 import pytest
-import sentry_sdk
 from prometheus_client import REGISTRY
 from shared.utils.test_utils import mock_metrics
 

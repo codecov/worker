@@ -43,7 +43,7 @@ def get_section_class_from_layout_name(layout_name):
     if layout_name == "announcements":
         return AnnouncementSectionWriter
     if layout_name in ["header", "newheader", "condensed_header"]:
-        return NewHeaderSectionWriter
+        return HeaderSectionWriter
     if layout_name == "newfooter" or layout_name == "condensed_footer":
         return NewFooterSectionWriter
     if layout_name.startswith("component"):
@@ -100,7 +100,7 @@ class NewFooterSectionWriter(BaseSectionWriter):
             )
 
 
-class NewHeaderSectionWriter(BaseSectionWriter):
+class HeaderSectionWriter(BaseSectionWriter):
     def _possibly_include_test_result_setup_confirmation(self, comparison):
         if comparison.test_results_error():
             yield ("")
@@ -150,17 +150,15 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 )
             )
         else:
+            # This doesn't actually emit a message if the _head_ report is missing
+            # Because we don't notify if the _head_ report is missing
+            # But it's still used if the base report is missing.
+            # Why didn't you change the condition and the code then? Idk... maybe I'm wrong in my assumptions :P
+            what = "BASE" if not base_report else "HEAD"
+            branch = pull_dict["base" if not base_report else "head"]["branch"]
+            commit = pull_dict["base" if not base_report else "head"]["commitid"][:7]
             yield (
-                "> :exclamation: No coverage uploaded for {request_type} {what} (`{branch}@{commit}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-{what}-commit).".format(
-                    what="base" if not base_report else "head",
-                    branch=pull_dict["base" if not base_report else "head"]["branch"],
-                    commit=pull_dict["base" if not base_report else "head"]["commitid"][
-                        :7
-                    ],
-                    request_type=(
-                        "merge request" if repo_service == "gitlab" else "pull request"
-                    ),
-                )
+                f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for {what} (`{branch}@{commit}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-{what.lower()}-commit) about missing {what} report."
             )
 
         if behind_by:
@@ -184,13 +182,14 @@ class NewHeaderSectionWriter(BaseSectionWriter):
                 ),
             )
             yield ("")
+            pull_head = comparison.enriched_pull.provider_pull["head"]["commitid"][:7]
+            current_head = comparison.head.commit.commitid[:7]
             yield (
-                "> :exclamation: Current head {current_head} differs from pull request most recent head {pull_head}. Consider uploading reports for the commit {pull_head} to get more accurate results".format(
-                    pull_head=comparison.enriched_pull.provider_pull["head"][
-                        "commitid"
-                    ][:7],
-                    current_head=comparison.head.commit.commitid[:7],
-                )
+                f"> :exclamation: **Current head {current_head} differs from pull request most recent head {pull_head}**"
+            )
+            yield ("> ")
+            yield (
+                f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {pull_head} to get more accurate results."
             )
 
         if self.settings.get("show_critical_paths"):
@@ -290,7 +289,7 @@ class FooterSectionWriter(BaseSectionWriter):
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)"
         )
         yield (
-            "> `\u0394 = absolute <relative> (impact)`, `\xF8 = not affected`, `? = missing data`"
+            "> `\u0394 = absolute <relative> (impact)`, `\xf8 = not affected`, `? = missing data`"
         )
         yield (
             "> Powered by [Codecov]({pull}?dropdown=coverage&src=pr&el=footer). Last update [{base}...{head}]({pull}?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(

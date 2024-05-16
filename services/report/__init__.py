@@ -12,6 +12,7 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.config import get_config
+from shared.django_apps.reports.models import ReportType
 from shared.metrics import metrics
 from shared.reports.carryforward import generate_carryforward_report
 from shared.reports.editable import EditableReport
@@ -20,6 +21,7 @@ from shared.reports.resources import Report
 from shared.reports.types import ReportFileSummary, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitError
+from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
@@ -56,7 +58,7 @@ from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
-from services.yaml.reader import get_paths_from_flags
+from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
 
 @dataclass
@@ -188,9 +190,12 @@ class BaseReportService:
 class ReportService(BaseReportService):
     metrics_prefix = "services.report"
 
-    def __init__(self, current_yaml: UserYaml):
+    def __init__(
+        self, current_yaml: UserYaml, gh_app_installation_name: str | None = None
+    ):
         super().__init__(current_yaml)
         self.flag_dict = None
+        self.gh_app_installation_name = gh_app_installation_name
 
     def has_initialized_report(self, commit: Commit) -> bool:
         """Says whether a commit has already initialized its report or not
@@ -325,6 +330,24 @@ class ReportService(BaseReportService):
         flags = normalized_arguments.get("flags")
         flags = flags.split(",") if flags else []
         self._attach_flags_to_upload(upload, flags)
+
+        # Insert entry in user measurements table only
+        # for reports with coverage type
+        commit = commit_report.commit
+        repository = commit.repository
+        owner = repository.owner
+
+        insert_coverage_measurement(
+            owner_id=owner.ownerid,
+            repo_id=repository.repoid,
+            commit_id=commit.id,
+            upload_id=upload.id,
+            # CLI precreates the upload in API so this defaults to Legacy
+            uploader_used=UploaderType.LEGACY.value,
+            private_repo=repository.private,
+            report_type=commit_report.report_type,
+        )
+
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):
@@ -625,7 +648,6 @@ class ReportService(BaseReportService):
     def get_appropriate_commit_to_carryforward_from(
         self, commit: Commit, max_parenthood_deepness: int = 10
     ) -> Optional[Commit]:
-
         parent_commit = commit.get_parent_commit()
         parent_commit_tracking = []
         count = 1  # `parent_commit` is already the first parent
@@ -693,14 +715,15 @@ class ReportService(BaseReportService):
         ):
             try:
                 provider_service = get_repo_provider_service(
-                    repository=head_commit.repository
+                    repository=head_commit.repository,
+                    installation_name_to_use=self.gh_app_installation_name,
                 )
                 diff = (
                     await provider_service.get_compare(
                         base=base_commit.commitid, head=head_commit.commitid
                     )
                 )["diff"]
-                # Volitile function, alters carryforward_report
+                # Volatile function, alters carryforward_report
                 carryforward_report.shift_lines_by_diff(diff)
             except (RepositoryWithoutValidBotError, OwnerWithoutValidBotError) as exp:
                 log.error(
@@ -898,7 +921,7 @@ class ReportService(BaseReportService):
     ) -> ProcessingResult:
         """
             Processes an upload on top of an existing report `master` and returns
-                a result, which could be succesful or not
+                a result, which could be successful or not
 
             Note that this function does not modify the `upload` object, as this should
                 be done by a separate function
@@ -1027,6 +1050,12 @@ class ReportService(BaseReportService):
     def update_upload_with_processing_result(
         self, upload_obj: Upload, processing_result: ProcessingResult
     ):
+        rounding: str = read_yaml_field(
+            self.current_yaml, ("coverage", "round"), "nearest"
+        )
+        precision: int = read_yaml_field(
+            self.current_yaml, ("coverage", "precision"), 2
+        )
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
@@ -1055,7 +1084,9 @@ class ReportService(BaseReportService):
                 )
                 db_session.add(upload_totals)
             if session.totals is not None:
-                upload_totals.update_from_totals(session.totals)
+                upload_totals.update_from_totals(
+                    session.totals, precision=precision, rounding=rounding
+                )
         else:
             error = processing_result.error
             upload_obj.state = "error"
@@ -1069,6 +1100,12 @@ class ReportService(BaseReportService):
             db_session.flush()
 
     def save_report(self, commit: Commit, report: Report, report_code=None):
+        rounding: str = read_yaml_field(
+            self.current_yaml, ("coverage", "round"), "nearest"
+        )
+        precision: int = read_yaml_field(
+            self.current_yaml, ("coverage", "precision"), 2
+        )
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
             report.repack()
         archive_service = self.get_archive_service(commit.repository)
@@ -1121,7 +1158,10 @@ class ReportService(BaseReportService):
             if report_totals is None:
                 report_totals = ReportLevelTotals(report_id=commit.report.id)
                 db_session.add(report_totals)
-            report_totals.update_from_totals(report.totals)
+
+            report_totals.update_from_totals(
+                report.totals, precision=precision, rounding=rounding
+            )
             db_session.flush()
         log.info(
             "Archived report",
@@ -1149,6 +1189,12 @@ class ReportService(BaseReportService):
         Returns:
             TYPE: Description
         """
+        rounding: str = read_yaml_field(
+            self.current_yaml, ("coverage", "round"), "nearest"
+        )
+        precision: int = read_yaml_field(
+            self.current_yaml, ("coverage", "precision"), 2
+        )
         res = self.save_report(commit, report, report_code)
         db_session = commit.get_db_session()
         for sess_id, session in report.sessions.items():
@@ -1177,7 +1223,9 @@ class ReportService(BaseReportService):
             if session.totals is not None:
                 upload_totals = UploadLevelTotals(upload_id=upload.id_)
                 db_session.add(upload_totals)
-                upload_totals.update_from_totals(session.totals)
+                upload_totals.update_from_totals(
+                    session.totals, precision=precision, rounding=rounding
+                )
         return res
 
     async def save_parallel_report_to_archive(
@@ -1189,7 +1237,11 @@ class ReportService(BaseReportService):
 
         # Attempt to calculate diff of report (which uses commit info from the git provider), but it it fails to do so, it just moves on without such diff
         try:
-            repository_service = get_repo_provider_service(repository, commit)
+            repository_service = get_repo_provider_service(
+                repository,
+                commit,
+                installation_name_to_use=self.gh_app_installation_name,
+            )
             report.apply_diff(await repository_service.get_commit_diff(commitid))
         except TorngitError:
             # When this happens, we have that commit.totals["diff"] is not available.

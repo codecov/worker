@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 import shared.celery_config as shared_celery_config
 from shared.billing import BillingPlan

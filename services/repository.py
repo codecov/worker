@@ -23,7 +23,6 @@ from sqlalchemy.exc import IntegrityError
 from database.models import Commit, Owner, Pull, Repository
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-    GithubAppInstallation,
 )
 from helpers.token_refresh import get_token_refresh_callback
 from services.bots import (

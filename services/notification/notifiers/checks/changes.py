@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Dict
 
 from database.enums import Notification
 from services.notification.notifiers.checks.base import ChecksNotifier

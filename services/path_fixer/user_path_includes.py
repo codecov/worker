@@ -5,7 +5,6 @@ from services.path_fixer.match import regexp_match_one
 
 
 class UserPathIncludes(object):
-
     """
         This class has one purpose: To determine whether a specific path should
             be included in the report or not/

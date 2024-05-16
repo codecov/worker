@@ -97,9 +97,9 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         # top level totals comparison (ignoring session total, index 9)
         parallel_tlt = list(parallel_report.totals.astuple())
         serial_tlt = list(serial_report.totals.astuple())
-        parallel_tlt[
-            9
-        ] = 0  # 9th index is session total for shared.reports.types.ReportTotals
+        parallel_tlt[9] = (
+            0  # 9th index is session total for shared.reports.types.ReportTotals
+        )
         serial_tlt[9] = 0
         if parallel_tlt != serial_tlt:
             top_level_totals_match = False

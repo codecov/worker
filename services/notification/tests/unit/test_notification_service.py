@@ -569,9 +569,7 @@ class TestNotificationService(object):
             await notifications_service.notify(sample_comparison)
 
         dbsession.flush()
-        pull_commit_notifications = (
-            sample_comparison.enriched_pull.database_pull.get_head_commit_notifications()
-        )
+        pull_commit_notifications = sample_comparison.enriched_pull.database_pull.get_head_commit_notifications()
         assert len(pull_commit_notifications) == 2
         for commit_notification in pull_commit_notifications:
             assert commit_notification.state in (

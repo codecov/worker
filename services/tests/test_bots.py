@@ -17,7 +17,6 @@ from services.bots import (
     get_owner_appropriate_bot_token,
     get_owner_installation_id,
     get_repo_appropriate_bot_token,
-    get_repo_particular_bot_token,
     get_token_type_mapping,
 )
 from test_utils.base import BaseTestCase
@@ -145,7 +144,6 @@ class TestBotsService(BaseTestCase):
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
     def test_get_repo_appropriate_bot_token_repo_with_valid_bot(self):
-
         repo = RepositoryFactory.create(
             using_integration=False,
             bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
@@ -271,9 +269,9 @@ class TestBotsService(BaseTestCase):
                 "id": 251234,  # Fake integration id, tested with a real one
             }
         }
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
         repo = RepositoryFactory.create(
             using_integration=True,
             bot=None,
@@ -374,9 +372,9 @@ class TestBotsService(BaseTestCase):
                 "id": 251234,  # Fake integration id, tested with a real one
             }
         }
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         owner = OwnerFactory.create(
             service="github",

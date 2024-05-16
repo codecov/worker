@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import json
 import logging
 import random
 import typing
@@ -298,9 +297,9 @@ def make_sure_label_indexes_match(
                 idx
                 != SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
             ):
-                indexes_to_fix[
-                    idx
-                ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
+                indexes_to_fix[idx] = (
+                    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
+                )
         if label not in reverse_index:
             # It's a new label that doesn't exist in the original_report
             original_report.labels_index[next_idx] = label

@@ -1,4 +1,3 @@
-import pytest
 from shared.celery_config import timeseries_save_commit_measurements_task_name
 
 from database.models import MeasurementName

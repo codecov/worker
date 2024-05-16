@@ -1,5 +1,4 @@
 import logging
-import random
 
 from celery.exceptions import MaxRetriesExceededError
 from redis.exceptions import LockError

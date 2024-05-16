@@ -1,8 +1,6 @@
 import json
 import logging
 import time
-from contextlib import contextmanager
-from functools import lru_cache
 from typing import Any, Callable, Optional
 
 from shared.storage.exceptions import FileNotInStorageError
@@ -118,8 +116,8 @@ class ArchiveField:
                         )
                     return result
                 except FileNotInStorageError:
-                    log.error(
-                        "Archive enabled field not in storage",
+                    log.warning(
+                        "Archive enabled not found, retrying soon",
                         extra=dict(
                             storage_path=archive_field,
                             object_id=obj.id,
@@ -131,6 +129,14 @@ class ArchiveField:
                     # in a tight loop
                     time.sleep(self.read_timeout / 10)
 
+            log.error(
+                "Archive enabled field not in storage",
+                extra=dict(
+                    storage_path=archive_field,
+                    object_id=obj.id,
+                    commit=obj.get_commitid(),
+                ),
+            )
         else:
             log.debug(
                 "Both db_field and archive_field are None",

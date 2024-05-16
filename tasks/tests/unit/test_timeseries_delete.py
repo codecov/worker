@@ -1,5 +1,3 @@
-import pytest
-
 from database.models.timeseries import MeasurementName
 from database.tests.factories import RepositoryFactory
 from tasks.timeseries_delete import TimeseriesDeleteTask

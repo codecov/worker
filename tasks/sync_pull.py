@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import os
@@ -18,6 +17,7 @@ from shared.yaml.user_yaml import OwnerContext
 from app import celery_app
 from database.models import Commit, Pull, Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
 from services.comparison.changes import get_changes
 from services.redis import get_redis_connection
@@ -34,7 +34,6 @@ log = logging.getLogger(__name__)
 
 
 class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
-
     """
         This is the task that syncs pull with the information the Git Provider gives us
 
@@ -101,7 +100,12 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         repository = db_session.query(Repository).filter_by(repoid=repoid).first()
         assert repository
         try:
-            repository_service = get_repo_provider_service(repository)
+            installation_name_to_use = get_installation_name_for_owner_for_task(
+                db_session, self.name, repository.owner
+            )
+            repository_service = get_repo_provider_service(
+                repository, installation_name_to_use=installation_name_to_use
+            )
         except RepositoryWithoutValidBotError:
             log.warning(
                 "Could not sync pull because there is no valid bot found for that repo",
@@ -152,7 +156,9 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "reason": "not_in_provider",
             }
         self.trigger_ai_pr_review(enriched_pull, current_yaml)
-        report_service = ReportService(current_yaml)
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
+        )
         head_commit = pull.get_head_commit()
         if head_commit is None:
             log.info(

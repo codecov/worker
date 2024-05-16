@@ -11,7 +11,6 @@ Base = declarative_base()
 
 
 class CodecovBaseModel(Base):
-
     __abstract__ = True
 
     def get_db_session(self):

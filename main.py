@@ -93,23 +93,24 @@ def setup_worker():
 )
 def worker(name, concurrency, debug, queue):
     setup_worker()
-    actual_queues = _get_queues_param_from_queue_input(queue)
-    return app.celery_app.worker_main(
-        argv=[
-            "worker",
-            "-n",
-            name,
-            "-c",
-            concurrency,
-            "-l",
-            ("debug" if debug else "info"),
+    args = [
+        "worker",
+        "-n",
+        name,
+        "-c",
+        concurrency,
+        "-l",
+        ("debug" if debug else "info"),
+    ]
+    if get_config("setup", "celery_queues_enabled", default=True):
+        actual_queues = _get_queues_param_from_queue_input(queue)
+        args += [
             "-Q",
             actual_queues,
-            "-B",
-            "-s",
-            "/home/codecov/celerybeat-schedule",  # TODO find file that can work on production and enterprise
         ]
-    )
+    if get_config("setup", "celery_beat_enabled", default=True):
+        args += ["-B", "-s", "/home/codecov/celerybeat-schedule"]
+    return app.celery_app.worker_main(argv=args)
 
 
 def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:

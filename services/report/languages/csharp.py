@@ -1,10 +1,8 @@
 import typing
 from collections import defaultdict
 from itertools import repeat
-from re import M
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (

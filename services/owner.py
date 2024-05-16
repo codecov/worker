@@ -54,7 +54,7 @@ def get_owner_provider_service(
         on_token_refresh=(
             get_token_refresh_callback(owner) if not using_integration else None
         ),
-        **data
+        **data,
     )
     return _get_owner_provider_service_instance(service, **adapter_params)
 

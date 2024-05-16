@@ -20,7 +20,7 @@ from database.models.core import GithubAppInstallation, Pull
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
 from services.billing import BillingPlan
-from services.comparison import ComparisonProxy, NotificationContext
+from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import Decoration
@@ -35,10 +35,10 @@ from services.notification.notifiers.mixins.message.sections import (
     AnnouncementSectionWriter,
     ComponentsSectionWriter,
     FileSectionWriter,
+    HeaderSectionWriter,
     ImpactedEntrypointsSectionWriter,
     NewFilesSectionWriter,
     NewFooterSectionWriter,
-    NewHeaderSectionWriter,
     _get_tree_cell,
 )
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
@@ -1316,9 +1316,9 @@ class TestCommentNotifier(object):
 
         encrypted_license = "wxWEJyYgIcFpi6nBSyKQZQeaQ9Eqpo3SXyUomAqQOzOFjdYB3A8fFM1rm+kOt2ehy9w95AzrQqrqfxi9HJIb2zLOMOB9tSy52OykVCzFtKPBNsXU/y5pQKOfV7iI3w9CHFh3tDwSwgjg8UsMXwQPOhrpvl2GdHpwEhFdaM2O3vY7iElFgZfk5D9E7qEnp+WysQwHKxDeKLI7jWCnBCBJLDjBJRSz0H7AfU55RQDqtTrnR+rsLDHOzJ80/VxwVYhb"
         mock_configuration.params["setup"]["enterprise_license"] = encrypted_license
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://codecov.mysite.com"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.mysite.com"
+        )
 
         comparison = sample_comparison
         pull = comparison.enriched_pull.database_pull
@@ -1438,7 +1438,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -1509,7 +1509,7 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -3970,7 +3970,7 @@ class TestImpactedEndpointWriter(object):
 class TestNewHeaderSectionWriter(object):
     @pytest.mark.asyncio
     async def test_new_header_section_writer(self, mocker, sample_comparison):
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -3998,7 +3998,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_with_behind_by(
         self, mocker, sample_comparison
     ):
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4028,8 +4028,8 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_test_results_setup(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(all_tests_passed=True)
-        writer = NewHeaderSectionWriter(
+        sample_comparison.context = ComparisonContext(all_tests_passed=True)
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4059,11 +4059,11 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_test_results_error(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(
+        sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4093,7 +4093,7 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_no_project_coverage(
         self, mocker, sample_comparison
     ):
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4120,8 +4120,8 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_no_project_coverage_test_results_setup(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(all_tests_passed=True)
-        writer = NewHeaderSectionWriter(
+        sample_comparison.context = ComparisonContext(all_tests_passed=True)
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4150,11 +4150,11 @@ class TestNewHeaderSectionWriter(object):
     async def test_new_header_section_writer_no_project_coverage_test_results_error(
         self, mocker, sample_comparison
     ):
-        sample_comparison.context = NotificationContext(
+        sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
-        writer = NewHeaderSectionWriter(
+        writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
             show_complexity=mocker.MagicMock(),
@@ -4504,7 +4504,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@cdf9aa4`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             f"",
@@ -4570,7 +4570,7 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> :exclamation: No coverage uploaded for pull request base (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Click here to learn what that means](https://docs.codecov.io/docs/error-reference#section-missing-base-commit).",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
@@ -4723,7 +4723,9 @@ class TestCommentNotifierInNewLayout(object):
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
             f"",
-            f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
+            f"> :exclamation: **Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}**",
+            f"> ",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results.",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
@@ -4798,7 +4800,9 @@ class TestCommentNotifierInNewLayout(object):
             f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
             f"",
-            f"> :exclamation: Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}. Consider uploading reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results",
+            f"> :exclamation: **Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}**",
+            f"> ",
+            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results.",
             f"",
             f"<details><summary>Additional details and impacted files</summary>\n",
             f"",
@@ -4898,7 +4902,7 @@ class TestCommentNotifierInNewLayout(object):
         sample_comparison_coverage_carriedforward,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
-        sample_comparison_coverage_carriedforward.context = NotificationContext(
+        sample_comparison_coverage_carriedforward.context = ComparisonContext(
             all_tests_passed=True
         )
         comparison = sample_comparison_coverage_carriedforward
@@ -4939,7 +4943,7 @@ class TestCommentNotifierInNewLayout(object):
         sample_comparison_coverage_carriedforward,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
-        sample_comparison_coverage_carriedforward.context = NotificationContext(
+        sample_comparison_coverage_carriedforward.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=TestResultsProcessingError.NO_SUCCESS,
         )
@@ -4981,7 +4985,7 @@ class TestCommentNotifierInNewLayout(object):
         sample_comparison_coverage_carriedforward,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
-        sample_comparison_coverage_carriedforward.context = NotificationContext(
+        sample_comparison_coverage_carriedforward.context = ComparisonContext(
             all_tests_passed=False,
             test_results_error=None,
         )
@@ -5536,6 +5540,26 @@ class TestCommentNotifierWelcome:
                 sample_comparison.head.commit.repository.owner,
             ]
         )
+        dbsession.flush()
+
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        result = await notifier.build_message(sample_comparison)
+        assert PROJECT_COVERAGE_CTA not in result
+
+        after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
+            tzinfo=timezone.utc
+        )
+        sample_comparison.head.commit.repository.owner.createstamp = (
+            after_introduction_date
+        )
+
+        dbsession.add(sample_comparison.head.commit.repository.owner)
         dbsession.flush()
 
         notifier = CommentNotifier(

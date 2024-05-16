@@ -9,7 +9,7 @@ from smtplib import (
     SMTPSenderRefused,
     SMTPServerDisconnected,
 )
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call
 
 import pytest
 

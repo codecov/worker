@@ -2,7 +2,7 @@ import functools
 import itertools
 import logging
 import time
-from enum import Enum, auto
+from enum import Enum
 from typing import (
     Any,
     Callable,
@@ -114,7 +114,9 @@ class BaseFlow(str, Enum):
     is_failure: ClassVar[Callable[[T], bool]]
     log_counters: ClassVar[Callable[[T], None]]
 
-    def _generate_next_value_(name: str, start: int, count: int, last_values: list[Any]):  # type: ignore[override]
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: list[Any]
+    ):  # type: ignore[override]
         """
         This powers `enum.auto()`. It sets the value of "MyEnum.A" to "A".
         """

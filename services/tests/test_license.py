@@ -94,7 +94,6 @@ class TestLicenseService(object):
     def test_calculate_reason_for_not_being_valid_too_many_plan_activated_users(
         self, dbsession, mock_configuration
     ):
-
         org_owner = OwnerFactory.create(
             service="github", oauth_token=None, plan_activated_users=list(range(1, 12))
         )

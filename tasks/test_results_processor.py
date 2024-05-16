@@ -38,8 +38,7 @@ class ParserFailureError(Exception):
         self.parser_err_msg = parser_err_msg
 
 
-class ParserNotSupportedError(Exception):
-    ...
+class ParserNotSupportedError(Exception): ...
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
@@ -101,13 +100,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         self,
         db_session: Session,
         repoid: int,
+        commitid: str,
         upload_id: int,
+        branch: str,
         parsed_testruns: List[Testrun],
         flags_hash: str,
     ):
         memory_used = getsizeof(parsed_testruns) // 1024
         with metrics.timing(key="test_results.processor.write_to_db"):
-
             test_data = []
             test_instance_data = []
             for testrun in parsed_testruns:
@@ -136,6 +136,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         duration_seconds=duration_seconds,
                         outcome=outcome,
                         failure_message=failure_message,
+                        commitid=commitid,
+                        branch=branch,
                     )
                 )
 
@@ -185,8 +187,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             }
         flags_hash = generate_flags_hash(upload_obj.flag_names)
         upload_id = upload_obj.id
+        branch = upload_obj.report.commit.branch
         self._bulk_write_tests_to_db(
-            db_session, repoid, upload_id, parsed_testruns, flags_hash
+            db_session, repoid, commitid, upload_id, branch, parsed_testruns, flags_hash
         )
 
         return {
@@ -227,7 +230,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         filename: str,
         file_bytes: BytesIO,
     ):
-
         try:
             with metrics.timing("test_results.processor.parser_matching"):
                 parser, parsing_function = self.match_report(filename, file_bytes)

@@ -169,6 +169,145 @@ def test_deal_worker_command(mock_prometheus, mocker, mock_storage):
 
 
 @mock.patch("main.start_prometheus")
+def test_deal_worker_no_beat(
+    mock_prometheus, mocker, mock_storage, empty_configuration
+):
+    mocker.patch.dict(
+        os.environ, {"HOSTNAME": "simpleworker", "SETUP__CELERY_BEAT_ENABLED": "False"}
+    )
+    mocked_get_current_version = mocker.patch(
+        "main.get_current_version", return_value="some_version_12.3"
+    )
+    mock_app = mocker.patch("main.app")
+    runner = CliRunner()
+    res = runner.invoke(cli, ["worker", "--queue", "simple,one,two", "--queue", "some"])
+    expected_output = "\n".join(
+        [
+            "",
+            "  _____          _",
+            " / ____|        | |",
+            "| |     ___   __| | ___  ___ _____   __",
+            "| |    / _ \\ / _` |/ _ \\/ __/ _ \\ \\ / /",
+            "| |___| (_) | (_| |  __/ (_| (_) \\ V /",
+            " \\_____\\___/ \\__,_|\\___|\\___\\___/ \\_/",
+            "                              some_version_12.3",
+            "",
+            "",
+            "",
+        ]
+    )
+    assert res.output == expected_output
+    mocked_get_current_version.assert_called_with()
+    mock_app.celery_app.worker_main.assert_called_with(
+        argv=[
+            "worker",
+            "-n",
+            "simpleworker",
+            "-c",
+            2,
+            "-l",
+            "info",
+            "-Q",
+            f"simple,one,two,some,enterprise_simple,enterprise_one,enterprise_two,enterprise_some,{BaseCeleryConfig.health_check_default_queue}",
+        ]
+    )
+
+
+@mock.patch("main.start_prometheus")
+def test_deal_worker_no_queues(
+    mock_prometheus, mocker, mock_storage, empty_configuration
+):
+    mocker.patch.dict(
+        os.environ,
+        {"HOSTNAME": "simpleworker", "SETUP__CELERY_QUEUES_ENABLED": "False"},
+    )
+    mocked_get_current_version = mocker.patch(
+        "main.get_current_version", return_value="some_version_12.3"
+    )
+    mock_app = mocker.patch("main.app")
+    runner = CliRunner()
+    res = runner.invoke(cli, ["worker", "--queue", "simple,one,two", "--queue", "some"])
+    expected_output = "\n".join(
+        [
+            "",
+            "  _____          _",
+            " / ____|        | |",
+            "| |     ___   __| | ___  ___ _____   __",
+            "| |    / _ \\ / _` |/ _ \\/ __/ _ \\ \\ / /",
+            "| |___| (_) | (_| |  __/ (_| (_) \\ V /",
+            " \\_____\\___/ \\__,_|\\___|\\___\\___/ \\_/",
+            "                              some_version_12.3",
+            "",
+            "",
+            "",
+        ]
+    )
+    assert res.output == expected_output
+    mocked_get_current_version.assert_called_with()
+    mock_app.celery_app.worker_main.assert_called_with(
+        argv=[
+            "worker",
+            "-n",
+            "simpleworker",
+            "-c",
+            2,
+            "-l",
+            "info",
+            "-B",
+            "-s",
+            "/home/codecov/celerybeat-schedule",
+        ]
+    )
+
+
+@mock.patch("main.start_prometheus")
+def test_deal_worker_no_queues_or_beat(
+    mock_prometheus, mocker, mock_storage, empty_configuration
+):
+    env = {
+        "HOSTNAME": "simpleworker",
+        "SETUP__CELERY_QUEUES_ENABLED": "False",
+        "SETUP__CELERY_BEAT_ENABLED": "False",
+    }
+    mocked_get_current_version = mocker.patch(
+        "main.get_current_version", return_value="some_version_12.3"
+    )
+    mock_app = mocker.patch("main.app")
+    runner = CliRunner()
+    res = runner.invoke(
+        cli, ["worker", "--queue", "simple,one,two", "--queue", "some"], env=env
+    )
+    expected_output = "\n".join(
+        [
+            "",
+            "  _____          _",
+            " / ____|        | |",
+            "| |     ___   __| | ___  ___ _____   __",
+            "| |    / _ \\ / _` |/ _ \\/ __/ _ \\ \\ / /",
+            "| |___| (_) | (_| |  __/ (_| (_) \\ V /",
+            " \\_____\\___/ \\__,_|\\___|\\___\\___/ \\_/",
+            "                              some_version_12.3",
+            "",
+            "",
+            "",
+        ]
+    )
+    assert res.output == expected_output
+    mocked_get_current_version.assert_called_with()
+    mock_app.celery_app.worker_main.assert_called_with(
+        argv=[
+            "worker",
+            "-n",
+            "simpleworker",
+            "-c",
+            2,
+            "-l",
+            "info",
+        ]
+    )
+
+
+@mock.patch("main.start_prometheus")
 def test_main(mock_prometheus, mocker):
     mock_cli = mocker.patch("main.cli")
     assert main() is None

@@ -602,7 +602,6 @@ class TestBaseStatusNotifier(object):
     async def test_notify_analytics(
         self, sample_comparison, mocker, mock_repo_provider
     ):
-
         mocker.patch("helpers.environment.is_enterprise", return_value=False)
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
