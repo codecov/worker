@@ -182,13 +182,14 @@ class HeaderSectionWriter(BaseSectionWriter):
                 ),
             )
             yield ("")
+            pull_head = comparison.enriched_pull.provider_pull["head"]["commitid"][:7]
+            current_head = comparison.head.commit.commitid[:7]
             yield (
-                "> :exclamation: Current head {current_head} differs from pull request most recent head {pull_head}. Consider uploading reports for the commit {pull_head} to get more accurate results".format(
-                    pull_head=comparison.enriched_pull.provider_pull["head"][
-                        "commitid"
-                    ][:7],
-                    current_head=comparison.head.commit.commitid[:7],
-                )
+                f"> :exclamation: **Current head {current_head} differs from pull request most recent head {pull_head}**"
+            )
+            yield ("> ")
+            yield (
+                f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {pull_head} to get more accurate results."
             )
 
         if self.settings.get("show_critical_paths"):
