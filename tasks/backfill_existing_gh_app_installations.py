@@ -15,14 +15,16 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
-YIELD_AMOUNT = 100
-
 
 class BackfillExistingGHAppInstallationsTask(
     BaseCodecovTask, name=backfill_existing_gh_app_installations_name
 ):
     def backfill_existing_gh_apps(
-        self, db_session: Session, owner_ids: List[int] = None, missed_owner_ids=[]
+        self,
+        db_session: Session,
+        owner_ids: List[int] = None,
+        missed_owner_ids=[],
+        yield_amount: int = 1000,
     ):
         # Get owners that have installations, and installations queries
         owners_query = (
@@ -42,7 +44,7 @@ class BackfillExistingGHAppInstallationsTask(
             )
 
         gh_app_installations: List[GithubAppInstallation] = (
-            gh_app_installations_query.yield_per(YIELD_AMOUNT)
+            gh_app_installations_query.yield_per(yield_amount)
         )
 
         for gh_app_installation in gh_app_installations:

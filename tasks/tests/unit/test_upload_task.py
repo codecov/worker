@@ -678,6 +678,7 @@ class TestUploadTaskIntegration(object):
             timeout=300,
         )
 
+    @pytest.mark.django_db
     def test_upload_task_no_bot(
         self,
         mocker,
@@ -732,6 +733,7 @@ class TestUploadTaskIntegration(object):
         )
         assert not mocked_fetch_yaml.called
 
+    @pytest.mark.django_db
     def test_upload_task_bot_no_permissions(
         self,
         mocker,
@@ -787,6 +789,7 @@ class TestUploadTaskIntegration(object):
         )
         assert not mocked_fetch_yaml.called
 
+    @pytest.mark.django_db
     def test_upload_task_bot_unauthorized(
         self,
         mocker,

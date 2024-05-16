@@ -12,6 +12,7 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.config import get_config
+from shared.django_apps.reports.models import ReportType
 from shared.metrics import metrics
 from shared.reports.carryforward import generate_carryforward_report
 from shared.reports.editable import EditableReport
@@ -20,6 +21,7 @@ from shared.reports.resources import Report
 from shared.reports.types import ReportFileSummary, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitError
+from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
@@ -328,6 +330,24 @@ class ReportService(BaseReportService):
         flags = normalized_arguments.get("flags")
         flags = flags.split(",") if flags else []
         self._attach_flags_to_upload(upload, flags)
+
+        # Insert entry in user measurements table only
+        # for reports with coverage type
+        commit = commit_report.commit
+        repository = commit.repository
+        owner = repository.owner
+
+        insert_coverage_measurement(
+            owner_id=owner.ownerid,
+            repo_id=repository.repoid,
+            commit_id=commit.id,
+            upload_id=upload.id,
+            # CLI precreates the upload in API so this defaults to Legacy
+            uploader_used=UploaderType.LEGACY.value,
+            private_repo=repository.private,
+            report_type=commit_report.report_type,
+        )
+
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):
