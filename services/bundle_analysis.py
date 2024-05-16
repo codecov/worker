@@ -16,7 +16,7 @@ from shared.bundle_analysis import (
 from shared.bundle_analysis.storage import get_bucket_name
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
-from shared.storage.exceptions import FileNotInStorageError
+from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
@@ -158,6 +158,24 @@ class BundleAnalysisReportService(BaseReportService):
                 commit=commit,
                 error=ProcessingError(
                     code="file_not_in_storage",
+                    params={"location": upload.storage_path},
+                    is_retryable=True,
+                ),
+            )
+        except PutRequestRateLimitError as e:
+            plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
+            sentry_metrics.incr(
+                "bundle_analysis_upload",
+                tags={
+                    "result": "rate_limit_error",
+                    "plugin_name": plugin_name,
+                },
+            )
+            return ProcessingResult(
+                upload=upload,
+                commit=commit,
+                error=ProcessingError(
+                    code="rate_limit_error",
                     params={"location": upload.storage_path},
                     is_retryable=True,
                 ),
