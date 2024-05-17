@@ -37,7 +37,7 @@ sentry-sdk>=1.40.0
 SQLAlchemy-Utils
 SQLAlchemy
 statsd
-stripe
+stripe>=9.6.0
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 urllib3>=1.26.18
 vcrpy
