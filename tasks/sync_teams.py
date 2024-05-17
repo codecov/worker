@@ -24,9 +24,7 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
         assert owner, "Owner not found"
         service = owner.service
 
-        git = get_owner_provider_service(
-            owner, using_integration=False, ignore_installation=True
-        )
+        git = get_owner_provider_service(owner, ignore_installation=True)
 
         # get list of teams with username, name, email, id (service_id), etc
         teams = async_to_sync(git.list_teams)()

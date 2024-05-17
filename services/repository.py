@@ -12,7 +12,6 @@ from shared.torngit.exceptions import (
     TorngitObjectNotFoundError,
 )
 from shared.typings.torngit import (
-    GithubInstallationInfo,
     OwnerInfo,
     RepoInfo,
     TorngitInstanceData,
@@ -26,9 +25,7 @@ from database.models.core import (
 )
 from helpers.token_refresh import get_token_refresh_callback
 from services.bots import (
-    get_owner_installation_id,
-    get_repo_appropriate_bot_token,
-    get_token_type_mapping,
+    get_adapter_auth_information,
 )
 from services.yaml import read_yaml_field
 
@@ -52,8 +49,7 @@ def _is_repo_using_integration(repo: Repository) -> bool:
 
 
 def get_repo_provider_service(
-    repository,
-    commit=None,
+    repository: Repository,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> torngit.base.TorngitBaseAdapter:
     _timeouts = [
@@ -61,14 +57,11 @@ def get_repo_provider_service(
         get_config("setup", "http", "timeouts", "receive", default=60),
     ]
     service = repository.owner.service
-    installation_info = get_owner_installation_id(
+    adapter_auth_info = get_adapter_auth_information(
         repository.owner,
-        repository.using_integration,
         repository=repository,
-        ignore_installation=False,
-        installation_name=installation_name_to_use,
+        installation_name_to_use=installation_name_to_use,
     )
-    token, token_owner = get_repo_appropriate_bot_token(repository, installation_info)
     data = TorngitInstanceData(
         repo=RepoInfo(
             name=repository.name,
@@ -81,29 +74,20 @@ def get_repo_provider_service(
             ownerid=repository.ownerid,
             username=repository.owner.username,
         ),
-        installation=None,
-        fallback_installations=None,
+        installation=adapter_auth_info["selected_installation_info"],
+        fallback_installations=adapter_auth_info["fallback_installations"],
     )
-    if installation_info:
-        data["installation"] = GithubInstallationInfo(
-            installation_id=installation_info.get("installation_id"),
-            app_id=installation_info.get("app_id"),
-            pem_path=installation_info.get("pem_path"),
-        )
-        data["fallback_installations"] = installation_info.get("fallback_installations")
 
     adapter_params = dict(
-        token=token,
-        token_type_mapping=get_token_type_mapping(
-            repository, installation_name=installation_name_to_use
-        ),
+        token=adapter_auth_info["token"],
+        token_type_mapping=adapter_auth_info["token_type_mapping"],
         verify_ssl=get_verify_ssl(service),
         timeouts=_timeouts,
         oauth_consumer_token=dict(
             key=get_config(service, "client_id"),
             secret=get_config(service, "client_secret"),
         ),
-        on_token_refresh=get_token_refresh_callback(token_owner),
+        on_token_refresh=get_token_refresh_callback(adapter_auth_info["token_owner"]),
         **data,
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)

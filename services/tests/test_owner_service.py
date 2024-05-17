@@ -32,7 +32,7 @@ class TestOwnerServiceTestCase(object):
 
     def test_get_owner_provider_service_with_installation(self, dbsession, mocker):
         mocker.patch(
-            "services.bots.get_github_integration_token",
+            "services.bots.github_apps.get_github_integration_token",
             return_value="integration_token",
         )
         owner = OwnerFactory.create(
@@ -93,7 +93,7 @@ class TestOwnerServiceTestCase(object):
         )
         dbsession.add(owner)
         dbsession.flush()
-        res = get_owner_provider_service(owner, using_integration=False)
+        res = get_owner_provider_service(owner, ignore_installation=True)
         expected_data = {
             "owner": {
                 "ownerid": owner.ownerid,

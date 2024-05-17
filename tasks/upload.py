@@ -427,7 +427,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 db_session, self.name, repository.owner
             )
             repository_service = get_repo_provider_service(
-                repository, commit, installation_name_to_use=installation_name_to_use
+                repository, installation_name_to_use=installation_name_to_use
             )
             was_updated = async_to_sync(possibly_update_commit_from_provider_info)(
                 commit, repository_service
