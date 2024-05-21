@@ -1509,7 +1509,7 @@ class TestProjectChecksNotifier(object):
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
                         "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=desc)."
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{head_commit.commitid}?dropdown=coverage&el=desc)."
                         f"",
                         f"",
                         f"| [Files](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
@@ -1552,7 +1552,7 @@ class TestProjectChecksNotifier(object):
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
                         "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=desc)."
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{head_commit.commitid}?dropdown=coverage&el=desc)."
                         f"",
                         f"",
                         f"| [Files](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
@@ -1596,7 +1596,7 @@ class TestProjectChecksNotifier(object):
                     [
                         f"## [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
                         "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=desc).",
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{head_commit.commitid}?dropdown=coverage&el=desc).",
                         f"",
                         f"| [Files](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
                         f"|---|---|---|---|",

@@ -49,7 +49,6 @@ class MessageMixin(object):
 
         settings = yaml_settings
 
-        yaml = self.current_yaml
         current_yaml = self.current_yaml
 
         links = {
@@ -57,6 +56,7 @@ class MessageMixin(object):
             "base": get_commit_url(comparison.project_coverage_base.commit)
             if comparison.project_coverage_base.commit is not None
             else None,
+            "head": get_commit_url(comparison.head.commit),
         }
 
         # bool: show complexity
