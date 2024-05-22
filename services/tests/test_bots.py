@@ -289,6 +289,7 @@ class TestBotsService(BaseTestCase):
         installations = get_github_app_info_for_owner(repo.owner)
         assert installations == [
             {
+                "id": installation.id,
                 "installation_id": 12341234,
                 "app_id": None,
                 "pem_path": None,
@@ -360,6 +361,7 @@ class TestBotsService(BaseTestCase):
         assert owner.github_app_installations == [installation]
         assert get_github_app_info_for_owner(owner) == [
             {
+                "id": installation.id,
                 "installation_id": 123456,
                 "app_id": None,
                 "pem_path": None,
@@ -389,11 +391,17 @@ class TestBotsService(BaseTestCase):
         assert owner.github_app_installations == [installation_0, installation_1]
         assert get_github_app_info_for_owner(owner, installation_name="my_app") == [
             {
+                "id": installation_1.id,
                 "installation_id": 12000,
                 "app_id": 1212,
                 "pem_path": "path",
             },
-            {"installation_id": 123456, "app_id": None, "pem_path": None},
+            {
+                "id": installation_0.id,
+                "installation_id": 123456,
+                "app_id": None,
+                "pem_path": None,
+            },
         ]
 
     def test_get_owner_installation_id_yes_installation_all_rate_limited(

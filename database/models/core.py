@@ -504,6 +504,11 @@ class CommitNotification(CodecovBaseModel):
 
     id_ = Column("id", types.BigInteger, primary_key=True)
     commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
+    gh_app_id = Column(
+        types.BigInteger,
+        ForeignKey("codecov_auth_githubappinstallation.id"),
+        nullable=True,
+    )
     notification_type = Column(
         postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
         nullable=False,

@@ -159,12 +159,18 @@ class TestRepositoryServiceTestCase(object):
                 "repoid": repo.repoid,
             },
             "installation": {
+                "id": installation_1.id,
                 "installation_id": 1300,
                 "app_id": 300,
                 "pem_path": "path",
             },
             "fallback_installations": [
-                {"app_id": 200, "installation_id": 1200, "pem_path": None}
+                {
+                    "id": installation_0.id,
+                    "app_id": 200,
+                    "installation_id": 1200,
+                    "pem_path": None,
+                }
             ],
         }
         assert res.data == expected_data
