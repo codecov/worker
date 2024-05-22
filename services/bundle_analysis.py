@@ -7,13 +7,13 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import sentry_sdk
 from sentry_sdk import metrics as sentry_metrics
-from shared.bundle_analysis import (
+from services.new_ba import (
     BundleAnalysisComparison,
     BundleAnalysisReport,
     BundleAnalysisReportLoader,
     BundleChange,
 )
-from shared.bundle_analysis.storage import get_bucket_name
+from services.new_ba.storage import get_bucket_name
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
@@ -121,6 +121,37 @@ class BundleAnalysisReportService(BaseReportService):
             db_session.add(commit_report)
             db_session.flush()
         return commit_report
+    
+    def _previous_commit_report(self, commit: Commit) -> Optional[BundleAnalysisReport]:
+        """
+        Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
+        Assets to the current one being parsed.
+        """
+        if commit.parent is None:
+            return None
+
+        db_session = commit.get_db_session()
+
+        parent_commit = (
+            db_session.query(Commit)
+            .filter_by(
+                commitid=commit.parent,
+                repository=commit.repository,
+            ).first()
+        )
+        if parent_commit is None:
+            return None
+
+        parent_commit_report = (
+            db_session.query(CommitReport)
+            .filter_by(
+                commit_id=parent_commit.id_,
+                report_type=ReportType.BUNDLE_ANALYSIS.value,
+            )
+            .first()
+        )
+
+        return parent_commit_report
 
     @sentry_sdk.trace
     def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
@@ -146,6 +177,14 @@ class BundleAnalysisReportService(BaseReportService):
                 storage_service.read_file(
                     get_bucket_name(), upload.storage_path, file_obj=f
                 )
+
+            print("starting weird")
+
+            # Retrieve previous commit's BAR
+            # previous_commit_report = self._previous_commit_report(commit)
+
+            print("done for now")
+
 
             # load the downloaded data into the bundle report
             session_id = bundle_report.ingest(local_path)
