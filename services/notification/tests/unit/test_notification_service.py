@@ -5,6 +5,7 @@ from asyncio import TimeoutError as AsyncioTimeoutError
 import mock
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.plan.constants import PlanName
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.yaml import UserYaml
 
@@ -120,6 +121,23 @@ class TestNotificationService(object):
         assert repository.owner.github_app_installations == [ghapp_installation]
         service = NotificationService(repository, current_yaml)
         assert service._should_use_checks_notifier() == True
+
+    def test_should_not_use_checks_notifier_if_in_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert service._should_use_checks_notifier() == False
 
     @pytest.mark.parametrize(
         "gh_installation_name",

@@ -13,9 +13,10 @@ from typing import Iterator, List
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
 from shared.helpers.yaml import default_if_true
+from shared.plan.constants import TEAM_PLAN_REPRESENTATIONS
 from shared.yaml import UserYaml
 
-from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner
 from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
 from services.decoration import Decoration
@@ -60,8 +61,11 @@ class NotificationService(object):
         if checks_yaml_field is False:
             return False
 
-        owner = self.repository.owner
+        owner: Owner = self.repository.owner
         if owner.service not in ["github", "github_enterprise"]:
+            return False
+
+        if owner.plan in TEAM_PLAN_REPRESENTATIONS:
             return False
 
         app_installation_filter = filter(
