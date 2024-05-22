@@ -15,6 +15,13 @@ log = logging.getLogger(__name__)
 
 
 class NotifyCondition(ABC):
+    """Abstract class that defines the basis of a NotifyCondition.
+
+    NotifyCondition are conditions that need to be met in order for a notification to be sent
+    from Codecov to a git provider.
+    NotifyConditions can have a side effect that is called when the condition fails.
+    """
+
     is_async_condition: bool = False
     failure_explanation: str
 
@@ -31,6 +38,8 @@ class NotifyCondition(ABC):
 
 
 class AsyncNotifyCondition(NotifyCondition):
+    """Async version of NotifyCondition"""
+
     is_async_condition: bool = True
 
     @abstractmethod
