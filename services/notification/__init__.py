@@ -25,6 +25,7 @@ from services.notification.commit_notifications import (
     create_or_update_commit_notification_from_notification_result,
 )
 from services.notification.notifiers import (
+    StatusType,
     get_all_notifier_classes_mapping,
     get_pull_request_notifiers,
     get_status_notifier_class,
@@ -56,7 +57,16 @@ class NotificationService(object):
         self.decoration_type = decoration_type
         self.gh_installation_name_to_use = gh_installation_name_to_use
 
-    def _should_use_checks_notifier(self) -> bool:
+    def _should_use_status_notifier(self, status_type: StatusType) -> bool:
+        owner: Owner = self.repository.owner
+
+        if owner.plan in TEAM_PLAN_REPRESENTATIONS:
+            if status_type != StatusType.PATCH.value:
+                return False
+
+        return True
+
+    def _should_use_checks_notifier(self, status_type: StatusType) -> bool:
         checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
         if checks_yaml_field is False:
             return False
@@ -66,7 +76,8 @@ class NotificationService(object):
             return False
 
         if owner.plan in TEAM_PLAN_REPRESENTATIONS:
-            return False
+            if status_type != StatusType.PATCH.value:
+                return False
 
         app_installation_filter = filter(
             lambda obj: (
@@ -105,11 +116,44 @@ class NotificationService(object):
 
         current_flags = [rf.flag_name for rf in self.repository.flags if not rf.deleted]
         for key, title, status_config in self.get_statuses(current_flags):
-            status_notifier_class = get_status_notifier_class(key, "status")
-            if self._should_use_checks_notifier():
-                checks_notifier = get_status_notifier_class(key, "checks")
-                yield ChecksWithFallback(
-                    checks_notifier=checks_notifier(
+            should_use_status_notifiers = self._should_use_status_notifier(
+                status_type=key
+            )
+            should_use_checks_notifier = self._should_use_checks_notifier(
+                status_type=key
+            )
+
+            # Introduced to gate team plan not having statuses nor checks based on conditionals.
+            if not should_use_status_notifiers and not should_use_checks_notifier:
+                continue
+
+            # We always send statuses, so there's currently no case of checks without status.
+            if should_use_status_notifiers:
+                status_notifier_class = get_status_notifier_class(key, "status")
+                if should_use_checks_notifier:
+                    checks_notifier = get_status_notifier_class(key, "checks")
+                    yield ChecksWithFallback(
+                        checks_notifier=checks_notifier(
+                            repository=self.repository,
+                            title=title,
+                            notifier_yaml_settings=status_config,
+                            notifier_site_settings={},
+                            current_yaml=self.current_yaml,
+                            decoration_type=self.decoration_type,
+                            gh_installation_name_to_use=self.gh_installation_name_to_use,
+                        ),
+                        status_notifier=status_notifier_class(
+                            repository=self.repository,
+                            title=title,
+                            notifier_yaml_settings=status_config,
+                            notifier_site_settings={},
+                            current_yaml=self.current_yaml,
+                            decoration_type=self.decoration_type,
+                            gh_installation_name_to_use=self.gh_installation_name_to_use,
+                        ),
+                    )
+                else:
+                    yield status_notifier_class(
                         repository=self.repository,
                         title=title,
                         notifier_yaml_settings=status_config,
@@ -117,27 +161,7 @@ class NotificationService(object):
                         current_yaml=self.current_yaml,
                         decoration_type=self.decoration_type,
                         gh_installation_name_to_use=self.gh_installation_name_to_use,
-                    ),
-                    status_notifier=status_notifier_class(
-                        repository=self.repository,
-                        title=title,
-                        notifier_yaml_settings=status_config,
-                        notifier_site_settings={},
-                        current_yaml=self.current_yaml,
-                        decoration_type=self.decoration_type,
-                        gh_installation_name_to_use=self.gh_installation_name_to_use,
-                    ),
-                )
-            else:
-                yield status_notifier_class(
-                    repository=self.repository,
-                    title=title,
-                    notifier_yaml_settings=status_config,
-                    notifier_site_settings={},
-                    current_yaml=self.current_yaml,
-                    decoration_type=self.decoration_type,
-                    gh_installation_name_to_use=self.gh_installation_name_to_use,
-                )
+                    )
 
         # yield notifier if slack_app field is True, nonexistent, or a non-empty dict
         slack_app_yaml_field = read_yaml_field(self.current_yaml, ("slack_app",), True)

@@ -18,6 +18,7 @@ from database.tests.factories import CommitFactory, PullFactory, RepositoryFacto
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.notification import NotificationService
+from services.notification.notifiers import StatusType
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.checks import ProjectChecksNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
@@ -59,7 +60,10 @@ class TestNotificationService(object):
         repository = RepositoryFactory.create()
         current_yaml = {"github_checks": False}
         service = NotificationService(repository, current_yaml)
-        assert service._should_use_checks_notifier() == False
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
 
     @pytest.mark.parametrize(
         "repo_data,outcome",
@@ -105,7 +109,10 @@ class TestNotificationService(object):
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == []
         service = NotificationService(repository, current_yaml)
-        assert service._should_use_checks_notifier() == outcome
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == outcome
+        )
 
     def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
         repository = RepositoryFactory.create(owner__service="github")
@@ -120,9 +127,12 @@ class TestNotificationService(object):
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
         service = NotificationService(repository, current_yaml)
-        assert service._should_use_checks_notifier() == True
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
 
-    def test_should_not_use_checks_notifier_if_in_team_plan(self, dbsession):
+    def test_use_checks_notifier_for_team_plan(self, dbsession):
         repository = RepositoryFactory.create(
             owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
         )
@@ -137,7 +147,74 @@ class TestNotificationService(object):
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
         service = NotificationService(repository, current_yaml)
-        assert service._should_use_checks_notifier() == False
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+    def test_use_status_notifier_for_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert (
+            service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+    def test_use_status_notifier_for_non_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.CODECOV_PRO_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert (
+            service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == True
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
 
     @pytest.mark.parametrize(
         "gh_installation_name",
@@ -163,9 +240,15 @@ class TestNotificationService(object):
         service = NotificationService(
             repository, current_yaml, gh_installation_name_to_use=gh_installation_name
         )
-        assert service._should_use_checks_notifier() == True
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
         service = NotificationService(other_repo_same_owner, current_yaml)
-        assert service._should_use_checks_notifier() == False
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
 
     def test_get_notifiers_instances_only_third_party(
         self, dbsession, mock_configuration
