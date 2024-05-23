@@ -11,11 +11,21 @@ from shared.torngit.exceptions import (
 from database.enums import Notification
 from helpers.metrics import metrics
 from services.billing import BillingPlan
+from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
 from services.license import requires_license
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
+)
+from services.notification.notifiers.comment.conditions import (
+    ComparisonHasPull,
+    HasEnoughBuilds,
+    HasEnoughRequiredChanges,
+    NotifyCondition,
+    PullHeadMatchesComparisonHead,
+    PullRequestInProvider,
+    PullRequestOpen,
 )
 from services.notification.notifiers.mixins.message import MessageMixin
 from services.repository import get_repo_provider_service
@@ -25,6 +35,15 @@ log = logging.getLogger(__name__)
 
 
 class CommentNotifier(MessageMixin, AbstractBaseNotifier):
+    notify_conditions: List[NotifyCondition] = [
+        ComparisonHasPull,
+        PullRequestInProvider,
+        PullRequestOpen,
+        PullHeadMatchesComparisonHead,
+        HasEnoughBuilds,
+        HasEnoughRequiredChanges,
+    ]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._repository_service = None
@@ -69,88 +88,29 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             return True
         return False
 
-    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
-        if comparison.pull is None:
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="no_pull_request",
-                data_sent=None,
-                data_received=None,
+    async def notify(
+        self, comparison: ComparisonProxy, **extra_data
+    ) -> NotificationResult:
+        for condition in self.notify_conditions:
+            condition_result = (
+                await condition.check_condition(notifier=self, comparison=comparison)
+                if condition.is_async_condition
+                else condition.check_condition(notifier=self, comparison=comparison)
             )
-        if (
-            comparison.enriched_pull is None
-            or comparison.enriched_pull.provider_pull is None
-        ):
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_request_not_in_provider",
-                data_sent=None,
-                data_received=None,
-            )
-        if comparison.pull.state != "open":
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_request_closed",
-                data_sent=None,
-                data_received=None,
-            )
-        if comparison.pull.head != comparison.head.commit.commitid:
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_head_does_not_match",
-                data_sent=None,
-                data_received=None,
-            )
-        if self.notifier_yaml_settings.get("after_n_builds") is not None:
-            n_builds_present = len(comparison.head.report.sessions)
-            if n_builds_present < self.notifier_yaml_settings.get("after_n_builds"):
-                return NotificationResult(
+            if condition_result == False:
+                side_effect_result = (
+                    condition.on_failure_side_effect(self, comparison)
+                    if condition.is_async_condition is False
+                    else (await condition.on_failure_side_effect(self, comparison))
+                )
+                default_result = NotificationResult(
                     notification_attempted=False,
-                    notification_successful=None,
-                    explanation="not_enough_builds",
+                    explanation=condition.failure_explanation,
                     data_sent=None,
                     data_received=None,
                 )
+                return default_result.merge(side_effect_result)
         pull = comparison.pull
-        if self.notifier_yaml_settings.get("require_changes"):
-            if not (await self.has_enough_changes(comparison)):
-                data_received = None
-                if pull.commentid is not None:
-                    log.info(
-                        "Deleting comment because there are not enough changes according to YAML",
-                        extra=dict(
-                            repoid=pull.repoid,
-                            pullid=pull.pullid,
-                            commentid=pull.commentid,
-                        ),
-                    )
-                    try:
-                        await self.repository_service.delete_comment(
-                            pull.pullid, pull.commentid
-                        )
-                        data_received = {"deleted_comment": True}
-                    except TorngitClientError:
-                        log.warning(
-                            "Comment could not be deleted due to client permissions",
-                            exc_info=True,
-                            extra=dict(
-                                repoid=pull.repoid,
-                                pullid=pull.pullid,
-                                commentid=pull.commentid,
-                            ),
-                        )
-                        data_received = {"deleted_comment": False}
-                return NotificationResult(
-                    notification_attempted=False,
-                    notification_successful=None,
-                    explanation="changes_required",
-                    data_sent=None,
-                    data_received=data_received,
-                )
         try:
             with metrics.timer(
                 "worker.services.notifications.notifiers.comment.build_message"
@@ -167,7 +127,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             )
             return NotificationResult(
                 notification_attempted=False,
-                notification_successful=None,
                 explanation="unable_build_message",
                 data_sent=None,
                 data_received=None,

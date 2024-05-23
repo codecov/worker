@@ -142,7 +142,7 @@ class HeaderSectionWriter(BaseSectionWriter):
 
         if base_report and head_report:
             yield (
-                "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?dropdown=coverage&el=desc) to head [(`{commitid_head}`)]({links[pull]}?dropdown=coverage&src=pr&el=desc).".format(
+                "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?dropdown=coverage&el=desc) to head [(`{commitid_head}`)]({links[head]}?dropdown=coverage&el=desc).".format(
                     commitid_head=comparison.head.commit.commitid[:7],
                     commitid_base=comparison.project_coverage_base.commit.commitid[:7],
                     links=links,
