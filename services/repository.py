@@ -6,6 +6,7 @@ from typing import Any, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
 from shared.config import get_config, get_verify_ssl
+from shared.django_apps.codecov_auth.models import Service
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitError,
@@ -27,6 +28,11 @@ from helpers.token_refresh import get_token_refresh_callback
 from services.bots import (
     get_adapter_auth_information,
 )
+from services.bots.github_apps import (
+    get_github_app_token,
+    get_specific_github_app_details,
+)
+from services.github import get_github_app_for_commit
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -34,29 +40,55 @@ log = logging.getLogger(__name__)
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 
-def _is_repo_using_integration(repo: Repository) -> bool:
-    owner = repo.owner
-    default_ghapp_installation = list(
-        filter(
-            lambda obj: obj.name == GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-            owner.github_app_installations or [],
-        )
+def get_repo_provider_service_for_specific_commit(
+    commit: Commit,
+    fallback_installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+) -> torngit.base.TorngitBaseAdapter:
+    """Gets a Torngit adapter (potentially) using a specific github app as the authentication source.
+    If the commit doesn't have a particular app assigned to it, return regular `get_repo_provider_service` choice
+
+    This is done specifically after emitting checks for a PR using GitHub apps, because only the app
+    that posted the check can edit it later on. The "app for a commit" info is saved in Redis by the NotifyTask.
+    """
+    repository = commit.repository
+    installation_for_commit = get_github_app_for_commit(commit)
+    if installation_for_commit is None:
+        return get_repo_provider_service(repository, fallback_installation_name)
+
+    ghapp_details = get_specific_github_app_details(
+        repository.owner, int(installation_for_commit), commit.commitid
     )
-    if default_ghapp_installation:
-        ghapp_installation = owner.github_app_installations[0]
-        return ghapp_installation.is_repo_covered_by_integration(repo)
-    return repo.using_integration
+    token, _ = get_github_app_token(Service(repository.service), ghapp_details)
+
+    data = TorngitInstanceData(
+        repo=RepoInfo(
+            name=repository.name,
+            using_integration=True,
+            service_id=repository.service_id,
+            repoid=repository.repoid,
+        ),
+        owner=OwnerInfo(
+            service_id=repository.owner.service_id,
+            ownerid=repository.ownerid,
+            username=repository.owner.username,
+        ),
+        installation=ghapp_details,
+        fallback_installations=None,
+    )
+
+    adapter_params = dict(
+        token=token,
+        token_type_mapping=None,
+        on_token_refresh=None,
+        **data,
+    )
+    return _get_repo_provider_service_instance(repository.service, **adapter_params)
 
 
 def get_repo_provider_service(
     repository: Repository,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> torngit.base.TorngitBaseAdapter:
-    _timeouts = [
-        get_config("setup", "http", "timeouts", "connect", default=30),
-        get_config("setup", "http", "timeouts", "receive", default=60),
-    ]
-    service = repository.owner.service
     adapter_auth_info = get_adapter_auth_information(
         repository.owner,
         repository=repository,
@@ -65,7 +97,9 @@ def get_repo_provider_service(
     data = TorngitInstanceData(
         repo=RepoInfo(
             name=repository.name,
-            using_integration=_is_repo_using_integration(repository),
+            using_integration=(
+                adapter_auth_info["selected_installation_info"] is not None
+            ),
             service_id=repository.service_id,
             repoid=repository.repoid,
         ),
@@ -81,20 +115,28 @@ def get_repo_provider_service(
     adapter_params = dict(
         token=adapter_auth_info["token"],
         token_type_mapping=adapter_auth_info["token_type_mapping"],
-        verify_ssl=get_verify_ssl(service),
-        timeouts=_timeouts,
-        oauth_consumer_token=dict(
-            key=get_config(service, "client_id"),
-            secret=get_config(service, "client_secret"),
-        ),
         on_token_refresh=get_token_refresh_callback(adapter_auth_info["token_owner"]),
         **data,
     )
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
 
 
-def _get_repo_provider_service_instance(service_name, **adapter_params):
-    return torngit.get(service_name, **adapter_params)
+def _get_repo_provider_service_instance(service: str, **adapter_params):
+    _timeouts = [
+        get_config("setup", "http", "timeouts", "connect", default=30),
+        get_config("setup", "http", "timeouts", "receive", default=60),
+    ]
+    return torngit.get(
+        service,
+        # Args for the Torngit instance
+        timeouts=_timeouts,
+        verify_ssl=get_verify_ssl(service),
+        oauth_consumer_token=dict(
+            key=get_config(service, "client_id"),
+            secret=get_config(service, "client_secret"),
+        ),
+        **adapter_params,
+    )
 
 
 async def fetch_appropriate_parent_for_commit(
