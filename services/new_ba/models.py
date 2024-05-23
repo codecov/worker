@@ -40,6 +40,7 @@ create table assets (
     name text not null,
     normalized_name text not null,
     size integer not null,
+    uuid text not null,
     foreign key (session_id) references sessions (id)
 );
 
@@ -209,6 +210,7 @@ class Asset(Base):
     name = Column(types.Text, nullable=False)
     normalized_name = Column(types.Text, nullable=False)
     size = Column(types.Integer, nullable=False)
+    uuid = Column(types.Text, nullable=False)
 
     # Asset name changes from every bundle being built
     # use this field to track the probably asset from bundle to bundle

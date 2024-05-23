@@ -2,7 +2,7 @@ import json
 import os
 import sqlite3
 import tempfile
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, Optional, Self
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import func
@@ -49,6 +49,10 @@ class AssetReport:
     @property
     def size(self):
         return self.asset.size
+
+    @property
+    def uuid(self):
+        return self.asset.uuid
 
     def modules(self):
         with models.get_db_session(self.db_path) as session:
@@ -161,6 +165,38 @@ class BundleAnalysisReport:
         session_id = parser.parse(path)
         self.db_session.commit()
         return session_id
+
+    def associate_previous_assets(self, prev_bundle_analysis_report: Optional[Self]) -> None:
+        print("CURRENT BAR", self)
+
+        for bundle_report in self.bundle_reports():
+            print("bundle report", bundle_report.name)
+            for asset_report in bundle_report.asset_reports():
+                curr_modules = [a_r.name for a_r in asset_report.modules()]
+                print("asset", asset_report.hashed_name, "uuid", asset_report.uuid)
+                print("modules", curr_modules)
+
+        print("PREV BAR", prev_bundle_analysis_report)
+
+        for bundle_report in prev_bundle_analysis_report.bundle_reports():
+            print("bundle report", bundle_report.name)
+            for asset_report in bundle_report.asset_reports():
+                prev_modules = [a_r.name for a_r in asset_report.modules()]
+                print("asset", asset_report.hashed_name, "uuid", asset_report.uuid)
+                print("modules", prev_modules)
+
+        print("FINI ASSOC 3")
+
+        # For each curr_bundle in curr_bar
+        #   If curr_bundle.name in prev_bar
+        #     Generate Mapping of Set(prev_module_names) to UUID
+        #     For each curr_asset in curr_bundle
+        #       Get Set(curr_module_names) for the curr_asset
+        #       If Set(curr_module_names) in Set(prev_module_names)
+        #           curr_asset.uuid = Mapping[Set(prev_module_names)]
+        # self.db_session.commit()
+
+
 
     def metadata(self) -> Dict[models.MetadataKey, Any]:
         with models.get_db_session(self.db_path) as session:

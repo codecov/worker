@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import uuid
 from typing import Optional, Tuple
 
 import ijson
@@ -115,6 +116,9 @@ class Parser:
                 # to an asset above if we parse the chunk before the asset)
                 self._create_associations()
 
+                # associate past assets to current assets
+                # prev_assets = {}
+
                 assert self.session.bundle is not None
                 return self.session.id
         except Exception as e:
@@ -183,6 +187,7 @@ class Parser:
                     name=self.asset.name,
                     normalized_name=self.asset.normalized_name,
                     size=self.asset.size,
+                    uuid=str(uuid.uuid4())
                 )
             )
 

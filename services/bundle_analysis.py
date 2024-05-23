@@ -122,20 +122,21 @@ class BundleAnalysisReportService(BaseReportService):
             db_session.flush()
         return commit_report
     
-    def _previous_commit_report(self, commit: Commit) -> Optional[BundleAnalysisReport]:
+    def _previous_bundle_analysis_report(
+            self, bundle_loader: BundleAnalysisReportLoader, commit: Commit
+        ) -> Optional[BundleAnalysisReport]:
         """
         Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
         Assets to the current one being parsed.
         """
-        if commit.parent is None:
+        if commit.parent_commit_id is None:
             return None
 
         db_session = commit.get_db_session()
-
         parent_commit = (
             db_session.query(Commit)
             .filter_by(
-                commitid=commit.parent,
+                commitid=commit.parent_commit_id,
                 repository=commit.repository,
             ).first()
         )
@@ -150,8 +151,10 @@ class BundleAnalysisReportService(BaseReportService):
             )
             .first()
         )
+        if parent_commit_report.external_id is None:
+            return None
 
-        return parent_commit_report
+        return bundle_loader.load(parent_commit_report.external_id)
 
     @sentry_sdk.trace
     def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
@@ -178,16 +181,13 @@ class BundleAnalysisReportService(BaseReportService):
                     get_bucket_name(), upload.storage_path, file_obj=f
                 )
 
-            print("starting weird")
-
-            # Retrieve previous commit's BAR
-            # previous_commit_report = self._previous_commit_report(commit)
-
-            print("done for now")
-
-
             # load the downloaded data into the bundle report
             session_id = bundle_report.ingest(local_path)
+
+            # Retrieve previous commit's BAR and associate past Assets
+            prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
+            if prev_bar:
+                bundle_report.associate_previous_assets(prev_bar)
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
@@ -220,6 +220,10 @@ class BundleAnalysisReportService(BaseReportService):
                 ),
             )
         except Exception as e:
+
+            # DEBUGGING
+            raise e
+
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
             sentry_metrics.incr(
