@@ -92,14 +92,12 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         self, comparison: ComparisonProxy, **extra_data
     ) -> NotificationResult:
         for condition in self.notify_conditions:
-            if (
-                condition.is_async_condition
-                and not (
-                    await condition.check_condition(
-                        notifier=self, comparison=comparison
-                    )
-                )
-            ) or (not condition.check_condition(notifier=self, comparison=comparison)):
+            condition_result = (
+                await condition.check_condition(notifier=self, comparison=comparison)
+                if condition.is_async_condition
+                else condition.check_condition(notifier=self, comparison=comparison)
+            )
+            if condition_result == False:
                 side_effect_result = (
                     condition.on_failure_side_effect(self, comparison)
                     if condition.is_async_condition is False

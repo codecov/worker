@@ -17,9 +17,9 @@ log = logging.getLogger(__name__)
 class NotifyCondition(ABC):
     """Abstract class that defines the basis of a NotifyCondition.
 
-    NotifyCondition are conditions that need to be met in order for a notification to be sent
+    NotifyCondition specifies the conditions that need to be met in order for a notification to be sent
     from Codecov to a git provider.
-    NotifyConditions can have a side effect that is called when the condition fails.
+    NotifyCondition can have a side effect that is called when the condition fails.
     """
 
     is_async_condition: bool = False
@@ -29,7 +29,7 @@ class NotifyCondition(ABC):
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
-        pass
+        return True
 
     def on_failure_side_effect(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
@@ -46,12 +46,12 @@ class AsyncNotifyCondition(NotifyCondition):
     async def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
-        pass
+        return True
 
     async def on_failure_side_effect(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> NotificationResult:
-        pass
+        return NotificationResult()
 
 
 class ComparisonHasPull(NotifyCondition):
@@ -120,16 +120,17 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
     ) -> NotificationResult:
         pull = comparison.pull
         data_received = None
+        extra_log_info = dict(
+            repoid=pull.repoid,
+            pullid=pull.pullid,
+            commentid=pull.commentid,
+        )
         if pull.commentid is not None:
             # Just porting logic as-is, but not sure if it's the best
             # TODO: codecov/engineering-team#1761
             log.info(
                 "Deleting comment because there are not enough changes according to YAML",
-                extra=dict(
-                    repoid=pull.repoid,
-                    pullid=pull.pullid,
-                    commentid=pull.commentid,
-                ),
+                extra=extra_log_info,
             )
             try:
                 await notifier.repository_service.delete_comment(
@@ -140,11 +141,7 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
                 log.warning(
                     "Comment could not be deleted due to client permissions",
                     exc_info=True,
-                    extra=dict(
-                        repoid=pull.repoid,
-                        pullid=pull.pullid,
-                        commentid=pull.commentid,
-                    ),
+                    extra=extra_log_info,
                 )
                 data_received = {"deleted_comment": False}
         return NotificationResult(data_received=data_received)
