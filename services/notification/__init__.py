@@ -100,12 +100,11 @@ class NotificationService(object):
     def _use_status_and_possibly_checks_notifiers(
         self,
         key: StatusType,
-        should_use_checks_notifier: bool,
         title: str,
         status_config: dict,
     ) -> AbstractBaseNotifier | StatusNotifier:
         status_notifier_class = get_status_notifier_class(key, "status")
-        if should_use_checks_notifier:
+        if self._should_use_checks_notifier(status_type=key):
             checks_notifier = get_status_notifier_class(key, "checks")
             return ChecksWithFallback(
                 checks_notifier=checks_notifier(
@@ -158,22 +157,9 @@ class NotificationService(object):
 
         current_flags = [rf.flag_name for rf in self.repository.flags if not rf.deleted]
         for key, title, status_config in self.get_statuses(current_flags):
-            should_use_status_notifiers = self._should_use_status_notifier(
-                status_type=key
-            )
-            should_use_checks_notifier = self._should_use_checks_notifier(
-                status_type=key
-            )
-
-            # Introduced to gate team plan not having statuses nor checks based on conditionals.
-            if not should_use_status_notifiers and not should_use_checks_notifier:
-                continue
-
-            # We always send statuses, so there's currently no case of checks without status.
-            if should_use_status_notifiers:
+            if self._should_use_status_notifier(status_type=key):
                 yield self._use_status_and_possibly_checks_notifiers(
                     key=key,
-                    should_use_checks_notifier=should_use_checks_notifier,
                     title=title,
                     status_config=status_config,
                 )
