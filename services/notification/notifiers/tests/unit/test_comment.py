@@ -2416,7 +2416,7 @@ class TestCommentNotifier(object):
             "response", "message"
         )
         result = await notifier.send_actual_notification(data)
-        assert not result.notification_attempted
+        assert result.notification_attempted is False
         assert result.notification_successful is None
         assert result.explanation == "comment_deleted"
         assert result.data_sent == data
@@ -2642,7 +2642,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison_without_pull)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful == False
         assert result.explanation == "no_pull_request"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2663,7 +2663,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "pull_head_does_not_match"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2684,7 +2684,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison_database_pull_without_provider)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "pull_request_not_in_provider"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2821,7 +2821,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "pull_request_closed"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2847,7 +2847,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "unable_build_message"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2867,7 +2867,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "not_enough_builds"
         assert result.data_sent is None
         assert result.data_received is None
@@ -3133,7 +3133,7 @@ class TestCommentNotifier(object):
         )
         res = await notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
-        assert res.notification_successful is None
+        assert res.notification_successful is False
         assert res.explanation == "changes_required"
         assert res.data_sent is None
         assert res.data_received is None
@@ -3195,7 +3195,7 @@ class TestCommentNotifier(object):
         )
         res = await notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
-        assert res.notification_successful is None
+        assert res.notification_successful is False
         assert res.explanation == "changes_required"
         assert res.data_sent is None
         assert res.data_received == {"deleted_comment": True}
@@ -3260,7 +3260,7 @@ class TestCommentNotifier(object):
         )
         res = await notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
-        assert res.notification_successful is None
+        assert res.notification_successful is False
         assert res.explanation == "changes_required"
         assert res.data_sent is None
         assert res.data_received == {"deleted_comment": False}
