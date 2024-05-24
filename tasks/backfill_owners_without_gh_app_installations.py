@@ -171,7 +171,7 @@ class BackfillOwnersWithoutGHAppInstallationIndividual(
             # Create new GH app installation and add all repos the gh app has access to
             log.info(
                 "This owner has no Github App Installation",
-                extra=dict(ownerid=ownerid),
+                extra=dict(ownerid=ownerid, parent_id=self.request.parent_id),
             )
             gh_app_installation = GithubAppInstallation(
                 owner=owner,
@@ -195,11 +195,15 @@ class BackfillOwnersWithoutGHAppInstallationIndividual(
                     owner_service=owner_service,
                     gh_app_installation=gh_app_installation,
                 )
-            log.info("Successful backfill", extra=dict(ownerid=ownerid))
+            log.info(
+                "Successful backfill",
+                extra=dict(ownerid=ownerid, parent_id=self.request.parent_id),
+            )
             return {"successful": True, "reason": "backfill task finished"}
         except:
             log.info(
-                "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
+                "Backfill unsuccessful for this owner",
+                extra=dict(ownerid=ownerid, parent_id=self.request.parent_id),
             )
             return {"successful": False, "reason": "backfill unsuccessful"}
 
