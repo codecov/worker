@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Dict, List, Type
 
 from services.notification.notifiers.base import AbstractBaseNotifier
@@ -29,20 +30,26 @@ def get_all_notifier_classes_mapping() -> Dict[str, Type[AbstractBaseNotifier]]:
     }
 
 
+class StatusType(Enum):
+    PATCH = "patch"
+    PROJECT = "project"
+    CHANGES = "changes"
+
+
 def get_status_notifier_class(
     status_type: str, class_type: str = "status"
 ) -> Type[AbstractBaseNotifier]:
-    if status_type == "patch" and class_type == "checks":
+    if status_type == StatusType.PATCH.value and class_type == "checks":
         return PatchChecksNotifier
-    if status_type == "project" and class_type == "checks":
+    if status_type == StatusType.PROJECT.value and class_type == "checks":
         return ProjectChecksNotifier
-    if status_type == "changes" and class_type == "checks":
+    if status_type == StatusType.CHANGES.value and class_type == "checks":
         return ChangesChecksNotifier
-    if status_type == "patch" and class_type == "status":
+    if status_type == StatusType.PATCH.value and class_type == "status":
         return PatchStatusNotifier
-    if status_type == "project" and class_type == "status":
+    if status_type == StatusType.PROJECT.value and class_type == "status":
         return ProjectStatusNotifier
-    if status_type == "changes" and class_type == "status":
+    if status_type == StatusType.CHANGES.value and class_type == "status":
         return ChangesStatusNotifier
 
 

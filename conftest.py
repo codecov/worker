@@ -26,6 +26,7 @@ def pytest_configure(config):
     file after command line options have been parsed.
     """
     os.environ["CURRENT_ENVIRONMENT"] = "local"
+    os.environ["RUN_ENV"] = "DEV"
     _get_cached_current_env.cache_clear()
     initialize_logging()
 

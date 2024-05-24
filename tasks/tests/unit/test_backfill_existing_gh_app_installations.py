@@ -6,7 +6,7 @@ from database.models.core import (
 )
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
 from tasks.backfill_existing_gh_app_installations import (
-    BackfillExistingGHAppInstallationsTask,
+    BackfillExistingIndividualGHAppInstallationTask,
 )
 
 
@@ -51,8 +51,10 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             return_value=mock_repo_provider,
         )
 
-        task = BackfillExistingGHAppInstallationsTask()
-        assert task.run_impl(dbsession, owner_ids=None) == {
+        task = BackfillExistingIndividualGHAppInstallationTask()
+        assert task.run_impl(
+            dbsession, gh_app_installation_id=gh_app_installation.id
+        ) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -98,8 +100,10 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             return_value=mock_repo_provider,
         )
 
-        task = BackfillExistingGHAppInstallationsTask()
-        assert task.run_impl(dbsession, owner_ids=[owner.ownerid]) == {
+        task = BackfillExistingIndividualGHAppInstallationTask()
+        assert task.run_impl(
+            dbsession, gh_app_installation_id=gh_app_installation.id
+        ) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -165,8 +169,10 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             return_value=mock_repo_provider,
         )
 
-        task = BackfillExistingGHAppInstallationsTask()
-        assert task.run_impl(dbsession, owner_ids=None) == {
+        task = BackfillExistingIndividualGHAppInstallationTask()
+        assert task.run_impl(
+            dbsession, gh_app_installation_id=gh_app_installation.id
+        ) == {
             "successful": True,
             "reason": "backfill task finished",
         }
