@@ -99,8 +99,6 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
             # every processor errored, nothing to notify on
             notify = False
 
-        should_notify = self._should_notify()
-
         success = None
         if notify:
             installation_name_to_use = get_installation_name_for_owner_for_task(

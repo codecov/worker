@@ -366,24 +366,38 @@ class Notifier:
 
         pullid = pull.database_pull.pullid
         bundle_comparison = ComparisonLoader(pull).get_comparison()
-        skip_comment_without_size_changes = bundle_comparison.total_size_delta == 0 and read_yaml_field(self.current_yaml, ("comment", "require_bundle_changes"), False)
+        skip_comment_without_size_changes = (
+            bundle_comparison.total_size_delta == 0
+            and read_yaml_field(
+                self.current_yaml, ("comment", "require_bundle_changes"), False
+            )
+        )
 
         if skip_comment_without_size_changes:
-            # Return true as success
+            # Skips the comment and returns successful notification
+            log.info(
+                "Skipping bundle PR comment without size change",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                    pullid=pullid,
+                ),
+            )
             return True
         else:
             message = self._build_message(pull=pull, comparison=bundle_comparison)
             try:
                 comment_id = pull.database_pull.bundle_analysis_commentid
                 if comment_id:
-                    await self.repository_service.edit_comment(pullid, comment_id, message)
+                    await self.repository_service.edit_comment(
+                        pullid, comment_id, message
+                    )
                 else:
                     res = await self.repository_service.post_comment(pullid, message)
                     pull.database_pull.bundle_analysis_commentid = res["id"]
                 return True
             except TorngitClientError:
                 log.error(
-                    "Error creating/updapting PR comment",
+                    "Error creating/updating PR comment",
                     extra=dict(
                         commitid=self.commit.commitid,
                         report_key=self.commit_report.external_id,
@@ -392,14 +406,18 @@ class Notifier:
                 )
                 return False
 
-    def _build_message(self, pull: EnrichedPull, comparison: BundleAnalysisComparison) -> str:
+    def _build_message(
+        self, pull: EnrichedPull, comparison: BundleAnalysisComparison
+    ) -> str:
         bundle_changes = comparison.bundle_changes()
 
         bundle_rows = self._create_bundle_rows(
             bundle_changes=bundle_changes, comparison=comparison
         )
         return self._write_lines(
-            bundle_rows=bundle_rows, total_size_delta=comparison.total_size_delta, pull=pull
+            bundle_rows=bundle_rows,
+            total_size_delta=comparison.total_size_delta,
+            pull=pull,
         )
 
     def _create_bundle_rows(
