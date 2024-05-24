@@ -4,10 +4,13 @@ from typing import Dict
 
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
+from database.models.core import Commit
 from helpers.metrics import metrics
 from services.notification.notifiers.base import Comparison, NotificationResult
 from services.notification.notifiers.status.base import StatusNotifier
-from services.repository import get_repo_provider_service
+from services.repository import (
+    get_repo_provider_service_for_specific_commit,
+)
 from services.urls import (
     append_tracking_params_to_urls,
     get_commit_url,
@@ -344,19 +347,17 @@ class ChecksNotifier(StatusNotifier):
             annotations.append(annotation)
         return annotations
 
-    @property
-    def repository_service(self):
+    def repository_service(self, commit: Commit):
         if not self._repository_service:
-            self._repository_service = get_repo_provider_service(
-                self.repository, installation_name_to_use=self.gh_installation_name
+            self._repository_service = get_repo_provider_service_for_specific_commit(
+                commit, fallback_installation_name=self.gh_installation_name
             )
         return self._repository_service
 
     async def send_notification(self, comparison: Comparison, payload):
         title = self.get_status_external_name()
-        repository_service = self.repository_service
         head = comparison.head.commit
-        head_report = comparison.head.report
+        repository_service = self.repository_service(head)
         state = payload["state"]
         state = "success" if self.notifier_yaml_settings.get("informational") else state
 
@@ -438,4 +439,5 @@ class ChecksNotifier(StatusNotifier):
             notification_successful=True,
             explanation=None,
             data_sent=payload,
+            github_app_used=self.get_github_app_used(),
         )

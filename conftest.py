@@ -210,6 +210,7 @@ def mock_repo_provider(mocker):
     m = mocker.patch("services.repository._get_repo_provider_service_instance")
     provider_instance = mocker.MagicMock(
         GithubHandler,
+        data={},
         get_commit_diff=mock.AsyncMock(return_value={}),
         get_distance_in_commits=mock.AsyncMock(
             return_value={"behind_by": 0, "behind_by_commit": None}

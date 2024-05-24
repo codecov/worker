@@ -5,6 +5,7 @@ from shared.config import get_config
 from shared.helpers.cache import NO_VALUE, make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
+from database.models.core import Commit
 from helpers.cache import cache
 from helpers.match import match
 from helpers.metrics import metrics
@@ -14,7 +15,9 @@ from services.notification.notifiers.base import (
     Comparison,
     NotificationResult,
 )
-from services.repository import get_repo_provider_service
+from services.repository import (
+    get_repo_provider_service_for_specific_commit,
+)
 from services.urls import get_commit_url, get_pull_url
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_paths_from_flags
@@ -103,11 +106,10 @@ class StatusNotifier(AbstractBaseNotifier):
             len(report_uploaded_flags.intersection(flags_included_in_status_check)) > 0
         )
 
-    @property
-    def repository_service(self):
+    def repository_service(self, commit: Commit):
         if not self._repository_service:
-            self._repository_service = get_repo_provider_service(
-                self.repository, installation_name_to_use=self.gh_installation_name
+            self._repository_service = get_repo_provider_service_for_specific_commit(
+                commit, fallback_installation_name=self.gh_installation_name
             )
         return self._repository_service
 
@@ -146,6 +148,16 @@ class StatusNotifier(AbstractBaseNotifier):
                     )
                     return False
         return True
+
+    def get_github_app_used(self) -> int | None:
+        torngit = self._repository_service
+        if torngit is None:
+            return None
+        torngit_installation = torngit.data.get("installation")
+        selected_installation_id = (
+            torngit_installation.get("id") if torngit_installation else None
+        )
+        return selected_installation_id
 
     async def notify(self, comparison: Comparison):
         payload = None
@@ -307,8 +319,8 @@ class StatusNotifier(AbstractBaseNotifier):
 
     async def send_notification(self, comparison: Comparison, payload):
         title = self.get_status_external_name()
-        repository_service = self.repository_service
         head = comparison.head.commit
+        repository_service = self.repository_service(head)
         head_report = comparison.head.report
         state = payload["state"]
         message = payload["message"]
@@ -331,9 +343,9 @@ class StatusNotifier(AbstractBaseNotifier):
                         commit=head.commitid,
                         status=state,
                         context=title,
-                        coverage=float(head_report.totals.coverage)
-                        if head_report
-                        else 0,
+                        coverage=(
+                            float(head_report.totals.coverage) if head_report else 0
+                        ),
                         description=message,
                         url=url,
                     )
@@ -359,6 +371,7 @@ class StatusNotifier(AbstractBaseNotifier):
                 explanation=None,
                 data_sent=notification_result_data_sent,
                 data_received={"id": res.get("id", "NO_ID")},
+                github_app_used=self.get_github_app_used(),
             )
         else:
             log.info(
