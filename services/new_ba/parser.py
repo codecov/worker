@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import uuid
 from typing import Optional, Tuple
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session as DbSession
 from services.new_ba.models import (
     SCHEMA,
     Asset,
+    AssetType,
     Bundle,
     Chunk,
     Module,
@@ -116,9 +118,6 @@ class Parser:
                 # to an asset above if we parse the chunk before the asset)
                 self._create_associations()
 
-                # associate past assets to current assets
-                # prev_assets = {}
-
                 assert self.session.bundle is not None
                 return self.session.id
         except Exception as e:
@@ -126,6 +125,41 @@ class Parser:
             # is causing the trouble.
             e.bundle_analysis_plugin_name = self.info.get("plugin_name", "unknown")
             raise e
+
+    def _get_extension(self, filename: str) -> str:
+        """
+        Gets the file extension of the file without the dot
+        """
+        # At times file can be something like './index.js + 12 modules', only keep the real filepath
+        filename = filename.split(" ")[0]
+        # Retrieve the file extension with the dot
+        _, file_extension = os.path.splitext(filename)
+        # Return empty string if file has no extension
+        if not file_extension or file_extension[0] != ".":
+            return file_extension
+        # Remove the dot in the extension
+        file_extension = file_extension[1:]
+        # At times file can be something like './index.js?module', remove the ?
+        if "?" in file_extension:
+            file_extension = file_extension[: file_extension.rfind("?")]
+
+        return file_extension
+
+    def _asset_type(self, name: str) -> AssetType:
+        extension = self._get_extension(name)
+
+        if extension in ["js"]:
+            return AssetType.JAVASCRIPT
+        if extension in ["ts"]:
+            return AssetType.TYPESCRIPT
+        if extension in ["css"]:
+            return AssetType.STYLESHEET
+        if extension in ["woff", "woff2", "ttf", "otf", "eot"]:
+            return AssetType.FONT
+        if extension in ["jpg", "jpeg", "png", "gif", "svg", "webp", "apng", "avif"]:
+            return AssetType.IMAGE
+
+        return AssetType.UNKNOWN
 
     def _parse_info(self, event: Tuple[str, str, str]):
         prefix, _, value = event
@@ -187,7 +221,8 @@ class Parser:
                     name=self.asset.name,
                     normalized_name=self.asset.normalized_name,
                     size=self.asset.size,
-                    uuid=str(uuid.uuid4())
+                    uuid=str(uuid.uuid4()),
+                    asset_type=self._asset_type(self.asset.name),
                 )
             )
 

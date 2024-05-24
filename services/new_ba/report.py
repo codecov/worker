@@ -4,6 +4,7 @@ import sqlite3
 import tempfile
 from typing import Any, Dict, Iterator, Optional, Self
 
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import func
 
@@ -53,6 +54,10 @@ class AssetReport:
     @property
     def uuid(self):
         return self.asset.uuid
+
+    @property
+    def asset_type(self):
+        return self.asset.asset_type
 
     def modules(self):
         with models.get_db_session(self.db_path) as session:
@@ -166,37 +171,57 @@ class BundleAnalysisReport:
         self.db_session.commit()
         return session_id
 
-    def associate_previous_assets(self, prev_bundle_analysis_report: Optional[Self]) -> None:
-        print("CURRENT BAR", self)
+    def associate_previous_assets(self, prev_bundle_analysis_report: Self) -> None:
+        """
+        Only associate past asset if it is Javascript or Typescript types
+        and belonging to the same bundle name
+        Associated if one of the following is true
+        Rule 1. Previous and current asset have the same hashed name
+        Rule 2. Previous and current asset shared the same set of module names
+        """
+        for curr_bundle_report in self.bundle_reports():
+            for prev_bundle_report in prev_bundle_analysis_report.bundle_reports():
+                if curr_bundle_report.name == prev_bundle_report.name:
+                    associated_assets_found = []
 
-        for bundle_report in self.bundle_reports():
-            print("bundle report", bundle_report.name)
-            for asset_report in bundle_report.asset_reports():
-                curr_modules = [a_r.name for a_r in asset_report.modules()]
-                print("asset", asset_report.hashed_name, "uuid", asset_report.uuid)
-                print("modules", curr_modules)
+                    # Rule 1 check
+                    prev_asset_hashed_names = {
+                        a.hashed_name: a.uuid for a in prev_bundle_report.asset_reports()
+                    }
+                    for curr_asset in curr_bundle_report.asset_reports():
+                        if curr_asset.asset_type in [models.AssetType.JAVASCRIPT, models.AssetType.TYPESCRIPT]:
+                            if curr_asset.hashed_name in prev_asset_hashed_names:
+                                associated_assets_found.append([
+                                    prev_asset_hashed_names[curr_asset.hashed_name],
+                                    curr_asset.uuid
+                                ])
 
-        print("PREV BAR", prev_bundle_analysis_report)
+                    # Rule 2 check
+                    prev_module_asset_mapping = {}
+                    for prev_asset in prev_bundle_report.asset_reports():
+                        if prev_asset.asset_type in [models.AssetType.JAVASCRIPT, models.AssetType.TYPESCRIPT]:
+                            prev_modules = tuple(sorted(frozenset([m.name for m in prev_asset.modules()])))
+                            # NOTE: Assume two assets CANNOT have the exact same of modules
+                            # though in reality there can be rare cases of this
+                            # but we will deal with that later if it becomes a prevalent problem
+                            prev_module_asset_mapping[prev_modules] = prev_asset.uuid
 
-        for bundle_report in prev_bundle_analysis_report.bundle_reports():
-            print("bundle report", bundle_report.name)
-            for asset_report in bundle_report.asset_reports():
-                prev_modules = [a_r.name for a_r in asset_report.modules()]
-                print("asset", asset_report.hashed_name, "uuid", asset_report.uuid)
-                print("modules", prev_modules)
+                    for curr_asset in curr_bundle_report.asset_reports():
+                        if curr_asset.asset_type in [models.AssetType.JAVASCRIPT, models.AssetType.TYPESCRIPT]:
+                            curr_modules = tuple(sorted(frozenset([m.name for m in curr_asset.modules()])))
+                            if curr_modules in prev_module_asset_mapping:
+                                associated_assets_found.append([
+                                    prev_module_asset_mapping[curr_modules],
+                                    curr_asset.uuid
+                                ])
 
-        print("FINI ASSOC 3")
-
-        # For each curr_bundle in curr_bar
-        #   If curr_bundle.name in prev_bar
-        #     Generate Mapping of Set(prev_module_names) to UUID
-        #     For each curr_asset in curr_bundle
-        #       Get Set(curr_module_names) for the curr_asset
-        #       If Set(curr_module_names) in Set(prev_module_names)
-        #           curr_asset.uuid = Mapping[Set(prev_module_names)]
-        # self.db_session.commit()
-
-
+                    # Update the Assets table for the bundle
+                    # TODO: Use SQLalchemy ORM to update instead of raw SQL
+                    for pair in associated_assets_found:
+                        prev_uuid, curr_uuid = pair
+                        stmt = f"UPDATE assets SET uuid='{prev_uuid}' WHERE uuid='{curr_uuid}'"
+                        self.db_session.execute(text(stmt))
+                    self.db_session.commit()
 
     def metadata(self) -> Dict[models.MetadataKey, Any]:
         with models.get_db_session(self.db_path) as session:

@@ -188,6 +188,9 @@ class BundleAnalysisReportService(BaseReportService):
             prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
             if prev_bar:
                 bundle_report.associate_previous_assets(prev_bar)
+                # print("LETS SKIP")
+            else:
+                print("NO PREV BAR")
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
