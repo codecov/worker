@@ -33,6 +33,7 @@ from services.repository import (
 )
 from services.storage import get_storage_client
 from services.urls import get_bundle_analysis_pull_url
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -364,36 +365,59 @@ class Notifier:
             return False
 
         pullid = pull.database_pull.pullid
-        message = self._build_message(pull)
+        bundle_comparison = ComparisonLoader(pull).get_comparison()
+        skip_comment_without_size_changes = (
+            bundle_comparison.total_size_delta == 0
+            and read_yaml_field(
+                self.current_yaml, ("comment", "require_bundle_changes"), False
+            )
+        )
 
-        try:
-            comment_id = pull.database_pull.bundle_analysis_commentid
-            if comment_id:
-                await self.repository_service.edit_comment(pullid, comment_id, message)
-            else:
-                res = await self.repository_service.post_comment(pullid, message)
-                pull.database_pull.bundle_analysis_commentid = res["id"]
-            return True
-        except TorngitClientError:
-            log.error(
-                "Error creating/updapting PR comment",
+        if skip_comment_without_size_changes:
+            # Skips the comment and returns successful notification
+            log.info(
+                "Skipping bundle PR comment without size change",
                 extra=dict(
                     commitid=self.commit.commitid,
-                    report_key=self.commit_report.external_id,
                     pullid=pullid,
                 ),
             )
-            return False
+            return True
+        else:
+            message = self._build_message(pull=pull, comparison=bundle_comparison)
+            try:
+                comment_id = pull.database_pull.bundle_analysis_commentid
+                if comment_id:
+                    await self.repository_service.edit_comment(
+                        pullid, comment_id, message
+                    )
+                else:
+                    res = await self.repository_service.post_comment(pullid, message)
+                    pull.database_pull.bundle_analysis_commentid = res["id"]
+                return True
+            except TorngitClientError:
+                log.error(
+                    "Error creating/updating PR comment",
+                    extra=dict(
+                        commitid=self.commit.commitid,
+                        report_key=self.commit_report.external_id,
+                        pullid=pullid,
+                    ),
+                )
+                return False
 
-    def _build_message(self, pull: EnrichedPull) -> str:
-        comparison = ComparisonLoader(pull).get_comparison()
+    def _build_message(
+        self, pull: EnrichedPull, comparison: BundleAnalysisComparison
+    ) -> str:
         bundle_changes = comparison.bundle_changes()
 
-        bundle_rows, total_size_delta = self._create_bundle_rows(
+        bundle_rows = self._create_bundle_rows(
             bundle_changes=bundle_changes, comparison=comparison
         )
         return self._write_lines(
-            bundle_rows=bundle_rows, total_size_delta=total_size_delta, pull=pull
+            bundle_rows=bundle_rows,
+            total_size_delta=comparison.total_size_delta,
+            pull=pull,
         )
 
     def _create_bundle_rows(
@@ -402,13 +426,9 @@ class Notifier:
         comparison: BundleAnalysisComparison,
     ) -> Tuple[List[BundleRows], int]:
         bundle_rows = []
-        total_size_delta = 0
 
         # Calculate bundle change data in one loop since bundle_changes is a generator
         for bundle_change in bundle_changes:
-            # TODO: make this a ComparisonReport property
-            total_size_delta += bundle_change.size_delta
-
             # Define row table data
             bundle_name = bundle_change.bundle_name
             if bundle_change.change_type == BundleChange.ChangeType.REMOVED:
@@ -432,7 +452,7 @@ class Notifier:
                 )
             )
 
-        return (bundle_rows, total_size_delta)
+        return bundle_rows
 
     def _write_lines(
         self, bundle_rows: List[BundleRows], total_size_delta: int, pull: EnrichedPull
