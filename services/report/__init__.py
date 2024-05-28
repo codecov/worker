@@ -279,10 +279,6 @@ class ReportService(BaseReportService):
                 #   yet into the new models therefore it needs backfilling
                 self.save_full_report(commit, actual_report)
         elif current_report_row.details is None:
-            log.warning(
-                "Commit unexpectedly had CommitReport but no details",
-                extra=dict(commit=commit.commitid, repoid=commit.repoid),
-            )
             report_details = ReportDetails(
                 report_id=current_report_row.id_,
                 _files_array=[],
