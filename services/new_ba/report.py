@@ -189,7 +189,7 @@ class BundleAnalysisReport:
                         a.hashed_name: a.uuid for a in prev_bundle_report.asset_reports()
                     }
                     for curr_asset in curr_bundle_report.asset_reports():
-                        if curr_asset.asset_type in [models.AssetType.JAVASCRIPT, models.AssetType.TYPESCRIPT]:
+                        if curr_asset.asset_type == models.AssetType.JAVASCRIPT:
                             if curr_asset.hashed_name in prev_asset_hashed_names:
                                 associated_assets_found.append([
                                     prev_asset_hashed_names[curr_asset.hashed_name],
@@ -199,7 +199,7 @@ class BundleAnalysisReport:
                     # Rule 2 check
                     prev_module_asset_mapping = {}
                     for prev_asset in prev_bundle_report.asset_reports():
-                        if prev_asset.asset_type in [models.AssetType.JAVASCRIPT, models.AssetType.TYPESCRIPT]:
+                        if prev_asset.asset_type == models.AssetType.JAVASCRIPT:
                             prev_modules = tuple(sorted(frozenset([m.name for m in prev_asset.modules()])))
                             # NOTE: Assume two assets CANNOT have the exact same of modules
                             # though in reality there can be rare cases of this
@@ -207,7 +207,7 @@ class BundleAnalysisReport:
                             prev_module_asset_mapping[prev_modules] = prev_asset.uuid
 
                     for curr_asset in curr_bundle_report.asset_reports():
-                        if curr_asset.asset_type in [models.AssetType.JAVASCRIPT, models.AssetType.TYPESCRIPT]:
+                        if curr_asset.asset_type == models.AssetType.JAVASCRIPT:
                             curr_modules = tuple(sorted(frozenset([m.name for m in curr_asset.modules()])))
                             if curr_modules in prev_module_asset_mapping:
                                 associated_assets_found.append([

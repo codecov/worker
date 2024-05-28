@@ -19,6 +19,7 @@ from services.new_ba.models import (
     assets_chunks,
     chunks_modules,
 )
+from services.new_ba.utils import get_extension
 
 log = logging.getLogger(__name__)
 
@@ -126,33 +127,12 @@ class Parser:
             e.bundle_analysis_plugin_name = self.info.get("plugin_name", "unknown")
             raise e
 
-    def _get_extension(self, filename: str) -> str:
-        """
-        Gets the file extension of the file without the dot
-        """
-        # At times file can be something like './index.js + 12 modules', only keep the real filepath
-        filename = filename.split(" ")[0]
-        # Retrieve the file extension with the dot
-        _, file_extension = os.path.splitext(filename)
-        # Return empty string if file has no extension
-        if not file_extension or file_extension[0] != ".":
-            return file_extension
-        # Remove the dot in the extension
-        file_extension = file_extension[1:]
-        # At times file can be something like './index.js?module', remove the ?
-        if "?" in file_extension:
-            file_extension = file_extension[: file_extension.rfind("?")]
-
-        return file_extension
-
     def _asset_type(self, name: str) -> AssetType:
-        extension = self._get_extension(name)
+        extension = get_extension(name)
 
         if extension in ["js"]:
             return AssetType.JAVASCRIPT
         if extension in ["ts"]:
-            return AssetType.TYPESCRIPT
-        if extension in ["css"]:
             return AssetType.STYLESHEET
         if extension in ["woff", "woff2", "ttf", "otf", "eot"]:
             return AssetType.FONT
