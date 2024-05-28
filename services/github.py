@@ -30,18 +30,31 @@ def get_github_integration_token(
 
 
 COMMIT_GHAPP_KEY_NAME = lambda commit_id: f"app_to_use_for_commit_{commit_id}"
+GHAPP_KEY_EXPIRY_SECONDS = 60 * 60 * 2  # 2h
 
 
 def set_github_app_for_commit(
     installation_id: str | int | None, commit: Commit
 ) -> bool:
+    """Sets a GithubAppInstallation.id in Redis as the installation to use for a commit.
+    Keys live in redis for GHAPP_KEY_EXPIRY_SECONDS before being expired.
+
+    Args:
+        installation_id (str | int | None) - the ID to save.
+          None -- there was actually no installation ID. Do nothing.
+          int -- value comes from the Database
+          str -- value comes from Redis (i.e. the installation was already cached)
+        commit (Commit) - the commit to attach installation_id to
+    """
     if installation_id is None:
         return False
     redis = get_redis_connection()
     try:
         redis.set(
-            COMMIT_GHAPP_KEY_NAME(commit.id), str(installation_id), ex=(60 * 60 * 2)
-        )  # 2h
+            COMMIT_GHAPP_KEY_NAME(commit.id),
+            str(installation_id),
+            ex=GHAPP_KEY_EXPIRY_SECONDS,
+        )
         return True
     except RedisError:
         log.exception(
