@@ -281,9 +281,7 @@ class TestResultsNotifier:
         return "\n".join(message)
 
     async def notify(self, payload: TestResultsNotificationPayload) -> Tuple[bool, str]:
-        self.repo_service = get_repo_provider_service(
-            self.commit.repository, self.commit
-        )
+        self.repo_service = get_repo_provider_service(self.commit.repository)
 
         await self.get_pull()
         if self.pull is None:
@@ -315,9 +313,7 @@ class TestResultsNotifier:
         return "<br>".join(lines)
 
     async def error_comment(self):
-        self.repo_service = get_repo_provider_service(
-            self.commit.repository, self.commit
-        )
+        self.repo_service = get_repo_provider_service(self.commit.repository)
 
         await self.get_pull()
         if self.pull is None:

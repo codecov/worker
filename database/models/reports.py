@@ -1,5 +1,6 @@
 import logging
 import uuid
+from decimal import Decimal
 from functools import cached_property
 
 from shared.reports.types import ReportTotals, SessionTotalsArray
@@ -13,6 +14,7 @@ from database.models.core import Commit, CompareCommit, Repository
 from database.utils import ArchiveField
 from helpers.clock import get_utc_now
 from helpers.config import should_write_data_to_storage_config_check
+from helpers.number import precise_round
 
 log = logging.getLogger(__name__)
 
@@ -188,7 +190,7 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
 
 class AbstractTotals(MixinBaseClass):
     branches = Column(types.Integer)
-    coverage = Column(types.Numeric(precision=7, scale=2))
+    coverage = Column(types.Numeric(precision=8, scale=5))
     hits = Column(types.Integer)
     lines = Column(types.Integer)
     methods = Column(types.Integer)
@@ -196,10 +198,16 @@ class AbstractTotals(MixinBaseClass):
     partials = Column(types.Integer)
     files = Column(types.Integer)
 
-    def update_from_totals(self, totals):
+    def update_from_totals(self, totals, precision=2, rounding="down"):
         self.branches = totals.branches
+        if totals.coverage is not None:
+            coverage: Decimal = Decimal(totals.coverage)
+            self.coverage = precise_round(
+                coverage, precision=precision, rounding=rounding
+            )
         # Temporary until the table starts accepting NULLs
-        self.coverage = totals.coverage if totals.coverage is not None else 0
+        else:
+            self.coverage = 0
         self.hits = totals.hits
         self.lines = totals.lines
         self.methods = totals.methods

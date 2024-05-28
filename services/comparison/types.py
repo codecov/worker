@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TypedDict
 
 from shared.reports.resources import Report
 from shared.yaml import UserYaml
@@ -12,6 +12,12 @@ from services.repository import EnrichedPull
 class FullCommit(object):
     commit: Commit
     report: Report
+
+
+class ReportUploadedCount(TypedDict):
+    flag: str = ""
+    base_count: int = 0
+    head_count: int = 0
 
 
 @dataclass

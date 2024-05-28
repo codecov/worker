@@ -1,9 +1,14 @@
 import pytest
 import requests
 
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
 from database.tests.factories import RepositoryFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.bots import get_owner_installation_id, get_repo_appropriate_bot_token
+from services.bots.github_apps import get_github_app_info_for_owner
+from services.bots.repo_bots import get_repo_appropriate_bot_token
 
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDCFqq2ygFh9UQU/6PoDJ6L9e4ovLPCHtlBt7vzDwyfwr3XGxln
@@ -24,7 +29,7 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 
 class TestRepositoryServiceIntegration(object):
     @pytest.mark.asyncio
-    async def test_get_repo_appropriate_bot_token_non_existing_integration(
+    async def test_get_token_type_mapping_non_existing_integration(
         self, dbsession, codecov_vcr, mock_configuration, mocker
     ):
         # this test was done with valid integration_id, pem and then the data was scrubbed
@@ -45,7 +50,7 @@ class TestRepositoryServiceIntegration(object):
             get_repo_appropriate_bot_token(repo)
 
     @pytest.mark.asyncio
-    async def test_get_repo_appropriate_bot_token_bad_data(
+    async def test_get_token_type_mapping_bad_data(
         self, dbsession, codecov_vcr, mock_configuration, mocker
     ):
         mocker.patch("shared.github.get_pem", return_value=fake_private_key)
@@ -53,14 +58,20 @@ class TestRepositoryServiceIntegration(object):
         repo = RepositoryFactory.create(
             owner__username="ThiagoCodecov",
             owner__service="github",
-            owner__integration_id=5944641,
+            owner__integration_id=None,
             name="example-python",
-            using_integration=True,
+            using_integration=False,
         )
-        dbsession.add(repo)
+        app = GithubAppInstallation(
+            repository_service_ids=None,
+            installation_id=5944641,
+            app_id=999,
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            owner=repo.owner,
+        )
+        dbsession.add_all([repo, app])
         dbsession.flush()
+        assert repo.owner.github_app_installations == [app]
         with pytest.raises(requests.exceptions.HTTPError):
-            info = get_owner_installation_id(
-                repo.owner, repo.using_integration, ignore_installation=False
-            )
-            get_repo_appropriate_bot_token(repo, info)
+            info = get_github_app_info_for_owner(repo.owner)
+            get_repo_appropriate_bot_token(repo, info[0])

@@ -58,7 +58,7 @@ from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
-from services.yaml.reader import get_paths_from_flags
+from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
 
 @dataclass
@@ -1050,6 +1050,12 @@ class ReportService(BaseReportService):
     def update_upload_with_processing_result(
         self, upload_obj: Upload, processing_result: ProcessingResult
     ):
+        rounding: str = read_yaml_field(
+            self.current_yaml, ("coverage", "round"), "nearest"
+        )
+        precision: int = read_yaml_field(
+            self.current_yaml, ("coverage", "precision"), 2
+        )
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
@@ -1078,7 +1084,9 @@ class ReportService(BaseReportService):
                 )
                 db_session.add(upload_totals)
             if session.totals is not None:
-                upload_totals.update_from_totals(session.totals)
+                upload_totals.update_from_totals(
+                    session.totals, precision=precision, rounding=rounding
+                )
         else:
             error = processing_result.error
             upload_obj.state = "error"
@@ -1092,6 +1100,12 @@ class ReportService(BaseReportService):
             db_session.flush()
 
     def save_report(self, commit: Commit, report: Report, report_code=None):
+        rounding: str = read_yaml_field(
+            self.current_yaml, ("coverage", "round"), "nearest"
+        )
+        precision: int = read_yaml_field(
+            self.current_yaml, ("coverage", "precision"), 2
+        )
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
             report.repack()
         archive_service = self.get_archive_service(commit.repository)
@@ -1144,7 +1158,10 @@ class ReportService(BaseReportService):
             if report_totals is None:
                 report_totals = ReportLevelTotals(report_id=commit.report.id)
                 db_session.add(report_totals)
-            report_totals.update_from_totals(report.totals)
+
+            report_totals.update_from_totals(
+                report.totals, precision=precision, rounding=rounding
+            )
             db_session.flush()
         log.info(
             "Archived report",
@@ -1172,6 +1189,12 @@ class ReportService(BaseReportService):
         Returns:
             TYPE: Description
         """
+        rounding: str = read_yaml_field(
+            self.current_yaml, ("coverage", "round"), "nearest"
+        )
+        precision: int = read_yaml_field(
+            self.current_yaml, ("coverage", "precision"), 2
+        )
         res = self.save_report(commit, report, report_code)
         db_session = commit.get_db_session()
         for sess_id, session in report.sessions.items():
@@ -1200,7 +1223,9 @@ class ReportService(BaseReportService):
             if session.totals is not None:
                 upload_totals = UploadLevelTotals(upload_id=upload.id_)
                 db_session.add(upload_totals)
-                upload_totals.update_from_totals(session.totals)
+                upload_totals.update_from_totals(
+                    session.totals, precision=precision, rounding=rounding
+                )
         return res
 
     async def save_parallel_report_to_archive(
@@ -1214,7 +1239,6 @@ class ReportService(BaseReportService):
         try:
             repository_service = get_repo_provider_service(
                 repository,
-                commit,
                 installation_name_to_use=self.gh_app_installation_name,
             )
             report.apply_diff(await repository_service.get_commit_diff(commitid))

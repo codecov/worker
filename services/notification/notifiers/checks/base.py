@@ -75,7 +75,7 @@ class ChecksNotifier(StatusNotifier):
     async def notify(self, comparison: Comparison):
         if comparison.pull is None or ():
             log.debug(
-                "Faling back to commit_status: Not a pull request",
+                "Falling back to commit_status: Not a pull request",
                 extra=dict(
                     notifier=self.name,
                     repoid=comparison.head.commit.repoid,

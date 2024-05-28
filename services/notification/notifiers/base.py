@@ -12,11 +12,24 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class NotificationResult(object):
-    notification_attempted: bool
-    notification_successful: bool
-    explanation: str
-    data_sent: Mapping[str, Any]
+    notification_attempted: bool = False
+    notification_successful: bool = False
+    explanation: str = None
+    data_sent: Mapping[str, Any] = None
     data_received: Mapping[str, Any] = None
+
+    def merge(self, other: "NotificationResult") -> "NotificationResult":
+        ans = NotificationResult()
+        ans.notification_attempted = bool(
+            self.notification_attempted or other.notification_attempted
+        )
+        ans.notification_successful = bool(
+            self.notification_successful or other.notification_successful
+        )
+        ans.explanation = self.explanation or other.explanation
+        ans.data_sent = self.data_sent or other.data_sent
+        ans.data_received = self.data_received or other.data_received
+        return ans
 
 
 class AbstractBaseNotifier(object):

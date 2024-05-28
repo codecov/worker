@@ -2,23 +2,25 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from freezegun import freeze_time
+from shared.torngit.base import TokenType
 
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     GithubAppInstallation,
 )
 from database.tests.factories import OwnerFactory, RepositoryFactory
-from helpers.exceptions import NoConfiguredAppsAvailable
-from services.bots import (
+from helpers.exceptions import (
+    NoConfiguredAppsAvailable,
     OwnerWithoutValidBotError,
     RepositoryWithoutValidBotError,
-    TokenType,
-    _get_installation_weight,
-    get_owner_appropriate_bot_token,
-    get_owner_installation_id,
-    get_repo_appropriate_bot_token,
-    get_token_type_mapping,
 )
+from services.bots.github_apps import (
+    _get_installation_weight,
+    get_github_app_info_for_owner,
+)
+from services.bots.owner_bots import get_owner_appropriate_bot_token
+from services.bots.public_bots import get_token_type_mapping
+from services.bots.repo_bots import get_repo_appropriate_bot_token
 from test_utils.base import BaseTestCase
 
 # DONT WORRY, this is generated for the purposes of validation, and is not the real
@@ -75,7 +77,7 @@ class TestBotsService(BaseTestCase):
     def test_get_repo_appropriate_bot_enterprise_yes_bot(
         self, mock_configuration, mocker
     ):
-        mocker.patch("services.bots.is_enterprise", return_value=True)
+        mocker.patch("services.bots.repo_bots.is_enterprise", return_value=True)
         mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
         repo = RepositoryFactory.create(
             private=True,
@@ -95,7 +97,7 @@ class TestBotsService(BaseTestCase):
     def test_get_repo_appropriate_bot_enterprise_no_bot(
         self, mock_configuration, mocker
     ):
-        mocker.patch("services.bots.is_enterprise", return_value=True)
+        mocker.patch("services.bots.repo_bots.is_enterprise", return_value=True)
         repo = RepositoryFactory.create(
             private=True,
             using_integration=False,
@@ -259,38 +261,6 @@ class TestBotsService(BaseTestCase):
         )
         assert get_repo_appropriate_bot_token(repo) == expected_result
 
-    @pytest.mark.integration
-    def test_get_repo_appropriate_bot_token_repo_with_user_with_integration_bot_using_it(
-        self, mock_configuration, codecov_vcr
-    ):
-        mock_configuration._params["github"] = {
-            "integration": {
-                "pem": "/home/src/certs/github.pem",
-                "id": 251234,  # Fake integration id, tested with a real one
-            }
-        }
-        mock_configuration.loaded_files[("github", "integration", "pem")] = (
-            fake_private_key
-        )
-        repo = RepositoryFactory.create(
-            using_integration=True,
-            bot=None,
-            owner=OwnerFactory.create(
-                service="github",
-                integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
-                unencrypted_oauth_token=None,
-                bot=OwnerFactory.create(unencrypted_oauth_token=None),
-            ),
-        )
-        expected_result = ({"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}, None)
-        installation_info = get_owner_installation_id(
-            repo.owner, repo.using_integration, ignore_installation=False
-        )
-        assert installation_info == {"installation_id": 1654873}
-        assert (
-            get_repo_appropriate_bot_token(repo, installation_info) == expected_result
-        )
-
     def test_get_repo_appropriate_bot_token_via_installation_covered_repo(
         self, mock_configuration, dbsession, mocker
     ):
@@ -313,19 +283,18 @@ class TestBotsService(BaseTestCase):
         assert installation.is_repo_covered_by_integration(repo)
 
         mock_get_github_integration_token = mocker.patch(
-            "services.bots.get_github_integration_token",
+            "services.bots.github_apps.get_github_integration_token",
             return_value="installation_token",
         )
-        installation_info = get_owner_installation_id(
-            repo.owner, repo.using_integration, ignore_installation=False
-        )
-        assert installation_info == {
-            "installation_id": 12341234,
-            "app_id": None,
-            "pem_path": None,
-            "fallback_installations": [],
-        }
-        response = get_repo_appropriate_bot_token(repo, installation_info)
+        installations = get_github_app_info_for_owner(repo.owner)
+        assert installations == [
+            {
+                "installation_id": 12341234,
+                "app_id": None,
+                "pem_path": None,
+            }
+        ]
+        response = get_repo_appropriate_bot_token(repo, installations[0])
         mock_get_github_integration_token.assert_called_with(
             "github", 12341234, app_id=None, pem_path=None
         )
@@ -338,10 +307,13 @@ class TestBotsService(BaseTestCase):
         owner = OwnerFactory.create(
             unencrypted_oauth_token="owner_token", integration_id=None, bot=None
         )
-        assert get_owner_appropriate_bot_token(owner, None) == {
-            "key": "owner_token",
-            "secret": None,
-        }
+        assert get_owner_appropriate_bot_token(owner, None) == (
+            {
+                "key": "owner_token",
+                "secret": None,
+            },
+            owner,
+        )
 
     def test_get_owner_appropriate_bot_token_owner_has_bot_no_integration(self):
         owner = OwnerFactory.create(
@@ -349,10 +321,13 @@ class TestBotsService(BaseTestCase):
             integration_id=None,
             bot=OwnerFactory.create(unencrypted_oauth_token="bot_token"),
         )
-        assert get_owner_appropriate_bot_token(owner, None) == {
-            "key": "bot_token",
-            "secret": None,
-        }
+        assert get_owner_appropriate_bot_token(owner, None) == (
+            {
+                "key": "bot_token",
+                "secret": None,
+            },
+            owner.bot,
+        )
 
     def test_get_owner_appropriate_bot_token_repo_with_no_oauth_token_at_all(self):
         owner = OwnerFactory.create(
@@ -363,47 +338,12 @@ class TestBotsService(BaseTestCase):
         with pytest.raises(OwnerWithoutValidBotError):
             get_owner_appropriate_bot_token(owner, None)
 
-    def test_get_owner_appropriate_bot_token_with_user_with_integration_bot_using_it(
-        self, mock_configuration, codecov_vcr
-    ):
-        mock_configuration._params["github"] = {
-            "integration": {
-                "pem": "/home/src/certs/github.pem",
-                "id": 251234,  # Fake integration id, tested with a real one
-            }
-        }
-        mock_configuration.loaded_files[("github", "integration", "pem")] = (
-            fake_private_key
-        )
-
-        owner = OwnerFactory.create(
-            service="github",
-            integration_id=1654873,  # 'ThiagoCodecov' integration id, for testing,
-            unencrypted_oauth_token="owner_token",
-            bot=OwnerFactory.create(unencrypted_oauth_token=None),
-        )
-
-        expected_result = {"key": "v1.test50wm4qyel2pbtpbusklcarg7c2etcbunnswp"}
-        integration_dict = get_owner_installation_id(
-            owner, True, ignore_installation=False
-        )
-        assert (
-            get_owner_appropriate_bot_token(owner, integration_dict) == expected_result
-        )
-
     def test_get_owner_installation_id_no_installation_no_legacy_integration(
         self, mocker, dbsession
     ):
         owner = OwnerFactory(service="github", integration_id=None)
         assert owner.github_app_installations == []
-        assert get_owner_installation_id(owner, True) is None
-
-    def test_get_owner_installation_id_no_installation_yes_legacy_integration(
-        self, mocker, dbsession
-    ):
-        owner = OwnerFactory(service="github", integration_id=12341234)
-        assert owner.github_app_installations == []
-        assert get_owner_installation_id(owner, True) == {"installation_id": 12341234}
+        assert get_github_app_info_for_owner(owner) == []
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration(
         self, mocker, dbsession
@@ -418,12 +358,13 @@ class TestBotsService(BaseTestCase):
         dbsession.add(installation)
         dbsession.flush()
         assert owner.github_app_installations == [installation]
-        assert get_owner_installation_id(owner, True) == {
-            "installation_id": 123456,
-            "app_id": None,
-            "pem_path": None,
-            "fallback_installations": [],
-        }
+        assert get_github_app_info_for_owner(owner) == [
+            {
+                "installation_id": 123456,
+                "app_id": None,
+                "pem_path": None,
+            }
+        ]
 
     def test_get_owner_installation_id_yes_installation_yes_legacy_integration_yes_fallback(
         self, mocker, dbsession
@@ -446,14 +387,14 @@ class TestBotsService(BaseTestCase):
         dbsession.add(installation_0)
         dbsession.flush()
         assert owner.github_app_installations == [installation_0, installation_1]
-        assert get_owner_installation_id(owner, True, installation_name="my_app") == {
-            "installation_id": 12000,
-            "app_id": 1212,
-            "pem_path": "path",
-            "fallback_installations": [
-                {"installation_id": 123456, "app_id": None, "pem_path": None}
-            ],
-        }
+        assert get_github_app_info_for_owner(owner, installation_name="my_app") == [
+            {
+                "installation_id": 12000,
+                "app_id": 1212,
+                "pem_path": "path",
+            },
+            {"installation_id": 123456, "app_id": None, "pem_path": None},
+        ]
 
     def test_get_owner_installation_id_yes_installation_all_rate_limited(
         self, mocker, dbsession, mock_redis
@@ -478,50 +419,11 @@ class TestBotsService(BaseTestCase):
         dbsession.flush()
         assert owner.github_app_installations == [installation_0, installation_1]
         with pytest.raises(NoConfiguredAppsAvailable):
-            get_owner_installation_id(owner, True, installation_name="my_app")
+            get_github_app_info_for_owner(owner, installation_name="my_app")
         mock_redis.exists.assert_any_call(
             f"rate_limited_installations_default_app_123456"
         )
         mock_redis.exists.assert_any_call(f"rate_limited_installations_1212_12000")
-
-    def test_get_owner_installation_id_yes_installation_yes_legacy_integration_specific_repos(
-        self, mocker, dbsession
-    ):
-        owner = OwnerFactory(service="github", integration_id=12341234)
-        repo_covered_by_installation = RepositoryFactory(
-            owner=owner, using_integration=True
-        )
-        repo_not_covered_by_installation = RepositoryFactory(
-            owner=owner, using_integration=True
-        )
-        installation = GithubAppInstallation(
-            owner=owner,
-            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-            repository_service_ids=[repo_covered_by_installation.service_id],
-            installation_id=123456,
-            app_id=123,
-            pem_path="some_path",
-        )
-        dbsession.add(installation)
-        dbsession.flush()
-        assert owner.github_app_installations == [installation]
-        assert get_owner_installation_id(
-            owner,
-            repo_covered_by_installation.using_integration,
-            repository=repo_covered_by_installation,
-        ) == {
-            "installation_id": 123456,
-            "app_id": 123,
-            "pem_path": "some_path",
-            "fallback_installations": [],
-        }
-        # Notice that the installation object overrides the `Repository.using_integration` column completely
-        # ^ Not true anymore. We decided against it because there are some edge cases in filling up the list
-        assert get_owner_installation_id(
-            owner,
-            repo_not_covered_by_installation.using_integration,
-            repository=repo_not_covered_by_installation,
-        ) == {"installation_id": 12341234}
 
     @pytest.mark.parametrize(
         "time_edited_days,expected_weight",
@@ -590,16 +492,13 @@ class TestBotsService(BaseTestCase):
         choices[installation_new.installation_id] = 0
         # We select apps 1K times to reduce margin of test flakiness
         for _ in range(1000):
-            installation_dict = get_owner_installation_id(owner, False)
-            assert installation_dict is not None
+            installations = get_github_app_info_for_owner(owner)
+            assert installations is not None
             # Regardless of the app we choose we want the other one
             # to be listed as a fallback option
-            assert installation_dict["fallback_installations"] != []
-            assert (
-                installation_dict["installation_id"]
-                != installation_dict["fallback_installations"][0]["installation_id"]
-            )
-            id_chosen = installation_dict["installation_id"]
+            assert len(installations) == 2
+            assert installations[0] != installations[1]
+            id_chosen = installations[0]["installation_id"]
             choices[id_chosen] += 1
         # Assert that both apps can be selected
         assert choices[installation_old.installation_id] > 0
@@ -664,103 +563,6 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: None,
             TokenType.status: None,
             TokenType.tokenless: {"key": "sometokenlesskey"},
-        }
-        assert expected_result == get_token_type_mapping(repo)
-
-    def test_get_token_type_mapping_public_repo_no_configuration(
-        self, mock_configuration, dbsession
-    ):
-        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
-        repo = RepositoryFactory.create(
-            private=False,
-            using_integration=False,
-            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
-            owner=OwnerFactory.create(
-                unencrypted_oauth_token="not_so_simple_code",
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token="now_that_code_is_complex"
-                ),
-            ),
-        )
-        dbsession.add(repo)
-        dbsession.flush()
-        expected_result = {
-            TokenType.admin: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.read: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.comment: None,
-            TokenType.status: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.tokenless: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-        }
-
-        assert expected_result == get_token_type_mapping(repo)
-
-    def test_get_token_type_mapping_public_repo_some_configuration(
-        self, mock_configuration, dbsession
-    ):
-        mock_configuration.set_params(
-            {
-                "github": {
-                    "bot": {"key": "somekey"},
-                    "bots": {
-                        "read": {"key": "aaaa", "username": "aaaa"},
-                        "status": {"key": "status", "username": "status"},
-                        "comment": {"key": "nada"},
-                    },
-                }
-            }
-        )
-        repo = RepositoryFactory.create(
-            private=False,
-            using_integration=False,
-            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
-            owner=OwnerFactory.create(
-                service="github",
-                unencrypted_oauth_token="not_so_simple_code",
-                bot=OwnerFactory.create(
-                    service="github", unencrypted_oauth_token="now_that_code_is_complex"
-                ),
-            ),
-        )
-        dbsession.add(repo)
-        dbsession.flush()
-        expected_result = {
-            TokenType.admin: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.read: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.status: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.comment: {"key": "nada"},
-            TokenType.tokenless: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -845,68 +647,6 @@ class TestBotsService(BaseTestCase):
         }
         assert expected_result == get_token_type_mapping(repo)
 
-    def test_get_token_type_mapping_public_repo_some_configuration_not_github(
-        self, mock_configuration, dbsession
-    ):
-        mock_configuration.set_params(
-            {
-                "github": {
-                    "bot": {"key": "somekey"},
-                    "bots": {
-                        "read": {"key": "aaaa", "username": "aaaa"},
-                        "status": {"key": "status", "username": "status"},
-                        "comment": {"key": "nada"},
-                    },
-                },
-                "bitbucket": {
-                    "bot": {"key": "bit"},
-                    "bots": {
-                        "read": {"key": "bucket", "username": "bb"},
-                        "comment": {"key": "bibu", "username": "cket"},
-                        "tokenless": {"key": "tokenlessKey", "username": "username"},
-                    },
-                },
-            }
-        )
-        repo = RepositoryFactory.create(
-            private=False,
-            using_integration=False,
-            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
-            owner=OwnerFactory.create(
-                service="bitbucket",
-                unencrypted_oauth_token="not_so_simple_code",
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token="now_that_code_is_complex"
-                ),
-            ),
-        )
-        dbsession.add(repo)
-        dbsession.flush()
-        expected_result = {
-            TokenType.admin: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.read: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.comment: {"key": "bibu", "username": "cket"},
-            TokenType.status: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-            TokenType.tokenless: {
-                "key": "simple_code",
-                "secret": None,
-                "username": repo.bot.username,
-            },
-        }
-        assert expected_result == get_token_type_mapping(repo)
-
     def test_get_token_type_mapping_private_repo_no_configuration(
         self, mock_configuration, dbsession
     ):
@@ -917,26 +657,6 @@ class TestBotsService(BaseTestCase):
             bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
             owner=OwnerFactory.create(
                 unencrypted_oauth_token="not_so_simple_code",
-                bot=OwnerFactory.create(
-                    unencrypted_oauth_token="now_that_code_is_complex"
-                ),
-            ),
-        )
-        dbsession.add(repo)
-        dbsession.flush()
-        assert get_token_type_mapping(repo) is None
-
-    def test_get_token_type_mapping_public_repo_integration(
-        self, mock_configuration, dbsession
-    ):
-        mock_configuration.set_params({"github": {"bot": {"key": "somekey"}}})
-        repo = RepositoryFactory.create(
-            private=False,
-            using_integration=True,
-            bot=OwnerFactory.create(unencrypted_oauth_token="simple_code"),
-            owner=OwnerFactory.create(
-                unencrypted_oauth_token="not_so_simple_code",
-                integration_id=90,
                 bot=OwnerFactory.create(
                     unencrypted_oauth_token="now_that_code_is_complex"
                 ),
