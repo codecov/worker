@@ -306,19 +306,17 @@ class ComparisonProxy(object):
                 # We ignore carryforward sessions
                 # Because not all commits would upload all flags (potentially)
                 # But they are still carried forward
-                if session.session_type == SessionType.uploaded:
+                if session.session_type != SessionType.carriedforward:
                     if session.flags == []:
                         session.flags = [""]
                     for flag in session.flags:
-                        existing = per_flag_dict.get(flag)
-                        if existing:
-                            existing[curr_counter] += 1
-                        else:
-                            new_entry = ReportUploadedCount(
+                        dict_value = per_flag_dict.get(flag)
+                        if dict_value is None:
+                            dict_value = ReportUploadedCount(
                                 flag=flag, base_count=0, head_count=0
                             )
-                            new_entry[curr_counter] += 1
-                            per_flag_dict[flag] = new_entry
+                        dict_value[curr_counter] += 1
+                        per_flag_dict[flag] = dict_value
         self._cached_reports_uploaded_per_flag = list(per_flag_dict.values())
         return self._cached_reports_uploaded_per_flag
 
