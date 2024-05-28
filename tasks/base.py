@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
 from django.db import transaction as django_transaction
@@ -253,8 +254,12 @@ class BaseCodecovTask(celery_app.Task):
         self.task_run_counter.inc()
         self._emit_queue_metrics()
 
+        commit_sha = kwargs.get("commitid")
+        if commit_sha:
+            sentry_sdk.set_tag("commit_sha", commit_sha)
+
         metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
+            commit_sha=commit_sha,
             repo_id=kwargs.get("repoid"),
             owner_id=kwargs.get("ownerid"),
         )
