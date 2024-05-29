@@ -132,9 +132,6 @@ class BundleAnalysisProcessorTask(
                 self.retry(max_retries=5, countdown=20)
             result.update_upload()
 
-            if result.bundle_report:
-                result.bundle_report.cleanup()
-
             processing_results.append(result.as_dict())
         except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
             raise
@@ -153,6 +150,9 @@ class BundleAnalysisProcessorTask(
             upload.state_id = UploadState.ERROR.db_id
             upload.state = "error"
             raise
+        finally:
+            if result.bundle_report:
+                result.bundle_report.cleanup()
 
         log.info(
             "Finished bundle analysis processor",

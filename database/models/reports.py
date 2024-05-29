@@ -190,7 +190,7 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
 
 class AbstractTotals(MixinBaseClass):
     branches = Column(types.Integer)
-    coverage = Column(types.Numeric(precision=7, scale=2))
+    coverage = Column(types.Numeric(precision=8, scale=5))
     hits = Column(types.Integer)
     lines = Column(types.Integer)
     methods = Column(types.Integer)

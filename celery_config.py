@@ -107,7 +107,9 @@ daily_plan_manager_task_name = "app.cron.daily.PlanManagerTask"
 
 # Backfill GH Apps
 backfill_existing_gh_app_installations_name = "app.tasks.backfill_existing_gh_app_installations.BackfillExistingGHAppInstallationsTask"
+backfill_existing_individual_gh_app_installation_name = "app.tasks.backfill_existing_individual_gh_app_installation.BackfillExistingIndividualGHAppInstallationTask"
 backfill_owners_without_gh_app_installations_name = "app.tasks.backfill_owners_without_gh_app_installations.BackfillOwnersWithoutGHAppInstallationsTask"
+backfill_owners_without_gh_app_installation_individual_name = "app.tasks.backfill_owners_without_gh_app_installation_individual.BackfillOwnersWithoutGHAppInstallationIndividualTask"
 
 trial_expiration_task_name = "app.tasks.plan.TrialExpirationTask"
 trial_expiration_cron_task_name = "app.cron.plan.TrialExpirationCronTask"
