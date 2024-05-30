@@ -196,7 +196,7 @@ iniconfig==1.1.1
     # via pytest
 isoweek==1.3.3
     # via timeconvert
-jinja2==3.1.3
+jinja2==3.1.4
     # via -r requirements.in
 jmespath==0.10.0
     # via
