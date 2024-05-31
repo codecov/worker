@@ -1,8 +1,6 @@
 from shared.rollouts import Feature
 
 # Declare the feature variants and parameters via Django Admin
-LIST_REPOS_GENERATOR_BY_OWNER_ID = Feature("list_repos_generator")
-
 FLAKY_TEST_DETECTION = Feature("flaky_test_detection")
 
 # Eventually we want all repos to use this

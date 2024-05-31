@@ -54,7 +54,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         # Mock fn return values
         mock_repo_provider.list_repos_using_installation.return_value = mock_repos
         mocker.patch(
-            f"tasks.backfill_owners_without_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_owners_without_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 
@@ -102,7 +102,7 @@ class TestBackfillOwnersWithIntegrationWithoutGHApp(object):
         # Mock fn return values
         mock_repo_provider.list_repos_using_installation.return_value = mock_repos
         mocker.patch(
-            f"tasks.backfill_owners_without_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_owners_without_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 
