@@ -57,7 +57,12 @@ class TestOwnerServiceTestCase(object):
                 "username": owner.username,
             },
             "repo": {},
-            "installation": {"installation_id": 1500, "pem_path": None, "app_id": None},
+            "installation": {
+                "id": installation.id,
+                "installation_id": 1500,
+                "pem_path": None,
+                "app_id": None,
+            },
             "fallback_installations": [],
         }
         assert res.service == "github"
