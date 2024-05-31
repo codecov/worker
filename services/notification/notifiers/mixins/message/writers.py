@@ -38,7 +38,7 @@ class TeamPlanWriter:
             patch_coverage = None
         if misses_and_partials:
             lines.append(
-                f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} lines` in your changes are missing coverage. Please review."
+                f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} lines` in your changes missing coverage. Please review."
             )
         else:
             lines.append(
