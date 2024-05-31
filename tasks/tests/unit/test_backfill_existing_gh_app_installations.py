@@ -165,7 +165,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         }
         mock_repo_provider.list_repos_using_installation.return_value = mock_repos
         mocker.patch(
-            f"tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 
