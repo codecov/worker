@@ -44,7 +44,7 @@ def get_repo_provider_service_for_specific_commit(
     commit: Commit,
     fallback_installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> torngit.base.TorngitBaseAdapter:
-    """Gets a Torngit adapter (potentially) using a specific github app as the authentication source.
+    """Gets a Torngit adapter (potentially) using a specific GitHub app as the authentication source.
     If the commit doesn't have a particular app assigned to it, return regular `get_repo_provider_service` choice
 
     This is done specifically after emitting checks for a PR using GitHub apps, because only the app
@@ -98,7 +98,7 @@ def get_repo_provider_service(
         repo=RepoInfo(
             name=repository.name,
             using_integration=(
-                adapter_auth_info["selected_installation_info"] is not None
+                adapter_auth_info.get("selected_installation_info") is not None
             ),
             service_id=repository.service_id,
             repoid=repository.repoid,
