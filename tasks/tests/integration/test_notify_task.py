@@ -1003,7 +1003,7 @@ class TestNotifyTask(object):
                         notification_successful=True,
                         explanation=None,
                         data_sent={
-                            "text": f"Coverage for <https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|joseph-sentry/codecov-demo> *no change* `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9|0.00%>` on `test` is `85.00000%` via `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|5601846>`",
+                            "text": "Coverage for <https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|joseph-sentry/codecov-demo> *no change* `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9|0.00%>` on `test` is `85.00000%` via `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|5601846>`",
                             "author_name": "Codecov",
                             "author_link": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
                             "attachments": [],
