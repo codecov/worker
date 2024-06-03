@@ -1104,8 +1104,8 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
         commit = CommitFactory(repository__owner__service="github")
         assert commit.id not in [10000, 15000]
         redis_keys = {
-            "app_to_use_for_commit_15000": "1200",
-            "app_to_use_for_commit_10000": "1000",
+            "app_to_use_for_commit_15000": b"1200",
+            "app_to_use_for_commit_10000": b"1000",
         }
         mock_redis.get.side_effect = lambda key: redis_keys.get(key)
 
@@ -1139,7 +1139,7 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
         dbsession.flush()
         assert commit.repository.owner.github_app_installations == [app]
         redis_keys = {
-            f"app_to_use_for_commit_{commit.id}": str(app.id),
+            f"app_to_use_for_commit_{commit.id}": str(app.id).encode(),
         }
         mock_redis.get.side_effect = lambda key: redis_keys.get(key)
         response = get_repo_provider_service_for_specific_commit(commit, "some_name")
