@@ -126,8 +126,9 @@ class HeaderSectionWriter(BaseSectionWriter):
             misses_and_partials = None
             patch_coverage = None
         if misses_and_partials:
+            ln_text = "lines" if misses_and_partials > 1 else "line"
             yield (
-                f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} lines` in your changes are missing coverage. Please review."
+                f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} {ln_text}` in your changes missing coverage. Please review."
             )
         else:
             yield "All modified and coverable lines are covered by tests :white_check_mark:"

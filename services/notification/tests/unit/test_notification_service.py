@@ -427,13 +427,13 @@ class TestNotificationService(object):
             {
                 "notifier": "good_name",
                 "title": "good_notifier",
-                "result": {
-                    "notification_attempted": True,
-                    "notification_successful": True,
-                    "explanation": "",
-                    "data_sent": {"some": "data"},
-                    "data_received": None,
-                },
+                "result": NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=True,
+                    explanation="",
+                    data_sent={"some": "data"},
+                    data_received=None,
+                ),
             },
         ]
         res = await notifications_service.notify(sample_comparison)
@@ -449,7 +449,7 @@ class TestNotificationService(object):
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
         )
-        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifier.notify.side_effect = AsyncioTimeoutError
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -491,11 +491,11 @@ class TestNotificationService(object):
         expected_result = {
             "notifier": "checks-project",
             "title": "title",
-            "result": {
-                "notification_attempted": True,
-                "notification_successful": True,
-                "explanation": None,
-                "data_sent": {
+            "result": NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation=None,
+                data_sent={
                     "state": "success",
                     "output": {
                         "title": "No coverage information found on head",
@@ -503,10 +503,10 @@ class TestNotificationService(object):
                     },
                     "url": f"test/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
                 },
-                "data_received": None,
-            },
+                data_received=None,
+            ),
         }
-        assert res["result"]["data_sent"] == expected_result["result"]["data_sent"]
+        assert res["result"].data_sent == expected_result["result"].data_sent
         assert res["result"] == expected_result["result"]
         assert res == expected_result
 
@@ -522,7 +522,7 @@ class TestNotificationService(object):
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
         )
-        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifier.notify.side_effect = AsyncioTimeoutError
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -556,7 +556,7 @@ class TestNotificationService(object):
             decoration_type=Decoration.standard,
         )
         # first attempt not successful
-        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifier.notify.side_effect = AsyncioTimeoutError
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -577,12 +577,14 @@ class TestNotificationService(object):
         assert pull_commit_notification.state == NotificationState.error
 
         # second attempt successful
-        notifier.notify.return_value = NotificationResult(
-            notification_attempted=True,
-            notification_successful=True,
-            explanation="",
-            data_sent={"some": "data"},
-        )
+        notifier.notify.side_effect = [
+            NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation="",
+                data_sent={"some": "data"},
+            )
+        ]
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )

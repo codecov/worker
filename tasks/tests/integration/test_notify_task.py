@@ -7,6 +7,7 @@ from mock import PropertyMock
 from database.models import Pull
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
+from services.notification.notifiers.base import NotificationResult
 from tasks.notify import NotifyTask
 
 sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
@@ -35,7 +36,7 @@ class TestNotifyTask(object):
         mock_redis,
     ):
         mock_requests_post.return_value.status_code = 200
-        mock_redis.get.return_value = False
+        mock_redis.get.return_value = None
         mock_configuration.params["setup"]["codecov_dashboard_url"] = (
             "https://codecov.io"
         )
@@ -88,11 +89,11 @@ class TestNotifyTask(object):
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -142,8 +143,8 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 }
             ],
         }
@@ -215,26 +216,26 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation="already_done",
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to 17a71a9",
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -321,8 +322,8 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
             ],
         }
@@ -405,56 +406,56 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to 081d919",
                         },
-                        "data_received": {"id": 9333281614},
-                    },
+                        data_received={"id": 9333281614},
+                    ),
                 },
                 {
                     "notifier": "status-patch",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/patch",
                             "state": "success",
                             "message": "Coverage not affected when comparing 081d919...f089529",
                         },
-                        "data_received": {"id": 9333281697},
-                    },
+                        data_received={"id": 9333281697},
+                    ),
                 },
                 {
                     "notifier": "status-changes",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/changes",
                             "state": "failure",
                             "message": "1 file has indirect coverage changes not visible in diff",
                         },
-                        "data_received": {"id": 9333281703},
-                    },
+                        data_received={"id": 9333281703},
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -541,8 +542,8 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
             ],
         }
@@ -632,56 +633,56 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to f089529",
                         },
-                        "data_received": {"id": 9333363767},
-                    },
+                        data_received={"id": 9333363767},
+                    ),
                 },
                 {
                     "notifier": "status-patch",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/patch",
                             "state": "success",
                             "message": "Coverage not affected when comparing f089529...11daa27",
                         },
-                        "data_received": {"id": 9333363778},
-                    },
+                        data_received={"id": 9333363778},
+                    ),
                 },
                 {
                     "notifier": "status-changes",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/changes",
                             "state": "success",
                             "message": "No indirect coverage changes found",
                         },
-                        "data_received": {"id": 9333363801},
-                    },
+                        data_received={"id": 9333363801},
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -768,8 +769,8 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
             ],
         }
@@ -878,11 +879,11 @@ class TestNotifyTask(object):
                 {
                     "notifier": "WebhookNotifier",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "repo": {
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo",
                                 "service_id": repository.service_id,
@@ -991,78 +992,78 @@ class TestNotifyTask(object):
                                 "merged": False,
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "SlackNotifier",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "text": f"Coverage for <https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|joseph-sentry/codecov-demo> *no change* `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9|0.00%>` on `test` is `85.00000%` via `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|5601846>`",
                             "author_name": "Codecov",
                             "author_link": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
                             "attachments": [],
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation="already_done",
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": f"85.00% (+0.00%) compared to {master_sha[:7]}",
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "status-patch",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation="already_done",
+                        data_sent={
                             "title": "codecov/patch",
                             "state": "success",
                             "message": f"Coverage not affected when comparing {master_sha[:7]}...{head_commitid[:7]}",
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "status-changes",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/changes",
                             "state": "success",
                             "message": "No indirect coverage changes found",
                         },
-                        "data_received": {"id": 24846000025},
-                    },
+                        data_received={"id": 24846000025},
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "codecov-demo",
                             "owner": "joseph-sentry",
                             "comparison": {
@@ -1149,17 +1150,17 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "comment",
                     "title": "comment",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "message": [
                                 "## [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
                                 "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -1202,8 +1203,8 @@ class TestNotifyTask(object):
                             "commentid": None,
                             "pullid": 9,
                         },
-                        "data_received": {"id": 1699669573},
-                    },
+                        data_received={"id": 1699669573},
+                    ),
                 },
             ],
         }
@@ -1217,21 +1218,19 @@ class TestNotifyTask(object):
             sorted(expected_result["notifications"], key=lambda x: x["notifier"]),
         ):
             assert (
-                expected["result"]["notification_attempted"]
-                == actual["result"]["notification_attempted"]
+                expected["result"].notification_attempted
+                == actual["result"].notification_attempted
             )
             assert (
-                expected["result"]["notification_successful"]
-                == actual["result"]["notification_successful"]
+                expected["result"].notification_successful
+                == actual["result"].notification_successful
             )
-            assert expected["result"]["explanation"] == actual["result"]["explanation"]
-            assert expected["result"]["data_sent"].get("message") == actual["result"][
-                "data_sent"
-            ].get("message")
-            assert expected["result"]["data_sent"] == actual["result"]["data_sent"]
-            assert (
-                expected["result"]["data_received"] == actual["result"]["data_received"]
-            )
+            assert expected["result"].explanation == actual["result"].explanation
+            assert expected["result"].data_sent.get("message") == actual[
+                "result"
+            ].data_sent.get("message")
+            assert expected["result"].data_sent == actual["result"].data_sent
+            assert expected["result"].data_received == actual["result"].data_received
             assert expected["result"] == actual["result"]
             assert expected == actual
         assert sorted(result["notifications"], key=lambda x: x["notifier"]) == sorted(
