@@ -9,12 +9,13 @@ from shared.celery_config import (
     status_set_error_task_name,
 )
 from shared.reports.readonly import ReadOnlyReport
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from database.enums import CommitErrorTypes, Decoration, ReportType
+from database.enums import CommitErrorTypes, Decoration, NotificationState, ReportType
 from database.models import Commit, Pull
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
@@ -28,6 +29,7 @@ from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
+from services.github import get_github_app_for_commit, set_github_app_for_commit
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.notification import NotificationService
 from services.redis import Redis, get_redis_connection
@@ -193,6 +195,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             repository_service = get_repo_provider_service(
                 commit.repository, installation_name_to_use=installation_name_to_use
             )
+            self._possibly_pin_commit_to_github_app(commit, repository_service)
         except RepositoryWithoutValidBotError:
             save_commit_error(
                 commit, error_code=CommitErrorTypes.REPO_BOT_INVALID.value
@@ -398,6 +401,55 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
             return {"notified": False, "notifications": None}
+
+    def _possibly_refresh_previous_selection(self, commit: Commit) -> bool:
+        installation_cached: str = get_github_app_for_commit(commit)
+        app_id_used_in_successful_comment: int = next(
+            (
+                obj.gh_app_id
+                for obj in commit.notifications
+                if obj.gh_app_id is not None and obj.state == NotificationState.success
+            ),
+            None,
+        )
+        if installation_cached or app_id_used_in_successful_comment:
+            id_to_cache = installation_cached or app_id_used_in_successful_comment
+            # Some app is already set for this commit, so we renew the caching of the app.
+            # It's OK if this app is not the same as the one chosen by torngit (argument), because the
+            # different notifiers have their own torngit adapter and will look at the pinned app first.
+            set_github_app_for_commit(id_to_cache, commit)
+            return True
+        return False
+
+    def _possibly_pin_commit_to_github_app(
+        self, commit: Commit, torngit: TorngitBaseAdapter
+    ) -> int | str | None:
+        """Pin the GitHub app to use when emitting notifications for this commit, as needed.
+
+        For non-GitHub, do nothing.
+        For situations that we don't use a GithubAppInstance to communicate, do nothing.
+
+        If there is already an app cached in redis for this commit, OR a CommitNotification that was
+        successful with an app, renew that app's caching (it might be different from our selection, but that's ok)
+
+        Returns:
+            the cached app's id (int | str | None) - to make it easier to test
+        """
+        is_github = commit.repository.service in ["github", "github_enterprise"]
+        if not is_github:
+            return
+        refreshed_previous_selection = self._possibly_refresh_previous_selection(commit)
+        if refreshed_previous_selection:
+            # If a selection was already made we shouldn't overwrite it
+            return
+        torngit_installation = torngit.data.get("installation")
+        selected_installation_id = (
+            torngit_installation.get("id") if torngit_installation else None
+        )
+        if selected_installation_id is not None:
+            # Here we pin our selection to be the app to use
+            set_github_app_for_commit(selected_installation_id, commit)
+            return selected_installation_id
 
     def has_upcoming_notifies_according_to_redis(
         self, redis_connection: Redis, repoid: int, commitid: str

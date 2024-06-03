@@ -56,8 +56,8 @@ class TestGetSetGithubAppsToCommits(object):
         repo_ghe = RepositoryFactory(owner__service="github_enterprise")
         repo_gitlab = RepositoryFactory(owner__service="gitlab")
         redis_keys = {
-            "app_to_use_for_commit_12": "1200",
-            "app_to_use_for_commit_10": "1000",
+            "app_to_use_for_commit_12": b"1200",
+            "app_to_use_for_commit_10": b"1000",
         }
         fake_commit_12 = MagicMock(
             name="fake_commit", **{"id": 12, "repository": repo_github}
@@ -87,3 +87,13 @@ class TestGetSetGithubAppsToCommits(object):
         )
         assert get_github_app_for_commit(fake_commit_12) == None
         mock_redis.get.assert_called_with("app_to_use_for_commit_12")
+
+    @pytest.mark.integration
+    def test_get_and_set_app_for_commit(self, dbsession):
+        commit = self._get_commit(dbsession)
+        # String
+        set_github_app_for_commit("12", commit)
+        assert get_github_app_for_commit(commit) == "12"
+        # Int
+        set_github_app_for_commit(24, commit)
+        assert get_github_app_for_commit(commit) == "24"

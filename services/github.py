@@ -69,7 +69,8 @@ def get_github_app_for_commit(commit: Commit) -> str | None:
         return None
     redis = get_redis_connection()
     try:
-        return redis.get(COMMIT_GHAPP_KEY_NAME(commit.id))
+        value = redis.get(COMMIT_GHAPP_KEY_NAME(commit.id))
+        return value if value is None else value.decode()
     except RedisError:
         log.exception(
             "Failed to get app for commit", extra=dict(commit=commit.commitid)

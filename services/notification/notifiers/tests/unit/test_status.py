@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
@@ -7,6 +9,7 @@ from shared.torngit.exceptions import (
     TorngitServerUnreachableError,
 )
 from shared.torngit.status import Status
+from shared.typings.torngit import GithubInstallationInfo, TorngitInstanceData
 from shared.yaml.user_yaml import UserYaml
 
 from database.enums import Notification
@@ -773,6 +776,53 @@ class TestBaseStatusNotifier(object):
         )
         notifier.context = "fake"
         assert notifier.flag_coverage_was_uploaded(comparison) is True
+
+    @pytest.mark.parametrize(
+        "fake_torngit_data, expected",
+        [
+            (TorngitInstanceData(), None),
+            (TorngitInstanceData(installation=None), None),
+            (
+                TorngitInstanceData(
+                    installation=GithubInstallationInfo(
+                        installation_id="owner.integration_id"
+                    )
+                ),
+                None,
+            ),
+            (TorngitInstanceData(installation=GithubInstallationInfo(id=12)), 12),
+        ],
+    )
+    def test_get_github_app_used(
+        self, fake_torngit_data, expected, sample_comparison_coverage_carriedforward
+    ):
+        fake_torngit = MagicMock(data=fake_torngit_data, name="fake_torngit")
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": None},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        notifier.context = "fake"
+        notifier._repository_service = fake_torngit
+        assert notifier.get_github_app_used() == expected
+
+    def test_get_github_app_used_no_repository_service(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": None},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        notifier.context = "fake"
+        notifier._repository_service = None
+        assert notifier.get_github_app_used() is None
 
 
 class TestProjectStatusNotifier(object):

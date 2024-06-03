@@ -6,9 +6,8 @@ This packages uses the following services:
 """
 
 import asyncio
-import dataclasses
 import logging
-from typing import Iterator, List
+from typing import Iterator, List, TypedDict
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
@@ -16,7 +15,7 @@ from shared.helpers.yaml import default_if_true
 from shared.plan.constants import TEAM_PLAN_REPRESENTATIONS
 from shared.yaml import UserYaml
 
-from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner, Repository
 from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
 from services.decoration import Decoration
@@ -45,10 +44,16 @@ from services.yaml.reader import get_components_from_yaml
 log = logging.getLogger(__name__)
 
 
+class IndividualResult(TypedDict):
+    notifier: str
+    title: str
+    result: NotificationResult | None
+
+
 class NotificationService(object):
     def __init__(
         self,
-        repository,
+        repository: Repository,
         current_yaml: UserYaml,
         decoration_type=Decoration.standard,
         gh_installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -238,9 +243,11 @@ class NotificationService(object):
             f"Notifying with decoration type {self.decoration_type}",
             extra=dict(
                 head_commit=comparison.head.commit.commitid,
-                base_commit=comparison.project_coverage_base.commit.commitid
-                if comparison.project_coverage_base.commit is not None
-                else "NO_BASE",
+                base_commit=(
+                    comparison.project_coverage_base.commit.commitid
+                    if comparison.project_coverage_base.commit is not None
+                    else "NO_BASE"
+                ),
                 repoid=comparison.head.commit.repoid,
             ),
         )
@@ -268,24 +275,25 @@ class NotificationService(object):
             "Attempting individual notification",
             extra=dict(
                 commit=commit.commitid,
-                base_commit=base_commit.commitid
-                if base_commit is not None
-                else "NO_BASE",
+                base_commit=(
+                    base_commit.commitid if base_commit is not None else "NO_BASE"
+                ),
                 repoid=commit.repoid,
                 notifier=notifier.name,
                 notifier_title=notifier.title,
             ),
+        )
+        # individual_result.result is updated in case of success
+        individual_result = IndividualResult(
+            notifier=notifier.name, title=notifier.title, result=None
         )
         try:
             with metrics.timer(
                 f"worker.services.notifications.notifiers.{notifier.name}"
             ) as notify_timer:
                 res = await notifier.notify(comparison)
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": dataclasses.asdict(res),
-            }
+            individual_result["result"] = res
+
             notifier.store_results(comparison, res)
             log.info(
                 "Individual notification done",
@@ -293,35 +301,25 @@ class NotificationService(object):
                     timing_ms=notify_timer.ms,
                     individual_result=individual_result,
                     commit=commit.commitid,
-                    base_commit=base_commit.commitid
-                    if base_commit is not None
-                    else "NO_BASE",
+                    base_commit=(
+                        base_commit.commitid if base_commit is not None else "NO_BASE"
+                    ),
                     repoid=commit.repoid,
                 ),
             )
             return individual_result
         except (CeleryError, SoftTimeLimitExceeded):
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
             raise
         except asyncio.TimeoutError:
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
             log.warning(
                 "Individual notifier timed out",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     individual_result=individual_result,
-                    base_commit=base_commit.commitid
-                    if base_commit is not None
-                    else "NO_BASE",
+                    base_commit=(
+                        base_commit.commitid if base_commit is not None else "NO_BASE"
+                    ),
                 ),
             )
             return individual_result
@@ -333,36 +331,27 @@ class NotificationService(object):
                 ),
                 exc_info=True,
             )
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
             raise
         except Exception:
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
             log.exception(
                 "Individual notifier failed",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     individual_result=individual_result,
-                    base_commit=base_commit.commitid
-                    if base_commit is not None
-                    else "NO_BASE",
+                    base_commit=(
+                        base_commit.commitid if base_commit is not None else "NO_BASE"
+                    ),
                 ),
             )
             return individual_result
         finally:
-            if not individual_result["result"] or individual_result["result"].get(
-                "notification_attempted"
+            if (
+                individual_result["result"] is None
+                or individual_result["result"].notification_attempted
             ):
                 # only running if there is no result (indicating some exception)
                 # or there was an actual attempt
                 create_or_update_commit_notification_from_notification_result(
-                    comparison.pull, notifier, individual_result["result"]
+                    comparison, notifier, individual_result["result"]
                 )
