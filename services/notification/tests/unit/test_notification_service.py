@@ -329,7 +329,7 @@ class TestNotificationService(object):
         mocker.patch.dict(
             os.environ,
             {
-                "CHECKS_WHITELISTED_OWNERS": f"0,1",
+                "CHECKS_WHITELISTED_OWNERS": "0,1",
                 "CHECKS_WHITELISTED_PERCENTAGE": "35",
             },
         )

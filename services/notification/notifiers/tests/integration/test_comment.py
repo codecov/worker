@@ -543,12 +543,12 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         expected_message = [
-            f"## [Codecov](https://app.codecov.io/plan/gh/test-acc9) upload limit reached :warning:",
-            f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
+            "## [Codecov](https://app.codecov.io/plan/gh/test-acc9) upload limit reached :warning:",
+            "This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan](https://app.codecov.io/plan/gh/test-acc9).",
-            f"",
-            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+            "",
+            "**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
         for exp, res in zip(result.data_sent["message"], expected_message):
             assert exp == res

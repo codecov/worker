@@ -142,7 +142,7 @@ class StatusProjectMixin(object):
             )
         )
         if no_added_no_unexpected_change and some_removed:
-            return ("success", f", passed because this change only removed code")
+            return ("success", ", passed because this change only removed code")
         return None
 
     async def _apply_adjust_base_behavior(

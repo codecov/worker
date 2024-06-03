@@ -124,8 +124,8 @@ class BundleAnalysisReportService(BaseReportService):
         return commit_report
 
     def _previous_bundle_analysis_report(
-            self, bundle_loader: BundleAnalysisReportLoader, commit: Commit
-        ) -> Optional[BundleAnalysisReport]:
+        self, bundle_loader: BundleAnalysisReportLoader, commit: Commit
+    ) -> Optional[BundleAnalysisReport]:
         """
         Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
         Assets to the current one being parsed.
@@ -139,7 +139,8 @@ class BundleAnalysisReportService(BaseReportService):
             .filter_by(
                 commitid=commit.parent_commit_id,
                 repository=commit.repository,
-            ).first()
+            )
+            .first()
         )
         if parent_commit is None:
             return None

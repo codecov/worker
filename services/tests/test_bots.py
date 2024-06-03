@@ -429,9 +429,9 @@ class TestBotsService(BaseTestCase):
         with pytest.raises(NoConfiguredAppsAvailable):
             get_github_app_info_for_owner(owner, installation_name="my_app")
         mock_redis.exists.assert_any_call(
-            f"rate_limited_installations_default_app_123456"
+            "rate_limited_installations_default_app_123456"
         )
-        mock_redis.exists.assert_any_call(f"rate_limited_installations_1212_12000")
+        mock_redis.exists.assert_any_call("rate_limited_installations_1212_12000")
 
     @pytest.mark.parametrize(
         "time_edited_days,expected_weight",

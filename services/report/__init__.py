@@ -639,7 +639,7 @@ class ReportService(BaseReportService):
         return await self.create_new_report_for_commit(commit)
 
     @metrics.timer(
-        f"services.report.ReportService.get_appropriate_commit_to_carryforward_from"
+        "services.report.ReportService.get_appropriate_commit_to_carryforward_from"
     )
     def get_appropriate_commit_to_carryforward_from(
         self, commit: Commit, max_parenthood_deepness: int = 10
@@ -754,7 +754,7 @@ class ReportService(BaseReportService):
 
     async def create_new_report_for_commit(self, commit: Commit) -> Report:
         with metrics.timer(
-            f"services.report.ReportService.create_new_report_for_commit"
+            "services.report.ReportService.create_new_report_for_commit"
         ):
             log.info(
                 "Creating new report for commit",

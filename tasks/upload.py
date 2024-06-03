@@ -409,7 +409,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 checkpoints.log(UploadFlow.PROCESSING_BEGIN)
             except ValueError as e:
                 log.warning(
-                    f"CheckpointLogger failed to log/submit", extra=dict(error=e)
+                    "CheckpointLogger failed to log/submit", extra=dict(error=e)
                 )
 
         commit = None

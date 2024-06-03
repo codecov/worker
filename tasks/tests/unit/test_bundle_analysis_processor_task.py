@@ -19,7 +19,7 @@ def test_bundle_analysis_processor_task(
     celery_app,
 ):
     storage_path = (
-        f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
@@ -75,7 +75,7 @@ def test_bundle_analysis_processor_task_error(
     celery_app,
 ):
     storage_path = (
-        f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
@@ -191,7 +191,7 @@ def test_bundle_analysis_process_upload_general_error(
     celery_app,
 ):
     storage_path = (
-        f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
@@ -258,7 +258,7 @@ def test_bundle_analysis_processor_task_locked(
     celery_app,
 ):
     storage_path = (
-        f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
@@ -310,7 +310,7 @@ def test_bundle_analysis_process_upload_rate_limit_error(
     celery_app,
 ):
     storage_path = (
-        f"v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 

@@ -47,7 +47,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             "repository_selection": "all"
         }
         mocker.patch(
-            f"tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 
@@ -96,7 +96,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             "repository_selection": "all"
         }
         mocker.patch(
-            f"tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 

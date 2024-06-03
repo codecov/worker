@@ -435,7 +435,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 ),
             )
             raise
-        except TorngitClientError as e:
+        except TorngitClientError:
             old_permissions = owner.permission or []
             log.warning(
                 "Unable to verify user permissions on Github. Dropping all permissions",
