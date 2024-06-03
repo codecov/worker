@@ -301,6 +301,8 @@ class BaseCodecovTask(celery_app.Task):
                         self._rollback_django()
                         self.retry()
                     finally:
+                        log_set_task_name(None)
+                        log_set_task_id(None)
                         self.wrap_up_dbsession(db_session)
                         self._commit_django()
 
