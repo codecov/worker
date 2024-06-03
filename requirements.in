@@ -1,4 +1,4 @@
-https://github.com/codecov/shared/archive/0ec5e2f0163b3a963a06bdacdb24683c55438c98.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/57e53e8dee5cc499a72ece349a66f4174c8af236.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz#egg=test-results-parser
 boto3>=1.34
