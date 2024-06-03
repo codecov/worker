@@ -4,13 +4,9 @@ from typing import Dict
 
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
-from database.models.core import Commit
 from helpers.metrics import metrics
 from services.notification.notifiers.base import Comparison, NotificationResult
 from services.notification.notifiers.status.base import StatusNotifier
-from services.repository import (
-    get_repo_provider_service_for_specific_commit,
-)
 from services.urls import (
     append_tracking_params_to_urls,
     get_commit_url,
@@ -346,13 +342,6 @@ class ChecksNotifier(StatusNotifier):
             }
             annotations.append(annotation)
         return annotations
-
-    def repository_service(self, commit: Commit):
-        if not self._repository_service:
-            self._repository_service = get_repo_provider_service_for_specific_commit(
-                commit, fallback_installation_name=self.gh_installation_name
-            )
-        return self._repository_service
 
     async def send_notification(self, comparison: Comparison, payload):
         title = self.get_status_external_name()

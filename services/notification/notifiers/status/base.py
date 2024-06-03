@@ -3,6 +3,7 @@ from typing import Dict
 
 from shared.config import get_config
 from shared.helpers.cache import NO_VALUE, make_hash_sha256
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
 from database.models.core import Commit
@@ -28,7 +29,7 @@ log = logging.getLogger(__name__)
 class StatusNotifier(AbstractBaseNotifier):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._repository_service = None
+        self._repository_service: TorngitBaseAdapter = None
 
     def is_enabled(self) -> bool:
         return True
@@ -68,7 +69,7 @@ class StatusNotifier(AbstractBaseNotifier):
 
     def determine_status_check_behavior_to_apply(
         self, comparison, field_name
-    ) -> str or None:
+    ) -> str | None:
         """
         Used for fields that can be set at the global level for all checks in "default_rules", or at the component level for an individual check.
         For more context, see https://docs.codecov.io/docs/commit-status#default_rules
@@ -106,7 +107,7 @@ class StatusNotifier(AbstractBaseNotifier):
             len(report_uploaded_flags.intersection(flags_included_in_status_check)) > 0
         )
 
-    def repository_service(self, commit: Commit):
+    def repository_service(self, commit: Commit) -> TorngitBaseAdapter:
         if not self._repository_service:
             self._repository_service = get_repo_provider_service_for_specific_commit(
                 commit, fallback_installation_name=self.gh_installation_name

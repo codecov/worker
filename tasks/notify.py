@@ -424,7 +424,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
     def _possibly_pin_commit_to_github_app(
         self, commit: Commit, torngit: TorngitBaseAdapter
     ) -> int | str | None:
-        """Pins down the github app to use when emitting notifications for this commit, as needed.
+        """Pin the GitHub app to use when emitting notifications for this commit, as needed.
 
         For non-GitHub, do nothing.
         For situations that we don't use a GithubAppInstance to communicate, do nothing.
