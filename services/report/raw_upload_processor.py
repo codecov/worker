@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import itertools
 import logging
 import random
 import typing
@@ -172,8 +173,7 @@ def process_raw_upload(
         log.info(
             "Example path fixes for this raw upload",
             extra={
-                "fixes": actual_path_fixes.items(),
-                "toc": path_fixer.toc,
+                "fixes": list(itertools.islice(actual_path_fixes.items(), 10)),
                 "disable_default_pathfixes": path_fixer.should_disable_default_pathfixes,
             },
         )

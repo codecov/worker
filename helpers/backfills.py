@@ -17,6 +17,7 @@ def add_repos_service_ids_from_provider(
     owner_service: torngit.base.TorngitBaseAdapter,
     gh_app_installation: GithubAppInstallation,
 ):
+    # TODO: Convert this to the generator function
     repos = async_to_sync(owner_service.list_repos_using_installation)()
 
     if repos:

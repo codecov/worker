@@ -4,7 +4,7 @@ import pytest
 from redis import RedisError
 
 from database.models.core import GithubAppInstallation, Owner
-from database.tests.factories.core import CommitFactory
+from database.tests.factories.core import CommitFactory, RepositoryFactory
 from services.github import get_github_app_for_commit, set_github_app_for_commit
 
 
@@ -51,21 +51,39 @@ class TestGetSetGithubAppsToCommits(object):
             f"app_to_use_for_commit_{commit.id}", "1000", ex=(60 * 60 * 2)
         )
 
-    def test_get_app_for_commit(self, mock_redis):
+    def test_get_app_for_commit(self, mock_redis, dbsession):
+        repo_github = RepositoryFactory(owner__service="github")
+        repo_ghe = RepositoryFactory(owner__service="github_enterprise")
+        repo_gitlab = RepositoryFactory(owner__service="gitlab")
         redis_keys = {
             "app_to_use_for_commit_12": "1200",
             "app_to_use_for_commit_10": "1000",
         }
-        fake_commit_12 = MagicMock(name="fake_commit", **{"id": 12})
-        fake_commit_10 = MagicMock(name="fake_commit", **{"id": 10})
-        fake_commit_50 = MagicMock(name="fake_commit", **{"id": 50})
+        fake_commit_12 = MagicMock(
+            name="fake_commit", **{"id": 12, "repository": repo_github}
+        )
+        fake_commit_10 = MagicMock(
+            name="fake_commit",
+            **{"id": 10, "repository": repo_ghe},
+        )
+        fake_commit_50 = MagicMock(
+            name="fake_commit", **{"id": 50, "repository": repo_github}
+        )
+        fake_commit_gitlab = MagicMock(
+            name="fake_commit", **{"id": 12, "repository": repo_gitlab}
+        )
         mock_redis.get.side_effect = lambda key: redis_keys.get(key)
         assert get_github_app_for_commit(fake_commit_12) == "1200"
         assert get_github_app_for_commit(fake_commit_10) == "1000"
         assert get_github_app_for_commit(fake_commit_50) == None
+        # This feature is Github-exclusive, so we skip checking for commits that are in repos of other providers
+        assert get_github_app_for_commit(fake_commit_gitlab) == None
 
     def test_get_app_for_commit_error(self, mock_redis):
+        repo_github = RepositoryFactory(owner__service="github")
         mock_redis.get.side_effect = RedisError
-        fake_commit_12 = MagicMock(name="fake_commit", **{"id": 12})
+        fake_commit_12 = MagicMock(
+            name="fake_commit", **{"id": 12, "repository": repo_github}
+        )
         assert get_github_app_for_commit(fake_commit_12) == None
         mock_redis.get.assert_called_with("app_to_use_for_commit_12")

@@ -114,7 +114,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -210,7 +213,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -250,11 +256,17 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1300, app_id=300, pem_path="pem_path"
+                    id=installations[1].id,
+                    installation_id=1300,
+                    app_id=300,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[
                     GithubInstallationInfo(
-                        installation_id=1200, app_id=200, pem_path="pem_path"
+                        id=installations[0].id,
+                        installation_id=1200,
+                        app_id=200,
+                        pem_path="pem_path",
                     )
                 ],
                 token_type_mapping=None,
@@ -437,7 +449,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -504,7 +519,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -547,11 +565,17 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1300, app_id=300, pem_path="pem_path"
+                    id=installations[1].id,
+                    installation_id=1300,
+                    app_id=300,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[
                     GithubInstallationInfo(
-                        installation_id=1200, app_id=200, pem_path="pem_path"
+                        id=installations[0].id,
+                        installation_id=1200,
+                        app_id=200,
+                        pem_path="pem_path",
                     )
                 ],
                 token_type_mapping=None,
