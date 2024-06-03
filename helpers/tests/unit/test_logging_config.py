@@ -40,11 +40,8 @@ class TestLoggingConfig(object):
         }
 
     def test_add_fields_with_task(self, mocker):
-        mock_get_task = mocker.patch(
-            "helpers.logging_config.get_current_task",
-            return_value=mocker.MagicMock(request=mocker.MagicMock(id="abcdef")),
-        )
-        mock_get_task.return_value.name = "lkjhg"
+        _ = mocker.patch("helpers.logging_config.task_name", "lkjhg")
+        _ = mocker.patch("helpers.logging_config.task_id", "abcdef")
         log_record, record, message_dict = {}, mocker.MagicMock(), {"message": "aaa"}
         log_formatter = CustomLocalJsonFormatter()
         log_formatter.add_fields(log_record, record, message_dict)
