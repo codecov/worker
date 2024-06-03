@@ -64,6 +64,9 @@ def set_github_app_for_commit(
 
 
 def get_github_app_for_commit(commit: Commit) -> str | None:
+    if commit.repository.service not in ["github", "github_enterprise"]:
+        # Because this feature is GitHub-exclusive we can skip checking for other providers
+        return None
     redis = get_redis_connection()
     try:
         return redis.get(COMMIT_GHAPP_KEY_NAME(commit.id))
