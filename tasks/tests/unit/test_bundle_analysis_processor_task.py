@@ -10,7 +10,7 @@ from database.tests.factories import CommitFactory, UploadFactory
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
 
 
-def test_bundle_analysis_processor_task(
+def test_bundle_analysis_processor_task_success(
     mocker,
     mock_configuration,
     dbsession,

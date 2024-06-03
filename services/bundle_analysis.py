@@ -153,7 +153,7 @@ class BundleAnalysisReportService(BaseReportService):
             )
             .first()
         )
-        if parent_commit_report.external_id is None:
+        if parent_commit_report is None:
             return None
 
         return bundle_loader.load(parent_commit_report.external_id)
