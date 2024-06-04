@@ -13,7 +13,7 @@ from shared.celery_config import (
 from shared.config import get_config
 from shared.metrics import metrics
 from shared.torngit.base import TorngitBaseAdapter
-from shared.torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
 
@@ -424,29 +424,26 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             async for page in git.list_repos_generator():
                 process_repos(page)
 
-        except SoftTimeLimitExceeded:
+        except (
+            SoftTimeLimitExceeded,
+            TorngitClientError,
+            TorngitServerFailureError,
+        ) as e:
             old_permissions = owner.permission or []
-            log.warning(
-                "System timed out while listing repos",
+            if isinstance(e, SoftTimeLimitExceeded):
+                error_string = "System timed out while listing repos"
+            else:
+                error_string = "Torngit failure while listing repos"
+
+            log.error(
+                f"{error_string}. Permissions list may be incomplete",
+                exc_info=True,
                 extra=dict(
                     ownerid=owner.ownerid,
-                    old_permissions=old_permissions[:100],
                     number_old_permissions=len(old_permissions),
+                    number_new_permissions=len(set(private_project_ids)),
                 ),
             )
-            raise
-        except TorngitClientError:
-            old_permissions = owner.permission or []
-            log.warning(
-                "Unable to verify user permissions on Github. Dropping all permissions",
-                extra=dict(
-                    ownerid=owner.ownerid,
-                    old_permissions=old_permissions[:100],
-                    number_old_permissions=len(old_permissions),
-                ),
-            )
-            owner.permission = []
-            return
 
         log.info(
             "Updating permissions",
