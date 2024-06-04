@@ -28,6 +28,16 @@ def log_set_task_id(id):
     task_id = id
 
 
+def log_read_task_name():
+    global task_name
+    return task_name
+
+
+def log_read_task_id():
+    global task_id
+    return task_id
+
+
 class BaseLogger(JsonFormatter):
     def add_fields(self, log_record, record, message_dict) -> None:
         super(BaseLogger, self).add_fields(log_record, record, message_dict)

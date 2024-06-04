@@ -18,7 +18,12 @@ from sqlalchemy.exc import (
 from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
-from helpers.logging_config import log_set_task_id, log_set_task_name
+from helpers.logging_config import (
+    log_read_task_id,
+    log_read_task_name,
+    log_set_task_id,
+    log_set_task_name,
+)
 from helpers.metrics import metrics
 from helpers.telemetry import MetricContext, TimeseriesTimer
 from helpers.timeseries import timeseries_enabled
@@ -256,6 +261,10 @@ class BaseCodecovTask(celery_app.Task):
         task = get_current_task()
 
         if task and task.request:
+            if log_read_task_name() is not None or log_read_task_id() is not None:
+                log.warning(
+                    "There are multiple tasks concurrently writing to the task name at a given time"
+                )
             log_set_task_name(task.name)
             log_set_task_id(task.request.id)
 
