@@ -293,7 +293,10 @@ def diff_to_string(current_yaml, base_title, base, head_title, head) -> List[str
     spacer = ["=" * row_w]
 
     title = "@@%s@@" % "{text:{fill}{align}{width}}".format(
-        text="Coverage Diff", fill=" ", align="^", width=row_w - 4, strip=True
+        text="Coverage Diff",
+        fill=" ",
+        align="^",
+        width=row_w - 4,
     )
 
     table = (

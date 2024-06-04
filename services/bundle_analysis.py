@@ -123,6 +123,41 @@ class BundleAnalysisReportService(BaseReportService):
             db_session.flush()
         return commit_report
 
+    def _previous_bundle_analysis_report(
+        self, bundle_loader: BundleAnalysisReportLoader, commit: Commit
+    ) -> Optional[BundleAnalysisReport]:
+        """
+        Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
+        Assets to the current one being parsed.
+        """
+        if commit.parent_commit_id is None:
+            return None
+
+        db_session = commit.get_db_session()
+        parent_commit = (
+            db_session.query(Commit)
+            .filter_by(
+                commitid=commit.parent_commit_id,
+                repository=commit.repository,
+            )
+            .first()
+        )
+        if parent_commit is None:
+            return None
+
+        parent_commit_report = (
+            db_session.query(CommitReport)
+            .filter_by(
+                commit_id=parent_commit.id_,
+                report_type=ReportType.BUNDLE_ANALYSIS.value,
+            )
+            .first()
+        )
+        if parent_commit_report is None:
+            return None
+
+        return bundle_loader.load(parent_commit_report.external_id)
+
     @sentry_sdk.trace
     def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
         """
@@ -150,6 +185,11 @@ class BundleAnalysisReportService(BaseReportService):
 
             # load the downloaded data into the bundle report
             session_id = bundle_report.ingest(local_path)
+
+            # Retrieve previous commit's BAR and associate past Assets
+            prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
+            if prev_bar:
+                bundle_report.associate_previous_assets(prev_bar)
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
