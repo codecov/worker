@@ -12,7 +12,7 @@ from shared.celery_config import (
     sync_repo_languages_gql_task_name,
     sync_repo_languages_task_name,
 )
-from shared.torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError, TorngitServer5xxCodeError
 
 from database.models import Owner, Repository
 from database.models.core import (
@@ -654,58 +654,69 @@ class TestSyncReposTaskUnit(object):
             # repos are no longer using integration
             assert repo.using_integration is False
 
-    def test_sync_repos_no_github_access(
+    @pytest.mark.parametrize(
+        "list_repos_error",
+        [
+            TorngitClientError("code", "response", "message"),
+            TorngitServer5xxCodeError("5xx error"),
+            SoftTimeLimitExceeded(),
+        ],
+    )
+    def test_sync_repos_list_repos_error(
         self,
         dbsession,
         mock_owner_provider,
+        list_repos_error,
     ):
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
-        repos = [RepositoryFactory.create(private=True) for _ in range(10)]
-        dbsession.add_all(repos)
-        dbsession.flush()
         user = OwnerFactory.create(
             organizations=[],
             service="github",
             username="1nf1n1t3l00p",
             unencrypted_oauth_token=token,
-            permission=sorted([r.repoid for r in repos]),
             service_id="45343385",
         )
-        assert len(user.permission) > 0
         dbsession.add(user)
         dbsession.flush()
-        mock_owner_provider.list_repos.side_effect = TorngitClientError(
-            "code", "response", "message"
-        )
+
+        repos = [RepositoryFactory.create(private=True, owner=user) for _ in range(10)]
+        dbsession.add_all(repos)
+        dbsession.flush()
+
+        user.permission = sorted([r.repoid for r in repos])
+        assert len(user.permission) > 0
+        dbsession.flush()
+
+        list_repos_result = [
+            dict(
+                owner=dict(
+                    service_id=repo.owner.service_id,
+                    username=repo.owner.username,
+                ),
+                repo=dict(
+                    service_id=repo.service_id,
+                    name=repo.name,
+                    language=repo.language,
+                    private=repo.private,
+                    branch=repo.branch or "master",
+                ),
+            )
+            for repo in repos
+        ]
+
+        # Yield the first page of repos and then throw an error
+        async def mock_list_repos_generator(*args, **kwargs):
+            yield list_repos_result[:5]
+            raise list_repos_error
+
+        mock_owner_provider.list_repos_generator = mock_list_repos_generator
+
         SyncReposTask().run_impl(
             dbsession, ownerid=user.ownerid, using_integration=False
         )
-        assert user.permission == []  # repos were removed
 
-    def test_sync_repos_timeout(
-        self,
-        dbsession,
-        mock_owner_provider,
-    ):
-        repos = [RepositoryFactory.create(private=True) for _ in range(10)]
-        dbsession.add_all(repos)
-        dbsession.flush()
-        user = OwnerFactory.create(
-            organizations=[], permission=sorted([r.repoid for r in repos])
-        )
-        assert len(user.permission) > 0
-        dbsession.add(user)
-        dbsession.flush()
-
-        mock_owner_provider.list_repos_generator.side_effect = SoftTimeLimitExceeded()
-
-        with pytest.raises(SoftTimeLimitExceeded):
-            SyncReposTask().run_impl(
-                dbsession, ownerid=user.ownerid, using_integration=False
-            )
-        assert user.permission == sorted(
-            [r.repoid for r in repos]
-        )  # repos were removed
+        # `list_repos()` raised an error so we couldn't finish every repo, but the first page was finished and should show up here.
+        assert user.permission == sorted([r.repoid for r in repos[:5]])
 
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"

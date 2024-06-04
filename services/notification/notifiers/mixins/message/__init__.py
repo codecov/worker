@@ -260,7 +260,7 @@ class MessageMixin(object):
     def get_upper_section_names(self, settings):
         sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
         headers = ["newheader", "header", "condensed_header"]
-        if all(not x in sections for x in headers):
+        if all(x not in sections for x in headers):
             sections.insert(0, "condensed_header")
 
         return [

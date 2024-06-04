@@ -413,8 +413,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan]({links['plan_url']}).",
-            f"",
-            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+            "",
+            "**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
 
     def _create_upgrade_message(self, comparison):
@@ -430,15 +430,15 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             return [
                 f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
                 f"Please [activate this user on Codecov]({links['members_url_cloud']}) to display this PR comment.",
-                f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-                f"Please don't hesitate to email us at support@codecov.io with any questions.",
+                "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+                "Please don't hesitate to email us at support@codecov.io with any questions.",
             ]
         else:
             return [
                 f"The author of this PR, {author_username}, is not activated in your Codecov Self-Hosted installation.",
                 f"Please [activate this user]({links['members_url_self_hosted']}) to display this PR comment.",
-                f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
-                f"Please contact your Codecov On-Premises installation administrator with any questions.",
+                "Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
+                "Please contact your Codecov On-Premises installation administrator with any questions.",
             ]
 
     def _create_processing_upload_message(self):
