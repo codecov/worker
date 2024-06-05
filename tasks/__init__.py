@@ -13,6 +13,9 @@ from tasks.backfill_owners_without_gh_app_installations import (
 from tasks.brolly_stats_rollup import brolly_stats_rollup_task
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
+from tasks.bundle_analysis_save_measurements import (
+    bundle_analysis_save_measurements_task,
+)
 from tasks.commit_update import commit_update_task
 from tasks.compute_comparison import compute_comparison_task
 from tasks.delete_owner import delete_owner_task

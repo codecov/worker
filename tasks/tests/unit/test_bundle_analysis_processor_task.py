@@ -8,22 +8,28 @@ from shared.storage.exceptions import PutRequestRateLimitError
 from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
+from tasks.bundle_analysis_save_measurements import (
+    bundle_analysis_save_measurements_task_name,
+)
 
 
 def test_bundle_analysis_processor_task_success(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     commit = CommitFactory.create(state="pending")
     dbsession.add(commit)
@@ -68,18 +74,21 @@ def test_bundle_analysis_processor_task_success(
 
 def test_bundle_analysis_processor_task_error(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     commit = CommitFactory.create(state="pending")
     dbsession.add(commit)
@@ -130,18 +139,21 @@ def test_bundle_analysis_processor_task_error(
 
 def test_bundle_analysis_processor_task_general_error(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     process_upload = mocker.patch(
         "services.bundle_analysis.BundleAnalysisReportService.process_upload"
@@ -188,14 +200,19 @@ def test_bundle_analysis_process_upload_general_error(
     mocker,
     dbsession,
     mock_storage,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     commit = CommitFactory.create(state="pending")
     dbsession.add(commit)
@@ -251,18 +268,22 @@ def test_bundle_analysis_process_upload_general_error(
 
 def test_bundle_analysis_processor_task_locked(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
     mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
     mock_redis.lock.return_value.__enter__.side_effect = LockError()
 
     commit = CommitFactory.create()
@@ -295,7 +316,7 @@ def test_bundle_analysis_processor_task_locked(
             "commit": commit.commitid,
         },
     )
-    assert result == None
+    assert result is None
 
     assert upload.state == "started"
     retry.assert_called_once_with(countdown=ANY, max_retries=5)
@@ -303,18 +324,21 @@ def test_bundle_analysis_processor_task_locked(
 
 def test_bundle_analysis_process_upload_rate_limit_error(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     commit = CommitFactory.create(state="pending")
     dbsession.add(commit)
@@ -368,18 +392,21 @@ def test_bundle_analysis_process_upload_rate_limit_error(
 
 def test_bundle_analysis_process_associate_no_parent_commit_id(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     parent_commit = CommitFactory.create(state="completed")
     dbsession.add(parent_commit)
@@ -418,18 +445,21 @@ def test_bundle_analysis_process_associate_no_parent_commit_id(
 
 def test_bundle_analysis_process_associate_no_parent_commit_object(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     parent_commit = CommitFactory.create(state="completed")
 
@@ -468,18 +498,21 @@ def test_bundle_analysis_process_associate_no_parent_commit_object(
 
 def test_bundle_analysis_process_associate_no_parent_commit_report_object(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     parent_commit = CommitFactory.create(state="completed")
     dbsession.add(parent_commit)
@@ -522,18 +555,21 @@ def test_bundle_analysis_process_associate_no_parent_commit_report_object(
 
 def test_bundle_analysis_process_associate_called(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     parent_commit = CommitFactory.create(state="completed")
     dbsession.add(parent_commit)
@@ -582,18 +618,21 @@ def test_bundle_analysis_process_associate_called(
 
 def test_bundle_analysis_process_associate_called_two(
     mocker,
-    mock_configuration,
     dbsession,
     mock_storage,
-    mock_redis,
-    celery_app,
 ):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
     )
     mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
 
-    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     parent_commit = CommitFactory.create(state="completed")
     dbsession.add(parent_commit)

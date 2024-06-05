@@ -3,6 +3,8 @@ import os
 import tempfile
 from dataclasses import dataclass
 from functools import cached_property
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import sentry_sdk
@@ -14,6 +16,7 @@ from shared.bundle_analysis import (
     BundleChange,
 )
 from shared.bundle_analysis.storage import get_bucket_name
+from shared.bundle_analysis.models import AssetType
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
@@ -21,8 +24,18 @@ from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
 
+from services.timeseries import repository_datasets_query
+
 from database.enums import ReportType
-from database.models import Commit, CommitReport, Repository, Upload, UploadError
+from database.models import (
+    Commit,
+    CommitReport,
+    Measurement,
+    MeasurementName,
+    Repository,
+    Upload,
+    UploadError,
+)
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from services.archive import ArchiveService
 from services.report import BaseReportService
@@ -252,6 +265,101 @@ class BundleAnalysisReportService(BaseReportService):
             bundle_report=bundle_report,
             session_id=session_id,
         )
+
+    def _save_to_timeseries(
+        self, db_session: Session, commit: Commit, measurable_id: str, value: float
+    ):
+        command = insert(Measurement.__table__).values(
+            name=MeasurementName.bundle_analysis_report_size.value,
+            owner_id=commit.repository.ownerid,
+            repo_id=commit.repoid,
+            measurable_id=measurable_id,
+            branch=commit.branch,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            value=value,
+        )
+        command = command.on_conflict_do_update(
+            index_elements=[
+                Measurement.name,
+                Measurement.owner_id,
+                Measurement.repo_id,
+                Measurement.measurable_id,
+                Measurement.commit_sha,
+                Measurement.timestamp,
+            ],
+            set_=dict(
+                branch=command.excluded.branch,
+                value=command.excluded.value,
+            ),
+        )
+        db_session.execute(command)
+        db_session.flush()
+
+    @sentry_sdk.trace
+    def save_measurements(self, commit: Commit, upload: Upload) -> ProcessingResult:
+        """
+        Save timeseries measurements for this bundle analysis report
+        """
+        try:
+            commit_report: CommitReport = upload.report
+            repo_hash = ArchiveService.get_archive_hash(commit_report.commit.repository)
+            storage_service = get_storage_client()
+            bundle_loader = BundleAnalysisReportLoader(storage_service, repo_hash)
+
+            # fetch existing bundle report from storage
+            bundle_analysis_report = bundle_loader.load(commit_report.external_id)
+
+            dataset_names = [
+                dataset.name for dataset in repository_datasets_query(commit.repository)
+            ]
+
+            db_session = commit.get_db_session()
+            for bundle_report in bundle_analysis_report.bundle_reports():
+                # For overall bundle size
+                if MeasurementName.bundle_analysis_report_size.value in dataset_names:
+                    self._save_to_timeseries(
+                        db_session,
+                        commit,
+                        bundle_report.name,
+                        bundle_report.total_size(),
+                    )
+
+                # For individual javascript associated assets using UUID
+                if MeasurementName.bundle_analysis_asset_size.value in dataset_names:
+                    for asset in bundle_report.asset_reports():
+                        if asset.asset_type == AssetType.JAVASCRIPT:
+                            self._save_to_timeseries(
+                                db_session,
+                                commit,
+                                asset.uuid,
+                                asset.size,
+                            )
+
+            return ProcessingResult(
+                upload=upload,
+                commit=commit,
+            )
+        except Exception:
+            sentry_metrics.incr(
+                "bundle_analysis_upload",
+                tags={
+                    "result": "parser_error",
+                    "repository": commit.repository.repoid,
+                },
+            )
+            return ProcessingResult(
+                upload=upload,
+                commit=commit,
+                error=ProcessingError(
+                    code="measurement_save_error",
+                    params={
+                        "location": upload.storage_path,
+                        "repository": commit.repository.repoid,
+                    },
+                    is_retryable=False,
+                ),
+            )
 
 
 class ComparisonError(Exception):
