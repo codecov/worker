@@ -3,8 +3,6 @@ import os
 import tempfile
 from dataclasses import dataclass
 from functools import cached_property
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import sentry_sdk
@@ -15,16 +13,16 @@ from shared.bundle_analysis import (
     BundleAnalysisReportLoader,
     BundleChange,
 )
-from shared.bundle_analysis.storage import get_bucket_name
 from shared.bundle_analysis.models import AssetType
+from shared.bundle_analysis.storage import get_bucket_name
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
-
-from services.timeseries import repository_datasets_query
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 
 from database.enums import ReportType
 from database.models import (
@@ -45,6 +43,7 @@ from services.repository import (
     get_repo_provider_service,
 )
 from services.storage import get_storage_client
+from services.timeseries import repository_datasets_query
 from services.urls import get_bundle_analysis_pull_url
 from services.yaml import read_yaml_field
 

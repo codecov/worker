@@ -1,16 +1,15 @@
 import logging
 from typing import Any, Dict
 
+from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit, Upload
+from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
-
-from shared.yaml import UserYaml
-from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
 
 log = logging.getLogger(__name__)
 

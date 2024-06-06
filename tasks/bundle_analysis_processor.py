@@ -13,7 +13,6 @@ from database.models import Commit, Upload
 from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
-
 from tasks.bundle_analysis_save_measurements import (
     bundle_analysis_save_measurements_task_name,
 )
