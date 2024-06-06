@@ -3,12 +3,19 @@ from shared.bundle_analysis.comparison import BundleChange
 from shared.yaml import UserYaml
 
 from database.enums import ReportType
-from database.models import CommitReport
-from database.tests.factories import CommitFactory, PullFactory
+from database.models import CommitReport, MeasurementName
+from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from services.archive import ArchiveService
-from services.bundle_analysis import Notifier, get_bucket_name
+from services.bundle_analysis import (
+    BundleAnalysisReportService,
+    Notifier,
+    ProcessingResult,
+    get_bucket_name,
+)
 from services.repository import EnrichedPull
 from services.urls import get_bundle_analysis_pull_url
+from database.tests.factories.timeseries import DatasetFactory, Measurement
+from shared.bundle_analysis.models import AssetType
 
 
 class MockBundleReport:
@@ -498,3 +505,239 @@ async def test_bundle_analysis_notify_missing_pull(
 
     success = await notifier.notify()
     assert success == False
+
+
+@pytest.mark.asyncio
+async def test_bundle_analysis_save_measurements_report_size(
+    dbsession, mocker, mock_storage
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    commit = CommitFactory()
+    dbsession.add(commit)
+    dbsession.commit()
+
+    commit_report = CommitReport(
+        commit=commit, report_type=ReportType.BUNDLE_ANALYSIS.value
+    )
+    dbsession.add(commit_report)
+    dbsession.commit()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.commit()
+
+    dataset = DatasetFactory.create(
+        name=MeasurementName.bundle_analysis_report_size.value,
+        repository_id=commit.repository.repoid,
+    )
+    dbsession.add(dataset)
+    dbsession.commit()
+
+    class MockBundleReport:
+        def __init__(self, bundle_name, size):
+            self.bundle_name = bundle_name
+            self.size = size
+
+        @property
+        def name(self):
+            return self.bundle_name
+
+        def total_size(self):
+            return self.size
+
+    class MockBundleAnalysisReport:
+        def bundle_reports(self):
+            return [
+                MockBundleReport("BundleA", 1111),
+                MockBundleReport("BundleB", 2222),
+            ]
+
+    mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.load",
+        return_value=MockBundleAnalysisReport(),
+    )
+
+    report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
+    result: ProcessingResult = report_service.save_measurements(commit, upload)
+
+    assert result.error is None
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_report_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="BundleA",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 1111
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_report_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="BundleB",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 2222
+
+
+@pytest.mark.asyncio
+async def test_bundle_analysis_save_measurements_asset_size(
+    dbsession, mocker, mock_storage
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    commit = CommitFactory()
+    dbsession.add(commit)
+    dbsession.commit()
+
+    commit_report = CommitReport(
+        commit=commit, report_type=ReportType.BUNDLE_ANALYSIS.value
+    )
+    dbsession.add(commit_report)
+    dbsession.commit()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.commit()
+
+    dataset = DatasetFactory.create(
+        name=MeasurementName.bundle_analysis_asset_size.value,
+        repository_id=commit.repository.repoid,
+    )
+    dbsession.add(dataset)
+    dbsession.commit()
+
+    class MockAssetReport:
+        def __init__(self, mock_uuid, mock_size, mock_type):
+            self.mock_uuid = mock_uuid
+            self.mock_size = mock_size
+            self.mock_type = mock_type
+
+        @property
+        def uuid(self):
+            return self.mock_uuid
+
+        @property
+        def size(self):
+            return self.mock_size
+
+        @property
+        def asset_type(self):
+            return self.mock_type
+
+    class MockBundleReport:
+        def __init__(self, bundle_name, size):
+            self.bundle_name = bundle_name
+            self.size = size
+
+        @property
+        def name(self):
+            return self.bundle_name
+
+        def total_size(self):
+            return self.size
+
+        def asset_reports(self):
+            return [
+                MockAssetReport("UUID1", 123, AssetType.JAVASCRIPT),
+                MockAssetReport("UUID2", 321, AssetType.JAVASCRIPT),
+            ]
+
+    class MockBundleAnalysisReport:
+        def bundle_reports(self):
+            return [MockBundleReport("BundleA", 1111)]
+
+    mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.load",
+        return_value=MockBundleAnalysisReport(),
+    )
+
+    report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
+    result: ProcessingResult = report_service.save_measurements(commit, upload)
+
+    assert result.error is None
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_asset_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="UUID1",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 123
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_asset_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="UUID2",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 321
+
+
+@pytest.mark.asyncio
+async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_storage):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    commit = CommitFactory()
+    dbsession.add(commit)
+    dbsession.commit()
+
+    commit_report = CommitReport(
+        commit=commit, report_type=ReportType.BUNDLE_ANALYSIS.value
+    )
+    dbsession.add(commit_report)
+    dbsession.commit()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.commit()
+
+    dataset = DatasetFactory.create(
+        name=MeasurementName.bundle_analysis_asset_size.value,
+        repository_id=commit.repository.repoid,
+    )
+    dbsession.add(dataset)
+    dbsession.commit()
+
+    mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.load",
+        return_value=None,
+    )
+
+    report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
+    result: ProcessingResult = report_service.save_measurements(commit, upload)
+
+    assert result.error is not None

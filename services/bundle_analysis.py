@@ -266,10 +266,15 @@ class BundleAnalysisReportService(BaseReportService):
         )
 
     def _save_to_timeseries(
-        self, db_session: Session, commit: Commit, measurable_id: str, value: float
+        self,
+        db_session: Session,
+        commit: Commit,
+        name: str,
+        measurable_id: str,
+        value: float,
     ):
         command = insert(Measurement.__table__).values(
-            name=MeasurementName.bundle_analysis_report_size.value,
+            name=name,
             owner_id=commit.repository.ownerid,
             repo_id=commit.repoid,
             measurable_id=measurable_id,
@@ -320,6 +325,7 @@ class BundleAnalysisReportService(BaseReportService):
                     self._save_to_timeseries(
                         db_session,
                         commit,
+                        MeasurementName.bundle_analysis_report_size.value,
                         bundle_report.name,
                         bundle_report.total_size(),
                     )
@@ -331,6 +337,7 @@ class BundleAnalysisReportService(BaseReportService):
                             self._save_to_timeseries(
                                 db_session,
                                 commit,
+                                MeasurementName.bundle_analysis_asset_size.value,
                                 asset.uuid,
                                 asset.size,
                             )
