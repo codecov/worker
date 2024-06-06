@@ -342,6 +342,27 @@ class BundleAnalysisReportService(BaseReportService):
                                 asset.size,
                             )
 
+                # For asset types sizes
+                asset_type_map = {
+                    MeasurementName.bundle_analysis_font_size: AssetType.FONT,
+                    MeasurementName.bundle_analysis_image_size: AssetType.IMAGE,
+                    MeasurementName.bundle_analysis_stylesheet_size: AssetType.STYLESHEET,
+                    MeasurementName.bundle_analysis_javascript_size: AssetType.JAVASCRIPT,
+                }
+                for measurement_name, asset_type in asset_type_map.items():
+                    if measurement_name.value in dataset_names:
+                        total_size = 0
+                        for asset in bundle_report.asset_reports():
+                            if asset.asset_type == asset_type:
+                                total_size += asset.size
+                        self._save_to_timeseries(
+                            db_session,
+                            commit,
+                            measurement_name.value,
+                            bundle_report.name,
+                            total_size,
+                        )
+
             return ProcessingResult(
                 upload=upload,
                 commit=commit,

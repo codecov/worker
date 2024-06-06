@@ -705,6 +705,152 @@ async def test_bundle_analysis_save_measurements_asset_size(
 
 
 @pytest.mark.asyncio
+async def test_bundle_analysis_save_measurements_asset_type_sizes(
+    dbsession, mocker, mock_storage
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    commit = CommitFactory()
+    dbsession.add(commit)
+    dbsession.commit()
+
+    commit_report = CommitReport(
+        commit=commit, report_type=ReportType.BUNDLE_ANALYSIS.value
+    )
+    dbsession.add(commit_report)
+    dbsession.commit()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.commit()
+
+    measurements_datasets = [
+        MeasurementName.bundle_analysis_stylesheet_size,
+        MeasurementName.bundle_analysis_font_size,
+        MeasurementName.bundle_analysis_image_size,
+        MeasurementName.bundle_analysis_javascript_size,
+    ]
+    for measurement in measurements_datasets:
+        dataset = DatasetFactory.create(
+            name=measurement.value,
+            repository_id=commit.repository.repoid,
+        )
+        dbsession.add(dataset)
+        dbsession.commit()
+
+    class MockAssetReport:
+        def __init__(self, mock_uuid, mock_size, mock_type):
+            self.mock_uuid = mock_uuid
+            self.mock_size = mock_size
+            self.mock_type = mock_type
+
+        @property
+        def uuid(self):
+            return self.mock_uuid
+
+        @property
+        def size(self):
+            return self.mock_size
+
+        @property
+        def asset_type(self):
+            return self.mock_type
+
+    class MockBundleReport:
+        def __init__(self, bundle_name, size):
+            self.bundle_name = bundle_name
+            self.size = size
+
+        @property
+        def name(self):
+            return self.bundle_name
+
+        def total_size(self):
+            return self.size
+
+        def asset_reports(self):
+            return [
+                MockAssetReport("UUID1", 111, AssetType.JAVASCRIPT),
+                MockAssetReport("UUID2", 222, AssetType.FONT),
+                MockAssetReport("UUID3", 333, AssetType.IMAGE),
+                MockAssetReport("UUID4", 444, AssetType.STYLESHEET),
+            ]
+
+    class MockBundleAnalysisReport:
+        def bundle_reports(self):
+            return [MockBundleReport("BundleA", 1111)]
+
+    mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.load",
+        return_value=MockBundleAnalysisReport(),
+    )
+
+    report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
+    result: ProcessingResult = report_service.save_measurements(commit, upload)
+
+    assert result.error is None
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_javascript_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="BundleA",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 111
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_font_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="BundleA",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 222
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_image_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="BundleA",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 333
+
+    measurements = (
+        dbsession.query(Measurement)
+        .filter_by(
+            name=MeasurementName.bundle_analysis_stylesheet_size.value,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            measurable_id="BundleA",
+        )
+        .all()
+    )
+
+    assert len(measurements) == 1
+    assert measurements[0].value == 444
+
+
+@pytest.mark.asyncio
 async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_storage):
     storage_path = (
         "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"

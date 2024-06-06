@@ -12,7 +12,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 bundle_analysis_save_measurements_task_name = (
-    "app.tasks.bundle_analysis.BundleAnalysisMeasurements"
+    "app.tasks.bundle_analysis.BundleAnalysisSaveMeasurements"
 )
 
 
