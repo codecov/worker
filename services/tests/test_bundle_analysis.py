@@ -1,10 +1,12 @@
 import pytest
 from shared.bundle_analysis.comparison import BundleChange
+from shared.bundle_analysis.models import AssetType
 from shared.yaml import UserYaml
 
 from database.enums import ReportType
 from database.models import CommitReport, MeasurementName
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
+from database.tests.factories.timeseries import DatasetFactory, Measurement
 from services.archive import ArchiveService
 from services.bundle_analysis import (
     BundleAnalysisReportService,
@@ -14,8 +16,6 @@ from services.bundle_analysis import (
 )
 from services.repository import EnrichedPull
 from services.urls import get_bundle_analysis_pull_url
-from database.tests.factories.timeseries import DatasetFactory, Measurement
-from shared.bundle_analysis.models import AssetType
 
 
 class MockBundleReport:
