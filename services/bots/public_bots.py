@@ -7,6 +7,7 @@ from shared.typings.oauth_token_types import Token
 
 from database.models.core import Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
+from services.bots.helpers import get_token_type_from_config
 from services.bots.types import TokenTypeMapping, TokenWithOwner
 
 log = logging.getLogger(__name__)
@@ -58,11 +59,20 @@ def get_token_type_mapping(
             "No admin_bog_token provided, but still continuing operations in case it is not doing an admin call anyway",
             extra=dict(repoid=repo.repoid),
         )
-    return {
-        TokenType.read: admin_bot_token or get_config(repo.service, "bots", "read"),
+
+    mapping = {
         TokenType.admin: admin_bot_token,
+        # [GitHub] Only legacy PATs can post statuses and comment to all public repos, so there can't be a dedicated_app for this
         TokenType.comment: get_config(repo.service, "bots", "comment"),
         TokenType.status: admin_bot_token or get_config(repo.service, "bots", "status"),
-        TokenType.tokenless: admin_bot_token
-        or get_config(repo.service, "bots", "tokenless"),
     }
+    for token_type in [
+        TokenType.read,
+        TokenType.tokenless,
+        TokenType.commit,
+        TokenType.pull,
+    ]:
+        mapping[token_type] = admin_bot_token or get_token_type_from_config(
+            repo.service, token_type
+        )
+    return mapping
