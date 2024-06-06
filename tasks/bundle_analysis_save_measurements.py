@@ -1,14 +1,12 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
-from database.enums import ReportType
 from database.models import Commit, Upload
 from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
-from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -34,46 +32,6 @@ class BundleAnalysisSaveMeasurementsTask(
 
         log.info(
             "Starting bundle analysis save measurements",
-            extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                previous_result=previous_result,
-            ),
-        )
-
-        lock_manager = LockManager(
-            repoid=repoid,
-            commitid=commitid,
-            report_type=ReportType.BUNDLE_ANALYSIS,
-        )
-
-        try:
-            with lock_manager.locked(
-                LockType.BUNDLE_ANALYSIS_NOTIFY,
-                retry_num=self.request.retries,
-            ):
-                return self.process_impl_within_lock(
-                    db_session=db_session,
-                    repoid=repoid,
-                    commitid=commitid,
-                    uploadid=uploadid,
-                    commit_yaml=commit_yaml,
-                    previous_result=previous_result,
-                )
-        except LockRetry as retry:
-            self.retry(max_retries=5, countdown=retry.countdown)
-
-    def process_impl_within_lock(
-        self,
-        db_session: Session,
-        repoid: int,
-        commitid: str,
-        uploadid: int,
-        commit_yaml: dict,
-        previous_result: Dict[str, Any],
-    ):
-        log.info(
-            "Running bundle analysis save measurements",
             extra=dict(
                 repoid=repoid,
                 commit=commitid,
