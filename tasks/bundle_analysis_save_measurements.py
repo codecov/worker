@@ -112,7 +112,7 @@ class BundleAnalysisSaveMeasurementsTask(
             ),
         )
 
-        return {"successful": result.error is None}
+        return {"successful": save_measurements}
 
 
 RegisteredBundleAnalysisSaveMeasurementsTask = celery_app.register_task(
