@@ -85,6 +85,7 @@ def test_bundle_analysis_save_measurements_task_error_from_save_service(
     )
     assert result == {"successful": False}
 
+
 def test_bundle_analysis_save_measurements_task_error_from_processor_task(
     mocker, dbsession, mock_storage, celery_app
 ):
