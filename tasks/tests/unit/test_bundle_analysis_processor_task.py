@@ -10,7 +10,7 @@ from database.tests.factories import CommitFactory, UploadFactory
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
 
 
-def test_bundle_analysis_processor_task(
+def test_bundle_analysis_processor_task_success(
     mocker,
     mock_configuration,
     dbsession,
@@ -364,3 +364,288 @@ def test_bundle_analysis_process_upload_rate_limit_error(
     assert commit.state == "error"
     assert upload.state == "error"
     retry.assert_called_once_with(countdown=20, max_retries=5)
+
+
+def test_bundle_analysis_process_associate_no_parent_commit_id(
+    mocker,
+    mock_configuration,
+    dbsession,
+    mock_storage,
+    mock_redis,
+    celery_app,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+
+    parent_commit = CommitFactory.create(state="completed")
+    dbsession.add(parent_commit)
+    dbsession.flush()
+
+    commit = CommitFactory.create(state="pending", parent_commit_id=None)
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
+    ingest.return_value = 123  # session_id
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+
+
+def test_bundle_analysis_process_associate_no_parent_commit_object(
+    mocker,
+    mock_configuration,
+    dbsession,
+    mock_storage,
+    mock_redis,
+    celery_app,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+
+    parent_commit = CommitFactory.create(state="completed")
+
+    commit = CommitFactory.create(
+        state="pending", parent_commit_id=parent_commit.commitid
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
+    ingest.return_value = 123  # session_id
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+
+
+def test_bundle_analysis_process_associate_no_parent_commit_report_object(
+    mocker,
+    mock_configuration,
+    dbsession,
+    mock_storage,
+    mock_redis,
+    celery_app,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+
+    parent_commit = CommitFactory.create(state="completed")
+    dbsession.add(parent_commit)
+    dbsession.flush()
+
+    commit = CommitFactory.create(
+        state="pending",
+        parent_commit_id=parent_commit.commitid,
+        repository=parent_commit.repository,
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
+    ingest.return_value = 123  # session_id
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+
+
+def test_bundle_analysis_process_associate_called(
+    mocker,
+    mock_configuration,
+    dbsession,
+    mock_storage,
+    mock_redis,
+    celery_app,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+
+    parent_commit = CommitFactory.create(state="completed")
+    dbsession.add(parent_commit)
+    dbsession.flush()
+
+    parent_commit_report = CommitReport(
+        commit_id=parent_commit.id_, report_type="bundle_analysis"
+    )
+    dbsession.add(parent_commit_report)
+    dbsession.flush()
+
+    commit = CommitFactory.create(
+        state="pending",
+        parent_commit_id=parent_commit.commitid,
+        repository=parent_commit.repository,
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
+    ingest.return_value = 123  # session_id
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+
+
+def test_bundle_analysis_process_associate_called_two(
+    mocker,
+    mock_configuration,
+    dbsession,
+    mock_storage,
+    mock_redis,
+    celery_app,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(BundleAnalysisProcessorTask, "app", celery_app)
+
+    parent_commit = CommitFactory.create(state="completed")
+    dbsession.add(parent_commit)
+    dbsession.flush()
+
+    parent_commit_report = CommitReport(
+        commit_id=parent_commit.id_, report_type="bundle_analysis"
+    )
+    dbsession.add(parent_commit_report)
+    dbsession.flush()
+
+    commit = CommitFactory.create(
+        state="pending",
+        parent_commit_id=parent_commit.commitid,
+        repository=parent_commit.repository,
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
+    ingest.return_value = 123  # session_id
+
+    associate = mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReport.associate_previous_assets"
+    )
+    associate.return_value = None
+
+    prev_bundle_report = mocker.patch(
+        "services.bundle_analysis.BundleAnalysisReportService._previous_bundle_analysis_report"
+    )
+    prev_bundle_report.return_value = True
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+    associate.assert_called_once()

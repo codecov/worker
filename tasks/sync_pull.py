@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List, Sequence
@@ -8,6 +9,7 @@ from typing import Any, Dict, List, Sequence
 import sqlalchemy.orm
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
+from sentry_sdk import metrics as sentry_metrics
 from shared.celery_config import notify_task_name, pulls_task_name
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
@@ -19,6 +21,7 @@ from database.models import Commit, Pull, Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
+from rollouts import SYNC_PULL_LOCK_TIMEOUT
 from services.comparison.changes import get_changes
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
@@ -64,8 +67,27 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         pullid = int(pullid)
         repoid = int(repoid)
         lock_name = f"pullsync_{repoid}_{pullid}"
+        wait_for_lock_timeout_seconds = 5
+        metrics_tag = "long_timeout"
+        if SYNC_PULL_LOCK_TIMEOUT.check_value(identifier=repoid):
+            wait_for_lock_timeout_seconds = 1
+            metrics_tag = "short_timeout"
+        start_wait = time.monotonic()
         try:
-            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+            with redis_connection.lock(
+                lock_name,
+                timeout=60 * 5,
+                blocking_timeout=wait_for_lock_timeout_seconds,
+            ):
+                sentry_metrics.incr(
+                    "sync_pull_task_run_count", tags={"wait": metrics_tag}
+                )
+                time_to_get_lock_seconds = time.monotonic() - start_wait
+                sentry_metrics.distribution(
+                    "sync_pull_task_time_to_get_lock_seconds",
+                    time_to_get_lock_seconds,
+                    tags={"wait": metrics_tag},
+                )
                 return self.run_impl_within_lock(
                     db_session,
                     redis_connection,
