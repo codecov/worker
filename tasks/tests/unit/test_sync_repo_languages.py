@@ -183,7 +183,7 @@ class TestSyncRepoLanguages(object):
             task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == None
         )
 
-    def test_languages_intersection_and_synced_beyond_threshold(
+    def test_languages_intersection_and_synced_beyond_threshold_with_languages(
         self, dbsession, setup_with_languages
     ):
         mocked_beyond_threshold = MOCKED_NOW + timedelta(days=-10)

@@ -35,7 +35,6 @@ from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis import BundleAnalysisReportService
 from services.redis import (
-    Redis,
     download_archive_from_redis,
     get_parallel_upload_processing_session_counter_redis_key,
     get_redis_connection,
@@ -409,7 +408,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 checkpoints.log(UploadFlow.PROCESSING_BEGIN)
             except ValueError as e:
                 log.warning(
-                    f"CheckpointLogger failed to log/submit", extra=dict(error=e)
+                    "CheckpointLogger failed to log/submit", extra=dict(error=e)
                 )
 
         commit = None

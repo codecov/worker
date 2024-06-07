@@ -118,18 +118,6 @@ class TestNewUserActivatedTaskUnit(object):
             "reason": "org not on pr author billing plan",
         }
 
-    def test_org_not_on_pr_plan(self, mocker, dbsession, pull):
-        pull.repository.owner.plan = "users-inappm"
-        dbsession.flush()
-        res = NewUserActivatedTask().run_impl(
-            dbsession, pull.repository.owner.ownerid, pull.author.ownerid
-        )
-        assert res == {
-            "notifies_scheduled": False,
-            "pulls_notified": [],
-            "reason": "org not on pr author billing plan",
-        }
-
     def test_no_commit_notifications_found(self, mocker, dbsession, pull):
         mocked_possibly_resend_notifications = mocker.patch(
             "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications"

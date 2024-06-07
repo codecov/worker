@@ -111,7 +111,7 @@ class TestCleanLabelsIndexSyncronization(object):
     def test__is_currently_processing(
         self, mock_redis, commitid, is_currently_processing
     ):
-        mock_redis.keys = {f"upload_processing_lock_1_sha_1": True}
+        mock_redis.keys = {"upload_processing_lock_1_sha_1": True}
         lock_name = UPLOAD_PROCESSING_LOCK_NAME(1, commitid)
         task = CleanLabelsIndexTask()
         assert (

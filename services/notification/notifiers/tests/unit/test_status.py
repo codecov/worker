@@ -1576,7 +1576,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"50.00% (target 80.00%)",
+            "message": "50.00% (target 80.00%)",
             "state": "failure",
         }
         result = await notifier.build_payload(sample_comparison)
@@ -2123,7 +2123,7 @@ class TestPatchStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        expected_result = {"message": f"Coverage not affected", "state": "success"}
+        expected_result = {"message": "Coverage not affected", "state": "success"}
         result = await notifier.build_payload(comparison)
         assert expected_result == result
 
@@ -2144,7 +2144,7 @@ class TestPatchStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"No report found to compare against",
+            "message": "No report found to compare against",
             "state": "success",
         }
         result = await notifier.build_payload(comparison)

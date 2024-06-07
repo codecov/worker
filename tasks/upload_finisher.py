@@ -70,7 +70,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
             checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
         except ValueError as e:
-            log.warning(f"CheckpointLogger failed to log/submit", extra=dict(error=e))
+            log.warning("CheckpointLogger failed to log/submit", extra=dict(error=e))
 
         log.info(
             "Received upload_finisher task",
