@@ -4,10 +4,11 @@ import logging
 import sys
 import typing
 import uuid
+from collections import defaultdict
 from dataclasses import dataclass
 from json import loads
 from time import time
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
@@ -49,6 +50,7 @@ from rollouts import (
     PARALLEL_UPLOAD_PROCESSING_BY_REPO,
 )
 from services.archive import ArchiveService
+from services.delete.delete import delete_upload_by_ids
 from services.redis import (
     PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
     get_parallel_upload_processing_session_counter_redis_key,
@@ -59,6 +61,8 @@ from services.report.parser.types import ParsedRawReport
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
+
+MIN_PARENT_COMMIT_DEPTH = 1
 
 
 @dataclass
@@ -646,7 +650,8 @@ class ReportService(BaseReportService):
     ) -> Optional[Commit]:
         parent_commit = commit.get_parent_commit()
         parent_commit_tracking = []
-        count = 1  # `parent_commit` is already the first parent
+        count = MIN_PARENT_COMMIT_DEPTH  # `parent_commit` is already the first parent
+
         while (
             parent_commit is not None
             and parent_commit.state not in ("complete", "skipped")
@@ -688,7 +693,7 @@ class ReportService(BaseReportService):
                     parent_tracing=parent_commit_tracking,
                 ),
             )
-            return None
+            return (None, None)
         if parent_commit.state not in ("complete", "skipped"):
             log.warning(
                 "None of the parent commits were in a complete state to be used as CFing base",
@@ -700,8 +705,8 @@ class ReportService(BaseReportService):
                     would_be_parent=parent_commit.commitid,
                 ),
             )
-            return None
-        return parent_commit
+            return (None, None)
+        return (parent_commit, count)
 
     async def _possibly_shift_carryforward_report(
         self, carryforward_report: Report, base_commit: Commit, head_commit: Commit
@@ -778,8 +783,10 @@ class ReportService(BaseReportService):
                 )
             )
 
-            parent_commit = self.get_appropriate_commit_to_carryforward_from(
-                commit, max_parenthood_deepness
+            parent_commit, parent_depth = (
+                self.get_appropriate_commit_to_carryforward_from(
+                    commit, max_parenthood_deepness
+                )
             )
             if parent_commit is None:
                 log.warning(
@@ -807,6 +814,14 @@ class ReportService(BaseReportService):
                 if self.current_yaml.flag_has_carryfoward(flag_name):
                     flags_to_carryforward.append(flag_name)
             if not flags_to_carryforward:
+                log.warning(
+                    "There weren't flags to carry forward in the parent commit",
+                    extra=dict(
+                        commit=commit.commitid,
+                        repoid=commit.repoid,
+                        parent_commit=parent_commit.commitid,
+                    ),
+                )
                 return Report()
             paths_to_carryforward = get_paths_from_flags(
                 self.current_yaml, flags_to_carryforward
@@ -826,7 +841,10 @@ class ReportService(BaseReportService):
                 parent_report,
                 flags_to_carryforward,
                 paths_to_carryforward,
-                session_extras=dict(carriedforward_from=parent_commit.commitid),
+                session_extras=dict(
+                    carriedforward_from=parent_commit.commitid,
+                    parent_depth=parent_depth,
+                ),
             )
             # If the parent report has labels we also need to carryforward the label index
             # Considerations:
@@ -1173,6 +1191,74 @@ class ReportService(BaseReportService):
         )
         return {"url": url}
 
+    def _determine_cffs_and_depths_in_db(
+        self, db_session, commit: Commit
+    ) -> Optional[Dict[int, int]]:
+        depths_with_cff_upload_ids = defaultdict(list)
+
+        existing_cff_uploads: Optional[List[Upload]] = (
+            db_session.query(Upload)
+            .filter_by(
+                report_id=commit.report.id_,
+                upload_type=SessionType.carriedforward.value,
+            )
+            .all()
+        )
+
+        if existing_cff_uploads:
+            for upload in existing_cff_uploads:
+                parent_depth = upload.upload_extras.get("parent_depth")
+                if parent_depth:
+                    depths_with_cff_upload_ids[parent_depth].append(upload.id)
+
+            log.info(
+                "Existing cffs and their respective depths",
+                extra=dict(
+                    commit=commit.commitid,
+                    repo=commit.repoid,
+                    existing_uploads=existing_cff_uploads,
+                ),
+            )
+
+        return depths_with_cff_upload_ids
+
+    def _possibly_delete_existing_cffs(
+        self,
+        db_session,
+        commit: Commit,
+        carryforward_report: Report,
+    ):
+        cffs_and_depths_in_db = self._determine_cffs_and_depths_in_db(
+            db_session=db_session, commit=commit
+        )
+
+        if not cffs_and_depths_in_db:
+            return
+
+        # Gets first 'parent_depth' it finds, as all cffs should be carried forward
+        # by the same parent within the same report
+        carryforward_report_depth = MIN_PARENT_COMMIT_DEPTH
+        for upload in carryforward_report.sessions.values():
+            if upload.session_extras.get("parent_depth"):
+                carryforward_report_depth = upload.session_extras.get("parent_depth")
+                break
+
+        # Delete all cff uploads that have a higher depth than the one in
+        # the latest report
+        for parent_depth, upload_ids in cffs_and_depths_in_db.items():
+            if parent_depth > carryforward_report_depth:
+                log.info(
+                    "Deleting upload from DB",
+                    extra=dict(
+                        repoid=commit.repoid,
+                        commit=commit.commitid,
+                    ),
+                )
+                # Potentially make task here - this would make the preprocess task likely timeout
+                delete_upload_by_ids(
+                    db_session=db_session, upload_ids=upload_ids, commit=commit
+                )
+
     def save_full_report(self, commit: Commit, report: Report, report_code=None):
         """
             Saves the report (into database and storage) AND takes care of backfilling its sessions
@@ -1193,6 +1279,17 @@ class ReportService(BaseReportService):
         )
         res = self.save_report(commit, report, report_code)
         db_session = commit.get_db_session()
+
+        # We've seen instances where the a commit report carries forward
+        # uploads from multiple parents, a side effect of choosing a different parent
+        # commit when the direct parent is still pending. This function will delete out
+        # of date uploads that weren't carried forward by the closest parent commit
+        self._possibly_delete_existing_cffs(
+            db_session=db_session,
+            commit=commit,
+            carryforward_report=report,
+        )
+
         for sess_id, session in report.sessions.items():
             upload = Upload(
                 build_code=session.build,
