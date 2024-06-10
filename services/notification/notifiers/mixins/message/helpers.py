@@ -10,6 +10,12 @@ from services.yaml.reader import get_minimum_precision, round_number
 zero_change_regex = re.compile("0.0+%?")
 
 
+def padded(message: str) -> str:
+    if message != "":
+        return "\n" + message
+    return message
+
+
 def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
     coverage_good = None
     icon = " |"
@@ -48,18 +54,20 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
             relative=format_number_to_str(
                 yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xf8"
             ),
-            impact=format_number_to_str(
-                yaml,
-                coverage_change,
-                style="{0}%",
-                if_zero="\xf8",
-                if_null="\u2205",
-                plus=True,
-            )
-            if before
-            else "?"
-            if before is None
-            else "\xf8",
+            impact=(
+                format_number_to_str(
+                    yaml,
+                    coverage_change,
+                    style="{0}%",
+                    if_zero="\xf8",
+                    if_null="\u2205",
+                    plus=True,
+                )
+                if before
+                else "?"
+                if before is None
+                else "\xf8"
+            ),
         )
 
         if show_complexity:
@@ -108,9 +116,11 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
             icon = (
                 " :arrow_up: |"
                 if coverage_good
-                else " :arrow_down: |"
-                if coverage_good is False and coverage_change != 0
-                else " |"
+                else (
+                    " :arrow_down: |"
+                    if coverage_good is False and coverage_change != 0
+                    else " |"
+                )
             )
 
     return "".join(("|", coverage, complexity, icon))
