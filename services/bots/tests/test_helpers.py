@@ -63,7 +63,7 @@ def test_get_dedicated_app_token_from_config(
         "github",
         app_id=dedicated_app_details["id"],
         installation_id=dedicated_app_details["installation_id"],
-        pem_path=f"yaml+file://github.dedicated_apps.{token_type.value}",
+        pem_path=f"yaml+file://github.dedicated_apps.{token_type.value}.pem",
     )
 
 

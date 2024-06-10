@@ -22,7 +22,7 @@ def get_dedicated_app_token_from_config(
             service,
             app_id=app_id,
             installation_id=installation_id,
-            pem_path=f"yaml+file://{service}.dedicated_apps.{token_type.value}",
+            pem_path=f"yaml+file://{service}.dedicated_apps.{token_type.value}.pem",
         )
         return Token(key=actual_token, username=f"{token_type.value}_dedicated_app")
     return None
