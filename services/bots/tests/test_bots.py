@@ -418,6 +418,8 @@ class TestGettingAdapterAuthInformation(object):
                     TokenType.admin: repo_bot_token,
                     TokenType.status: repo_bot_token,
                     TokenType.tokenless: repo_bot_token,
+                    TokenType.pull: repo_bot_token,
+                    TokenType.commit: repo_bot_token,
                 },
             )
             assert get_adapter_auth_information(repo.owner, repo) == expected
@@ -615,6 +617,8 @@ class TestGettingAdapterAuthInformation(object):
                 TokenType.admin: None,
                 TokenType.status: Token(key="status_bot_token"),
                 TokenType.tokenless: Token(key="tokenless_bot_token"),
+                TokenType.pull: None,
+                TokenType.commit: None,
             },
         )
         assert get_adapter_auth_information(repo.owner, repo) == expected
