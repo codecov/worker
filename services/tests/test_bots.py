@@ -539,6 +539,8 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: None,
             TokenType.status: None,
             TokenType.tokenless: None,
+            TokenType.pull: None,
+            TokenType.commit: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -570,6 +572,8 @@ class TestBotsService(BaseTestCase):
             TokenType.read: None,
             TokenType.comment: None,
             TokenType.status: None,
+            TokenType.pull: None,
+            TokenType.commit: None,
             TokenType.tokenless: {"key": "sometokenlesskey"},
         }
         assert expected_result == get_token_type_mapping(repo)
@@ -586,6 +590,7 @@ class TestBotsService(BaseTestCase):
                         "status": {"key": "status", "username": "status"},
                         "comment": {"key": "nada"},
                         "tokenless": {"key": "tokenlessKey"},
+                        "pull": {"key": "pullbot"},
                     },
                 }
             }
@@ -608,6 +613,8 @@ class TestBotsService(BaseTestCase):
             TokenType.status: {"key": "status", "username": "status"},
             TokenType.comment: {"key": "nada"},
             TokenType.tokenless: {"key": "tokenlessKey"},
+            TokenType.pull: {"key": "pullbot"},
+            TokenType.commit: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -652,6 +659,8 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: {"key": "bibu", "username": "cket"},
             TokenType.status: None,
             TokenType.tokenless: {"key": "tokenlessKey", "username": "aa"},
+            TokenType.pull: None,
+            TokenType.commit: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -704,4 +713,6 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: None,
             TokenType.status: None,
             TokenType.tokenless: None,
+            TokenType.pull: None,
+            TokenType.commit: None,
         }

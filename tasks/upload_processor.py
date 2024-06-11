@@ -506,7 +506,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 commit.repository, upload, is_error_case=True
             )
             self._rewrite_raw_report_readable(
-                processing_result={"raw_report": raw_report, "upload_object": upload},
+                processing_result={"raw_report": raw_report, "upload_obj": upload},
                 report_service=report_service,
                 commit=commit,
             )
