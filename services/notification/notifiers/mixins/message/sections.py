@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
+from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
 from services.comparison import ComparisonProxy
 from services.comparison.overlays import OverlayType
@@ -50,6 +51,8 @@ def get_section_class_from_layout_name(layout_name):
         return ComponentsSectionWriter
     if layout_name == "newfiles" or layout_name == "condensed_files":
         return NewFilesSectionWriter
+    if layout_name == "messages_to_user":
+        return MessagesToUserSectionWriter
 
 
 class BaseSectionWriter(object):
@@ -718,3 +721,32 @@ class ComponentsSectionWriter(BaseSectionWriter):
                     ),
                 )
             )
+
+
+class MessagesToUserSectionWriter(BaseSectionWriter):
+    class Messages(Enum):
+        INSTALL_GITHUB_APP_WARNING = auto()
+
+    def _write_install_github_app_warning(self, comparison: ComparisonProxy) -> str:
+        """Writes a warning message to GitHub owners that have not yet installed the Codecov App to their account."""
+        repo = comparison.head.commit.repository
+        owner = repo.owner
+        is_user_in_github = owner.service == "github"
+        owner_is_using_app = (
+            owner.integration_id is not None or owner.github_app_installations != []
+        )
+        if is_user_in_github and not is_enterprise() and not owner_is_using_app:
+            return ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
+        return ""
+
+    async def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
+        messages_ordering = [self.Messages.INSTALL_GITHUB_APP_WARNING]
+        messages_content = {
+            self.Messages.INSTALL_GITHUB_APP_WARNING: self._write_install_github_app_warning(
+                comparison
+            )
+        }
+        for message in messages_ordering:
+            message_content = messages_content[message]
+            if message_content != "":
+                yield message_content
