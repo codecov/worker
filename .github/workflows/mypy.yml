@@ -12,3 +12,5 @@ jobs:
   patch-typing-check:
     name: Run Patch Type Check
     uses: codecov/gha-workflows/.github/workflows/mypy.yml@v1.2.21
+    with:
+      extra_config: "--explicit-package-bases"
