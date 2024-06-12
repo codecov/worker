@@ -13,6 +13,9 @@ from database.models import Commit, Upload
 from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
+from tasks.bundle_analysis_save_measurements import (
+    bundle_analysis_save_measurements_task_name,
+)
 
 log = logging.getLogger(__name__)
 
@@ -153,6 +156,17 @@ class BundleAnalysisProcessorTask(
         finally:
             if result.bundle_report:
                 result.bundle_report.cleanup()
+
+        # Create task to save bundle measurements
+        self.app.tasks[bundle_analysis_save_measurements_task_name].apply_async(
+            kwargs=dict(
+                commitid=commit.commitid,
+                repoid=commit.repoid,
+                uploadid=upload.id_,
+                commit_yaml=commit_yaml.to_dict(),
+                previous_result=processing_results,
+            )
+        )
 
         log.info(
             "Finished bundle analysis processor",
