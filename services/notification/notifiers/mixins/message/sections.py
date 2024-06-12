@@ -2,6 +2,7 @@ import logging
 import random
 from base64 import b64encode
 from decimal import Decimal
+from enum import Enum, auto
 from itertools import starmap
 from typing import List
 from urllib.parse import urlencode
@@ -13,12 +14,15 @@ from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
 from services.comparison import ComparisonProxy
 from services.comparison.overlays import OverlayType
+from services.comparison.types import ReportUploadedCount
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
     ellipsis,
     escape_markdown,
     get_table_header,
     get_table_layout,
+    has_project_status,
+    is_coverage_drop_significant,
     make_metrics,
     make_patch_only_metrics,
 )
@@ -726,6 +730,51 @@ class ComponentsSectionWriter(BaseSectionWriter):
 class MessagesToUserSectionWriter(BaseSectionWriter):
     class Messages(Enum):
         INSTALL_GITHUB_APP_WARNING = auto()
+        DIFFERENT_UPLOAD_COUNT_WARNING = auto()
+
+    def _write_different_upload_count_warning(self, comparison: ComparisonProxy) -> str:
+        upload_diff = comparison.get_reports_uploaded_count_per_flag_diff()
+        is_commit_complete = comparison.head.commit.state == "complete"
+        if (
+            is_commit_complete
+            and upload_diff
+            and has_project_status(self.current_yaml)
+            and is_coverage_drop_significant(comparison)
+        ):
+            template = (
+                "> :exclamation:  There is a different number of reports uploaded between BASE ({base_short_sha}) and HEAD ({head_short_sha}). Click for more details."
+                + "\n> "
+                + "\n> <details><summary>HEAD has {aggregated_upload_diff} upload{plural} {more_or_less} than BASE</summary>"
+                + "\n>| Flag | BASE ({base_short_sha}) | HEAD ({head_short_sha}) |"
+                + "\n>|------|------|------|"
+                + "{per_flag_diff_lines}"
+                + "\n></details>"
+            )
+
+            def get_line_for_flag_diff(info: ReportUploadedCount) -> str:
+                line_template = "\n>|{flag_name}|{base_count}|{head_count}|"
+                return line_template.format(
+                    flag_name=info["flag"],
+                    base_count=info["base_count"],
+                    head_count=info["head_count"],
+                )
+
+            aggregated_upload_diff = sum(
+                map(lambda diff: diff["head_count"] - diff["base_count"], upload_diff)
+            )
+            context = dict(
+                aggregated_upload_diff=abs(aggregated_upload_diff),
+                more_or_less="more" if aggregated_upload_diff > 0 else "less",
+                plural="s" if abs(aggregated_upload_diff) > 1 else "",
+                base_short_sha=comparison.project_coverage_base.commit.commitid[:7],
+                head_short_sha=comparison.head.commit.commitid[:7],
+                per_flag_diff_lines="".join(
+                    [get_line_for_flag_diff(info) for info in upload_diff]
+                ),
+            )
+
+            return template.format(**context)
+        return ""
 
     def _write_install_github_app_warning(self, comparison: ComparisonProxy) -> str:
         """Writes a warning message to GitHub owners that have not yet installed the Codecov App to their account."""
@@ -740,11 +789,17 @@ class MessagesToUserSectionWriter(BaseSectionWriter):
         return ""
 
     async def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
-        messages_ordering = [self.Messages.INSTALL_GITHUB_APP_WARNING]
+        messages_ordering = [
+            self.Messages.INSTALL_GITHUB_APP_WARNING,
+            self.Messages.DIFFERENT_UPLOAD_COUNT_WARNING,
+        ]
         messages_content = {
             self.Messages.INSTALL_GITHUB_APP_WARNING: self._write_install_github_app_warning(
                 comparison
-            )
+            ),
+            self.Messages.DIFFERENT_UPLOAD_COUNT_WARNING: self._write_different_upload_count_warning(
+                comparison
+            ),
         }
         for message in messages_ordering:
             message_content = messages_content[message]

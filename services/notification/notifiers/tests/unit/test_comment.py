@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import List
 from unittest.mock import PropertyMock
 
 import pytest
@@ -16,13 +17,13 @@ from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
 from database.enums import TestResultsProcessingError
-from database.models.core import GithubAppInstallation, Pull, Repository
+from database.models.core import Commit, GithubAppInstallation, Pull, Repository
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
 from services.billing import BillingPlan
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.overlays.critical_path import CriticalPathOverlay
-from services.comparison.types import Comparison, FullCommit
+from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
@@ -5602,5 +5603,120 @@ class TestMessagesToUserSection(object):
             MessagesToUserSectionWriter(
                 repo, mocker.MagicMock(), False, mocker.MagicMock(), {}
             )._write_install_github_app_warning(fake_comparison)
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        "commit, upload_diff, has_project_status, is_coverage_drop_significant, expected",
+        [
+            pytest.param(
+                CommitFactory(state="pending"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                True,
+                True,
+                "",
+                id="commit_not_ready_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                False,
+                True,
+                "",
+                id="no_project_status_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                True,
+                False,
+                "",
+                id="no_significant_drop_in_coverage_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [],
+                True,
+                True,
+                "",
+                id="no_upload_diff_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(
+                    state="complete",
+                    commitid="cf59ea49c149c8ef5d7303834362a4d27bbd4a28",
+                ),
+                [
+                    ReportUploadedCount(flag="unit", base_count=4, head_count=3),
+                    ReportUploadedCount(flag="local", base_count=2, head_count=1),
+                ],
+                True,
+                True,
+                (
+                    "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
+                    + "\n> "
+                    + "\n> <details><summary>HEAD has 2 uploads less than BASE</summary>"
+                    + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
+                    + "\n>|------|------|------|"
+                    + "\n>|unit|4|3|"
+                    + "\n>|local|2|1|"
+                    + "\n></details>"
+                ),
+                id="should_send_warning_2_uploads_less",
+            ),
+            pytest.param(
+                CommitFactory(
+                    state="complete",
+                    commitid="cf59ea49c149c8ef5d7303834362a4d27bbd4a28",
+                ),
+                [
+                    ReportUploadedCount(flag="unit", base_count=4, head_count=3),
+                ],
+                True,
+                True,
+                (
+                    "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
+                    + "\n> "
+                    + "\n> <details><summary>HEAD has 1 upload less than BASE</summary>"
+                    + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
+                    + "\n>|------|------|------|"
+                    + "\n>|unit|4|3|"
+                    + "\n></details>"
+                ),
+                id="should_send_warning_1_upload_less",
+            ),
+        ],
+    )
+    def test_different_upload_count_warning(
+        self,
+        mocker,
+        commit: Commit,
+        upload_diff: List[ReportUploadedCount],
+        has_project_status: bool,
+        is_coverage_drop_significant: bool,
+        expected: str,
+    ):
+        yaml = {"coverage": {"status": {"project": has_project_status}}}
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.is_coverage_drop_significant",
+            return_value=is_coverage_drop_significant,
+        )
+        mock_head = mocker.MagicMock(commit=commit)
+        mock_project_coverage_base = mocker.MagicMock(
+            commit=CommitFactory(
+                repository=commit.repository,
+                commitid="bbd4a28cf59ea49c149c8ef5d7303834362a4d27",
+            )
+        )
+        fake_comparison = mocker.MagicMock(
+            head=mock_head, project_coverage_base=mock_project_coverage_base
+        )
+        fake_comparison.get_reports_uploaded_count_per_flag_diff.return_value = (
+            upload_diff
+        )
+        assert (
+            MessagesToUserSectionWriter(
+                commit.repository, mocker.MagicMock(), False, mocker.MagicMock(), yaml
+            )._write_different_upload_count_warning(fake_comparison)
             == expected
         )
