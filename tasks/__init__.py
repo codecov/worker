@@ -45,6 +45,7 @@ from tasks.sync_repo_languages import sync_repo_language_task
 from tasks.sync_repo_languages_gql import sync_repo_languages_gql_task
 from tasks.sync_repos import sync_repos_task
 from tasks.sync_teams import sync_teams_task
+from tasks.sync_test_results import sync_test_results_task
 from tasks.timeseries_backfill import (
     timeseries_backfill_commits_task,
     timeseries_backfill_dataset_task,
