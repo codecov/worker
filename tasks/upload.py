@@ -64,6 +64,8 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 CHUNK_SIZE = 3
 
+UPLOAD_LOCK_NAME = lambda repoid, commitid: f"upload_lock_{repoid}_{commitid}"
+
 
 class UploadContext:
     """
@@ -91,7 +93,7 @@ class UploadContext:
             if lock_type == "upload_processing":
                 return UPLOAD_PROCESSING_LOCK_NAME(self.repoid, self.commitid)
             else:
-                return f"{lock_type}_lock_{self.repoid}_{self.commitid}"
+                return UPLOAD_LOCK_NAME(self.repoid, self.commitid)
         else:
             return f"{lock_type}_lock_{self.repoid}_{self.commitid}_{self.report_type.value}"
 
