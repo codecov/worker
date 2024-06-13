@@ -8,7 +8,6 @@ from sqlalchemy.dialects.postgresql import insert
 from database.models import Commit, Dataset, Measurement, MeasurementName
 from database.models.core import Repository
 from database.models.reports import RepositoryFlag
-from database.models.timeseries import Dataset
 from helpers.timeseries import backfill_max_batch_size, timeseries_enabled
 from services.report import ReportService
 from services.yaml import get_repo_yaml

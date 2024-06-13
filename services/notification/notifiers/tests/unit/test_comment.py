@@ -4977,7 +4977,7 @@ class TestCommentNotifierInNewLayout(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
-    async def test_build_message_team_plan_customer_all_lines_covered(
+    async def test_build_message_team_plan_customer_all_lines_covered_no_third_line(
         self,
         dbsession,
         mock_configuration,
