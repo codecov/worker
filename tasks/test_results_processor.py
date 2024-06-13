@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 import zlib
-from datetime import datetime
 from io import BytesIO
 from sys import getsizeof
 from typing import List
@@ -106,7 +105,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         branch: str,
         parsed_testruns: List[Testrun],
         flags_hash: str,
-        upload_timestamp: datetime,
     ):
         memory_used = getsizeof(parsed_testruns) // 1024
         with metrics.timing(key="test_results.processor.write_to_db"):
@@ -190,7 +188,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             }
         flags_hash = generate_flags_hash(upload_obj.flag_names)
         upload_id = upload_obj.id
-        upload_timestamp = upload_obj.created_at
         branch = upload_obj.report.commit.branch
         self._bulk_write_tests_to_db(
             db_session,
@@ -200,7 +197,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             branch,
             parsed_testruns,
             flags_hash,
-            upload_timestamp,
         )
 
         return {
