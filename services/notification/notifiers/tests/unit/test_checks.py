@@ -1161,7 +1161,7 @@ class TestPatchChecksNotifier(object):
         assert result.data_sent is None
 
     @pytest.mark.asyncio
-    async def test_notification_exception(self, sample_comparison, mocker):
+    async def test_notification_exception_not_fit(self, sample_comparison, mocker):
         notifier = ChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",

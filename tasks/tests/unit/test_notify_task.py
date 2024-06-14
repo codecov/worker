@@ -278,7 +278,7 @@ class TestNotifyTaskHelpers(object):
         assert task._possibly_refresh_previous_selection(commit) == True
         mock_set_gh_app_for_commit.assert_called_with(app_to_save, commit)
 
-    def test__possibly_refresh_previous_selection(self, mocker, dbsession):
+    def test__possibly_refresh_previous_selection_false(self, mocker, dbsession):
         commit = CommitFactory(repository__owner__service="github")
         dbsession.add(commit)
         dbsession.flush()

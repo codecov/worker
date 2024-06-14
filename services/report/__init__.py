@@ -25,7 +25,6 @@ from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
-from database.enums import ReportType
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
     AbstractTotals,

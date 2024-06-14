@@ -66,15 +66,18 @@ lint.install:
 	echo "Installing..."
 	pip install -Iv ruff
 
+# The preferred method (for now) w.r.t. fixable rules is to manually update the makefile
+# with --fix and re-run 'make lint.' Since ruff is constantly adding rules this is a slight
+# amount of "needed" friction imo.
 lint.run:
-	ruff check --select F401 --select I . --fix
+	ruff check
 	ruff format
 
 lint.check:
 	echo "Linting..."
+	ruff check
+	echo "Formatting..."
 	ruff format --check
-	echo "Sorting..."
-	ruff check --select F401 --select I .
 
 build.requirements:
 	# if docker pull succeeds, we have already build this version of
