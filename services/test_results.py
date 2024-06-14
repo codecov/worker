@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import List, Mapping, Sequence, Tuple
@@ -170,52 +171,34 @@ class TestResultsNotifier:
     def generate_test_description(
         self,
         fail: TestResultsNotificationFailure,
-        flake: TestResultsNotificationFlake | None = None,
     ):
-        envs = [f"- {env}" for env in fail.envs] or ["- default"]
+        envs = [f"  - {env}" for env in fail.envs] or ["- default"]
         env_section = "<br>".join(envs)
-        test_description = (
-            "<pre>"
-            f"**Testsuite:**<br>{fail.testsuite}<br><br>"
-            f"**Test name:**<br>{fail.testname}<br><br>"
-            f"**Envs:**<br>{env_section}<br>"
-            "</pre>"
-        )
+        if "\x1f" in fail.testname:
+            split_name = fail.testname.split("\x1f")
+            class_name = split_name[0]
+            test_name = split_name[1]
+            test_description = (
+                f"- **Class name:** {class_name}<br><br>**Test name:** {test_name}"
+            )
+        else:
+            test_description = f"- **Test name:** {fail.testname}"
 
-        if flake is not None:
-            if flake.is_new_flake:
-                test_description = f":snowflake::card_index_dividers: **Newly Detected Flake**<br>{test_description}"
-            else:
-                test_description = f":snowflake::card_index_dividers: **Known Flaky Test**<br>{test_description}"
+        if fail.envs:
+            test_description = f"{test_description}\n**Flags:**\n{env_section}"
 
-        return test_description
+        return f"{test_description}<br><br>"
 
     def generate_failure_info(
         self,
         fail: TestResultsNotificationFailure,
-        flake: TestResultsNotificationFlake | None = None,
     ):
         if fail.failure_message is not None:
             failure_message = fail.failure_message
         else:
             failure_message = "No failure message available"
 
-        if flake is not None:
-            flake_messages = []
-            if FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH in flake.flake_type:
-                flake_messages.append("Failure on default branch")
-            if FlakeSymptomType.CONSECUTIVE_DIFF_OUTCOMES in flake.flake_type:
-                flake_messages.append("Differing outcomes on the same commit")
-            if FlakeSymptomType.UNRELATED_MATCHING_FAILURES in flake.flake_type:
-                flake_messages.append("Matching failures on unrelated branches")
-            flake_section = "".join(
-                [
-                    f":snowflake: :card_index_dividers: **{msg}**<br>"
-                    for msg in flake_messages
-                ]
-            )
-            return f"{flake_section}<pre>{failure_message}</pre>"
-        return f"<pre>{failure_message}</pre>"
+        return f"  <pre>{failure_message}</pre>"
 
     def build_message(self, payload: TestResultsNotificationPayload) -> str:
         message = []
@@ -260,23 +243,44 @@ class TestResultsNotifier:
             results = f"Completed {completed} tests with **`{payload.failed} failed`**, {payload.passed} passed and {payload.skipped} skipped."
             message.append(results)
 
-        details = [
-            "<details><summary>View the full list of failed tests</summary>",
-            "",
-            "| **Test Description** | **Failure message** |",
-            "| :-- | :-- |",
-        ]
-
-        message += details
-
+        fail_dict = defaultdict(list)
+        flake_dict = defaultdict(list)
         for fail in payload.failures:
             flake = None
             if payload.flaky_tests is not None:
                 flake = payload.flaky_tests.get(fail.test_id, None)
-            test_description = self.generate_test_description(fail, flake)
-            failure_information = self.generate_failure_info(fail, flake)
-            single_test_row = f"| {test_description} | {failure_information} |"
-            message.append(single_test_row)
+
+            if flake is not None:
+                flake_dict[fail.testsuite].append(fail)
+            else:
+                fail_dict[fail.testsuite].append(fail)
+
+        def process_dict(d):
+            for testsuite, fail_list in d.items():
+                message.append(f"## {testsuite}")
+                for fail in fail_list:
+                    test_description = self.generate_test_description(fail)
+                    message.append(test_description)
+                    failure_information = self.generate_failure_info(fail)
+                    message.append(failure_information)
+
+        if fail_dict:
+            message += [
+                "<details><summary>View the full list of failed tests</summary>",
+                "",
+            ]
+
+            process_dict(fail_dict)
+            message.append("</details>")
+
+        if flake_dict:
+            message += [
+                "<details><summary>View the full list of flaky tests</summary>",
+                "",
+            ]
+
+            process_dict(flake_dict)
+            message.append("</details>")
 
         return "\n".join(message)
 

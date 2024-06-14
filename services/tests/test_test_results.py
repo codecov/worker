@@ -68,38 +68,24 @@ async def test_send_to_provider_fail(tn):
     assert res == False
 
 
-def test_generate_test_description(tn):
+@pytest.mark.parametrize(
+    "testname,message",
+    [
+        ("testname", "- **Test name:** testname<br><br>"),
+        (
+            "Test\x1ftestname",
+            "- **Class name:** Test<br><br>**Test name:** testname<br><br>",
+        ),
+    ],
+)
+def test_generate_test_description(tn, testname, message):
     flags_hash = generate_flags_hash([])
-    test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
+    test_id = generate_test_id(1, "testsuite", testname, flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
+        "hello world", "testsuite", testname, [], test_id
     )
     res = tn.generate_test_description(fail)
-    assert (
-        res
-        == "<pre>**Testsuite:**<br>testsuite<br><br>**Test name:**<br>testname<br><br>**Envs:**<br>- default<br></pre>"
-    )
-
-
-@pytest.mark.parametrize(
-    "is_new_flake,flake_header",
-    [(False, "Known Flaky Test"), (True, "Newly Detected Flake")],
-)
-def test_generate_test_description_with_flake(tn, is_new_flake, flake_header):
-    flags_hash = generate_flags_hash([])
-    test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
-    fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
-    )
-    flake = TestResultsNotificationFlake(
-        [],
-        is_new_flake,
-    )
-    res = tn.generate_test_description(fail, flake)
-    assert (
-        res
-        == f":snowflake::card_index_dividers: **{flake_header}**<br><pre>**Testsuite:**<br>testsuite<br><br>**Test name:**<br>testname<br><br>**Envs:**<br>- default<br></pre>"
-    )
+    assert res == message
 
 
 def test_generate_failure_info(tn):
@@ -111,35 +97,7 @@ def test_generate_failure_info(tn):
 
     res = tn.generate_failure_info(fail)
 
-    assert res == "<pre>hello world</pre>"
-
-
-@pytest.mark.parametrize(
-    "flake_symptoms,message",
-    [
-        (
-            [FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH],
-            ":snowflake: :card_index_dividers: **Failure on default branch**<br><pre>hello world</pre>",
-        ),
-        (
-            [
-                FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH,
-                FlakeSymptomType.UNRELATED_MATCHING_FAILURES,
-            ],
-            ":snowflake: :card_index_dividers: **Failure on default branch**<br>:snowflake: :card_index_dividers: **Matching failures on unrelated branches**<br><pre>hello world</pre>",
-        ),
-    ],
-)
-def test_generate_failure_info_with_flake(tn, flake_symptoms, message):
-    flags_hash = generate_flags_hash([])
-    test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
-    fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
-    )
-    flake = TestResultsNotificationFlake(flake_symptoms, True)
-
-    res = tn.generate_failure_info(fail, flake)
-    assert res == message
+    assert res == "  <pre>hello world</pre>"
 
 
 def test_build_message(tn):
@@ -159,9 +117,10 @@ def test_build_message(tn):
 Completed 6 tests with **`1 failed`**, 2 passed and 3 skipped.
 <details><summary>View the full list of failed tests</summary>
 
-| **Test Description** | **Failure message** |
-| :-- | :-- |
-| <pre>**Testsuite:**<br>testsuite<br><br>**Test name:**<br>testname<br><br>**Envs:**<br>- default<br></pre> | <pre>hello world</pre> |"""
+## testsuite
+- **Test name:** testname<br><br>
+  <pre>hello world</pre>
+</details>"""
     )
 
 
@@ -185,11 +144,12 @@ def test_build_message_with_flake(tn):
 ### :x: Failed Test Results: 
 Completed 6 tests with **`1 failed`**(1 newly detected flaky), 2 passed and 3 skipped.
 - Total :snowflake:**1 flaky tests.**
-<details><summary>View the full list of failed tests</summary>
+<details><summary>View the full list of flaky tests</summary>
 
-| **Test Description** | **Failure message** |
-| :-- | :-- |
-| :snowflake::card_index_dividers: **Newly Detected Flake**<br><pre>**Testsuite:**<br>testsuite<br><br>**Test name:**<br>testname<br><br>**Envs:**<br>- default<br></pre> | :snowflake: :card_index_dividers: **Failure on default branch**<br><pre>hello world</pre> |"""
+## testsuite
+- **Test name:** testname<br><br>
+  <pre>hello world</pre>
+</details>"""
     )
 
 
