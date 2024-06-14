@@ -64,6 +64,8 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 CHUNK_SIZE = 3
 
+# Making the upload lock name a constant so it can be shared between the preprocess and
+# the upload task, as they have overlapping logic that collides in some cases
 UPLOAD_LOCK_NAME = lambda repoid, commitid: f"upload_lock_{repoid}_{commitid}"
 
 
