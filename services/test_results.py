@@ -179,7 +179,7 @@ class TestResultsNotifier:
             class_name = split_name[0]
             test_name = split_name[1]
             test_description = (
-                f"- **Class name:** {class_name}<br><br>**Test name:** {test_name}"
+                f"- **Class name:** {class_name}<br>**Test name:** {test_name}"
             )
         else:
             test_description = f"- **Test name:** {fail.testname}"

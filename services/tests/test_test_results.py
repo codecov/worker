@@ -74,7 +74,7 @@ async def test_send_to_provider_fail(tn):
         ("testname", "- **Test name:** testname<br><br>"),
         (
             "Test\x1ftestname",
-            "- **Class name:** Test<br><br>**Test name:** testname<br><br>",
+            "- **Class name:** Test<br>**Test name:** testname<br><br>",
         ),
     ],
 )

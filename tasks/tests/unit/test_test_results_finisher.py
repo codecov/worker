@@ -112,7 +112,7 @@ def test_results_setup(mocker, dbsession):
     test1 = Test(
         id_=test_id1,
         repoid=repoid,
-        name=test_name + "0",
+        name="Class Name\x1f" + test_name + "0",
         testsuite=test_suite,
         flags_hash="a",
     )
@@ -132,7 +132,7 @@ def test_results_setup(mocker, dbsession):
     test3 = Test(
         id_=test_id3,
         repoid=repoid,
-        name=test_name + "2",
+        name="Other Class Name\x1f" + test_name + "2",
         testsuite=test_suite,
         flags_hash="",
     )
@@ -337,7 +337,7 @@ class TestUploadTestFinisherTask(object):
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -537,7 +537,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
         )
 
         assert expected_result == result
@@ -641,13 +641,13 @@ class TestUploadTestFinisherTask(object):
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
         )
 
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(4 newly detected flaky), 0 passed and 0 skipped.\n- Total :snowflake:**4 flaky tests.**\n<details><summary>View the full list of flaky tests</summary>\n\n## test_testsuite\n- **Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(4 newly detected flaky), 0 passed and 0 skipped.\n- Total :snowflake:**4 flaky tests.**\n<details><summary>View the full list of flaky tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
         )
 
         mock_metrics.incr.assert_has_calls(
