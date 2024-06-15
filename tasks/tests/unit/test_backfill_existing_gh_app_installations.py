@@ -65,7 +65,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             .first()
         )
         assert gh_app_installation.owner == owner
-        assert gh_app_installation.repository_service_ids == None
+        assert gh_app_installation.repository_service_ids is None
 
     def test_gh_app_with_specific_owner_ids(
         self, mocker, mock_repo_provider, dbsession: Session
@@ -114,7 +114,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             .first()
         )
         assert db_gh_app_installation_one.owner == owner
-        assert db_gh_app_installation_one.repository_service_ids == None
+        assert db_gh_app_installation_one.repository_service_ids is None
 
         # This one should have the same values as when it started
         db_gh_app_installation_two = (

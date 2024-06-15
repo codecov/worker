@@ -943,7 +943,7 @@ def test__get_parsed_git_diff_error(mock_parse_diff, dbsession, mock_repo_provid
     task.errors = []
     task.dbsession = dbsession
     parsed_diff = task._get_parsed_git_diff(larq)
-    assert parsed_diff == None
+    assert parsed_diff is None
     mock_parse_diff.assert_not_called()
     mock_repo_provider.get_compare.assert_called_with(
         larq.base_commit.commitid, larq.head_commit.commitid
@@ -996,6 +996,6 @@ def test__get_lines_relevant_to_diff_error(
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
     lines = task._get_lines_relevant_to_diff(larq)
-    assert lines == None
+    assert lines is None
     mock_parse_diff.assert_called_with(larq)
     mock_get_relevant_lines.assert_not_called()

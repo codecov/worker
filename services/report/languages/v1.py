@@ -32,7 +32,7 @@ def _list_to_dict(lines):
     in:  [None, 1] || {"1": 1}
     out: {"1": 1}
     """
-    if type(lines) is list:
+    if isinstance(lines, list):
         if len(lines) > 1:
             return dict(
                 [
@@ -53,7 +53,7 @@ def _list_to_dict(lines):
 
 
 def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
-    if type(json["coverage"]) is dict:
+    if isinstance(json["coverage"], dict):
         # messages = json.get('messages', {})
         for fn, lns in json["coverage"].items():
             fn = report_builder_session.path_fixer(fn)

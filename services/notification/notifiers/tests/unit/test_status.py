@@ -718,7 +718,7 @@ class TestBaseStatusNotifier(object):
             notifier.determine_status_check_behavior_to_apply(
                 comparison, "flag_coverage_not_uploaded_behavior"
             )
-            == None
+            is None
         )
 
     def test_flag_coverage_was_uploaded_when_none_uploaded(

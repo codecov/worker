@@ -23,7 +23,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
         )
 
     def _normalize_label(self, testname) -> str:
-        if type(testname) == int or type(testname) == float:
+        if isinstance(testname, int) or isinstance(testname, float):
             # This is from a compressed report.
             # Pull label from the labels_table
             # But the labels_table keys are strings, because of JSON format

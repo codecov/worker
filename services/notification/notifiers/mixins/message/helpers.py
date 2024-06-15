@@ -24,9 +24,9 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
         complexity = " |" if show_complexity else ""
 
     else:
-        if type(before) is list:
+        if isinstance(before, list):
             before = ReportTotals(*before)
-        if type(after) is list:
+        if isinstance(after, list):
             after = ReportTotals(*after)
 
         layout = " `{absolute} <{relative}> ({impact})` |"

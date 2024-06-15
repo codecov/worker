@@ -29,7 +29,10 @@ def get_github_integration_token(
         raise RepositoryWithoutValidBotError()
 
 
-COMMIT_GHAPP_KEY_NAME = lambda commit_id: f"app_to_use_for_commit_{commit_id}"
+def COMMIT_GHAPP_KEY_NAME(commit_id):
+    return f"app_to_use_for_commit_{commit_id}"
+
+
 GHAPP_KEY_EXPIRY_SECONDS = 60 * 60 * 2  # 2h
 
 

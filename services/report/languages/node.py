@@ -72,7 +72,7 @@ def get_location(node):
 
 
 def must_be_dict(value):
-    if type(value) is not dict:
+    if not isinstance(value, dict):
         return {}
     else:
         return value

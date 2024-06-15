@@ -26,10 +26,12 @@ GLOBAL_LEVEL_LABEL = (
     SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 )
 
+
 # This is a lambda function to return different objects
-DEFAULT_LABEL_INDEX = lambda: {
-    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
-}
+def DEFAULT_LABEL_INDEX():
+    return {
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+    }
 
 
 def invert_pattern(string: str) -> str:
@@ -240,7 +242,7 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
         ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 
     def possibly_translate_label(label_or_id: typing.Union[str, int]) -> int:
-        if type(label_or_id) == int:
+        if isinstance(label_or_id, int):
             return label_or_id
         if label_or_id in reverse_index_cache:
             return reverse_index_cache[label_or_id]
