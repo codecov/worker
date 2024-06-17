@@ -1,9 +1,11 @@
 import logging
 import random
 from base64 import b64encode
+from collections.abc import AsyncGenerator
 from decimal import Decimal
+from enum import Enum, auto
 from itertools import starmap
-from typing import List
+from typing import Dict, List
 from urllib.parse import urlencode
 
 from shared.helpers.yaml import walk
@@ -20,6 +22,7 @@ from services.notification.notifiers.mixins.message.helpers import (
     get_table_layout,
     make_metrics,
     make_patch_only_metrics,
+    padded,
 )
 from services.urls import get_commit_url_from_commit_sha, get_pull_graph_url
 from services.yaml.reader import get_components_from_yaml, round_number
@@ -101,77 +104,49 @@ class NewFooterSectionWriter(BaseSectionWriter):
 
 
 class HeaderSectionWriter(BaseSectionWriter):
-    def _possibly_include_test_result_setup_confirmation(self, comparison):
+    """Writes the Header of the Coverage PR Comment. Includes info / warning messages for users.
+
+    The actual entry point is `do_write_section`. In there the ordering of the HeaderPieces is defined.
+    Other functions contain the logic and actual lines for each specific HeaderPiece.
+    """
+
+    class HeaderPieces(Enum):
+        PATCH_COVERAGE_DETAILS = auto()
+        OPTIONAL_PROJECT_COVERAGE_DETAILS = auto()
+        OPTIONAL_BEHIND_BY_WARNING = auto()
+        OPTIONAL_PULL_HEAD_DIFFERS_WARNING = auto()
+        OPTIONAL_CRITICAL_FILES_CHANGED_INFO = auto()
+        OPTIONAL_TEST_RESULT_CONFIRMATION_INFO = auto()
+
+    def _write_optional_test_result_confirmation_info(
+        self, comparison: ComparisonProxy
+    ) -> str:
         if comparison.test_results_error():
-            yield ("")
-            yield (
-                ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
-            )
+            return ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
         elif comparison.all_tests_passed():
-            yield ""
-            yield (":white_check_mark: All tests successful. No failed tests found.")
+            return ":white_check_mark: All tests successful. No failed tests found."
+        return ""
 
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
-        yaml = self.current_yaml
-        base_report = comparison.project_coverage_base.report
-        head_report = comparison.head.report
-        pull_dict = comparison.enriched_pull.provider_pull
-        repo_service = comparison.repository_service.service
-
-        diff_totals = head_report.apply_diff(diff)
-        if diff_totals:
-            misses_and_partials = diff_totals.misses + diff_totals.partials
-            patch_coverage = diff_totals.coverage
-        else:
-            misses_and_partials = None
-            patch_coverage = None
-        if misses_and_partials:
-            ln_text = "lines" if misses_and_partials > 1 else "line"
-            yield (
-                f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} {ln_text}` in your changes missing coverage. Please review."
-            )
-        else:
-            yield "All modified and coverable lines are covered by tests :white_check_mark:"
-
-        hide_project_coverage = self.settings.get("hide_project_coverage", False)
-        if hide_project_coverage:
-            for msg in self._possibly_include_test_result_setup_confirmation(
-                comparison
-            ):
-                yield msg
-            return
-
-        if base_report and head_report:
-            yield (
-                "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?dropdown=coverage&el=desc) to head [(`{commitid_head}`)]({links[head]}?dropdown=coverage&el=desc).".format(
-                    commitid_head=comparison.head.commit.commitid[:7],
-                    commitid_base=comparison.project_coverage_base.commit.commitid[:7],
-                    links=links,
-                    head_cov=round_number(yaml, Decimal(head_report.totals.coverage)),
-                )
-            )
-        else:
-            # This doesn't actually emit a message if the _head_ report is missing
-            # Because we don't notify if the _head_ report is missing
-            # But it's still used if the base report is missing.
-            # Why didn't you change the condition and the code then? Idk... maybe I'm wrong in my assumptions :P
-            what = "BASE" if not base_report else "HEAD"
-            branch = pull_dict["base" if not base_report else "head"]["branch"]
-            commit = pull_dict["base" if not base_report else "head"]["commitid"][:7]
-            yield (
-                f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for {what} (`{branch}@{commit}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-{what.lower()}-commit) about missing {what} report."
-            )
-
+    def _write_optional_behind_by_warning(
+        self, behind_by: int | None, base_branch: str
+    ) -> str:
         if behind_by:
-            yield (
-                f"> Report is {behind_by} commits behind head on {pull_dict['base']['branch']}."
-            )
+            return f"> Report is {behind_by} commits behind head on {base_branch}."
+        return ""
+
+    def _write_optional_pull_head_differs_warning(
+        self, comparison: ComparisonProxy
+    ) -> str:
+        template = (
+            "> :exclamation: **Current head {current_head} differs from pull request most recent head {pull_head}**"
+            + "\n> "
+            + "\n> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {pull_head} to get more accurate results."
+        )
         if (
             comparison.enriched_pull.provider_pull is not None
             and comparison.head.commit.commitid
             != comparison.enriched_pull.provider_pull["head"]["commitid"]
         ):
-            # Temporary log so we understand when this happens
             log.info(
                 "Notifying user that current head and pull head differ",
                 extra=dict(
@@ -182,17 +157,40 @@ class HeaderSectionWriter(BaseSectionWriter):
                     ],
                 ),
             )
-            yield ("")
             pull_head = comparison.enriched_pull.provider_pull["head"]["commitid"][:7]
             current_head = comparison.head.commit.commitid[:7]
-            yield (
-                f"> :exclamation: **Current head {current_head} differs from pull request most recent head {pull_head}**"
-            )
-            yield ("> ")
-            yield (
-                f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {pull_head} to get more accurate results."
-            )
+            return template.format(current_head=current_head, pull_head=pull_head)
+        return ""
 
+    def _write_optional_project_coverage_details(
+        self, comparison: ComparisonProxy, links: Dict[str, str], head_coverage: float
+    ) -> str:
+        template = "> Project coverage is {head_cov}%. Comparing base [(`{commitid_base}`)]({links[base]}?dropdown=coverage&el=desc) to head [(`{commitid_head}`)]({links[head]}?dropdown=coverage&el=desc)."
+        return template.format(
+            commitid_head=comparison.head.commit.commitid[:7],
+            commitid_base=comparison.project_coverage_base.commit.commitid[:7],
+            links=links,
+            head_cov=head_coverage,
+        )
+
+    def _write_optional_project_coverage_missing_details(
+        self, pull_dict: Dict, base_report: Report
+    ) -> str:
+        template = "> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for {what} (`{branch}@{commit}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-{what_lower}-commit) about missing {what} report."
+        # This doesn't actually emit a message if the _head_ report is missing
+        # Because we don't notify if the _head_ report is missing
+        # But it's still used if the base report is missing.
+        # Why didn't you change the condition and the code then? Idk... maybe I'm wrong in my assumptions :P
+        what = "BASE" if not base_report else "HEAD"
+        branch = pull_dict[what.lower()]["branch"]
+        commit = pull_dict[what.lower()]["commitid"][:7]
+        return template.format(
+            what=what, branch=branch, commit=commit, what_lower=what.lower()
+        )
+
+    async def _write_optional_critical_files_changed_info(
+        self, comparison: ComparisonProxy, diff, changes
+    ) -> str:
         if self.settings.get("show_critical_paths"):
             all_potentially_affected_critical_files = set(
                 (diff["files"] if diff else {}).keys()
@@ -204,13 +202,102 @@ class HeaderSectionWriter(BaseSectionWriter):
                 )
             )
             if files_in_critical:
-                yield ("")
-                yield (
-                    "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
-                )
+                return "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
+        return ""
 
-        for msg in self._possibly_include_test_result_setup_confirmation(comparison):
-            yield msg
+    def _write_patch_coverage_details(self, head_report: Report, diff) -> str:
+        diff_totals = head_report.apply_diff(diff)
+        if diff_totals:
+            misses_and_partials = diff_totals.misses + diff_totals.partials
+            patch_coverage = diff_totals.coverage
+        else:
+            misses_and_partials = None
+            patch_coverage = None
+        if misses_and_partials:
+            ln_text = "lines" if misses_and_partials > 1 else "line"
+            return f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} {ln_text}` in your changes missing coverage. Please review."
+        else:
+            return "All modified and coverable lines are covered by tests :white_check_mark:"
+
+    async def do_write_section(
+        self, comparison: ComparisonProxy, diff, changes, links, behind_by=None
+    ) -> AsyncGenerator[str]:
+        # This is the template that will be filled in according to the PR details. It's made up of different slots
+        # Slots called DETAILS are actual coverage information
+        # Slots called WARNING / INFO are messages to the user
+        # Slots with OPTIONAL might not appear in the final version, depending on the user's configuration
+        header_lines_order: List[self.HeaderPieces] = [
+            self.HeaderPieces.PATCH_COVERAGE_DETAILS,
+            self.HeaderPieces.OPTIONAL_PROJECT_COVERAGE_DETAILS,
+            # The HeaderPieces from here down only appear if `hide_project_coverage` is False
+            self.HeaderPieces.OPTIONAL_BEHIND_BY_WARNING,
+            self.HeaderPieces.OPTIONAL_PULL_HEAD_DIFFERS_WARNING,
+            self.HeaderPieces.OPTIONAL_CRITICAL_FILES_CHANGED_INFO,
+            self.HeaderPieces.OPTIONAL_TEST_RESULT_CONFIRMATION_INFO,
+        ]
+        yaml = self.current_yaml
+        base_report = comparison.project_coverage_base.report
+        head_report = comparison.head.report
+        pull_dict = comparison.enriched_pull.provider_pull
+
+        # These are the actual values that will be added to the comment
+        # For each of the HeaderPieces
+        substitutions_mapping = {
+            self.HeaderPieces.PATCH_COVERAGE_DETAILS: self._write_patch_coverage_details(
+                head_report, diff
+            ),
+            self.HeaderPieces.OPTIONAL_TEST_RESULT_CONFIRMATION_INFO: padded(
+                self._write_optional_test_result_confirmation_info(comparison)
+            ),
+        }
+
+        hide_project_coverage = self.settings.get("hide_project_coverage", False)
+        if hide_project_coverage:
+            substitutions_mapping.update(
+                {
+                    self.HeaderPieces.OPTIONAL_PROJECT_COVERAGE_DETAILS: "",
+                    self.HeaderPieces.OPTIONAL_BEHIND_BY_WARNING: "",
+                    self.HeaderPieces.OPTIONAL_PULL_HEAD_DIFFERS_WARNING: "",
+                    self.HeaderPieces.OPTIONAL_CRITICAL_FILES_CHANGED_INFO: "",
+                }
+            )
+        else:
+            substitutions_mapping.update(
+                {
+                    self.HeaderPieces.OPTIONAL_BEHIND_BY_WARNING: self._write_optional_behind_by_warning(
+                        behind_by, pull_dict["base"]["branch"]
+                    ),
+                    self.HeaderPieces.OPTIONAL_PULL_HEAD_DIFFERS_WARNING: padded(
+                        self._write_optional_pull_head_differs_warning(comparison)
+                    ),
+                    self.HeaderPieces.OPTIONAL_CRITICAL_FILES_CHANGED_INFO: padded(
+                        await self._write_optional_critical_files_changed_info(
+                            comparison, diff, changes
+                        )
+                    ),
+                }
+            )
+            if base_report and head_report:
+                substitutions_mapping[
+                    self.HeaderPieces.OPTIONAL_PROJECT_COVERAGE_DETAILS
+                ] = self._write_optional_project_coverage_details(
+                    comparison,
+                    links,
+                    round_number(yaml, Decimal(head_report.totals.coverage)),
+                )
+            else:
+                substitutions_mapping[
+                    self.HeaderPieces.OPTIONAL_PROJECT_COVERAGE_DETAILS
+                ] = self._write_optional_project_coverage_missing_details(
+                    pull_dict, base_report
+                )
+        # Substitute all details and return
+        # To conform to the current structure we have to yield the lines from the filled template
+        for header_piece in header_lines_order:
+            actual_header_piece = substitutions_mapping[header_piece]
+            if actual_header_piece != "":
+                for line in actual_header_piece.split("\n"):
+                    yield line
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
