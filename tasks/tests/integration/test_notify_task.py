@@ -1191,7 +1191,6 @@ class TestNotifyTask(object):
                                 "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                                 "",
                                 "",
-                                "",
                                 "------",
                                 "",
                                 "[Continue to review full report in Codecov by Sentry](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).",

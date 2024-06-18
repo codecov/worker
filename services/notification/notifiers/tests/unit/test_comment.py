@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import List
 from unittest.mock import PropertyMock
 
 import pytest
@@ -16,13 +17,13 @@ from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
 from database.enums import TestResultsProcessingError
-from database.models.core import GithubAppInstallation, Pull
+from database.models.core import Commit, GithubAppInstallation, Pull, Repository
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
 from services.billing import BillingPlan
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.overlays.critical_path import CriticalPathOverlay
-from services.comparison.types import Comparison, FullCommit
+from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
@@ -37,6 +38,7 @@ from services.notification.notifiers.mixins.message.sections import (
     FileSectionWriter,
     HeaderSectionWriter,
     ImpactedEntrypointsSectionWriter,
+    MessagesToUserSectionWriter,
     NewFilesSectionWriter,
     NewFooterSectionWriter,
     _get_tree_cell,
@@ -426,129 +428,6 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_should_add_announcement(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id=None
-        )  # Not using integration
-        dbsession.add(repository)
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=False,
-        )
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        mock_write.assert_any_call(
-            ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
-        )
-        assert mock_write.call_count == 2
-
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_already_using_integration(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id="10000"
-        )  # Using integration
-        dbsession.add(repository)
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=False,
-        )
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        assert mock_write.call_count == 0
-
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_has_ghapp_installation(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id=None
-        )
-        ghapp_installation = GithubAppInstallation(
-            owner=repository.owner, installation_id=12345, repository_service_ids=None
-        )
-        dbsession.add_all([repository, ghapp_installation])
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=False,
-        )
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        assert mock_write.call_count == 0
-
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_enterprise(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id=None
-        )  # Not using integration
-        dbsession.add(repository)
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=True,
-        )  # Enterprise
-
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        assert mock_write.call_count == 0
-
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifier(object):
@@ -913,7 +792,6 @@ class TestCommentNotifier(object):
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             "",
-            "",
         ]
         res = await notifier.build_message(comparison)
         assert expected_result == res
@@ -1111,12 +989,6 @@ class TestCommentNotifier(object):
             f"Last update "
             f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
             "",
         ]
         for exp, res in zip(expected_result, result):
@@ -1943,7 +1815,6 @@ class TestCommentNotifier(object):
             "  Partials       68       68           ",
             "```",
             "",
-            "",
             "------",
             "",
             f"[Continue to review full report in "
@@ -1958,9 +1829,7 @@ class TestCommentNotifier(object):
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
             assert exp == res
         assert result == expected_result
 
@@ -2008,7 +1877,6 @@ class TestCommentNotifier(object):
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | |",
             "",
             "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
-            "",
             "",
             "",
             "------",
@@ -2084,7 +1952,6 @@ class TestCommentNotifier(object):
             "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
             "",
             "",
-            "",
             "------",
             "",
             f"[Continue to review full report in "
@@ -2154,7 +2021,6 @@ class TestCommentNotifier(object):
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
-            "",
             "",
             "",
             "------",
@@ -4469,7 +4335,6 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             "",
-            "",
         ]
         res = await notifier.build_message(comparison)
         assert expected_result == res
@@ -5064,7 +4929,6 @@ class TestCommentNotifierInNewLayout(object):
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
-            "",
             "",
             "",
             "------",
@@ -5678,3 +5542,181 @@ class TestCommentNotifierWelcome:
         )
         result = await notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
+
+
+class TestMessagesToUserSection(object):
+    @pytest.mark.parametrize(
+        "repo, is_enterprise, owner_has_apps, expected",
+        [
+            pytest.param(
+                RepositoryFactory(owner__service="github", owner__integration_id=None),
+                False,
+                False,
+                ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
+                id="owner_not_using_app_should_emit_warning",
+            ),
+            pytest.param(
+                RepositoryFactory(owner__service="github", owner__integration_id=None),
+                True,
+                False,
+                "",
+                id="is_enterprise_should_not_emit_warning",
+            ),
+            pytest.param(
+                RepositoryFactory(
+                    owner__service="github", owner__integration_id="integration_id"
+                ),
+                False,
+                False,
+                "",
+                id="owner_using_app_legacy_should_not_emit_warning",
+            ),
+            pytest.param(
+                RepositoryFactory(owner__service="github", owner__integration_id=None),
+                False,
+                True,
+                "",
+                id="owner_using_app_should_not_emit_warning",
+            ),
+        ],
+    )
+    def test_install_github_app_warning(
+        self,
+        mocker,
+        repo: Repository,
+        is_enterprise: bool,
+        owner_has_apps: bool,
+        expected: str,
+    ):
+        if owner_has_apps:
+            repo.owner.github_app_installations = [
+                GithubAppInstallation(owner=repo.owner, app_id=10, installation_id=1000)
+            ]
+        commit = CommitFactory(repository=repo)
+        mock_head = mocker.MagicMock(commit=commit)
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.is_enterprise",
+            return_value=is_enterprise,
+        )
+        fake_comparison = mocker.MagicMock(head=mock_head)
+        assert (
+            MessagesToUserSectionWriter(
+                repo, mocker.MagicMock(), False, mocker.MagicMock(), {}
+            )._write_install_github_app_warning(fake_comparison)
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        "commit, upload_diff, has_project_status, is_coverage_drop_significant, expected",
+        [
+            pytest.param(
+                CommitFactory(state="pending"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                True,
+                True,
+                "",
+                id="commit_not_ready_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                False,
+                True,
+                "",
+                id="no_project_status_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                True,
+                False,
+                "",
+                id="no_significant_drop_in_coverage_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [],
+                True,
+                True,
+                "",
+                id="no_upload_diff_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(
+                    state="complete",
+                    commitid="cf59ea49c149c8ef5d7303834362a4d27bbd4a28",
+                ),
+                [
+                    ReportUploadedCount(flag="unit", base_count=4, head_count=3),
+                    ReportUploadedCount(flag="local", base_count=2, head_count=1),
+                ],
+                True,
+                True,
+                (
+                    "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
+                    + "\n> "
+                    + "\n> <details><summary>HEAD has 2 uploads less than BASE</summary>"
+                    + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
+                    + "\n>|------|------|------|"
+                    + "\n>|unit|4|3|"
+                    + "\n>|local|2|1|"
+                    + "\n></details>"
+                ),
+                id="should_send_warning_2_uploads_less",
+            ),
+            pytest.param(
+                CommitFactory(
+                    state="complete",
+                    commitid="cf59ea49c149c8ef5d7303834362a4d27bbd4a28",
+                ),
+                [
+                    ReportUploadedCount(flag="unit", base_count=4, head_count=3),
+                ],
+                True,
+                True,
+                (
+                    "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
+                    + "\n> "
+                    + "\n> <details><summary>HEAD has 1 upload less than BASE</summary>"
+                    + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
+                    + "\n>|------|------|------|"
+                    + "\n>|unit|4|3|"
+                    + "\n></details>"
+                ),
+                id="should_send_warning_1_upload_less",
+            ),
+        ],
+    )
+    def test_different_upload_count_warning(
+        self,
+        mocker,
+        commit: Commit,
+        upload_diff: List[ReportUploadedCount],
+        has_project_status: bool,
+        is_coverage_drop_significant: bool,
+        expected: str,
+    ):
+        yaml = {"coverage": {"status": {"project": has_project_status}}}
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.is_coverage_drop_significant",
+            return_value=is_coverage_drop_significant,
+        )
+        mock_head = mocker.MagicMock(commit=commit)
+        mock_project_coverage_base = mocker.MagicMock(
+            commit=CommitFactory(
+                repository=commit.repository,
+                commitid="bbd4a28cf59ea49c149c8ef5d7303834362a4d27",
+            )
+        )
+        fake_comparison = mocker.MagicMock(
+            head=mock_head, project_coverage_base=mock_project_coverage_base
+        )
+        fake_comparison.get_reports_uploaded_count_per_flag_diff.return_value = (
+            upload_diff
+        )
+        assert (
+            MessagesToUserSectionWriter(
+                commit.repository, mocker.MagicMock(), False, mocker.MagicMock(), yaml
+            )._write_different_upload_count_warning(fake_comparison)
+            == expected
+        )

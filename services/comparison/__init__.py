@@ -302,14 +302,15 @@ class ComparisonProxy(object):
         head_report = self.comparison.head.report
         ops = [(base_report, "base_count"), (head_report, "head_count")]
         for curr_report, curr_counter in ops:
-            for session in curr_report.sessions:
+            for session in curr_report.sessions.values():
                 # We ignore carryforward sessions
                 # Because not all commits would upload all flags (potentially)
                 # But they are still carried forward
                 if session.session_type != SessionType.carriedforward:
-                    if session.flags == []:
-                        session.flags = [""]
-                    for flag in session.flags:
+                    # It's possible that an upload is done without flags.
+                    # In this case we still want to count it in the count, but there's no flag associated to it
+                    session_flags = session.flags or [""]
+                    for flag in session_flags:
                         dict_value = per_flag_dict.get(flag)
                         if dict_value is None:
                             dict_value = ReportUploadedCount(
