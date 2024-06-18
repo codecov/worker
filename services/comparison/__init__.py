@@ -302,7 +302,7 @@ class ComparisonProxy(object):
         head_report = self.comparison.head.report
         ops = [(base_report, "base_count"), (head_report, "head_count")]
         for curr_report, curr_counter in ops:
-            for sid, session in curr_report.sessions.items():
+            for session in curr_report.sessions.values():
                 # We ignore carryforward sessions
                 # Because not all commits would upload all flags (potentially)
                 # But they are still carried forward
