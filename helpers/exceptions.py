@@ -1,5 +1,7 @@
 class ReportExpiredException(Exception):
-    pass
+    def __init__(self, message=None, filename=None) -> None:
+        super().__init__(message)
+        self.filename = filename
 
 
 class ReportEmptyError(Exception):
