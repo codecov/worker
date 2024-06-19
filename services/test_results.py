@@ -172,12 +172,9 @@ class TestResultsNotifier:
         self,
         fail: TestResultsNotificationFailure,
     ):
-        envs = [f"  - {env}" for env in fail.envs] or ["- default"]
-        env_section = "<br>".join(envs)
-        if "\x1f" in fail.testname:
-            split_name = fail.testname.split("\x1f")
-            class_name = split_name[0]
-            test_name = split_name[1]
+        has_class_name = "\x1f" in fail.testname
+        if has_class_name:
+            class_name, test_name = fail.testname.split("\x1f")
             test_description = (
                 f"- **Class name:** {class_name}<br>**Test name:** {test_name}"
             )
@@ -185,6 +182,8 @@ class TestResultsNotifier:
             test_description = f"- **Test name:** {fail.testname}"
 
         if fail.envs:
+            envs = [f"  - {env}" for env in fail.envs]
+            env_section = "<br>".join(envs)
             test_description = f"{test_description}\n**Flags:**\n{env_section}"
 
         return f"{test_description}<br><br>"
@@ -255,22 +254,13 @@ class TestResultsNotifier:
             else:
                 fail_dict[fail.testsuite].append(fail)
 
-        def process_dict(d):
-            for testsuite, fail_list in d.items():
-                message.append(f"## {testsuite}")
-                for fail in fail_list:
-                    test_description = self.generate_test_description(fail)
-                    message.append(test_description)
-                    failure_information = self.generate_failure_info(fail)
-                    message.append(failure_information)
-
         if fail_dict:
             message += [
                 "<details><summary>View the full list of failed tests</summary>",
                 "",
             ]
 
-            process_dict(fail_dict)
+            self.process_dict(fail_dict, message)
             message.append("</details>")
 
         if flake_dict:
@@ -279,7 +269,7 @@ class TestResultsNotifier:
                 "",
             ]
 
-            process_dict(flake_dict)
+            self.process_dict(flake_dict, message)
             message.append("</details>")
 
         return "\n".join(message)
@@ -336,6 +326,15 @@ class TestResultsNotifier:
             return (False, "torngit_error")
 
         return (True, "comment_posted")
+
+    def process_dict(self, d, message):
+        for testsuite, fail_list in d.items():
+            message.append(f"## {testsuite}")
+            for fail in fail_list:
+                test_description = self.generate_test_description(fail)
+                message.append(test_description)
+                failure_information = self.generate_failure_info(fail)
+                message.append(failure_information)
 
 
 def latest_test_instances_for_a_given_commit(db_session, commit_id):
