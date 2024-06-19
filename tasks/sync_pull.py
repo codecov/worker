@@ -83,9 +83,10 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                     "sync_pull_task_run_count", tags={"wait": metrics_tag}
                 )
                 time_to_get_lock_seconds = time.monotonic() - start_wait
-                sentry_metrics.distribution(
-                    "sync_pull_task_time_to_get_lock_seconds",
-                    time_to_get_lock_seconds,
+                sentry_metrics.gauge(
+                    key="sync_pull_task_time_to_get_lock_seconds",
+                    value=time_to_get_lock_seconds,
+                    unit="seconds",
                     tags={"wait": metrics_tag},
                 )
                 return self.run_impl_within_lock(
@@ -100,6 +101,9 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             log.info(
                 "Unable to acquire PullSync lock. Not retrying because pull is being synced already",
                 extra=dict(pullid=pullid, repoid=repoid),
+            )
+            sentry_metrics.incr(
+                "sync_pull_task_rejected_count", tags={"wait": metrics_tag}
             )
             return {
                 "notifier_called": False,
