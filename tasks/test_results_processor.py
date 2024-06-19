@@ -139,6 +139,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         commitid=commitid,
                         branch=branch,
                         repoid=repoid,
+                        reduced_error_id=None,
                     )
                 )
 
