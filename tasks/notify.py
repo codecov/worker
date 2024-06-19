@@ -172,6 +172,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             Commit.repoid == repoid, Commit.commitid == commitid
         )
         commit: Commit = commits_query.first()
+        assert commit, "Commit not found in database."
 
         test_result_commit_report = commit.commit_report(ReportType.TEST_RESULTS)
         if (
@@ -231,7 +232,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             current_yaml = async_to_sync(get_current_yaml)(commit, repository_service)
         else:
             current_yaml = UserYaml.from_dict(current_yaml)
-        assert commit, "Commit not found in database."
+
         try:
             ci_results = self.fetch_and_update_whether_ci_passed(
                 repository_service, commit, current_yaml
@@ -341,9 +342,6 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 )
             else:
                 base_report = None
-            head_report = report_service.get_existing_report_for_commit(
-                commit, report_class=ReadOnlyReport
-            )
             if head_report is None and empty_upload is None:
                 self.log_checkpoint(kwargs, UploadFlow.NOTIF_ERROR_NO_REPORT)
                 return {
@@ -475,10 +473,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
     def submit_third_party_notifications(
         self,
         current_yaml: UserYaml,
-        base_commit,
-        commit,
-        base_report,
-        head_report,
+        base_commit: Commit | None,
+        commit: Commit,
+        base_report: ReadOnlyReport | None,
+        head_report: ReadOnlyReport | None,
         enriched_pull: EnrichedPull,
         empty_upload=None,
         # It's only true if the test_result processing is setup
