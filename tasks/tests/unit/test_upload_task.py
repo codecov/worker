@@ -335,6 +335,7 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+                checkpoints_TestResultsFlow=None,
             )
         )
 

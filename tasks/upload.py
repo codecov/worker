@@ -26,7 +26,7 @@ from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
-from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.parallel_upload_processing import get_parallel_session_ids
@@ -257,6 +257,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             # If not, log it directly into kwargs so we can pass it onto other tasks
             checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs).log(
                 UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
+            )
+        elif report_type == ReportType.TEST_RESULTS.value:
+            checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs).log(
+                TestResultsFlow.TEST_RESULTS_BEGIN, kwargs=kwargs, ignore_repeat=True
             )
 
         repoid = int(repoid)
@@ -628,7 +632,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
         elif commit_report.report_type == ReportType.TEST_RESULTS.value:
             res = self._schedule_test_results_processing_task(
-                commit, commit_yaml, argument_list, commit_report
+                commit, commit_yaml, argument_list, commit_report, checkpoints
             )
 
         if res:
@@ -850,11 +854,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         return res
 
     def _schedule_test_results_processing_task(
-        self,
-        commit,
-        commit_yaml,
-        argument_list,
-        commit_report,
+        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
     ):
         processor_task_group = []
         for i in range(0, len(argument_list), CHUNK_SIZE):
@@ -872,15 +872,20 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 )
                 processor_task_group.append(sig)
         if processor_task_group:
+            checkpoint_data = None
+            if checkpoints:
+                checkpoint_data = checkpoints.data
+            kwargs = {
+                "repoid": commit.repoid,
+                "commitid": commit.commitid,
+                "commit_yaml": commit_yaml,
+                _kwargs_key(TestResultsFlow): checkpoint_data,
+            }
             res = chord(
                 processor_task_group,
                 test_results_finisher_task.signature(
                     args=(),
-                    kwargs=dict(
-                        repoid=commit.repoid,
-                        commitid=commit.commitid,
-                        commit_yaml=commit_yaml,
-                    ),
+                    kwargs=kwargs,
                 ),
             ).apply_async()
 
