@@ -1,44 +1,15 @@
+import datetime as dt
 import logging
 
-from django.db import connection
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import Avg, Case, FloatField, Value, When
 from shared.celery_config import sync_test_results_task_name
-from shared.django_apps.reports.models import Test
+from shared.django_apps.reports.models import Test, TestInstance
 
 from app import celery_app
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
-
-# TODO: turn these into Django ORM calls
-
-failure_rate_query = """
-select 
-    rti.test_id, 
-    avg(
-        case 
-            when outcome = 'pass' then 0.0
-            when outcome = 'failure' OR outcome = 'error' then 1.0
-        end
-    ) as failure_rate
-from reports_testinstance rti
-where rti.repoid = %s 
-    and rti.created_at > current_date - interval '30 days' 
-    and outcome != 'skip'
-group by rti.test_id
-"""
-
-
-commit_agg_query = """
-select 
-    rti.test_id,
-    array_agg(distinct commitid) as commits
-from reports_testinstance rti
-where 
-    rti.repoid = %s 
-    and rti.created_at > current_date - interval '30 days' 
-    and (outcome = 'failure' or outcome = 'error')
-group by rti.test_id
-"""
 
 
 class SyncTestResultsTask(BaseCodecovTask, name=sync_test_results_task_name):
@@ -60,14 +31,43 @@ class SyncTestResultsTask(BaseCodecovTask, name=sync_test_results_task_name):
             extra=dict(repoid=repoid),
         )
 
-        with connection.cursor() as cursor:
-            cursor.execute(failure_rate_query, [repoid])
-            rows = cursor.fetchall()
-            failure_rate_dict = {row[0]: row[1] for row in rows}
+        thirty_days_ago = dt.datetime.now(dt.UTC) - dt.timedelta(days=30)
 
-            cursor.execute(commit_agg_query, [repoid])
-            rows = cursor.fetchall()
-            commit_agg_dict = {row[0]: row[1] for row in rows}
+        failure_rates_queryset = (
+            TestInstance.objects.filter(
+                repoid=repoid,
+                created_at__gt=thirty_days_ago,
+                outcome__in=["pass", "failure", "error"],
+            )
+            .values("test_id")
+            .annotate(
+                failure_rate=Avg(
+                    Case(
+                        When(outcome="pass", then=Value(0.0)),
+                        When(outcome__in=["failure", "error"], then=Value(1.0)),
+                        output_field=FloatField(),
+                    )
+                )
+            )
+        )
+
+        failure_rate_dict = {
+            obj["test_id"]: obj["failure_rate"] for obj in failure_rates_queryset
+        }
+
+        commit_agg_queryset = (
+            TestInstance.objects.filter(
+                repoid=repoid,
+                created_at__gt=thirty_days_ago,
+                outcome__in=["failure", "error"],
+            )
+            .values("test_id")
+            .annotate(commits=ArrayAgg("commitid", distinct=True))
+        )
+
+        commit_agg_dict = {
+            obj["test_id"]: obj["commits"] for obj in commit_agg_queryset
+        }
 
         tests = Test.objects.filter(repository_id=repoid).all()
         for test in tests:

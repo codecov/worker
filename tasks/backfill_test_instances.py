@@ -30,7 +30,7 @@ class BackfillTestInstancesTask(
 
         for i in range(0, test_instance_list.count(), 1000):
             updates = []
-            thing = (
+            test_instances_missing_info = (
                 TestInstance.objects.select_related("upload__report__commit")
                 .filter(
                     Q(branch__isnull=True)
@@ -39,7 +39,7 @@ class BackfillTestInstancesTask(
                 )
                 .order_by("id")[0:1000]
             )
-            for test_instance in thing:
+            for test_instance in test_instances_missing_info:
                 test_instance.branch = test_instance.upload.report.commit.branch
                 test_instance.commitid = test_instance.upload.report.commit.commitid
                 test_instance.repoid = test_instance.upload.report.commit.repository_id
