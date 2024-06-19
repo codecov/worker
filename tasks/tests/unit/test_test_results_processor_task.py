@@ -89,7 +89,8 @@ class TestUploadTestProcessorTask(object):
             == """def test_divide():\n&gt;       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)\nE        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
         )
         assert (
-            failures[0].test.name == "api.temp.calculator.test_calculator::test_divide"
+            failures[0].test.name
+            == "api.temp.calculator.test_calculator\x1ftest_divide"
         )
         assert expected_result == result
         assert commit.message == "hello world"
@@ -545,13 +546,13 @@ class TestUploadTestProcessorTask(object):
         test_id = generate_test_id(
             repoid,
             "pytest",
-            "api.temp.calculator.test_calculator::test_divide",
+            "api.temp.calculator.test_calculator\x1ftest_divide",
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         )
         existing_test = Test(
             repoid=repoid,
             flags_hash="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-            name="api.temp.calculator.test_calculator::test_divide",
+            name="api.temp.calculator.test_calculator\x1ftest_divide",
             testsuite="pytest",
             id_=test_id,
         )
@@ -585,7 +586,8 @@ class TestUploadTestProcessorTask(object):
             == """def test_divide():\n&gt;       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)\nE        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
         )
         assert (
-            failures[0].test.name == "api.temp.calculator.test_calculator::test_divide"
+            failures[0].test.name
+            == "api.temp.calculator.test_calculator\x1ftest_divide"
         )
         assert expected_result == result
         assert commit.message == "hello world"
@@ -631,13 +633,13 @@ class TestUploadTestProcessorTask(object):
         test_id = generate_test_id(
             repoid,
             "pytest",
-            "api.temp.calculator.test_calculator::test_divide",
+            "api.temp.calculator.test_calculator\x1ftest_divide",
             "",
         )
         existing_test = Test(
             repoid=repoid,
             flags_hash="",
-            name="api.temp.calculator.test_calculator::test_divide",
+            name="api.temp.calculator.test_calculator\x1ftest_divide",
             testsuite="pytest",
             id_=test_id,
         )
@@ -673,7 +675,8 @@ class TestUploadTestProcessorTask(object):
             == """def test_divide():\n&gt;       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)\nE        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
         )
         assert (
-            failures[0].test.name == "api.temp.calculator.test_calculator::test_divide"
+            failures[0].test.name
+            == "api.temp.calculator.test_calculator\x1ftest_divide"
         )
         assert expected_result == result
         assert commit.message == "hello world"
