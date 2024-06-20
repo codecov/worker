@@ -676,8 +676,8 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         expected_call = call(
             org_id=owner.ownerid,
-            event="INSTALLED_APP",
-            payload={"login": "github"},
+            event="COMPLETED_UPLOAD",
+            payload={},
         )
         assert mock_create_user_onboarding_metric.call_args_list == [expected_call]
 
