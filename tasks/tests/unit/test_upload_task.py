@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import mock
 import pytest
@@ -134,9 +134,9 @@ class TestUploadTaskIntegration(object):
         dbsession.flush()
         dbsession.refresh(commit)
         repo_updatestamp = commit.repository.updatestamp
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         checkpoints = _create_checkpoint_logger(mocker)
         kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
         result = UploadTask().run_impl(
@@ -299,9 +299,9 @@ class TestUploadTaskIntegration(object):
         dbsession.flush()
         dbsession.refresh(commit)
 
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}/test_results"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}/test_results"
+        ] = jsonified_redis_queue
 
         UploadTask().run_impl(
             dbsession,
@@ -409,9 +409,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
             datetime.utcnow() - timedelta(seconds=10)
         ).timestamp()
@@ -549,9 +549,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
@@ -664,12 +664,23 @@ class TestUploadTaskIntegration(object):
         dbsession.flush()
         redis_queue = [{"build": "part1"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
+        mock_create_user_onboarding_metric = mocker.patch(
+            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
         )
+
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
+        expected_call = call(
+            org_id=owner.ownerid,
+            event="INSTALLED_APP",
+            payload={"login": "github"},
+        )
+        assert mock_create_user_onboarding_metric.call_args_list == [expected_call]
+
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id == "c5b67303452bbff57cc1f49984339cde39eb1db5"
         assert not mocked_1.called
@@ -712,9 +723,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": False}
         assert expected_result == result
@@ -768,9 +779,9 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": False}
         assert expected_result == result
@@ -824,9 +835,9 @@ class TestUploadTaskIntegration(object):
         mock_repo_provider.data = dict(repo=dict(repoid=commit.repoid))
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -924,9 +935,9 @@ class TestUploadTaskIntegration(object):
             {"build": "part1", "url": "url1", "upload_id": upload.id_},
         ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}"
+        ] = jsonified_redis_queue
         upload_args = UploadContext(
             repoid=commit.repoid,
             commitid=commit.commitid,
