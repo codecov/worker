@@ -213,6 +213,9 @@ class TestUploadTaskIntegration(object):
         celery_app,
     ):
         chain = mocker.patch("tasks.upload.chain")
+        mocker.patch(
+            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
+        )
         storage_path = (
             "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
         )
@@ -281,6 +284,9 @@ class TestUploadTaskIntegration(object):
         celery_app,
     ):
         chord = mocker.patch("tasks.upload.chord")
+        mocker.patch(
+            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
+        )
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
@@ -887,6 +893,9 @@ class TestUploadTaskIntegration(object):
         mock_storage,
     ):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
+        mocker.patch(
+            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
+        )
         mock_possibly_update_commit_from_provider_info = mocker.patch(
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
