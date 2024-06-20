@@ -29,7 +29,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert not ghm_service.get_user.called
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_user_count == 1
-        assert owner.plan_activated_users == None
+        assert owner.plan_activated_users is None
         # Owner was already created, we don't update this value
         assert owner.createstamp is None
 

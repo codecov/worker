@@ -116,7 +116,7 @@ class BackfillExistingIndividualGHAppInstallationTask(
                 extra=dict(ownerid=ownerid, parent_id=self.request.parent_id),
             )
             return {"successful": True, "reason": "backfill task finished"}
-        except:
+        except Exception:
             log.info(
                 "Backfill unsuccessful for this owner",
                 extra=dict(ownerid=ownerid, parent_id=self.request.parent_id),

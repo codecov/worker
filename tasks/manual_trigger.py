@@ -91,7 +91,7 @@ class ManualTriggerTask(
             .filter(
                 CommitReport.code == report_code,
                 CommitReport.commit == commit,
-                (CommitReport.report_type == None)
+                (CommitReport.report_type == None)  # noqa: E711
                 | (CommitReport.report_type == ReportType.COVERAGE.value),
             )
         )

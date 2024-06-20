@@ -225,7 +225,9 @@ class MessageMixin(object):
             write("")
 
     def get_middle_layout_section_names(self, settings):
-        sections = map(lambda l: l.strip(), (settings["layout"] or "").split(","))
+        sections = map(
+            lambda layout: layout.strip(), (settings["layout"] or "").split(",")
+        )
         return [
             section
             for section in sections
@@ -242,7 +244,9 @@ class MessageMixin(object):
         ]
 
     def get_upper_section_names(self, settings):
-        sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
+        sections = list(
+            map(lambda layout: layout.strip(), (settings["layout"] or "").split(","))
+        )
         headers = ["newheader", "header", "condensed_header"]
         if all(x not in sections for x in headers):
             sections.insert(0, "condensed_header")

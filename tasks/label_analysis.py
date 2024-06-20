@@ -142,9 +142,11 @@ class LabelAnalysisRequestProcessingTask(
                 )
                 if existing_labels.are_labels_encoded:
                     # Translate label_ids
-                    partial_fn_to_apply = lambda label_id_set: self._lookup_label_ids(
-                        report=base_report, label_ids=label_id_set
-                    )
+                    def partial_fn_to_apply(label_id_set):
+                        return self._lookup_label_ids(
+                            report=base_report, label_ids=label_id_set
+                        )
+
                     existing_labels = ExistingLabelSetsNotEncoded(
                         all_report_labels=partial_fn_to_apply(
                             existing_labels.all_report_labels
@@ -314,7 +316,7 @@ class LabelAnalysisRequestProcessingTask(
         if len(all_report_labels) > 0:
             # Check if report labels are encoded or not
             test_label = all_report_labels.pop()
-            are_labels_encoded = type(test_label) == int
+            are_labels_encoded = isinstance(test_label, int)
             all_report_labels.add(test_label)
         else:
             # There are no labels in the report

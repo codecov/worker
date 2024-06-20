@@ -562,9 +562,9 @@ class TestComputeComparisonTask(object):
         )
         assert len(component_comparisons) == 2
         for comparison in component_comparisons:
-            assert comparison.patch_totals == None
+            assert comparison.patch_totals is None
 
         flag_comparisons = dbsession.query(CompareFlag).all()
         assert len(flag_comparisons) == 2
         for comparison in flag_comparisons:
-            assert comparison.patch_totals == None
+            assert comparison.patch_totals is None

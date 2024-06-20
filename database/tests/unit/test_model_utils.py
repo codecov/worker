@@ -71,7 +71,7 @@ class TestArchiveField(object):
         commit = CommitFactory()
         test_class = self.ClassWithArchiveField(commit, None, "gcs_path")
 
-        assert test_class._archive_field == None
+        assert test_class._archive_field is None
         assert test_class._archive_field_storage_path == "gcs_path"
         assert test_class.archive_field == some_json
         mock_read_file.assert_called_with("gcs_path")
@@ -93,9 +93,9 @@ class TestArchiveField(object):
         commit = CommitFactory()
         test_class = self.ClassWithArchiveField(commit, None, "gcs_path")
 
-        assert test_class._archive_field == None
+        assert test_class._archive_field is None
         assert test_class._archive_field_storage_path == "gcs_path"
-        assert test_class.archive_field == None
+        assert test_class.archive_field is None
         mock_read_file.assert_called_with("gcs_path")
         mock_archive_service.assert_called_with(repository=commit.repository)
 
@@ -122,7 +122,7 @@ class TestArchiveField(object):
         mock_archive_service.return_value.write_json_data_to_storage = mock_write_file
 
         assert test_class._archive_field == "db_value"
-        assert test_class._archive_field_storage_path == None
+        assert test_class._archive_field_storage_path is None
         assert test_class.archive_field == "db_value"
         assert mock_read_file.call_count == 0
 
@@ -132,7 +132,7 @@ class TestArchiveField(object):
 
         # Now we write to the property
         test_class.archive_field = some_json
-        assert test_class._archive_field == None
+        assert test_class._archive_field is None
         assert test_class._archive_field_storage_path == "path/to/written/object"
         assert test_class.archive_field == some_json
         # Cache is updated on write

@@ -307,10 +307,10 @@ class TestNotifyTaskHelpers(object):
         task = NotifyTask()
         assert (
             task._possibly_pin_commit_to_github_app(commit, torngit_with_installation)
-            == None
+            is None
         )
         mock_refresh_selection.assert_not_called()
-        assert task._possibly_pin_commit_to_github_app(commit_from_gh, torngit) == None
+        assert task._possibly_pin_commit_to_github_app(commit_from_gh, torngit) is None
         mock_refresh_selection.assert_called_with(commit_from_gh)
 
     def test_possibly_pin_commit_to_github_app_new_selection(self, mocker, dbsession):

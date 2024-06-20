@@ -624,7 +624,7 @@ class TestGo(BaseTestCase):
             [2, 24, 1],
             [24, None, 0],
         ]
-        assert go.combine_partials([(2, 2, 1), (2, 2, 0)]) == None
+        assert go.combine_partials([(2, 2, 1), (2, 2, 0)]) is None
         assert go.combine_partials([(0, None, 28), (0, None, 0)]) == [[0, None, 28]]
         assert go.combine_partials([(2, 35, 1), (35, None, 1)]) == [[2, None, 1]]
         assert go.combine_partials([(2, 35, "1/2"), (35, None, "1/2")]) == [

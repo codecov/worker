@@ -41,7 +41,7 @@ class TestTree(object):
 
         branch = self.tree.instance.get("list.rs")
         results = []
-        assert self.tree._drill(branch, results) == None
+        assert self.tree._drill(branch, results) is None
 
     def test_recursive_lookup(self):
         path = "one/two/three.py"
