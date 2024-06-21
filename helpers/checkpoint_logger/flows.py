@@ -58,7 +58,7 @@ class UploadFlow(BaseFlow):
 
 
 @failure_events("TEST_RESULTS_ERROR")
-@success_events("TEST_RESULTS_BEGIN")
+@success_events("TEST_RESULTS_NOTIFY")
 @subflows(
     ("test_results_notification_latency", "TEST_RESULTS_BEGIN", "TEST_RESULTS_NOTIFY"),
     ("flake_notification_latency", "TEST_RESULTS_BEGIN", "FLAKE_DETECTION_NOTIFY"),
