@@ -414,6 +414,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 log.warning(
                     "CheckpointLogger failed to log/submit", extra=dict(error=e)
                 )
+        elif report_type == ReportType.TEST_RESULTS:
+            checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
 
         commit = None
         commits = db_session.query(Commit).filter(

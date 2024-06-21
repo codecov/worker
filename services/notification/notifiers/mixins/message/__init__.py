@@ -219,7 +219,7 @@ class MessageMixin(object):
             for line in await section_writer.write_section(
                 comparison, diff, changes, links, behind_by=behind_by
             ):
-                wrote_something |= line != None
+                wrote_something |= line is not None
                 write(line)
         if wrote_something:
             write("")

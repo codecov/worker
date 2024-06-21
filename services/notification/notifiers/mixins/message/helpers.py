@@ -17,10 +17,10 @@ def has_project_status(yaml: UserYaml) -> bool:
     project_status_details = read_yaml_field(
         yaml, ("coverage", "status", "project"), False
     )
-    if type(project_status_details) == bool:
+    if isinstance(project_status_details, bool):
         return project_status_details
     # If it's not a bool, it has to be a dict
-    if type(project_status_details) == dict:
+    if isinstance(project_status_details, dict):
         if "enabled" in project_status_details:
             return project_status_details["enabled"]
         return True
