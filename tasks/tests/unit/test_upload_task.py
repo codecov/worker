@@ -23,7 +23,7 @@ from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from database.tests.factories.core import ReportFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
-from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -329,15 +329,15 @@ class TestUploadTaskIntegration(object):
                 report_code=None,
             ),
         )
-
-        notify_sig = test_results_finisher_task.signature(
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                checkpoints_TestResultsFlow=None,
-            )
+        kwargs = dict(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            checkpoints_TestResultsFlow=None,
         )
+
+        kwargs[_kwargs_key(TestResultsFlow)] = mocker.ANY
+        notify_sig = test_results_finisher_task.signature(kwargs=kwargs)
 
         chord.assert_called_with([processor_sig], notify_sig)
 
