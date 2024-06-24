@@ -36,9 +36,10 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-# Currently only enabled for most F (Pyflakes) and I (isort) rules: https://docs.astral.sh/ruff/rules/
-select = ["F", "I"]
-ignore = ["F841", "F405", "F403"]
+# Currently only enabled for most F (Pyflakes), Pycodestyle (Error), 
+# PyLint (Convention, Error), and I (isort) rules: https://docs.astral.sh/ruff/rules/
+select = ["F", "E", "I", "PLC", "PLE"]
+ignore = ["F841", "F405", "F403", "E501", "E712"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 # The preferred method (for now) w.r.t. fixable rules is to manually update the makefile

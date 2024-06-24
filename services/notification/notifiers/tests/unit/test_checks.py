@@ -297,7 +297,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
-        assert fallback_notifier.decoration_type == None
+        assert fallback_notifier.decoration_type is None
 
         res = await fallback_notifier.notify(sample_comparison)
         fallback_notifier.store_results(sample_comparison, res)
@@ -306,7 +306,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
-        assert fallback_notifier.decoration_type == None
+        assert fallback_notifier.decoration_type is None
         assert res == "success"
 
     @pytest.mark.asyncio
@@ -341,7 +341,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
-        assert fallback_notifier.decoration_type == None
+        assert fallback_notifier.decoration_type is None
 
         res = await fallback_notifier.notify(sample_comparison)
         assert res.notification_successful == False

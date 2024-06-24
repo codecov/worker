@@ -552,7 +552,7 @@ class TestTimeseriesService(object):
             )
             .one_or_none()
         )
-        assert path_not_found_measurements == None
+        assert path_not_found_measurements is None
 
         empty_path_measurements = (
             dbsession.query(Measurement)
@@ -564,7 +564,7 @@ class TestTimeseriesService(object):
             )
             .one_or_none()
         )
-        assert empty_path_measurements == None
+        assert empty_path_measurements is None
 
     def test_commit_measurement_update_component(
         self, dbsession, sample_report_for_components, repository, mocker

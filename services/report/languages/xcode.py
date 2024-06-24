@@ -15,7 +15,7 @@ from services.report.report_builder import (
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"
-NAME_COLOR = "\033[0;36m"
+NAME_COLOR = "\033\x1b[0;36m"
 
 
 class XCodeProcessor(BaseLanguageProcessor):

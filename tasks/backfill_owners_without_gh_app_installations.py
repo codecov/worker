@@ -40,7 +40,7 @@ class BackfillOwnersWithoutGHAppInstallations(
                 Owner.ownerid == GithubAppInstallation.ownerid,
             )
             .filter(
-                GithubAppInstallation.ownerid == None,
+                GithubAppInstallation.ownerid == None,  # noqa: E711
                 Owner.integration_id.isnot(None),
                 Owner.service == "github",
             )
@@ -90,7 +90,7 @@ class BackfillOwnersWithoutGHAppInstallations(
                         gh_app_installation=gh_app_installation,
                     )
                 log.info("Successful backfill", extra=dict(ownerid=ownerid))
-            except:
+            except Exception:
                 log.info(
                     "Backfill unsuccessful for this owner", extra=dict(ownerid=ownerid)
                 )
@@ -115,7 +115,7 @@ class BackfillOwnersWithoutGHAppInstallations(
                 Owner.ownerid == GithubAppInstallation.ownerid,
             )
             .filter(
-                GithubAppInstallation.ownerid == None,
+                GithubAppInstallation.ownerid is None,
                 Owner.integration_id.isnot(None),
                 Owner.service == "github",
             )
@@ -200,7 +200,7 @@ class BackfillOwnersWithoutGHAppInstallationIndividual(
                 extra=dict(ownerid=ownerid, parent_id=self.request.parent_id),
             )
             return {"successful": True, "reason": "backfill task finished"}
-        except:
+        except Exception:
             log.info(
                 "Backfill unsuccessful for this owner",
                 extra=dict(ownerid=ownerid, parent_id=self.request.parent_id),

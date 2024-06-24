@@ -150,7 +150,7 @@ class SaveReportResultsTask(
             db_session.query(CommitReport)
             .filter_by(commit_id=commit.id_, code=report_code)
             .filter(
-                (CommitReport.report_type == None)
+                (CommitReport.report_type == None)  # noqa: E711
                 | (CommitReport.report_type == ReportType.COVERAGE.value)
             )
             .first()

@@ -75,9 +75,9 @@ class TestGetSetGithubAppsToCommits(object):
         mock_redis.get.side_effect = lambda key: redis_keys.get(key)
         assert get_github_app_for_commit(fake_commit_12) == "1200"
         assert get_github_app_for_commit(fake_commit_10) == "1000"
-        assert get_github_app_for_commit(fake_commit_50) == None
+        assert get_github_app_for_commit(fake_commit_50) is None
         # This feature is Github-exclusive, so we skip checking for commits that are in repos of other providers
-        assert get_github_app_for_commit(fake_commit_gitlab) == None
+        assert get_github_app_for_commit(fake_commit_gitlab) is None
 
     def test_get_app_for_commit_error(self, mock_redis):
         repo_github = RepositoryFactory(owner__service="github")
@@ -85,7 +85,7 @@ class TestGetSetGithubAppsToCommits(object):
         fake_commit_12 = MagicMock(
             name="fake_commit", **{"id": 12, "repository": repo_github}
         )
-        assert get_github_app_for_commit(fake_commit_12) == None
+        assert get_github_app_for_commit(fake_commit_12) is None
         mock_redis.get.assert_called_with("app_to_use_for_commit_12")
 
     @pytest.mark.integration
