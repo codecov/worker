@@ -12,6 +12,9 @@ from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
+from shared.django_apps.codecov_metrics.service.codecov_metrics import (
+    UserOnboardingMetricsService,
+)
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitRepoNotFoundError,
@@ -510,6 +513,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
+
+        UserOnboardingMetricsService.create_user_onboarding_metric(
+            org_id=repository.ownerid, event="COMPLETED_UPLOAD", payload={}
+        )
+
         argument_list = []
 
         for arguments in upload_context.arguments_list():
