@@ -5,6 +5,7 @@ from asyncio import TimeoutError as AsyncioTimeoutError
 import mock
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
+from shared.plan.constants import PlanName
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.yaml import UserYaml
 
@@ -17,6 +18,7 @@ from database.tests.factories import CommitFactory, PullFactory, RepositoryFacto
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.notification import NotificationService
+from services.notification.notifiers import StatusType
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.checks import ProjectChecksNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
@@ -58,7 +60,10 @@ class TestNotificationService(object):
         repository = RepositoryFactory.create()
         current_yaml = {"github_checks": False}
         service = NotificationService(repository, current_yaml)
-        assert service._should_use_checks_notifier() == False
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
 
     @pytest.mark.parametrize(
         "repo_data,outcome",
@@ -104,7 +109,10 @@ class TestNotificationService(object):
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == []
         service = NotificationService(repository, current_yaml)
-        assert service._should_use_checks_notifier() == outcome
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == outcome
+        )
 
     def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
         repository = RepositoryFactory.create(owner__service="github")
@@ -119,7 +127,94 @@ class TestNotificationService(object):
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
         service = NotificationService(repository, current_yaml)
-        assert service._should_use_checks_notifier() == True
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
+
+    def test_use_checks_notifier_for_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+    def test_use_status_notifier_for_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert (
+            service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+    def test_use_status_notifier_for_non_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.CODECOV_PRO_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml)
+        assert (
+            service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == True
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
 
     @pytest.mark.parametrize(
         "gh_installation_name",
@@ -145,9 +240,15 @@ class TestNotificationService(object):
         service = NotificationService(
             repository, current_yaml, gh_installation_name_to_use=gh_installation_name
         )
-        assert service._should_use_checks_notifier() == True
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
         service = NotificationService(other_repo_same_owner, current_yaml)
-        assert service._should_use_checks_notifier() == False
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
 
     def test_get_notifiers_instances_only_third_party(
         self, dbsession, mock_configuration
@@ -228,7 +329,7 @@ class TestNotificationService(object):
         mocker.patch.dict(
             os.environ,
             {
-                "CHECKS_WHITELISTED_OWNERS": f"0,1",
+                "CHECKS_WHITELISTED_OWNERS": "0,1",
                 "CHECKS_WHITELISTED_PERCENTAGE": "35",
             },
         )
@@ -326,13 +427,13 @@ class TestNotificationService(object):
             {
                 "notifier": "good_name",
                 "title": "good_notifier",
-                "result": {
-                    "notification_attempted": True,
-                    "notification_successful": True,
-                    "explanation": "",
-                    "data_sent": {"some": "data"},
-                    "data_received": None,
-                },
+                "result": NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=True,
+                    explanation="",
+                    data_sent={"some": "data"},
+                    data_received=None,
+                ),
             },
         ]
         res = await notifications_service.notify(sample_comparison)
@@ -348,7 +449,7 @@ class TestNotificationService(object):
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
         )
-        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifier.notify.side_effect = AsyncioTimeoutError
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -390,11 +491,11 @@ class TestNotificationService(object):
         expected_result = {
             "notifier": "checks-project",
             "title": "title",
-            "result": {
-                "notification_attempted": True,
-                "notification_successful": True,
-                "explanation": None,
-                "data_sent": {
+            "result": NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation=None,
+                data_sent={
                     "state": "success",
                     "output": {
                         "title": "No coverage information found on head",
@@ -402,10 +503,10 @@ class TestNotificationService(object):
                     },
                     "url": f"test/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
                 },
-                "data_received": None,
-            },
+                data_received=None,
+            ),
         }
-        assert res["result"]["data_sent"] == expected_result["result"]["data_sent"]
+        assert res["result"].data_sent == expected_result["result"].data_sent
         assert res["result"] == expected_result["result"]
         assert res == expected_result
 
@@ -421,7 +522,7 @@ class TestNotificationService(object):
             notification_type=Notification.comment,
             decoration_type=Decoration.standard,
         )
-        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifier.notify.side_effect = AsyncioTimeoutError
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -455,7 +556,7 @@ class TestNotificationService(object):
             decoration_type=Decoration.standard,
         )
         # first attempt not successful
-        notifier.notify.return_value.set_exception(AsyncioTimeoutError())
+        notifier.notify.side_effect = AsyncioTimeoutError
         notifications_service = NotificationService(commit.repository, current_yaml)
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
@@ -476,12 +577,14 @@ class TestNotificationService(object):
         assert pull_commit_notification.state == NotificationState.error
 
         # second attempt successful
-        notifier.notify.return_value = NotificationResult(
-            notification_attempted=True,
-            notification_successful=True,
-            explanation="",
-            data_sent={"some": "data"},
-        )
+        notifier.notify.side_effect = [
+            NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                explanation="",
+                data_sent={"some": "data"},
+            )
+        ]
         res = await notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )

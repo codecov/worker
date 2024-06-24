@@ -46,9 +46,10 @@ FIRST_RETRY_DELAY = 20
     This is used by the Upload, Notify and UploadCleanLabelsIndex tasks as well to
     verify if an upload for the commit is currently being processed.
 """
-UPLOAD_PROCESSING_LOCK_NAME = (
-    lambda repoid, commitid: f"upload_processing_lock_{repoid}_{commitid}"
-)
+
+
+def UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid):
+    return f"upload_processing_lock_{repoid}_{commitid}"
 
 
 class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
@@ -506,7 +507,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 commit.repository, upload, is_error_case=True
             )
             self._rewrite_raw_report_readable(
-                processing_result={"raw_report": raw_report, "upload_object": upload},
+                processing_result={"raw_report": raw_report, "upload_obj": upload},
                 report_service=report_service,
                 commit=commit,
             )

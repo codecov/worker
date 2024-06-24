@@ -289,6 +289,7 @@ class TestBotsService(BaseTestCase):
         installations = get_github_app_info_for_owner(repo.owner)
         assert installations == [
             {
+                "id": installation.id,
                 "installation_id": 12341234,
                 "app_id": None,
                 "pem_path": None,
@@ -360,6 +361,7 @@ class TestBotsService(BaseTestCase):
         assert owner.github_app_installations == [installation]
         assert get_github_app_info_for_owner(owner) == [
             {
+                "id": installation.id,
                 "installation_id": 123456,
                 "app_id": None,
                 "pem_path": None,
@@ -389,11 +391,17 @@ class TestBotsService(BaseTestCase):
         assert owner.github_app_installations == [installation_0, installation_1]
         assert get_github_app_info_for_owner(owner, installation_name="my_app") == [
             {
+                "id": installation_1.id,
                 "installation_id": 12000,
                 "app_id": 1212,
                 "pem_path": "path",
             },
-            {"installation_id": 123456, "app_id": None, "pem_path": None},
+            {
+                "id": installation_0.id,
+                "installation_id": 123456,
+                "app_id": None,
+                "pem_path": None,
+            },
         ]
 
     def test_get_owner_installation_id_yes_installation_all_rate_limited(
@@ -421,9 +429,9 @@ class TestBotsService(BaseTestCase):
         with pytest.raises(NoConfiguredAppsAvailable):
             get_github_app_info_for_owner(owner, installation_name="my_app")
         mock_redis.exists.assert_any_call(
-            f"rate_limited_installations_default_app_123456"
+            "rate_limited_installations_default_app_123456"
         )
-        mock_redis.exists.assert_any_call(f"rate_limited_installations_1212_12000")
+        mock_redis.exists.assert_any_call("rate_limited_installations_1212_12000")
 
     @pytest.mark.parametrize(
         "time_edited_days,expected_weight",
@@ -531,6 +539,8 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: None,
             TokenType.status: None,
             TokenType.tokenless: None,
+            TokenType.pull: None,
+            TokenType.commit: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -562,6 +572,8 @@ class TestBotsService(BaseTestCase):
             TokenType.read: None,
             TokenType.comment: None,
             TokenType.status: None,
+            TokenType.pull: None,
+            TokenType.commit: None,
             TokenType.tokenless: {"key": "sometokenlesskey"},
         }
         assert expected_result == get_token_type_mapping(repo)
@@ -578,6 +590,7 @@ class TestBotsService(BaseTestCase):
                         "status": {"key": "status", "username": "status"},
                         "comment": {"key": "nada"},
                         "tokenless": {"key": "tokenlessKey"},
+                        "pull": {"key": "pullbot"},
                     },
                 }
             }
@@ -600,6 +613,8 @@ class TestBotsService(BaseTestCase):
             TokenType.status: {"key": "status", "username": "status"},
             TokenType.comment: {"key": "nada"},
             TokenType.tokenless: {"key": "tokenlessKey"},
+            TokenType.pull: {"key": "pullbot"},
+            TokenType.commit: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -644,6 +659,8 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: {"key": "bibu", "username": "cket"},
             TokenType.status: None,
             TokenType.tokenless: {"key": "tokenlessKey", "username": "aa"},
+            TokenType.pull: None,
+            TokenType.commit: None,
         }
         assert expected_result == get_token_type_mapping(repo)
 
@@ -696,4 +713,6 @@ class TestBotsService(BaseTestCase):
             TokenType.comment: None,
             TokenType.status: None,
             TokenType.tokenless: None,
+            TokenType.pull: None,
+            TokenType.commit: None,
         }

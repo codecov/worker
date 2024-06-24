@@ -55,3 +55,23 @@ class UploadFlow(BaseFlow):
     NOTIF_TOO_MANY_RETRIES = auto()
     NOTIF_STALE_HEAD = auto()
     NOTIF_ERROR_NO_REPORT = auto()
+
+
+@failure_events("TEST_RESULTS_ERROR")
+@success_events("TEST_RESULTS_NOTIFY")
+@subflows(
+    ("test_results_notification_latency", "TEST_RESULTS_BEGIN", "TEST_RESULTS_NOTIFY"),
+    ("flake_notification_latency", "TEST_RESULTS_BEGIN", "FLAKE_DETECTION_NOTIFY"),
+    (
+        "test_results_processing_time",
+        "TEST_RESULTS_BEGIN",
+        "TEST_RESULTS_FINISHER_BEGIN",
+    ),
+)
+@reliability_counters
+class TestResultsFlow(BaseFlow):
+    TEST_RESULTS_BEGIN = auto()
+    TEST_RESULTS_NOTIFY = auto()
+    FLAKE_DETECTION_NOTIFY = auto()
+    TEST_RESULTS_ERROR = auto()
+    TEST_RESULTS_FINISHER_BEGIN = auto()

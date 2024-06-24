@@ -12,11 +12,25 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class NotificationResult(object):
-    notification_attempted: bool
-    notification_successful: bool
-    explanation: str
-    data_sent: Mapping[str, Any]
+    notification_attempted: bool = False
+    notification_successful: bool = False
+    explanation: str = None
+    data_sent: Mapping[str, Any] = None
     data_received: Mapping[str, Any] = None
+    github_app_used: int | None = None
+
+    def merge(self, other: "NotificationResult") -> "NotificationResult":
+        ans = NotificationResult()
+        ans.notification_attempted = bool(
+            self.notification_attempted or other.notification_attempted
+        )
+        ans.notification_successful = bool(
+            self.notification_successful or other.notification_successful
+        )
+        ans.explanation = self.explanation or other.explanation
+        ans.data_sent = self.data_sent or other.data_sent
+        ans.data_received = self.data_received or other.data_received
+        return ans
 
 
 class AbstractBaseNotifier(object):
@@ -47,10 +61,10 @@ class AbstractBaseNotifier(object):
         :param title: The project name for this notification, if applicable. For more info see https://docs.codecov.io/docs/commit-status#splitting-up-projects-example
         :param notifier_yaml_settings: Contains the codecov yaml fields, if any, for this particular notification.
             example: status -> patch -> custom_project_name -> <whatever is here is in notifier_yaml_settings for custom_project_name's status patch notifier>
-        :param notifier_site_settings -> Contains the codecov yaml fields under the "notify" header
-        :param current_yaml -> The complete codecov yaml used for this notification.
-        :param decoration_type -> Indicates whether the user needs to upgrade their account before they can see the notification
-        :param gh_installation_name_to_use -> [GitHub exclusive] propagates choice of the installation_name in case of gh multi apps
+        :param notifier_site_settings: Contains the codecov yaml fields under the "notify" header
+        :param current_yaml: The complete codecov yaml used for this notification.
+        :param decoration_type: Indicates whether the user needs to upgrade their account before they can see the notification
+        :param gh_installation_name_to_use: [GitHub exclusive] propagates choice of the installation_name in case of gh multi apps
         """
         self.repository = repository
         self.title = title
@@ -77,7 +91,7 @@ class AbstractBaseNotifier(object):
 
         Args:
             comparison (Comparison): The comparison with which this notify ran
-            result (NotificationResult): The results of the notificaiton
+            result (NotificationResult): The results of the notification
         """
         raise NotImplementedError()
 

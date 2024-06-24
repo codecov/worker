@@ -6,7 +6,7 @@ from database.models.core import (
 )
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
 from tasks.backfill_existing_gh_app_installations import (
-    BackfillExistingGHAppInstallationsTask,
+    BackfillExistingIndividualGHAppInstallationTask,
 )
 
 
@@ -47,12 +47,14 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             "repository_selection": "all"
         }
         mocker.patch(
-            f"tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 
-        task = BackfillExistingGHAppInstallationsTask()
-        assert task.run_impl(dbsession, owner_ids=None) == {
+        task = BackfillExistingIndividualGHAppInstallationTask()
+        assert task.run_impl(
+            dbsession, gh_app_installation_id=gh_app_installation.id
+        ) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -63,7 +65,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             .first()
         )
         assert gh_app_installation.owner == owner
-        assert gh_app_installation.repository_service_ids == None
+        assert gh_app_installation.repository_service_ids is None
 
     def test_gh_app_with_specific_owner_ids(
         self, mocker, mock_repo_provider, dbsession: Session
@@ -94,12 +96,14 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             "repository_selection": "all"
         }
         mocker.patch(
-            f"tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 
-        task = BackfillExistingGHAppInstallationsTask()
-        assert task.run_impl(dbsession, owner_ids=[owner.ownerid]) == {
+        task = BackfillExistingIndividualGHAppInstallationTask()
+        assert task.run_impl(
+            dbsession, gh_app_installation_id=gh_app_installation.id
+        ) == {
             "successful": True,
             "reason": "backfill task finished",
         }
@@ -110,7 +114,7 @@ class TestBackfillWithPreviousGHAppInstallation(object):
             .first()
         )
         assert db_gh_app_installation_one.owner == owner
-        assert db_gh_app_installation_one.repository_service_ids == None
+        assert db_gh_app_installation_one.repository_service_ids is None
 
         # This one should have the same values as when it started
         db_gh_app_installation_two = (
@@ -161,12 +165,14 @@ class TestBackfillWithPreviousGHAppInstallation(object):
         }
         mock_repo_provider.list_repos_using_installation.return_value = mock_repos
         mocker.patch(
-            f"tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
+            "tasks.backfill_existing_gh_app_installations.get_owner_provider_service",
             return_value=mock_repo_provider,
         )
 
-        task = BackfillExistingGHAppInstallationsTask()
-        assert task.run_impl(dbsession, owner_ids=None) == {
+        task = BackfillExistingIndividualGHAppInstallationTask()
+        assert task.run_impl(
+            dbsession, gh_app_installation_id=gh_app_installation.id
+        ) == {
             "successful": True,
             "reason": "backfill task finished",
         }

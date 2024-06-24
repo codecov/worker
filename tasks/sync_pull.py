@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List, Sequence
@@ -9,6 +10,7 @@ import sqlalchemy.orm
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.celery_config import notify_task_name, pulls_task_name
+from shared.metrics import Counter, Histogram
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
@@ -19,6 +21,7 @@ from database.models import Commit, Pull, Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
+from rollouts import SYNC_PULL_LOCK_TIMEOUT
 from services.comparison.changes import get_changes
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
@@ -31,6 +34,25 @@ from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
+
+TASK_RUN_COUNT = Counter(
+    "sync_pull_task_run_count",
+    "Number of SyncPull tasks that were executed (per wait group)",
+    ["wait_group"],
+)
+
+TASK_REJECTED_COUNT = Counter(
+    "sync_pull_task_rejected_count",
+    "Number of SyncPull tasks that were _not_ executed because they couldn't get a lock (per wait group)",
+    ["wait_group"],
+)
+
+TIME_FOR_LOCK_HISTOGRAM = Histogram(
+    "sync_pull_time_to_get_lock",
+    "Distribution of the time a SyncPull task was waiting for the lock (per wait group)",
+    ["wait_group"],
+    unit="milliseconds",
+)
 
 
 class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
@@ -64,8 +86,21 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         pullid = int(pullid)
         repoid = int(repoid)
         lock_name = f"pullsync_{repoid}_{pullid}"
+        wait_for_lock_timeout_seconds, metrics_tag = SYNC_PULL_LOCK_TIMEOUT.check_value(
+            identifier=repoid, default=(5, "long_timeout")
+        )
+        start_wait = time.monotonic()
         try:
-            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
+            with redis_connection.lock(
+                lock_name,
+                timeout=60 * 5,
+                blocking_timeout=wait_for_lock_timeout_seconds,
+            ):
+                TASK_RUN_COUNT.labels(wait_group=metrics_tag).inc()
+                time_to_get_lock_seconds = time.monotonic() - start_wait
+                TIME_FOR_LOCK_HISTOGRAM.labels(wait_group=metrics_tag).observe(
+                    time_to_get_lock_seconds * 1000
+                )
                 return self.run_impl_within_lock(
                     db_session,
                     redis_connection,
@@ -79,6 +114,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "Unable to acquire PullSync lock. Not retrying because pull is being synced already",
                 extra=dict(pullid=pullid, repoid=repoid),
             )
+            TASK_REJECTED_COUNT.labels(wait_group=metrics_tag).inc()
             return {
                 "notifier_called": False,
                 "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},

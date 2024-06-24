@@ -218,7 +218,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner.plan_provider == "github"
         assert owner.plan == "users-basic"
         assert owner.plan_user_count == 1
-        assert owner.plan_activated_users == None
+        assert owner.plan_activated_users is None
 
         repos = (
             dbsession.query(Repository)

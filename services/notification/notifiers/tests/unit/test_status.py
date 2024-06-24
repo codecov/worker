@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
@@ -7,6 +9,7 @@ from shared.torngit.exceptions import (
     TorngitServerUnreachableError,
 )
 from shared.torngit.status import Status
+from shared.typings.torngit import GithubInstallationInfo, TorngitInstanceData
 from shared.yaml.user_yaml import UserYaml
 
 from database.enums import Notification
@@ -715,7 +718,7 @@ class TestBaseStatusNotifier(object):
             notifier.determine_status_check_behavior_to_apply(
                 comparison, "flag_coverage_not_uploaded_behavior"
             )
-            == None
+            is None
         )
 
     def test_flag_coverage_was_uploaded_when_none_uploaded(
@@ -773,6 +776,53 @@ class TestBaseStatusNotifier(object):
         )
         notifier.context = "fake"
         assert notifier.flag_coverage_was_uploaded(comparison) is True
+
+    @pytest.mark.parametrize(
+        "fake_torngit_data, expected",
+        [
+            (TorngitInstanceData(), None),
+            (TorngitInstanceData(installation=None), None),
+            (
+                TorngitInstanceData(
+                    installation=GithubInstallationInfo(
+                        installation_id="owner.integration_id"
+                    )
+                ),
+                None,
+            ),
+            (TorngitInstanceData(installation=GithubInstallationInfo(id=12)), 12),
+        ],
+    )
+    def test_get_github_app_used(
+        self, fake_torngit_data, expected, sample_comparison_coverage_carriedforward
+    ):
+        fake_torngit = MagicMock(data=fake_torngit_data, name="fake_torngit")
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": None},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        notifier.context = "fake"
+        notifier._repository_service = fake_torngit
+        assert notifier.get_github_app_used() == expected
+
+    def test_get_github_app_used_no_repository_service(
+        self, sample_comparison_coverage_carriedforward
+    ):
+        comparison = sample_comparison_coverage_carriedforward
+        notifier = StatusNotifier(
+            repository=comparison.head.commit.repository,
+            title="component_check",
+            notifier_yaml_settings={"flags": None},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        notifier.context = "fake"
+        notifier._repository_service = None
+        assert notifier.get_github_app_used() is None
 
 
 class TestProjectStatusNotifier(object):
@@ -1526,7 +1576,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"50.00% (target 80.00%)",
+            "message": "50.00% (target 80.00%)",
             "state": "failure",
         }
         result = await notifier.build_payload(sample_comparison)
@@ -2073,7 +2123,7 @@ class TestPatchStatusNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        expected_result = {"message": f"Coverage not affected", "state": "success"}
+        expected_result = {"message": "Coverage not affected", "state": "success"}
         result = await notifier.build_payload(comparison)
         assert expected_result == result
 
@@ -2094,7 +2144,7 @@ class TestPatchStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"No report found to compare against",
+            "message": "No report found to compare against",
             "state": "success",
         }
         result = await notifier.build_payload(comparison)

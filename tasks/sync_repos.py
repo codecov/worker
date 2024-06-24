@@ -13,13 +13,12 @@ from shared.celery_config import (
 from shared.config import get_config
 from shared.metrics import metrics
 from shared.torngit.base import TorngitBaseAdapter
-from shared.torngit.exceptions import TorngitClientError
+from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Owner, Repository
-from rollouts import LIST_REPOS_GENERATOR_BY_OWNER_ID
 from services.owner import get_owner_provider_service
 from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
@@ -318,29 +317,15 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 db_session, git, owner, repository_service_ids
             )
             repoids = repoids_added
-        # The `if` below should be `elif` but we had issues recently
-        # related to the sync task when repos are known
+        # Below logic may not be needed if repository_service_ids exist, but
+        # we have run into issues related to the sync task when repos are known
         # So we should still run it just in case and possibly update GithubInstallation.repository_service_ids
         # Instead of relying exclusively on the webhooks to do that
         # TODO: Maybe we don't need to run this every time, but once in a while just in case...
-        if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
-            identifier=ownerid, default=False
-        ):
-            with metrics.timer(
-                f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
-            ):
-                async for page in git.list_repos_using_installation_generator(username):
-                    if page:
-                        received_repos = True
-                        process_repos(page)
-        else:
-            with metrics.timer(
-                f"{metrics_scope}.sync_repos_using_integration.list_repos"
-            ):
-                repos = await git.list_repos_using_installation(username)
-            if repos:
+        async for page in git.list_repos_using_installation_generator(username):
+            if page:
                 received_repos = True
-                process_repos(repos)
+                process_repos(page)
 
         # If the installation returned no repos, we were probably disabled and
         # should indicate as much on this owner's repositories.
@@ -436,40 +421,29 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                     db_session.commit()
 
         try:
-            if await LIST_REPOS_GENERATOR_BY_OWNER_ID.check_value_async(
-                identifier=ownerid, default=False
-            ):
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-                    async for page in git.list_repos_generator():
-                        process_repos(page)
+            async for page in git.list_repos_generator():
+                process_repos(page)
+
+        except (
+            SoftTimeLimitExceeded,
+            TorngitClientError,
+            TorngitServerFailureError,
+        ) as e:
+            old_permissions = owner.permission or []
+            if isinstance(e, SoftTimeLimitExceeded):
+                error_string = "System timed out while listing repos"
             else:
-                # get my repos (and team repos)
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                    repos = await git.list_repos()
-                    process_repos(repos)
-        except SoftTimeLimitExceeded:
-            old_permissions = owner.permission or []
-            log.warning(
-                "System timed out while listing repos",
+                error_string = "Torngit failure while listing repos"
+
+            log.error(
+                f"{error_string}. Permissions list may be incomplete",
+                exc_info=True,
                 extra=dict(
                     ownerid=owner.ownerid,
-                    old_permissions=old_permissions[:100],
                     number_old_permissions=len(old_permissions),
+                    number_new_permissions=len(set(private_project_ids)),
                 ),
             )
-            raise
-        except TorngitClientError as e:
-            old_permissions = owner.permission or []
-            log.warning(
-                "Unable to verify user permissions on Github. Dropping all permissions",
-                extra=dict(
-                    ownerid=owner.ownerid,
-                    old_permissions=old_permissions[:100],
-                    number_old_permissions=len(old_permissions),
-                ),
-            )
-            owner.permission = []
-            return
 
         log.info(
             "Updating permissions",

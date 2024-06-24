@@ -4,13 +4,18 @@ from tasks.ai_pr_review import ai_pr_view_task
 from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task
 from tasks.backfill_existing_gh_app_installations import (
     backfill_existing_gh_app_installations_name,
+    backfill_existing_individual_gh_app_installation_name,
 )
 from tasks.backfill_owners_without_gh_app_installations import (
+    backfill_owners_without_gh_app_installation_individual_name,
     backfill_owners_without_gh_app_installations_name,
 )
 from tasks.brolly_stats_rollup import brolly_stats_rollup_task
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
+from tasks.bundle_analysis_save_measurements import (
+    bundle_analysis_save_measurements_task,
+)
 from tasks.commit_update import commit_update_task
 from tasks.compute_comparison import compute_comparison_task
 from tasks.delete_owner import delete_owner_task

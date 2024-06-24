@@ -142,7 +142,7 @@ class StatusProjectMixin(object):
             )
         )
         if no_added_no_unexpected_change and some_removed:
-            return ("success", f", passed because this change only removed code")
+            return ("success", ", passed because this change only removed code")
         return None
 
     async def _apply_adjust_base_behavior(
@@ -221,7 +221,7 @@ class StatusProjectMixin(object):
         quantized_base_adjusted_coverage = base_adjusted_coverage.quantize(
             Decimal("0.00000")
         )
-        if quantized_base_adjusted_coverage <= head_coverage:
+        if abs(quantized_base_adjusted_coverage - head_coverage) < Decimal("0.01"):
             rounded_difference = round_number(
                 self.current_yaml, head_coverage - base_adjusted_coverage
             )

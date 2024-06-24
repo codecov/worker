@@ -68,7 +68,7 @@ class SendEmailTask(BaseCodecovTask, name=send_email_task_name):
             email_wrapper = Email(to_addr, from_addr, subject, text, html)
 
             err_msg = None
-            metrics.incr(f"worker.tasks.send_email.attempt")
+            metrics.incr("worker.tasks.send_email.attempt")
             with metrics.timer("worker.tasks.send_email.send"):
                 try:
                     smtp_service.send(email_wrapper)
@@ -77,11 +77,11 @@ class SendEmailTask(BaseCodecovTask, name=send_email_task_name):
 
             if err_msg is not None:
                 log.warning(f"Failed to send email: {err_msg}", extra=log_extra_dict)
-                metrics.incr(f"worker.tasks.send_email.fail")
+                metrics.incr("worker.tasks.send_email.fail")
                 return {"email_successful": False, "err_msg": err_msg}
 
             log.info("Sent email", extra=log_extra_dict)
-            metrics.incr(f"worker.tasks.send_email.succeed")
+            metrics.incr("worker.tasks.send_email.succeed")
             return {"email_successful": True, "err_msg": None}
 
 

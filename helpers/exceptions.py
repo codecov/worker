@@ -10,6 +10,10 @@ class RepositoryWithoutValidBotError(Exception):
     pass
 
 
+class RequestedGithubAppNotFound(Exception):
+    pass
+
+
 class OwnerWithoutValidBotError(Exception):
     pass
 

@@ -15,6 +15,7 @@ from database.models.core import (
 )
 from helpers.exceptions import (
     NoConfiguredAppsAvailable,
+    RequestedGithubAppNotFound,
 )
 from services.bots.types import TokenWithOwner
 from services.github import get_github_integration_token
@@ -131,6 +132,43 @@ def get_github_app_token(
     return installation_token, None
 
 
+def get_specific_github_app_details(
+    owner: Owner, github_app_id: int, commitid: str
+) -> GithubInstallationInfo:
+    """Gets the GithubInstallationInfo for GithubAppInstallation with id github_app_id.
+
+    Args:
+        owner (Owner): the owner of the app. We look only in the apps for this owner.
+        github_app_id (int): the ID of the GithubAppInstallation we're looking for
+        commitid (str): Commit.commitid, used for logging purposes
+
+    Raises:
+        RequestedGithubAppNotFound - if the app is not found in the given owner raise exception.
+            The assumption is that we need this specific app for a reason, and if we can't find the app
+            it's better to just fail
+    """
+    app: GithubAppInstallation = next(
+        (obj for obj in owner.github_app_installations if obj.id == github_app_id), None
+    )
+    if app is None:
+        log.exception(
+            "Can't find requested app",
+            extra=dict(ghapp_id=github_app_id, commitid=commitid),
+        )
+        raise RequestedGithubAppNotFound()
+    if not app.is_configured():
+        log.warning(
+            "Request for specific app that is not configured",
+            extra=dict(ghapp_id=id, commitid=commitid),
+        )
+    return GithubInstallationInfo(
+        id=app.id,
+        installation_id=app.installation_id,
+        app_id=app.app_id,
+        pem_path=app.pem_path,
+    )
+
+
 def get_github_app_info_for_owner(
     owner: Owner,
     *,
@@ -203,6 +241,7 @@ def get_github_app_info_for_owner(
         info_to_get_tokens = list(
             map(
                 lambda obj: GithubInstallationInfo(
+                    id=obj.id,
                     installation_id=obj.installation_id,
                     app_id=obj.app_id,
                     pem_path=obj.pem_path,
@@ -225,4 +264,14 @@ def get_github_app_info_for_owner(
         raise NoConfiguredAppsAvailable(
             apps_count=apps_matching_criteria_count, all_rate_limited=True
         )
+    # DEPRECATED FLOW - begin
+    if owner.integration_id and (
+        (repository and repository.using_integration) or (repository is None)
+    ):
+        log.info(
+            "Selected deprecated owner.integration_id to communicate with github",
+            extra=extra_info_to_log,
+        )
+        return [GithubInstallationInfo(installation_id=owner.integration_id)]
+    # DEPRECATED FLOW - end
     return []

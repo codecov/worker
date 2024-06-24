@@ -8,9 +8,9 @@ from database.models.core import Owner
 
 # A Token and its Owner
 # If a Token doesn't belong to Owner (i.e. it's a GitHubAppInstallation Token), second value is None
-type TokenWithOwner = Tuple[Token, Optional[Owner]]
+TokenWithOwner = Tuple[Token, Optional[Owner]]
 
-type TokenTypeMapping = Dict[TokenType, Token]
+TokenTypeMapping = Dict[TokenType, Token]
 
 
 class AdapterAuthInformation(TypedDict):

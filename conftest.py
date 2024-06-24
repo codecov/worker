@@ -26,6 +26,7 @@ def pytest_configure(config):
     file after command line options have been parsed.
     """
     os.environ["CURRENT_ENVIRONMENT"] = "local"
+    os.environ["RUN_ENV"] = "DEV"
     _get_cached_current_env.cache_clear()
     initialize_logging()
 
@@ -209,6 +210,7 @@ def mock_repo_provider(mocker):
     m = mocker.patch("services.repository._get_repo_provider_service_instance")
     provider_instance = mocker.MagicMock(
         GithubHandler,
+        data={},
         get_commit_diff=mock.AsyncMock(return_value={}),
         get_distance_in_commits=mock.AsyncMock(
             return_value={"behind_by": 0, "behind_by_commit": None}

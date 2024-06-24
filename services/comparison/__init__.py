@@ -1,13 +1,14 @@
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
 from shared.reports.types import Change
 from shared.torngit.exceptions import (
     TorngitClientGeneralError,
 )
+from shared.utils.sessions import SessionType
 
 from database.enums import CompareCommitState, TestResultsProcessingError
 from database.models import CompareCommit
@@ -15,7 +16,7 @@ from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.comparison.changes import get_changes
 from services.comparison.overlays import get_overlay
-from services.comparison.types import Comparison, FullCommit
+from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
 from services.repository import get_repo_provider_service
 
 log = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class ComparisonProxy(object):
 
     Attributes:
         comparison (Comparison): The original comparison we want to wrap and proxy
+        context (ComparisonContext | None): Other information not coverage-related that may affect notifications
     """
 
     def __init__(
@@ -66,6 +68,7 @@ class ComparisonProxy(object):
         self._archive_service = None
         self._overlays = {}
         self.context = context or ComparisonContext()
+        self._cached_reports_uploaded_per_flag: List[ReportUploadedCount] | None = None
 
     def get_archive_service(self):
         if self._archive_service is None:
@@ -279,6 +282,64 @@ class ComparisonProxy(object):
             self.comparison.head.report,
             files_in_diff,
         )
+
+    def get_reports_uploaded_count_per_flag(self) -> List[ReportUploadedCount]:
+        """This function counts how many reports (by flag) the BASE and HEAD commit have."""
+        if self._cached_reports_uploaded_per_flag:
+            # Reports may have many sessions, so it's useful to memoize this function
+            return self._cached_reports_uploaded_per_flag
+        if not self.has_head_report() or not self.has_project_coverage_base_report():
+            log.warning(
+                "Can't calculate diff in uploads. Missing some report",
+                extra=dict(
+                    has_head_report=self.has_head_report(),
+                    has_project_base_report=self.has_project_coverage_base_report(),
+                ),
+            )
+            return []
+        per_flag_dict: Dict[str, ReportUploadedCount] = dict()
+        base_report = self.comparison.project_coverage_base.report
+        head_report = self.comparison.head.report
+        ops = [(base_report, "base_count"), (head_report, "head_count")]
+        for curr_report, curr_counter in ops:
+            for session in curr_report.sessions.values():
+                # We ignore carryforward sessions
+                # Because not all commits would upload all flags (potentially)
+                # But they are still carried forward
+                if session.session_type != SessionType.carriedforward:
+                    # It's possible that an upload is done without flags.
+                    # In this case we still want to count it in the count, but there's no flag associated to it
+                    session_flags = session.flags or [""]
+                    for flag in session_flags:
+                        dict_value = per_flag_dict.get(flag)
+                        if dict_value is None:
+                            dict_value = ReportUploadedCount(
+                                flag=flag, base_count=0, head_count=0
+                            )
+                        dict_value[curr_counter] += 1
+                        per_flag_dict[flag] = dict_value
+        self._cached_reports_uploaded_per_flag = list(per_flag_dict.values())
+        return self._cached_reports_uploaded_per_flag
+
+    def get_reports_uploaded_count_per_flag_diff(self) -> List[ReportUploadedCount]:
+        """
+        Returns the difference, per flag, or reports uploaded in BASE and HEAD
+
+        ❗️ For a difference to be considered there must be at least 1 "uploaded" upload in both
+        BASE and HEAD (that is, if all reports for a flag are "carryforward" it's not considered a diff)
+        """
+        reports_per_flag = self.get_reports_uploaded_count_per_flag()
+
+        def is_valid_diff(obj: ReportUploadedCount):
+            return (
+                obj["base_count"] > 0
+                and obj["head_count"] > 0
+                and obj["base_count"] != obj["head_count"]
+            )
+
+        per_flag_diff = list(filter(is_valid_diff, reports_per_flag))
+        self._cached_reports_uploaded_per_flag = per_flag_diff
+        return per_flag_diff
 
 
 class FilteredComparison(object):

@@ -14,9 +14,9 @@ class TestTrialExpiration(object):
         assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
         assert owner.plan == BillingPlan.users_basic.value
-        assert owner.plan_activated_users == None
+        assert owner.plan_activated_users is None
         assert owner.plan_user_count == 5
-        assert owner.stripe_subscription_id == None
+        assert owner.stripe_subscription_id is None
         assert owner.trial_status == TrialStatus.EXPIRED.value
 
     def test_trial_expiration_task_without_pretrial_users_count(
@@ -30,9 +30,9 @@ class TestTrialExpiration(object):
         assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
         assert owner.plan == BillingPlan.users_basic.value
-        assert owner.plan_activated_users == None
+        assert owner.plan_activated_users is None
         assert owner.plan_user_count == 1
-        assert owner.stripe_subscription_id == None
+        assert owner.stripe_subscription_id is None
         assert owner.trial_status == TrialStatus.EXPIRED.value
 
     def test_trial_expiration_task_with_trial_fired_by(self, dbsession, mocker):
@@ -45,5 +45,5 @@ class TestTrialExpiration(object):
 
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_activated_users == [9]
-        assert owner.stripe_subscription_id == None
+        assert owner.stripe_subscription_id is None
         assert owner.trial_status == TrialStatus.EXPIRED.value

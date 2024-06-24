@@ -125,7 +125,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                         ("parsers", "cobertura", "handle_missing_conditions"),
                         False,
                     ):
-                        if type(coverage) is str:
+                        if isinstance(coverage, str):
                             covered_conditions, total_conditions = coverage.split("/")
                             if len(conditions) < int(total_conditions):
                                 # <line number="23" hits="0" branch="true" condition-coverage="0% (0/2)">
@@ -150,7 +150,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                                 )
                     else:  # previous behaviour
                         if (
-                            type(coverage) is str
+                            isinstance(coverage, str)
                             and coverage[0] == "0"
                             and len(conditions) < int(coverage.split("/")[1])
                         ):
@@ -168,7 +168,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                     if conditions:
                         missing_branches = conditions
                 if (
-                    type(coverage) is str
+                    isinstance(coverage, str)
                     and not coverage[0] == "0"
                     and read_yaml_field(
                         repo_yaml,

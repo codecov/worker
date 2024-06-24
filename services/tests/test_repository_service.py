@@ -1,5 +1,6 @@
 import inspect
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import mock
 import pytest
@@ -10,6 +11,12 @@ from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
     TorngitServerUnreachableError,
+)
+from shared.typings.torngit import (
+    GithubInstallationInfo,
+    OwnerInfo,
+    RepoInfo,
+    TorngitInstanceData,
 )
 
 from database.models import Owner
@@ -24,7 +31,6 @@ from database.tests.factories import (
     RepositoryFactory,
 )
 from services.repository import (
-    _is_repo_using_integration,
     _pick_best_base_comparedto_pair,
     fetch_and_update_pull_request_information,
     fetch_and_update_pull_request_information_from_commit,
@@ -32,52 +38,9 @@ from services.repository import (
     get_or_create_author,
     get_repo_provider_service,
     get_repo_provider_service_by_id,
+    get_repo_provider_service_for_specific_commit,
     update_commit_from_provider_info,
 )
-
-
-@pytest.mark.parametrize("using_integration", [True, False])
-def test__is_repo_using_integration_deprecated_flow(using_integration, dbsession):
-    repo = RepositoryFactory.create(using_integration=using_integration)
-    assert _is_repo_using_integration(repo) == using_integration
-
-
-def test__is_repo_using_integration_ghapp_covers_all_repos(dbsession):
-    owner = OwnerFactory.create(service="github")
-    repo = RepositoryFactory.create(owner=owner)
-    other_repo_same_owner = RepositoryFactory.create(owner=owner)
-    repo_different_owner = RepositoryFactory.create()
-    assert repo.owner != repo_different_owner.owner
-    ghapp_installation = GithubAppInstallation(
-        name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-        owner=owner,
-        repository_service_ids=None,
-        installation_id=12345,
-    )
-    dbsession.add(ghapp_installation)
-    dbsession.flush()
-    assert _is_repo_using_integration(repo) == True
-    assert _is_repo_using_integration(other_repo_same_owner) == True
-    assert _is_repo_using_integration(repo_different_owner) == False
-
-
-def test__is_repo_using_integration_ghapp_covers_some_repos(dbsession):
-    owner = OwnerFactory.create(service="github")
-    repo = RepositoryFactory.create(owner=owner)
-    other_repo_same_owner = RepositoryFactory.create(owner=owner)
-    repo_different_owner = RepositoryFactory.create()
-    assert repo.owner != repo_different_owner.owner
-    ghapp_installation = GithubAppInstallation(
-        name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-        owner=owner,
-        repository_service_ids=[repo.service_id],
-        installation_id=12345,
-    )
-    dbsession.add(ghapp_installation)
-    dbsession.flush()
-    assert _is_repo_using_integration(repo) == True
-    assert _is_repo_using_integration(other_repo_same_owner) == False
-    assert _is_repo_using_integration(repo_different_owner) == False
 
 
 class TestRepositoryServiceTestCase(object):
@@ -159,12 +122,18 @@ class TestRepositoryServiceTestCase(object):
                 "repoid": repo.repoid,
             },
             "installation": {
+                "id": installation_1.id,
                 "installation_id": 1300,
                 "app_id": 300,
                 "pem_path": "path",
             },
             "fallback_installations": [
-                {"app_id": 200, "installation_id": 1200, "pem_path": None}
+                {
+                    "id": installation_0.id,
+                    "app_id": 200,
+                    "installation_id": 1200,
+                    "pem_path": None,
+                }
             ],
         }
         assert res.data == expected_data
@@ -1101,6 +1070,106 @@ class TestRepositoryServiceTestCase(object):
             "key": "bcaa0dc0c66b4a8c8c65ac919a1a91aa",
             "secret": None,
         }
+
+
+class TestGetRepoProviderServiceForSpecificCommit(object):
+    @pytest.fixture
+    def mock_get_repo_provider_service(self, mocker):
+        mock_get_repo_provider_service = mocker.patch(
+            "services.repository.get_repo_provider_service"
+        )
+        return mock_get_repo_provider_service
+
+    @pytest.fixture
+    def mock_redis(self, mocker):
+        fake_redis = MagicMock(name="fake_redis")
+        mock_conn = mocker.patch("services.github.get_redis_connection")
+        mock_conn.return_value = fake_redis
+        return fake_redis
+
+    def test_get_repo_provider_service_for_specific_commit_not_gh(
+        self, dbsession, mock_get_repo_provider_service, mock_redis
+    ):
+        commit = CommitFactory(repository__owner__service="gitlab")
+        mock_get_repo_provider_service.return_value = "the TorngitAdapter"
+        response = get_repo_provider_service_for_specific_commit(commit, "some_name")
+        assert response == "the TorngitAdapter"
+        mock_get_repo_provider_service.assert_called_with(
+            commit.repository, "some_name"
+        )
+
+    def test_get_repo_provider_service_for_specific_commit_no_specific_app_for_commit(
+        self, dbsession, mock_get_repo_provider_service, mock_redis
+    ):
+        commit = CommitFactory(repository__owner__service="github")
+        assert commit.id not in [10000, 15000]
+        redis_keys = {
+            "app_to_use_for_commit_15000": b"1200",
+            "app_to_use_for_commit_10000": b"1000",
+        }
+        mock_redis.get.side_effect = lambda key: redis_keys.get(key)
+
+        mock_get_repo_provider_service.return_value = "the TorngitAdapter"
+        response = get_repo_provider_service_for_specific_commit(commit, "some_name")
+        assert response == "the TorngitAdapter"
+        mock_get_repo_provider_service.assert_called_with(
+            commit.repository, "some_name"
+        )
+
+    @patch(
+        "services.repository.get_github_app_token", return_value=("the app token", None)
+    )
+    @patch(
+        "services.repository._get_repo_provider_service_instance",
+        return_value="the TorngitAdapter",
+    )
+    def test_get_repo_provider_service_for_specific_commit(
+        self,
+        mock_get_instance,
+        mock_get_app_token,
+        dbsession,
+        mock_get_repo_provider_service,
+        mock_redis,
+    ):
+        commit = CommitFactory(repository__owner__service="github")
+        app = GithubAppInstallation(
+            owner=commit.repository.owner, app_id=12, installation_id=1200
+        )
+        dbsession.add_all([commit, app])
+        dbsession.flush()
+        assert commit.repository.owner.github_app_installations == [app]
+        redis_keys = {
+            f"app_to_use_for_commit_{commit.id}": str(app.id).encode(),
+        }
+        mock_redis.get.side_effect = lambda key: redis_keys.get(key)
+        response = get_repo_provider_service_for_specific_commit(commit, "some_name")
+        assert response == "the TorngitAdapter"
+        mock_get_instance.assert_called_once()
+
+        data = TorngitInstanceData(
+            repo=RepoInfo(
+                name=commit.repository.name,
+                using_integration=True,
+                service_id=commit.repository.service_id,
+                repoid=commit.repository.repoid,
+            ),
+            owner=OwnerInfo(
+                service_id=commit.repository.owner.service_id,
+                ownerid=commit.repository.ownerid,
+                username=commit.repository.owner.username,
+            ),
+            installation=GithubInstallationInfo(
+                id=app.id, app_id=12, installation_id=1200, pem_path=None
+            ),
+            fallback_installations=None,
+        )
+        mock_get_instance.assert_called_with(
+            "github",
+            **data,
+            token="the app token",
+            token_type_mapping=None,
+            on_token_refresh=None,
+        )
 
 
 class TestPullRequestFetcher(object):

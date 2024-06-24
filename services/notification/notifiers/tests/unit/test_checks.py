@@ -297,7 +297,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
-        assert fallback_notifier.decoration_type == None
+        assert fallback_notifier.decoration_type is None
 
         res = await fallback_notifier.notify(sample_comparison)
         fallback_notifier.store_results(sample_comparison, res)
@@ -306,7 +306,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
-        assert fallback_notifier.decoration_type == None
+        assert fallback_notifier.decoration_type is None
         assert res == "success"
 
     @pytest.mark.asyncio
@@ -341,7 +341,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.title == "title"
         assert fallback_notifier.is_enabled() == True
         assert fallback_notifier.notification_type.value == "checks_patch"
-        assert fallback_notifier.decoration_type == None
+        assert fallback_notifier.decoration_type is None
 
         res = await fallback_notifier.notify(sample_comparison)
         assert res.notification_successful == False
@@ -964,7 +964,7 @@ class TestPatchChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary"},
+            "output": {"title": "Codecov Report", "summary": "Summary"},
             "url": "https://app.codecov.io/gh/codecov/worker/compare/100?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term=codecov",
         }
         mock_repo_provider.create_check_run.return_value = 2234563
@@ -994,7 +994,7 @@ class TestPatchChecksNotifier(object):
             "state": "success",
             "output": {
                 "title": "Codecov Report",
-                "summary": f"Summary",
+                "summary": "Summary",
                 "annotations": list(range(1, 61, 1)),
             },
         }
@@ -1035,7 +1035,7 @@ class TestPatchChecksNotifier(object):
             "state": "success",
             "output": {
                 "title": "Codecov Report",
-                "summary": f"Summary",
+                "summary": "Summary",
                 "annotations": list(range(1, 61, 1)),
             },
         }
@@ -1048,7 +1048,7 @@ class TestPatchChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary"},
+            "output": {"title": "Codecov Report", "summary": "Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1161,7 +1161,7 @@ class TestPatchChecksNotifier(object):
         assert result.data_sent is None
 
     @pytest.mark.asyncio
-    async def test_notification_exception(self, sample_comparison, mocker):
+    async def test_notification_exception_not_fit(self, sample_comparison, mocker):
         notifier = ChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -1364,13 +1364,13 @@ class TestProjectChecksNotifier(object):
                     [
                         f"## [Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
                         f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-                        f"> The diff coverage is `66.67%`.",
-                        f"",
+                        "> The diff coverage is `66.67%`.",
+                        "",
                         f"| [Files](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-                        f"|---|---|---|---|",
+                        "|---|---|---|---|",
                         f"| [file\\_1.go](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
                         f"| [file\\_2.py](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
-                        f"",
+                        "",
                     ]
                 ),
             },
@@ -1392,13 +1392,13 @@ class TestProjectChecksNotifier(object):
                     [
                         f"## [Codecov](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) Report",
                         f"> Merging [#{sample_comparison.pull.pullid}](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({head_commit.commitid[:7]}) into [master](codecov.io/gh/test_build_default_payload/{repo.name}/commit/{sample_comparison.project_coverage_base.commit.commitid}?el=desc&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) ({base_commit.commitid[:7]}) will **increase** coverage by `10.00%`.",
-                        f"> The diff coverage is `66.67%`.",
-                        f"",
+                        "> The diff coverage is `66.67%`.",
+                        "",
                         f"| [Files](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}) | Coverage Δ | Complexity Δ | |",
-                        f"|---|---|---|---|",
+                        "|---|---|---|---|",
                         f"| [file\\_1.go](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&filepath=file_1.go&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
                         f"| [file\\_2.py](codecov.io/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&filepath=file_2.py&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term={quote_plus(repo.owner.name)}#diff-ZmlsZV8yLnB5) | `50.00% <0.00%> (ø)` | `0.00% <0.00%> (ø%)` | |",
-                        f"",
+                        "",
                     ]
                 ),
             },
@@ -1508,16 +1508,16 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=desc)."
+                        "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload/{repo.name}/commit/{head_commit.commitid}?dropdown=coverage&el=desc)."
                         f"",
-                        f"",
+                        "",
                         f"| [Files](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-                        f"|---|---|---|---|",
+                        "|---|---|---|---|",
                         f"| [file\\_1.go](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-                        f"",
+                        "",
                         f"... and [1 file with indirect coverage changes](test.example.br/gh/test_build_default_payload/{repo.name}/pull/{sample_comparison.pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-                        f"",
+                        "",
                     ]
                 ),
             },
@@ -1551,16 +1551,16 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=desc)."
+                        "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/commit/{head_commit.commitid}?dropdown=coverage&el=desc)."
                         f"",
-                        f"",
+                        "",
                         f"| [Files](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-                        f"|---|---|---|---|",
+                        "|---|---|---|---|",
                         f"| [file\\_1.go](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-                        f"",
+                        "",
                         f"... and [1 file with indirect coverage changes](test.example.br/gh/test_build_default_payload_with_flags/{repo.name}/pull/{sample_comparison.pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-                        f"",
+                        "",
                     ]
                 ),
             },
@@ -1595,22 +1595,22 @@ class TestProjectChecksNotifier(object):
                 "text": "\n".join(
                     [
                         f"## [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-                        "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-                        f"",
+                        "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+                        f"> Project coverage is 60.00%. Comparing base [(`{base_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{base_commit.commitid}?dropdown=coverage&el=desc) to head [(`{head_commit.commitid[:7]}`)](test.example.br/gh/test_build_default_payload_with_flags_and_footer/{repo.name}/commit/{head_commit.commitid}?dropdown=coverage&el=desc).",
+                        "",
                         f"| [Files](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-                        f"|---|---|---|---|",
+                        "|---|---|---|---|",
                         f"| [file\\_1.go](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-                        f"",
+                        "",
                         f"... and [1 file with indirect coverage changes](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-                        f"",
-                        f"------",
-                        f"",
+                        "",
+                        "------",
+                        "",
                         f"[Continue to review full report in Codecov by Sentry](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-                        f"> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
-                        f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+                        "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
+                        "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
                         f"> Powered by [Codecov](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=footer). Last update [{base_commit.commitid[:7]}...{head_commit.commitid[:7]}](test.example.br/gh/{test_name}/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-                        f"",
+                        "",
                     ]
                 ),
             },
@@ -1726,7 +1726,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary"},
+            "output": {"title": "Codecov Report", "summary": "Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1760,7 +1760,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary"},
+            "output": {"title": "Codecov Report", "summary": "Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1801,7 +1801,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary"},
+            "output": {"title": "Codecov Report", "summary": "Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1836,7 +1836,7 @@ class TestProjectChecksNotifier(object):
         comparison = sample_comparison
         payload = {
             "state": "success",
-            "output": {"title": "Codecov Report", "summary": f"Summary"},
+            "output": {"title": "Codecov Report", "summary": "Summary"},
         }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"

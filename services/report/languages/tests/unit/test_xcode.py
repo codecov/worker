@@ -16,7 +16,7 @@ txt = b"""/source:
     |   1|line
   1k|   2|line
          warning: The file '/Users/Jack/Documents/Coupgon/sdk-ios/Source/CPGCoupgonsViewController.swift' isn't covered.
-  \033[0;36m/file:\033[0m
+  \033\x1b[0;36m/file:\033[0m
   1m|   3|line
    1|   4|   }
 

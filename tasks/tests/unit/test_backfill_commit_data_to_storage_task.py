@@ -68,7 +68,7 @@ class TestBackfillCommitDataToStorageTask(object):
         def mock_handle_single_row_return_side_effect(db_session, commit, report_row):
             if report_row.code is None:
                 return {"success": True, "errors": []}
-            if report_row.code is "local":
+            if report_row.code == "local":
                 return {"success": False, "errors": [BackfillError.missing_data.value]}
 
         mock_handle_single_row.side_effect = mock_handle_single_row_return_side_effect

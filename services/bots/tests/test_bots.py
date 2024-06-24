@@ -13,7 +13,6 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
-from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
 from services.bots import get_adapter_auth_information
 from services.bots.types import AdapterAuthInformation
 
@@ -115,7 +114,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -160,16 +162,23 @@ class TestGettingAdapterAuthInformation(object):
             "services.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
-        def test_select_owner_deprecated_using_integration_raises(self, dbsession):
+        def test_select_owner_deprecated_using_integration(self, dbsession):
             owner = self._generate_test_owner(
                 dbsession, with_bot=False, integration_id=1500
             )
             owner.oauth_token = None
             # Owner has no GithubApp, no token, and no bot configured
-            # The integration_id is no longer verified
-            # So we fail with exception
-            with pytest.raises(OwnerWithoutValidBotError):
-                get_adapter_auth_information(owner)
+            # The integration_id is selected
+            expected = AdapterAuthInformation(
+                token=Token(
+                    key="installation_token_1500_None",
+                ),
+                token_owner=None,
+                selected_installation_info=GithubInstallationInfo(installation_id=1500),
+                fallback_installations=[],
+                token_type_mapping=None,
+            )
+            assert get_adapter_auth_information(owner) == expected
 
         @patch(
             "services.bots.github_apps.get_github_integration_token",
@@ -204,7 +213,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -244,11 +256,17 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1300, app_id=300, pem_path="pem_path"
+                    id=installations[1].id,
+                    installation_id=1300,
+                    app_id=300,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[
                     GithubInstallationInfo(
-                        installation_id=1200, app_id=200, pem_path="pem_path"
+                        id=installations[0].id,
+                        installation_id=1200,
+                        app_id=200,
+                        pem_path="pem_path",
                     )
                 ],
                 token_type_mapping=None,
@@ -400,6 +418,8 @@ class TestGettingAdapterAuthInformation(object):
                     TokenType.admin: repo_bot_token,
                     TokenType.status: repo_bot_token,
                     TokenType.tokenless: repo_bot_token,
+                    TokenType.pull: repo_bot_token,
+                    TokenType.commit: repo_bot_token,
                 },
             )
             assert get_adapter_auth_information(repo.owner, repo) == expected
@@ -431,7 +451,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -451,8 +474,16 @@ class TestGettingAdapterAuthInformation(object):
             # The repo has not a bot configured
             # The integration_id is no longer verified
             # So we fail with exception
-            with pytest.raises(RepositoryWithoutValidBotError):
-                get_adapter_auth_information(repo.owner, repo)
+            expected = AdapterAuthInformation(
+                token=Token(
+                    key="installation_token_1500_None",
+                ),
+                token_owner=None,
+                selected_installation_info=GithubInstallationInfo(installation_id=1500),
+                fallback_installations=[],
+                token_type_mapping=None,
+            )
+            assert get_adapter_auth_information(repo.owner, repo) == expected
 
         @patch(
             "services.bots.github_apps.get_github_integration_token",
@@ -490,7 +521,10 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1200, app_id=200, pem_path="pem_path"
+                    id=installations[0].id,
+                    installation_id=1200,
+                    app_id=200,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[],
                 token_type_mapping=None,
@@ -533,11 +567,17 @@ class TestGettingAdapterAuthInformation(object):
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
-                    installation_id=1300, app_id=300, pem_path="pem_path"
+                    id=installations[1].id,
+                    installation_id=1300,
+                    app_id=300,
+                    pem_path="pem_path",
                 ),
                 fallback_installations=[
                     GithubInstallationInfo(
-                        installation_id=1200, app_id=200, pem_path="pem_path"
+                        id=installations[0].id,
+                        installation_id=1200,
+                        app_id=200,
+                        pem_path="pem_path",
                     )
                 ],
                 token_type_mapping=None,
@@ -577,6 +617,8 @@ class TestGettingAdapterAuthInformation(object):
                 TokenType.admin: None,
                 TokenType.status: Token(key="status_bot_token"),
                 TokenType.tokenless: Token(key="tokenless_bot_token"),
+                TokenType.pull: None,
+                TokenType.commit: None,
             },
         )
         assert get_adapter_auth_information(repo.owner, repo) == expected

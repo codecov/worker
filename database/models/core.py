@@ -297,9 +297,9 @@ class Commit(CodecovBaseModel):
             db_session.query(CommitReport)
             .filter(
                 (CommitReport.commit_id == self.id_)
-                & (CommitReport.code == None)
+                & (CommitReport.code == None)  # noqa: E711
                 & (
-                    (CommitReport.report_type == None)
+                    (CommitReport.report_type == None)  # noqa: E711
                     | (CommitReport.report_type == ReportType.COVERAGE.value)
                 )
             )
@@ -316,7 +316,7 @@ class Commit(CodecovBaseModel):
                 db_session.query(CommitReport)
                 .filter(
                     (CommitReport.commit_id == self.id_)
-                    & (CommitReport.code == None)
+                    & (CommitReport.code == None)  # noqa: E711
                     & (CommitReport.report_type == report_type.value)
                 )
                 .first()
@@ -483,7 +483,7 @@ class Pull(CodecovBaseModel):
             self.repository.pulls.with_entities(
                 Pull.id_, Pull.commentid, Pull.bundle_analysis_commentid
             )
-            .filter(Pull.commentid != None)
+            .filter(Pull.commentid != None)  # noqa: E711
             .order_by(Pull.id_)
             .first()
         )
@@ -504,6 +504,11 @@ class CommitNotification(CodecovBaseModel):
 
     id_ = Column("id", types.BigInteger, primary_key=True)
     commit_id = Column(types.BigInteger, ForeignKey("commits.id"))
+    gh_app_id = Column(
+        types.BigInteger,
+        ForeignKey("codecov_auth_githubappinstallation.id"),
+        nullable=True,
+    )
     notification_type = Column(
         postgresql.ENUM(Notification, values_callable=lambda x: [e.value for e in x]),
         nullable=False,

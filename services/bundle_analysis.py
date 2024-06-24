@@ -13,6 +13,7 @@ from shared.bundle_analysis import (
     BundleAnalysisReportLoader,
     BundleChange,
 )
+from shared.bundle_analysis.models import AssetType
 from shared.bundle_analysis.storage import get_bucket_name
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
@@ -20,9 +21,19 @@ from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimit
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 
 from database.enums import ReportType
-from database.models import Commit, CommitReport, Repository, Upload, UploadError
+from database.models import (
+    Commit,
+    CommitReport,
+    Measurement,
+    MeasurementName,
+    Repository,
+    Upload,
+    UploadError,
+)
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from services.archive import ArchiveService
 from services.report import BaseReportService
@@ -32,7 +43,9 @@ from services.repository import (
     get_repo_provider_service,
 )
 from services.storage import get_storage_client
+from services.timeseries import repository_datasets_query
 from services.urls import get_bundle_analysis_pull_url
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -122,6 +135,41 @@ class BundleAnalysisReportService(BaseReportService):
             db_session.flush()
         return commit_report
 
+    def _previous_bundle_analysis_report(
+        self, bundle_loader: BundleAnalysisReportLoader, commit: Commit
+    ) -> Optional[BundleAnalysisReport]:
+        """
+        Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
+        Assets to the current one being parsed.
+        """
+        if commit.parent_commit_id is None:
+            return None
+
+        db_session = commit.get_db_session()
+        parent_commit = (
+            db_session.query(Commit)
+            .filter_by(
+                commitid=commit.parent_commit_id,
+                repository=commit.repository,
+            )
+            .first()
+        )
+        if parent_commit is None:
+            return None
+
+        parent_commit_report = (
+            db_session.query(CommitReport)
+            .filter_by(
+                commit_id=parent_commit.id_,
+                report_type=ReportType.BUNDLE_ANALYSIS.value,
+            )
+            .first()
+        )
+        if parent_commit_report is None:
+            return None
+
+        return bundle_loader.load(parent_commit_report.external_id)
+
     @sentry_sdk.trace
     def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
         """
@@ -149,6 +197,11 @@ class BundleAnalysisReportService(BaseReportService):
 
             # load the downloaded data into the bundle report
             session_id = bundle_report.ingest(local_path)
+
+            # Retrieve previous commit's BAR and associate past Assets
+            prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
+            if prev_bar:
+                bundle_report.associate_previous_assets(prev_bar)
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
@@ -211,6 +264,129 @@ class BundleAnalysisReportService(BaseReportService):
             bundle_report=bundle_report,
             session_id=session_id,
         )
+
+    def _save_to_timeseries(
+        self,
+        db_session: Session,
+        commit: Commit,
+        name: str,
+        measurable_id: str,
+        value: float,
+    ):
+        command = insert(Measurement.__table__).values(
+            name=name,
+            owner_id=commit.repository.ownerid,
+            repo_id=commit.repoid,
+            measurable_id=measurable_id,
+            branch=commit.branch,
+            commit_sha=commit.commitid,
+            timestamp=commit.timestamp,
+            value=value,
+        )
+        command = command.on_conflict_do_update(
+            index_elements=[
+                Measurement.name,
+                Measurement.owner_id,
+                Measurement.repo_id,
+                Measurement.measurable_id,
+                Measurement.commit_sha,
+                Measurement.timestamp,
+            ],
+            set_=dict(
+                branch=command.excluded.branch,
+                value=command.excluded.value,
+            ),
+        )
+        db_session.execute(command)
+        db_session.flush()
+
+    @sentry_sdk.trace
+    def save_measurements(self, commit: Commit, upload: Upload) -> ProcessingResult:
+        """
+        Save timeseries measurements for this bundle analysis report
+        """
+        try:
+            commit_report: CommitReport = upload.report
+            repo_hash = ArchiveService.get_archive_hash(commit_report.commit.repository)
+            storage_service = get_storage_client()
+            bundle_loader = BundleAnalysisReportLoader(storage_service, repo_hash)
+
+            # fetch existing bundle report from storage
+            bundle_analysis_report = bundle_loader.load(commit_report.external_id)
+
+            dataset_names = [
+                dataset.name for dataset in repository_datasets_query(commit.repository)
+            ]
+
+            db_session = commit.get_db_session()
+            for bundle_report in bundle_analysis_report.bundle_reports():
+                # For overall bundle size
+                if MeasurementName.bundle_analysis_report_size.value in dataset_names:
+                    self._save_to_timeseries(
+                        db_session,
+                        commit,
+                        MeasurementName.bundle_analysis_report_size.value,
+                        bundle_report.name,
+                        bundle_report.total_size(),
+                    )
+
+                # For individual javascript associated assets using UUID
+                if MeasurementName.bundle_analysis_asset_size.value in dataset_names:
+                    for asset in bundle_report.asset_reports():
+                        if asset.asset_type == AssetType.JAVASCRIPT:
+                            self._save_to_timeseries(
+                                db_session,
+                                commit,
+                                MeasurementName.bundle_analysis_asset_size.value,
+                                asset.uuid,
+                                asset.size,
+                            )
+
+                # For asset types sizes
+                asset_type_map = {
+                    MeasurementName.bundle_analysis_font_size: AssetType.FONT,
+                    MeasurementName.bundle_analysis_image_size: AssetType.IMAGE,
+                    MeasurementName.bundle_analysis_stylesheet_size: AssetType.STYLESHEET,
+                    MeasurementName.bundle_analysis_javascript_size: AssetType.JAVASCRIPT,
+                }
+                for measurement_name, asset_type in asset_type_map.items():
+                    if measurement_name.value in dataset_names:
+                        total_size = 0
+                        for asset in bundle_report.asset_reports():
+                            if asset.asset_type == asset_type:
+                                total_size += asset.size
+                        self._save_to_timeseries(
+                            db_session,
+                            commit,
+                            measurement_name.value,
+                            bundle_report.name,
+                            total_size,
+                        )
+
+            return ProcessingResult(
+                upload=upload,
+                commit=commit,
+            )
+        except Exception:
+            sentry_metrics.incr(
+                "bundle_analysis_upload",
+                tags={
+                    "result": "parser_error",
+                    "repository": commit.repository.repoid,
+                },
+            )
+            return ProcessingResult(
+                upload=upload,
+                commit=commit,
+                error=ProcessingError(
+                    code="measurement_save_error",
+                    params={
+                        "location": upload.storage_path,
+                        "repository": commit.repository.repoid,
+                    },
+                    is_retryable=False,
+                ),
+            )
 
 
 class ComparisonError(Exception):
@@ -364,36 +540,59 @@ class Notifier:
             return False
 
         pullid = pull.database_pull.pullid
-        message = self._build_message(pull)
+        bundle_comparison = ComparisonLoader(pull).get_comparison()
+        skip_comment_without_size_changes = (
+            bundle_comparison.total_size_delta == 0
+            and read_yaml_field(
+                self.current_yaml, ("comment", "require_bundle_changes"), False
+            )
+        )
 
-        try:
-            comment_id = pull.database_pull.bundle_analysis_commentid
-            if comment_id:
-                await self.repository_service.edit_comment(pullid, comment_id, message)
-            else:
-                res = await self.repository_service.post_comment(pullid, message)
-                pull.database_pull.bundle_analysis_commentid = res["id"]
-            return True
-        except TorngitClientError:
-            log.error(
-                "Error creating/updapting PR comment",
+        if skip_comment_without_size_changes:
+            # Skips the comment and returns successful notification
+            log.info(
+                "Skipping bundle PR comment without size change",
                 extra=dict(
                     commitid=self.commit.commitid,
-                    report_key=self.commit_report.external_id,
                     pullid=pullid,
                 ),
             )
-            return False
+            return True
+        else:
+            message = self._build_message(pull=pull, comparison=bundle_comparison)
+            try:
+                comment_id = pull.database_pull.bundle_analysis_commentid
+                if comment_id:
+                    await self.repository_service.edit_comment(
+                        pullid, comment_id, message
+                    )
+                else:
+                    res = await self.repository_service.post_comment(pullid, message)
+                    pull.database_pull.bundle_analysis_commentid = res["id"]
+                return True
+            except TorngitClientError:
+                log.error(
+                    "Error creating/updating PR comment",
+                    extra=dict(
+                        commitid=self.commit.commitid,
+                        report_key=self.commit_report.external_id,
+                        pullid=pullid,
+                    ),
+                )
+                return False
 
-    def _build_message(self, pull: EnrichedPull) -> str:
-        comparison = ComparisonLoader(pull).get_comparison()
+    def _build_message(
+        self, pull: EnrichedPull, comparison: BundleAnalysisComparison
+    ) -> str:
         bundle_changes = comparison.bundle_changes()
 
-        bundle_rows, total_size_delta = self._create_bundle_rows(
+        bundle_rows = self._create_bundle_rows(
             bundle_changes=bundle_changes, comparison=comparison
         )
         return self._write_lines(
-            bundle_rows=bundle_rows, total_size_delta=total_size_delta, pull=pull
+            bundle_rows=bundle_rows,
+            total_size_delta=comparison.total_size_delta,
+            pull=pull,
         )
 
     def _create_bundle_rows(
@@ -402,13 +601,9 @@ class Notifier:
         comparison: BundleAnalysisComparison,
     ) -> Tuple[List[BundleRows], int]:
         bundle_rows = []
-        total_size_delta = 0
 
         # Calculate bundle change data in one loop since bundle_changes is a generator
         for bundle_change in bundle_changes:
-            # TODO: make this a ComparisonReport property
-            total_size_delta += bundle_change.size_delta
-
             # Define row table data
             bundle_name = bundle_change.bundle_name
             if bundle_change.change_type == BundleChange.ChangeType.REMOVED:
@@ -432,7 +627,7 @@ class Notifier:
                 )
             )
 
-        return (bundle_rows, total_size_delta)
+        return bundle_rows
 
     def _write_lines(
         self, bundle_rows: List[BundleRows], total_size_delta: int, pull: EnrichedPull

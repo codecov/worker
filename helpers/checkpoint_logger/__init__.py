@@ -245,7 +245,9 @@ def subflows(*args: tuple[str, str, str]) -> TClassDecorator:
             # We get our subflows in the form: [(metric, begin, end)]
             # We want them in the form: {end: [(metric, begin)]}
             # The first step of munging is to group by end
-            key_on_end = lambda x: x[2]
+            def key_on_end(x):
+                return x[2]
+
             sorted_by_end = sorted(args, key=key_on_end)
             grouped_by_end = itertools.groupby(args, key=key_on_end)
 

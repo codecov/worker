@@ -1,5 +1,5 @@
 import json
-from unittest.mock import call
+from unittest.mock import MagicMock, call
 
 import pytest
 from celery.exceptions import MaxRetriesExceededError, Retry
@@ -10,9 +10,11 @@ from shared.torngit.exceptions import (
     TorngitClientGeneralError,
     TorngitServer5xxCodeError,
 )
+from shared.typings.torngit import GithubInstallationInfo, TorngitInstanceData
 from shared.yaml import UserYaml
 
-from database.enums import Decoration, Notification
+from database.enums import Decoration, Notification, NotificationState
+from database.models.core import CommitNotification, GithubAppInstallation
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
@@ -240,6 +242,95 @@ class TestNotifyTaskHelpers(object):
             ),
         )
 
+    @pytest.mark.parametrize("cached_id, app_to_save", [("24", "24"), (None, 12)])
+    def test__possibly_refresh_previous_selection(
+        self, cached_id, app_to_save, mocker, dbsession
+    ):
+        commit = CommitFactory(repository__owner__service="github")
+        app = GithubAppInstallation(id_=12, owner=commit.repository.owner)
+        other_app = GithubAppInstallation(id_=24, owner=commit.repository.owner)
+        commit_notifications = [
+            CommitNotification(
+                commit=commit,
+                notification_type=Notification.checks_project,
+                state=NotificationState.success,
+            ),
+            CommitNotification(
+                commit=commit,
+                notification_type=Notification.checks_patch,
+                state=NotificationState.error,
+                gh_app_id=other_app.id,
+            ),
+            CommitNotification(
+                commit=commit,
+                notification_type=Notification.checks_changes,
+                state=NotificationState.success,
+                gh_app_id=app.id,
+            ),
+        ]
+        dbsession.add_all([commit, app, other_app] + commit_notifications)
+        dbsession.flush()
+        mock_set_gh_app_for_commit = mocker.patch(
+            "tasks.notify.set_github_app_for_commit"
+        )
+        mocker.patch("tasks.notify.get_github_app_for_commit", return_value=cached_id)
+        task = NotifyTask()
+        assert task._possibly_refresh_previous_selection(commit) == True
+        mock_set_gh_app_for_commit.assert_called_with(app_to_save, commit)
+
+    def test__possibly_refresh_previous_selection_false(self, mocker, dbsession):
+        commit = CommitFactory(repository__owner__service="github")
+        dbsession.add(commit)
+        dbsession.flush()
+        mocker.patch("tasks.notify.get_github_app_for_commit", return_value=None)
+        mock_set_gh_app_for_commit = mocker.patch(
+            "tasks.notify.set_github_app_for_commit"
+        )
+        task = NotifyTask()
+        assert task._possibly_refresh_previous_selection(commit) == False
+        mock_set_gh_app_for_commit.assert_not_called()
+
+    def test_possibly_pin_commit_to_github_app_not_github_or_no_installation(
+        self, mocker, dbsession
+    ):
+        commit = CommitFactory(repository__owner__service="gitlab")
+        commit_from_gh = CommitFactory(repository__owner__service="github")
+        dbsession.add_all([commit, commit_from_gh])
+        dbsession.flush()
+        mock_refresh_selection = mocker.patch.object(
+            NotifyTask, "_possibly_refresh_previous_selection", return_value=None
+        )
+        torngit = MagicMock(data=TorngitInstanceData())
+        torngit_with_installation = MagicMock(
+            data=TorngitInstanceData(installation=GithubInstallationInfo(id=12))
+        )
+        task = NotifyTask()
+        assert (
+            task._possibly_pin_commit_to_github_app(commit, torngit_with_installation)
+            is None
+        )
+        mock_refresh_selection.assert_not_called()
+        assert task._possibly_pin_commit_to_github_app(commit_from_gh, torngit) is None
+        mock_refresh_selection.assert_called_with(commit_from_gh)
+
+    def test_possibly_pin_commit_to_github_app_new_selection(self, mocker, dbsession):
+        commit = CommitFactory(repository__owner__service="github")
+        dbsession.add(commit)
+        dbsession.flush()
+        mock_refresh_selection = mocker.patch.object(
+            NotifyTask, "_possibly_refresh_previous_selection", return_value=None
+        )
+        mock_set_gh_app_for_commit = mocker.patch(
+            "tasks.notify.set_github_app_for_commit"
+        )
+        torngit = MagicMock(
+            data=TorngitInstanceData(installation=GithubInstallationInfo(id=12))
+        )
+        task = NotifyTask()
+        assert task._possibly_pin_commit_to_github_app(commit, torngit) == 12
+        mock_refresh_selection.assert_called_with(commit)
+        mock_set_gh_app_for_commit.assert_called_with(12, commit)
+
 
 class TestNotifyTask(object):
     def test_simple_call_no_notifications(
@@ -435,13 +526,13 @@ class TestNotifyTask(object):
                 {
                     "notifier": "fake_hahaha",
                     "title": "the_title",
-                    "result": {
-                        "data_sent": {"all": ["The", 1, "data"]},
-                        "notification_successful": True,
-                        "notification_attempted": True,
-                        "data_received": None,
-                        "explanation": "",
-                    },
+                    "result": NotificationResult(
+                        data_sent={"all": ["The", 1, "data"]},
+                        notification_successful=True,
+                        notification_attempted=True,
+                        data_received=None,
+                        explanation="",
+                    ),
                 }
             ],
         }
@@ -803,13 +894,13 @@ class TestNotifyTask(object):
             {
                 "notifier": "good_name",
                 "title": "good_notifier",
-                "result": {
-                    "notification_attempted": True,
-                    "notification_successful": True,
-                    "explanation": "",
-                    "data_sent": {"some": "data"},
-                    "data_received": None,
-                },
+                "result": NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=True,
+                    explanation="",
+                    data_sent={"some": "data"},
+                    data_received=None,
+                ),
             },
         ]
         res = task.submit_third_party_notifications(

@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
 
+import sentry_sdk
+from celery._state import get_current_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
 from django.db import transaction as django_transaction
@@ -16,6 +18,12 @@ from sqlalchemy.exc import (
 from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
+from helpers.logging_config import (
+    log_read_task_id,
+    log_read_task_name,
+    log_set_task_id,
+    log_set_task_name,
+)
 from helpers.metrics import metrics
 from helpers.telemetry import MetricContext, TimeseriesTimer
 from helpers.timeseries import timeseries_enabled
@@ -250,11 +258,25 @@ class BaseCodecovTask(celery_app.Task):
                 )
 
     def run(self, *args, **kwargs):
+        task = get_current_task()
+
+        if task and task.request:
+            if log_read_task_name() is not None or log_read_task_id() is not None:
+                log.warning(
+                    "There are multiple tasks concurrently writing to the task name at a given time"
+                )
+            log_set_task_name(task.name)
+            log_set_task_id(task.request.id)
+
         self.task_run_counter.inc()
         self._emit_queue_metrics()
 
+        commit_sha = kwargs.get("commitid")
+        if commit_sha:
+            sentry_sdk.set_tag("commit_sha", commit_sha)
+
         metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
+            commit_sha=commit_sha,
             repo_id=kwargs.get("repoid"),
             owner_id=kwargs.get("ownerid"),
         )
@@ -288,6 +310,8 @@ class BaseCodecovTask(celery_app.Task):
                         self._rollback_django()
                         self.retry()
                     finally:
+                        log_set_task_name(None)
+                        log_set_task_id(None)
                         self.wrap_up_dbsession(db_session)
                         self._commit_django()
 

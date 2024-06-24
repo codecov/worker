@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import List
 from unittest.mock import PropertyMock
 
 import pytest
@@ -16,13 +17,13 @@ from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
 from database.enums import TestResultsProcessingError
-from database.models.core import GithubAppInstallation, Pull
+from database.models.core import Commit, GithubAppInstallation, Pull, Repository
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
 from services.billing import BillingPlan
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.overlays.critical_path import CriticalPathOverlay
-from services.comparison.types import Comparison, FullCommit
+from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.comment import CommentNotifier
@@ -37,6 +38,7 @@ from services.notification.notifiers.mixins.message.sections import (
     FileSectionWriter,
     HeaderSectionWriter,
     ImpactedEntrypointsSectionWriter,
+    MessagesToUserSectionWriter,
     NewFilesSectionWriter,
     NewFooterSectionWriter,
     _get_tree_cell,
@@ -426,129 +428,6 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_should_add_announcement(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id=None
-        )  # Not using integration
-        dbsession.add(repository)
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=False,
-        )
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        mock_write.assert_any_call(
-            ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
-        )
-        assert mock_write.call_count == 2
-
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_already_using_integration(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id="10000"
-        )  # Using integration
-        dbsession.add(repository)
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=False,
-        )
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        assert mock_write.call_count == 0
-
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_has_ghapp_installation(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id=None
-        )
-        ghapp_installation = GithubAppInstallation(
-            owner=repository.owner, installation_id=12345, repository_service_ids=None
-        )
-        dbsession.add_all([repository, ghapp_installation])
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=False,
-        )
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        assert mock_write.call_count == 0
-
-    @pytest.mark.asyncio
-    async def test__possibly_write_gh_app_login_announcement_enterprise(
-        self, dbsession, mocker
-    ):
-        repository = RepositoryFactory.create(
-            owner__service="github", owner__integration_id=None
-        )  # Not using integration
-        dbsession.add(repository)
-        dbsession.flush()
-        mocker.patch(
-            "services.notification.notifiers.mixins.message.is_enterprise",
-            return_value=True,
-        )  # Enterprise
-
-        mock_write = mocker.MagicMock()
-
-        notifier = CommentNotifier(
-            repository=repository,
-            title="some_title",
-            notifier_yaml_settings=False,
-            notifier_site_settings=None,
-            current_yaml={},
-        )
-        fake_comparison = mocker.MagicMock()
-        fake_comparison.head.commit.repository = repository
-        await notifier._possibly_write_gh_app_login_announcement(
-            fake_comparison, mock_write
-        )
-        assert mock_write.call_count == 0
-
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifier(object):
@@ -747,13 +626,13 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
-            f"",
+            "",
         ]
         res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
         for expected, res in zip(expected_result, res):
@@ -904,15 +783,14 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
             f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
-            f"",
             "",
         ]
         res = await notifier.build_message(comparison)
@@ -940,53 +818,53 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"+ Coverage     50.00%   60.00%   +10.00%     ",
-            f"+ Complexity       11       10        -1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines             6       10        +4     ",
-            f"  Branches          0        1        +1     ",
-            f"=============================================",
-            f"+ Hits              3        6        +3     ",
-            f"  Misses            3        3               ",
-            f"- Partials          0        1        +1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"",
+            "",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1015,8 +893,8 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 100.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            f"> Project coverage is 100.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
             "|---|---|---|",
             f"| [eighth](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | |",
@@ -1065,59 +943,53 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"+ Coverage     50.00%   60.00%   +10.00%     ",
-            f"+ Complexity       11       10        -1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines             6       10        +4     ",
-            f"  Branches          0        1        +1     ",
-            f"=============================================",
-            f"+ Hits              3        6        +3     ",
-            f"  Misses            3        3               ",
-            f"- Partials          0        1        +1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"",
+            "",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
-            f"",
-            f"",
-            f"",
-            f"",
-            f"",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1151,8 +1023,8 @@ class TestCommentNotifier(object):
         expected_result = [
             f"The author of this PR, {provider_pull['author']['username']}, is not an activated member of this organization on Codecov.",
             f"Please [activate this user on Codecov](test.example.br/members/gh/{pull.repository.owner.username}) to display this PR comment.",
-            f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-            f"Please don't hesitate to email us at support@codecov.io with any questions.",
+            "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+            "Please don't hesitate to email us at support@codecov.io with any questions.",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -1191,8 +1063,8 @@ class TestCommentNotifier(object):
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan](test.example.br/plan/gh/{pull.repository.owner.username}).",
-            f"",
-            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+            "",
+            "**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -1336,8 +1208,8 @@ class TestCommentNotifier(object):
         expected_result = [
             f"The author of this PR, {provider_pull['author']['username']}, is not activated in your Codecov Self-Hosted installation.",
             f"Please [activate this user](https://codecov.mysite.com/account/gh/{pull.author.username}) to display this PR comment.",
-            f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
-            f"Please contact your Codecov On-Premises installation administrator with any questions.",
+            "Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
+            "Please contact your Codecov On-Premises installation administrator with any questions.",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -1363,53 +1235,53 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"+ Coverage     50.00%   60.00%   +10.00%     ",
-            f"+ Complexity       11       10        -1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines             6       10        +4     ",
-            f"  Branches          0        1        +1     ",
-            f"=============================================",
-            f"+ Hits              3        6        +3     ",
-            f"  Misses            3        3               ",
-            f"- Partials          0        1        +1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
-            f"|---|---|---|",
+            "|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | |",
-            f"|---|---|---|",
+            "|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
-            f"",
+            "",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1437,50 +1309,50 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
-            f"",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@            Coverage Diff            @@",
+            "",
+            "```diff",
+            "@@            Coverage Diff            @@",
             f"##             master      #{pull.pullid}   +/-   ##",
-            f"=========================================",
-            f"  Coverage          ?   60.00%           ",
-            f"  Complexity        ?       10           ",
-            f"=========================================",
-            f"  Files             ?        2           ",
-            f"  Lines             ?       10           ",
-            f"  Branches          ?        1           ",
-            f"=========================================",
-            f"  Hits              ?        6           ",
-            f"  Misses            ?        3           ",
-            f"  Partials          ?        1           ",
-            f"```",
-            f"",
+            "=========================================",
+            "  Coverage          ?   60.00%           ",
+            "  Complexity        ?       10           ",
+            "=========================================",
+            "  Files             ?        2           ",
+            "  Lines             ?       10           ",
+            "  Branches          ?        1           ",
+            "=========================================",
+            "  Hits              ?        6           ",
+            "  Misses            ?        3           ",
+            "  Partials          ?        1           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1508,50 +1380,50 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            "> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@            Coverage Diff            @@",
+            "",
+            "```diff",
+            "@@            Coverage Diff            @@",
             f"##             master      #{pull.pullid}   +/-   ##",
-            f"=========================================",
-            f"  Coverage          ?   60.00%           ",
-            f"  Complexity        ?       10           ",
-            f"=========================================",
-            f"  Files             ?        2           ",
-            f"  Lines             ?       10           ",
-            f"  Branches          ?        1           ",
-            f"=========================================",
-            f"  Hits              ?        6           ",
-            f"  Misses            ?        3           ",
-            f"  Partials          ?        1           ",
-            f"```",
-            f"",
+            "=========================================",
+            "  Coverage          ?   60.00%           ",
+            "  Complexity        ?       10           ",
+            "=========================================",
+            "  Files             ?        2           ",
+            "  Lines             ?       10           ",
+            "  Branches          ?        1           ",
+            "=========================================",
+            "  Hits              ?        6           ",
+            "  Misses            ?        3           ",
+            "  Partials          ?        1           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[cdf9aa4...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1581,50 +1453,50 @@ class TestCommentNotifier(object):
 
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@            Coverage Diff            @@",
+            "",
+            "```diff",
+            "@@            Coverage Diff            @@",
             f"##             master      #{pull.pullid}   +/-   ##",
-            f"=========================================",
-            f"  Coverage     60.00%   60.00%           ",
-            f"  Complexity       10       10           ",
-            f"=========================================",
-            f"  Files             2        2           ",
-            f"  Lines            10       10           ",
-            f"  Branches          1        1           ",
-            f"=========================================",
-            f"  Hits              6        6           ",
-            f"  Misses            3        3           ",
-            f"  Partials          1        1           ",
-            f"```",
-            f"",
+            "=========================================",
+            "  Coverage     60.00%   60.00%           ",
+            "  Complexity       10       10           ",
+            "=========================================",
+            "  Files             2        2           ",
+            "  Lines            10       10           ",
+            "  Branches          1        1           ",
+            "=========================================",
+            "  Hits              6        6           ",
+            "  Misses            3        3           ",
+            "  Partials          1        1           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (ø)` | `0.00 <0.00> (ø)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (ø)` | |",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{sample_comparison_no_change.project_coverage_base.commit.commitid[:7]}...{sample_comparison_no_change.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -1655,52 +1527,52 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 50.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            f"> Project coverage is 50.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"- Coverage     60.00%   50.00%   -10.00%     ",
-            f"- Complexity       10       11        +1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines            10        6        -4     ",
-            f"  Branches          1        0        -1     ",
-            f"=============================================",
-            f"- Hits              6        3        -3     ",
-            f"  Misses            3        3               ",
-            f"+ Partials          1        0        -1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "- Coverage     60.00%   50.00%   -10.00%     ",
+            "- Complexity       10       11        +1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines            10        6        -4     ",
+            "  Branches          1        0        -1     ",
+            "=============================================",
+            "- Hits              6        3        -3     ",
+            "  Misses            3        3               ",
+            "+ Partials          1        0        -1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `50.00% <ø> (-12.50%)` | `11.00 <0.00> (+1.00)` | :arrow_down: |",
-            f"",
+            "",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1751,21 +1623,21 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 88.54%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
-            f"```diff",
-            f"@@            Coverage Diff             @@",
+            f"> Project coverage is 88.54%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            "```diff",
+            "@@            Coverage Diff             @@",
             f"##           master      #{pull.pullid}      +/-   ##",
-            f"==========================================",
-            f"- Coverage   88.58%   88.54%   -0.04%     ",
-            f"==========================================",
-            f"  Files           1        1              ",
-            f"  Lines        7630     7631       +1     ",
-            f"==========================================",
-            f"- Hits         6759     6757       -2     ",
-            f"- Misses        871      874       +3     ",
-            f"```",
-            f"",
+            "==========================================",
+            "- Coverage   88.58%   88.54%   -0.04%     ",
+            "==========================================",
+            "  Files           1        1              ",
+            "  Lines        7630     7631       +1     ",
+            "==========================================",
+            "- Hits         6759     6757       -2     ",
+            "- Misses        871      874       +3     ",
+            "```",
+            "",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -1817,9 +1689,9 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 88.54%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            f"> Project coverage is 88.54%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -1848,51 +1720,51 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"+ Coverage     50.00%   60.00%   +10.00%     ",
-            f"+ Complexity       11       10        -1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines             6       10        +4     ",
-            f"  Branches          0        1        +1     ",
-            f"=============================================",
-            f"+ Hits              3        6        +3     ",
-            f"  Misses            3        3               ",
-            f"- Partials          0        1        +1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"",
+            "",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -1925,42 +1797,39 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@           Coverage Diff           @@",
+            "",
+            "```diff",
+            "@@           Coverage Diff           @@",
             f"##           master      #{pull.pullid}   +/-   ##",
-            f"=======================================",
-            f"  Coverage   65.38%   65.38%           ",
-            f"=======================================",
-            f"  Files          15       15           ",
-            f"  Lines         208      208           ",
-            f"=======================================",
-            f"  Hits          136      136           ",
-            f"  Misses          4        4           ",
-            f"  Partials       68       68           ",
-            f"```",
-            f"",
-            f"",
-            f"------",
-            f"",
+            "=======================================",
+            "  Coverage   65.38%   65.38%           ",
+            "=======================================",
+            "  Files          15       15           ",
+            "  Lines         208      208           ",
+            "=======================================",
+            "  Hits          136      136           ",
+            "  Misses          4        4           ",
+            "  Partials       68       68           ",
+            "```",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
-        li = 0
         for exp, res in zip(expected_result, result):
-            li += 1
             assert exp == res
         assert result == expected_result
 
@@ -1983,47 +1852,46 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@           Coverage Diff           @@",
+            "",
+            "```diff",
+            "@@           Coverage Diff           @@",
             f"##           master      #{pull.pullid}   +/-   ##",
-            f"=======================================",
-            f"  Coverage   65.38%   65.38%           ",
-            f"=======================================",
-            f"  Files          15       15           ",
-            f"  Lines         208      208           ",
-            f"=======================================",
-            f"  Hits          136      136           ",
-            f"  Misses          4        4           ",
-            f"  Partials       68       68           ",
-            f"```",
-            f"",
+            "=======================================",
+            "  Coverage   65.38%   65.38%           ",
+            "=======================================",
+            "  Files          15       15           ",
+            "  Lines         208      208           ",
+            "=======================================",
+            "  Hits          136      136           ",
+            "  Misses          4        4           ",
+            "  Partials       68       68           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | | *Carryforward flag |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [enterprise](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward from [1234567](test.example.br/gh/{repository.slug}/commit/123456789sha) |",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | |",
-            f"",
-            f"*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
-            f"",
-            f"",
-            f"",
-            f"------",
-            f"",
+            "",
+            "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
+            "",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -2057,47 +1925,46 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@           Coverage Diff           @@",
+            "",
+            "```diff",
+            "@@           Coverage Diff           @@",
             f"##           master      #{pull.pullid}   +/-   ##",
-            f"=======================================",
-            f"  Coverage   65.38%   65.38%           ",
-            f"=======================================",
-            f"  Files          15       15           ",
-            f"  Lines         208      208           ",
-            f"=======================================",
-            f"  Hits          136      136           ",
-            f"  Misses          4        4           ",
-            f"  Partials       68       68           ",
-            f"```",
-            f"",
+            "=======================================",
+            "  Coverage   65.38%   65.38%           ",
+            "=======================================",
+            "  Files          15       15           ",
+            "  Lines         208      208           ",
+            "=======================================",
+            "  Hits          136      136           ",
+            "  Misses          4        4           ",
+            "  Partials       68       68           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | | *Carryforward flag |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [enterprise](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward from [1234567](test.example.br/gh/{repository.slug}/commit/123456789sha) |",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | Carriedforward |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | | |",
-            f"",
-            f"*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
-            f"",
-            f"",
-            f"",
-            f"------",
-            f"",
+            "",
+            "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
+            "",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -2131,45 +1998,44 @@ class TestCommentNotifier(object):
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@           Coverage Diff           @@",
+            "",
+            "```diff",
+            "@@           Coverage Diff           @@",
             f"##           master      #{pull.pullid}   +/-   ##",
-            f"=======================================",
-            f"  Coverage   65.38%   65.38%           ",
-            f"=======================================",
-            f"  Files          15       15           ",
-            f"  Lines         208      208           ",
-            f"=======================================",
-            f"  Hits          136      136           ",
-            f"  Misses          4        4           ",
-            f"  Partials       68       68           ",
-            f"```",
-            f"",
+            "=======================================",
+            "  Coverage   65.38%   65.38%           ",
+            "=======================================",
+            "  Files          15       15           ",
+            "  Lines         208      208           ",
+            "=======================================",
+            "  Hits          136      136           ",
+            "  Misses          4        4           ",
+            "  Partials       68       68           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
-            f"|---|---|---|",
+            "|---|---|---|",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
-            f"",
-            f"",
-            f"",
-            f"------",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
+            "",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -2229,52 +2095,52 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(sample_comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"+ Coverage     50.00%   60.00%   +10.00%     ",
-            f"+ Complexity       11       10        -1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines             6       10        +4     ",
-            f"  Branches          0        1        +1     ",
-            f"=============================================",
-            f"+ Hits              3        6        +3     ",
-            f"  Misses            3        3               ",
-            f"- Partials          0        1        +1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
-            f"",
+            "",
             f"... and [1 file with indirect coverage changes](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/indirect-changes?src=pr&el=tree-more)",
-            f"",
-            f"------",
-            f"",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -2416,7 +2282,7 @@ class TestCommentNotifier(object):
             "response", "message"
         )
         result = await notifier.send_actual_notification(data)
-        assert not result.notification_attempted
+        assert result.notification_attempted is False
         assert result.notification_successful is None
         assert result.explanation == "comment_deleted"
         assert result.data_sent == data
@@ -2642,7 +2508,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison_without_pull)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful == False
         assert result.explanation == "no_pull_request"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2663,7 +2529,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "pull_head_does_not_match"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2684,7 +2550,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison_database_pull_without_provider)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "pull_request_not_in_provider"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2821,7 +2687,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "pull_request_closed"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2847,7 +2713,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "unable_build_message"
         assert result.data_sent is None
         assert result.data_received is None
@@ -2867,7 +2733,7 @@ class TestCommentNotifier(object):
         )
         result = await notifier.notify(sample_comparison)
         assert not result.notification_attempted
-        assert result.notification_successful is None
+        assert result.notification_successful is False
         assert result.explanation == "not_enough_builds"
         assert result.data_sent is None
         assert result.data_received is None
@@ -3133,7 +2999,7 @@ class TestCommentNotifier(object):
         )
         res = await notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
-        assert res.notification_successful is None
+        assert res.notification_successful is False
         assert res.explanation == "changes_required"
         assert res.data_sent is None
         assert res.data_received is None
@@ -3195,7 +3061,7 @@ class TestCommentNotifier(object):
         )
         res = await notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
-        assert res.notification_successful is None
+        assert res.notification_successful is False
         assert res.explanation == "changes_required"
         assert res.data_sent is None
         assert res.data_received == {"deleted_comment": True}
@@ -3260,7 +3126,7 @@ class TestCommentNotifier(object):
         )
         res = await notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
-        assert res.notification_successful is None
+        assert res.notification_successful is False
         assert res.explanation == "changes_required"
         assert res.data_sent is None
         assert res.data_received == {"deleted_comment": False}
@@ -3284,14 +3150,14 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
-            f"<details><summary>Additional details and impacted files</summary>\n",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            "<details><summary>Additional details and impacted files</summary>\n",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"</details>",
+            "",
+            "</details>",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -3318,8 +3184,8 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
             "",
             ":mega: message",
             "",
@@ -3355,11 +3221,11 @@ class TestCommentNotifier(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
+            "",
         ]
         li = 0
         for exp, res in zip(expected_result, result):
@@ -3450,7 +3316,7 @@ class TestFileSectionWriter(object):
             "| [Files](pull.link?dropdown=coverage&src=pr&el=tree) | Coverage Δ | |",
             "|---|---|---|",
             "| [file\\_1.go](pull.link?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.66%> (+12.50%)` | :arrow_up: |",
-            f"",
+            "",
             "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
 
@@ -3986,12 +3852,12 @@ class TestNewHeaderSectionWriter(object):
                 sample_comparison,
                 None,
                 None,
-                links={"pull": "urlurl", "base": "urlurl"},
+                links={"pull": "urlurl", "base": "urlurl", "head": "headurl"},
             )
         )
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](headurl?dropdown=coverage&el=desc).",
         ]
 
     @pytest.mark.asyncio
@@ -4014,13 +3880,13 @@ class TestNewHeaderSectionWriter(object):
                 sample_comparison,
                 None,
                 None,
-                links={"pull": "urlurl", "base": "urlurl"},
+                links={"pull": "urlurl", "base": "urlurl", "head": "headurl"},
                 behind_by=3,
             )
         )
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](headurl?dropdown=coverage&el=desc).",
             "> Report is 3 commits behind head on master.",
         ]
 
@@ -4045,12 +3911,12 @@ class TestNewHeaderSectionWriter(object):
                 sample_comparison,
                 None,
                 None,
-                links={"pull": "urlurl", "base": "urlurl"},
+                links={"pull": "urlurl", "base": "urlurl", "head": "headurl"},
             )
         )
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](headurl?dropdown=coverage&el=desc).",
             "",
             ":white_check_mark: All tests successful. No failed tests found.",
         ]
@@ -4079,12 +3945,12 @@ class TestNewHeaderSectionWriter(object):
                 sample_comparison,
                 None,
                 None,
-                links={"pull": "urlurl", "base": "urlurl"},
+                links={"pull": "urlurl", "base": "urlurl", "head": "headurl"},
             )
         )
         assert res == [
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](urlurl?dropdown=coverage&src=pr&el=desc).",
+            f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](headurl?dropdown=coverage&el=desc).",
             "",
             ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         ]
@@ -4109,7 +3975,7 @@ class TestNewHeaderSectionWriter(object):
                 sample_comparison,
                 None,
                 None,
-                links={"pull": "urlurl", "base": "urlurl"},
+                links={"pull": "urlurl", "base": "urlurl", "head": "headurl"},
             )
         )
         assert res == [
@@ -4137,7 +4003,7 @@ class TestNewHeaderSectionWriter(object):
                 sample_comparison,
                 None,
                 None,
-                links={"pull": "urlurl", "base": "urlurl"},
+                links={"pull": "urlurl", "base": "urlurl", "head": "headurl"},
             )
         )
         assert res == [
@@ -4170,7 +4036,7 @@ class TestNewHeaderSectionWriter(object):
                 sample_comparison,
                 None,
                 None,
-                links={"pull": "urlurl", "base": "urlurl"},
+                links={"pull": "urlurl", "base": "urlurl", "head": "headurl"},
             )
         )
         assert res == [
@@ -4459,16 +4325,15 @@ class TestCommentNotifierInNewLayout(object):
         repository = sample_comparison.head.commit.repository
         expected_result = [
             f"## [Codecov](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](https://app.codecov.io/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
             "",
             "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)",
             "",
             f"| [Files](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\\_1.go](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <ø> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
-            f"",
             "",
         ]
         res = await notifier.build_message(comparison)
@@ -4503,41 +4368,41 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            "> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@            Coverage Diff            @@",
+            "",
+            "```diff",
+            "@@            Coverage Diff            @@",
             f"##             master      #{pull.pullid}   +/-   ##",
-            f"=========================================",
-            f"  Coverage          ?   60.00%           ",
-            f"  Complexity        ?       10           ",
-            f"=========================================",
-            f"  Files             ?        2           ",
-            f"  Lines             ?       10           ",
-            f"  Branches          ?        1           ",
-            f"=========================================",
-            f"  Hits              ?        6           ",
-            f"  Misses            ?        3           ",
-            f"  Partials          ?        1           ",
-            f"```",
-            f"",
+            "=========================================",
+            "  Coverage          ?   60.00%           ",
+            "  Complexity        ?       10           ",
+            "=========================================",
+            "  Files             ?        2           ",
+            "  Lines             ?       10           ",
+            "  Branches          ?        1           ",
+            "=========================================",
+            "  Hits              ?        6           ",
+            "  Misses            ?        3           ",
+            "  Partials          ?        1           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
-            f"",
-            f"",
+            "",
+            "",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
-            f"",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4569,44 +4434,44 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
-            f"",
-            f"<details><summary>Additional details and impacted files</summary>\n",
-            f"",
+            "",
+            "<details><summary>Additional details and impacted files</summary>\n",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@            Coverage Diff            @@",
+            "",
+            "```diff",
+            "@@            Coverage Diff            @@",
             f"##             master      #{pull.pullid}   +/-   ##",
-            f"=========================================",
-            f"  Coverage          ?   60.00%           ",
-            f"  Complexity        ?       10           ",
-            f"=========================================",
-            f"  Files             ?        2           ",
-            f"  Lines             ?       10           ",
-            f"  Branches          ?        1           ",
-            f"=========================================",
-            f"  Hits              ?        6           ",
-            f"  Misses            ?        3           ",
-            f"  Partials          ?        1           ",
-            f"```",
-            f"",
+            "=========================================",
+            "  Coverage          ?   60.00%           ",
+            "  Complexity        ?       10           ",
+            "=========================================",
+            "  Files             ?        2           ",
+            "  Lines             ?       10           ",
+            "  Branches          ?        1           ",
+            "=========================================",
+            "  Hits              ?        6           ",
+            "  Misses            ?        3           ",
+            "  Partials          ?        1           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [file\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (ø)` | `10.00 <0.00> (?)` | |",
-            f"",
-            f"</details>",
-            f"",
+            "",
+            "</details>",
+            "",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
-            f"",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4639,15 +4504,15 @@ class TestCommentNotifierInNewLayout(object):
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
             f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
-            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            "",
             f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
-            f"|---|---|---|",
+            "|---|---|---|",
             f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
-            f"",
-            f"",
-            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
-            f"",
+            "",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4680,15 +4545,15 @@ class TestCommentNotifierInNewLayout(object):
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
             f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
-            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            "",
             f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
-            f"|---|---|---|",
+            "|---|---|---|",
             f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
-            f"",
-            f"",
-            f":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
-            f"",
+            "",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4720,45 +4585,45 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"> :exclamation: **Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}**",
-            f"> ",
+            "> ",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results.",
-            f"",
-            f"<details><summary>Additional details and impacted files</summary>\n",
-            f"",
+            "",
+            "<details><summary>Additional details and impacted files</summary>\n",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"+ Coverage     50.00%   60.00%   +10.00%     ",
-            f"+ Complexity       11       10        -1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines             6       10        +4     ",
-            f"  Branches          0        1        +1     ",
-            f"=============================================",
-            f"+ Hits              3        6        +3     ",
-            f"  Misses            3        3               ",
-            f"- Partials          0        1        +1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
-            f"</details>",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
+            "</details>",
+            "",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
-            f"",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4797,50 +4662,50 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
-            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"> :exclamation: **Current head {comparison.head.commit.commitid[:7]} differs from pull request most recent head {comparison.enriched_pull.provider_pull['head']['commitid'][:7]}**",
-            f"> ",
+            "> ",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {comparison.enriched_pull.provider_pull['head']['commitid'][:7]} to get more accurate results.",
-            f"",
-            f"<details><summary>Additional details and impacted files</summary>\n",
-            f"",
+            "",
+            "<details><summary>Additional details and impacted files</summary>\n",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@              Coverage Diff              @@",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
             f"##             master      #{pull.pullid}       +/-   ##",
-            f"=============================================",
-            f"+ Coverage     50.00%   60.00%   +10.00%     ",
-            f"+ Complexity       11       10        -1     ",
-            f"=============================================",
-            f"  Files             2        2               ",
-            f"  Lines             6       10        +4     ",
-            f"  Branches          0        1        +1     ",
-            f"=============================================",
-            f"+ Hits              3        6        +3     ",
-            f"  Misses            3        3               ",
-            f"- Partials          0        1        +1     ",
-            f"```",
-            f"",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
-            f"|---|---|---|---|",
+            "|---|---|---|---|",
             f"| [integration](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `?` | `?` | |",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `100.00% <100.00%> (?)` | `0.00 <0.00> (?)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
             f"| [Components](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/components?src=pr&el=components) | Coverage Δ | |",
-            f"|---|---|---|",
+            "|---|---|---|",
             f"| [go_files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/components?src=pr&el=component) | `62.50% <66.67%> (+12.50%)` | :arrow_up: |",
             f"| [unit_flags](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/components?src=pr&el=component) | `100.00% <100.00%> (∅)` | |",
-            f"",
-            f"</details>",
-            f"",
+            "",
+            "</details>",
+            "",
             f"[:umbrella: View full report in Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).   ",
-            f":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
-            f"",
+            ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
+            "",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -4884,7 +4749,7 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            "Attention: Patch coverage is `66.66667%` with `1 lines` in your changes are missing coverage. Please review.",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
             "|---|---|---|",
             f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
@@ -4977,7 +4842,7 @@ class TestCommentNotifierInNewLayout(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
-    async def test_build_message_team_plan_customer_all_lines_covered(
+    async def test_build_message_team_plan_customer_all_lines_covered_no_third_line(
         self,
         dbsession,
         mock_configuration,
@@ -5040,46 +4905,45 @@ class TestCommentNotifierInNewLayout(object):
         result = await notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
-            f"All modified and coverable lines are covered by tests :white_check_mark:",
-            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=desc).",
-            f"",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            f"> Project coverage is 65.38%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
-            f"",
-            f"```diff",
-            f"@@           Coverage Diff           @@",
+            "",
+            "```diff",
+            "@@           Coverage Diff           @@",
             f"##           master      #{pull.pullid}   +/-   ##",
-            f"=======================================",
-            f"  Coverage   65.38%   65.38%           ",
-            f"=======================================",
-            f"  Files          15       15           ",
-            f"  Lines         208      208           ",
-            f"=======================================",
-            f"  Hits          136      136           ",
-            f"  Misses          4        4           ",
-            f"  Partials       68       68           ",
-            f"```",
-            f"",
+            "=======================================",
+            "  Coverage   65.38%   65.38%           ",
+            "=======================================",
+            "  Files          15       15           ",
+            "  Lines         208      208           ",
+            "=======================================",
+            "  Hits          136      136           ",
+            "  Misses          4        4           ",
+            "  Partials       68       68           ",
+            "```",
+            "",
             f"| [Flag](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flags) | Coverage Δ | |",
-            f"|---|---|---|",
+            "|---|---|---|",
             f"| [unit](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/flags?src=pr&el=flag) | `25.00% <ø> (ø)` | |",
-            f"",
-            f"Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
-            f"",
-            f"",
-            f"",
-            f"------",
-            f"",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
+            "",
+            "",
+            "------",
+            "",
             f"[Continue to review full report in "
             f"Codecov by Sentry](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=continue).",
-            f"> **Legend** - [Click here to learn "
-            f"more](https://docs.codecov.io/docs/codecov-delta)",
-            f"> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> **Legend** - [Click here to learn "
+            "more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
             f"> Powered by "
             f"[Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=footer). "
             f"Last update "
             f"[{comparison.project_coverage_base.commit.commitid[:7]}...{comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
-            f"",
+            "",
         ]
 
         for exp, res in zip(expected_result, result):
@@ -5678,3 +5542,181 @@ class TestCommentNotifierWelcome:
         )
         result = await notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
+
+
+class TestMessagesToUserSection(object):
+    @pytest.mark.parametrize(
+        "repo, is_enterprise, owner_has_apps, expected",
+        [
+            pytest.param(
+                RepositoryFactory(owner__service="github", owner__integration_id=None),
+                False,
+                False,
+                ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
+                id="owner_not_using_app_should_emit_warning",
+            ),
+            pytest.param(
+                RepositoryFactory(owner__service="github", owner__integration_id=None),
+                True,
+                False,
+                "",
+                id="is_enterprise_should_not_emit_warning",
+            ),
+            pytest.param(
+                RepositoryFactory(
+                    owner__service="github", owner__integration_id="integration_id"
+                ),
+                False,
+                False,
+                "",
+                id="owner_using_app_legacy_should_not_emit_warning",
+            ),
+            pytest.param(
+                RepositoryFactory(owner__service="github", owner__integration_id=None),
+                False,
+                True,
+                "",
+                id="owner_using_app_should_not_emit_warning",
+            ),
+        ],
+    )
+    def test_install_github_app_warning(
+        self,
+        mocker,
+        repo: Repository,
+        is_enterprise: bool,
+        owner_has_apps: bool,
+        expected: str,
+    ):
+        if owner_has_apps:
+            repo.owner.github_app_installations = [
+                GithubAppInstallation(owner=repo.owner, app_id=10, installation_id=1000)
+            ]
+        commit = CommitFactory(repository=repo)
+        mock_head = mocker.MagicMock(commit=commit)
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.is_enterprise",
+            return_value=is_enterprise,
+        )
+        fake_comparison = mocker.MagicMock(head=mock_head)
+        assert (
+            MessagesToUserSectionWriter(
+                repo, mocker.MagicMock(), False, mocker.MagicMock(), {}
+            )._write_install_github_app_warning(fake_comparison)
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        "commit, upload_diff, has_project_status, is_coverage_drop_significant, expected",
+        [
+            pytest.param(
+                CommitFactory(state="pending"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                True,
+                True,
+                "",
+                id="commit_not_ready_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                False,
+                True,
+                "",
+                id="no_project_status_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [ReportUploadedCount(flag="unit", base_count=4, head_count=3)],
+                True,
+                False,
+                "",
+                id="no_significant_drop_in_coverage_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(state="complete"),
+                [],
+                True,
+                True,
+                "",
+                id="no_upload_diff_should_not_send_warning",
+            ),
+            pytest.param(
+                CommitFactory(
+                    state="complete",
+                    commitid="cf59ea49c149c8ef5d7303834362a4d27bbd4a28",
+                ),
+                [
+                    ReportUploadedCount(flag="unit", base_count=4, head_count=3),
+                    ReportUploadedCount(flag="local", base_count=2, head_count=1),
+                ],
+                True,
+                True,
+                (
+                    "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
+                    + "\n> "
+                    + "\n> <details><summary>HEAD has 2 uploads less than BASE</summary>"
+                    + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
+                    + "\n>|------|------|------|"
+                    + "\n>|unit|4|3|"
+                    + "\n>|local|2|1|"
+                    + "\n></details>"
+                ),
+                id="should_send_warning_2_uploads_less",
+            ),
+            pytest.param(
+                CommitFactory(
+                    state="complete",
+                    commitid="cf59ea49c149c8ef5d7303834362a4d27bbd4a28",
+                ),
+                [
+                    ReportUploadedCount(flag="unit", base_count=4, head_count=3),
+                ],
+                True,
+                True,
+                (
+                    "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
+                    + "\n> "
+                    + "\n> <details><summary>HEAD has 1 upload less than BASE</summary>"
+                    + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
+                    + "\n>|------|------|------|"
+                    + "\n>|unit|4|3|"
+                    + "\n></details>"
+                ),
+                id="should_send_warning_1_upload_less",
+            ),
+        ],
+    )
+    def test_different_upload_count_warning(
+        self,
+        mocker,
+        commit: Commit,
+        upload_diff: List[ReportUploadedCount],
+        has_project_status: bool,
+        is_coverage_drop_significant: bool,
+        expected: str,
+    ):
+        yaml = {"coverage": {"status": {"project": has_project_status}}}
+        mocker.patch(
+            "services.notification.notifiers.mixins.message.sections.is_coverage_drop_significant",
+            return_value=is_coverage_drop_significant,
+        )
+        mock_head = mocker.MagicMock(commit=commit)
+        mock_project_coverage_base = mocker.MagicMock(
+            commit=CommitFactory(
+                repository=commit.repository,
+                commitid="bbd4a28cf59ea49c149c8ef5d7303834362a4d27",
+            )
+        )
+        fake_comparison = mocker.MagicMock(
+            head=mock_head, project_coverage_base=mock_project_coverage_base
+        )
+        fake_comparison.get_reports_uploaded_count_per_flag_diff.return_value = (
+            upload_diff
+        )
+        assert (
+            MessagesToUserSectionWriter(
+                commit.repository, mocker.MagicMock(), False, mocker.MagicMock(), yaml
+            )._write_different_upload_count_warning(fake_comparison)
+            == expected
+        )

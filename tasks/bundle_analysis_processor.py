@@ -13,6 +13,9 @@ from database.models import Commit, Upload
 from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
+from tasks.bundle_analysis_save_measurements import (
+    bundle_analysis_save_measurements_task_name,
+)
 
 log = logging.getLogger(__name__)
 
@@ -132,9 +135,6 @@ class BundleAnalysisProcessorTask(
                 self.retry(max_retries=5, countdown=20)
             result.update_upload()
 
-            if result.bundle_report:
-                result.bundle_report.cleanup()
-
             processing_results.append(result.as_dict())
         except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
             raise
@@ -153,6 +153,20 @@ class BundleAnalysisProcessorTask(
             upload.state_id = UploadState.ERROR.db_id
             upload.state = "error"
             raise
+        finally:
+            if result.bundle_report:
+                result.bundle_report.cleanup()
+
+        # Create task to save bundle measurements
+        self.app.tasks[bundle_analysis_save_measurements_task_name].apply_async(
+            kwargs=dict(
+                commitid=commit.commitid,
+                repoid=commit.repoid,
+                uploadid=upload.id_,
+                commit_yaml=commit_yaml.to_dict(),
+                previous_result=processing_results,
+            )
+        )
 
         log.info(
             "Finished bundle analysis processor",

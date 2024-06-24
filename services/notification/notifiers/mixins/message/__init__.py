@@ -1,11 +1,10 @@
 import logging
-from typing import Callable, List
+from typing import List
 
 from shared.reports.resources import Report, ReportTotals
 from shared.validation.helpers import LayoutStructure
 
 from database.models.core import Owner
-from helpers.environment import is_enterprise
 from helpers.metrics import metrics
 from services.billing import BillingPlan
 from services.comparison import ComparisonProxy
@@ -49,7 +48,6 @@ class MessageMixin(object):
 
         settings = yaml_settings
 
-        yaml = self.current_yaml
         current_yaml = self.current_yaml
 
         links = {
@@ -57,6 +55,7 @@ class MessageMixin(object):
             "base": get_commit_url(comparison.project_coverage_base.commit)
             if comparison.project_coverage_base.commit is not None
             else None,
+            "head": get_commit_url(comparison.head.commit),
         }
 
         # bool: show complexity
@@ -93,6 +92,8 @@ class MessageMixin(object):
         # note: since we're using append, calling write("") will add a newline to the message
 
         upper_section_names = self.get_upper_section_names(settings)
+        # We write the header and then the messages_to_user section
+        upper_section_names.append("messages_to_user")
         for upper_section_name in upper_section_names:
             section_writer_class = get_section_class_from_layout_name(
                 upper_section_name
@@ -113,10 +114,6 @@ class MessageMixin(object):
 
         if base_report is None:
             base_report = Report()
-
-        # Announcement section specific for the GitHub App Login changes
-        # This might be removed eventually
-        await self._possibly_write_gh_app_login_announcement(comparison, write)
 
         if head_report:
             if is_compact_message:
@@ -181,21 +178,6 @@ class MessageMixin(object):
 
         return [m for m in message if m is not None]
 
-    async def _possibly_write_gh_app_login_announcement(
-        self, comparison: ComparisonProxy, write: Callable
-    ) -> None:
-        repo = comparison.head.commit.repository
-        owner = repo.owner
-        if (
-            owner.service == "github"
-            and not owner.integration_id
-            and owner.github_app_installations == []
-            and not is_enterprise()
-        ):
-            message_to_display = "Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
-            write(f":exclamation: {message_to_display}")
-            write("")
-
     def _team_plan_notification(
         self,
         comparison: ComparisonProxy,
@@ -230,18 +212,22 @@ class MessageMixin(object):
     async def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer, behind_by=None
     ):
+        wrote_something: bool = False
         with metrics.timer(
             f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
         ):
             for line in await section_writer.write_section(
                 comparison, diff, changes, links, behind_by=behind_by
             ):
+                wrote_something |= line is not None
                 write(line)
-
-        write("")
+        if wrote_something:
+            write("")
 
     def get_middle_layout_section_names(self, settings):
-        sections = map(lambda l: l.strip(), (settings["layout"] or "").split(","))
+        sections = map(
+            lambda layout: layout.strip(), (settings["layout"] or "").split(",")
+        )
         return [
             section
             for section in sections
@@ -258,9 +244,11 @@ class MessageMixin(object):
         ]
 
     def get_upper_section_names(self, settings):
-        sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
+        sections = list(
+            map(lambda layout: layout.strip(), (settings["layout"] or "").split(","))
+        )
         headers = ["newheader", "header", "condensed_header"]
-        if all(not x in sections for x in headers):
+        if all(x not in sections for x in headers):
             sections.insert(0, "condensed_header")
 
         return [
