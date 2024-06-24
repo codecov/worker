@@ -65,7 +65,7 @@ jobs:
   production:
     name: Push Production Image
     needs: [build, test]
-    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/prod') && github.repository_owner == 'codecov' }}
+    if: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/main' && github.repository_owner == 'codecov' }}
     uses: codecov/gha-workflows/.github/workflows/push-env.yml@v1.2.21
     secrets: inherit
     with:
