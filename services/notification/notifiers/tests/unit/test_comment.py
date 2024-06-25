@@ -14,6 +14,7 @@ from shared.torngit.exceptions import (
     TorngitServerUnreachableError,
 )
 from shared.utils.sessions import Session
+from shared.validation.types import CoverageCommentRequiredChanges
 from shared.yaml import UserYaml
 
 from database.enums import TestResultsProcessingError
@@ -2780,170 +2781,6 @@ class TestCommentNotifier(object):
         assert result.data_received is None
 
     @pytest.mark.asyncio
-    async def test_has_enough_changes(self, sample_comparison, mock_repo_provider):
-        notifier = CommentNotifier(
-            repository=sample_comparison.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-                "after_n_builds": 1,
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        assert await notifier.has_enough_changes(sample_comparison)
-
-    @pytest.mark.asyncio
-    async def test_has_enough_changes_no_diff(
-        self, sample_comparison_without_base_report, mock_repo_provider
-    ):
-        mock_repo_provider.get_compare.return_value = {"diff": None}
-        notifier = CommentNotifier(
-            repository=sample_comparison_without_base_report.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-                "after_n_builds": 1,
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        assert not (
-            await notifier.has_enough_changes(sample_comparison_without_base_report)
-        )
-
-    @pytest.mark.asyncio
-    async def test_has_enough_changes_exact_same_report_diff_intersection_report(
-        self, sample_comparison_no_change, mock_repo_provider
-    ):
-        notifier = CommentNotifier(
-            repository=sample_comparison_no_change.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-                "after_n_builds": 1,
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        assert await notifier.has_enough_changes(sample_comparison_no_change)
-
-    @pytest.mark.asyncio
-    async def test_has_enough_changes_exact_same_report_diff_unrelated_report(
-        self, sample_comparison_no_change, mock_repo_provider
-    ):
-        compare_result = {
-            "diff": {
-                "files": {
-                    "README.md": {
-                        "type": "modified",
-                        "before": None,
-                        "segments": [
-                            {
-                                "header": ["5", "8", "5", "9"],
-                                "lines": [
-                                    " Overview",
-                                    " --------",
-                                    " ",
-                                    "-Main website: `Codecov <https://codecov.io/>`_.",
-                                    "-Main website: `Codecov <https://codecov.io/>`_.",
-                                    "+",
-                                    "+website: `Codecov <https://codecov.io/>`_.",
-                                    "+website: `Codecov <https://codecov.io/>`_.",
-                                    " ",
-                                    " .. code-block:: shell-session",
-                                    " ",
-                                ],
-                            },
-                            {
-                                "header": ["46", "12", "47", "19"],
-                                "lines": [
-                                    " ",
-                                    " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
-                                    " -",
-                                ],
-                            },
-                        ],
-                        "stats": {"added": 11, "removed": 4},
-                    }
-                }
-            }
-        }
-        mock_repo_provider.get_compare.return_value = compare_result
-        notifier = CommentNotifier(
-            repository=sample_comparison_no_change.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-                "after_n_builds": 1,
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        assert not (await notifier.has_enough_changes(sample_comparison_no_change))
-
-    @pytest.mark.asyncio
-    async def test_has_enough_changes_exact_same_report_where_diff_has_covered_lines(
-        self, sample_comparison_no_change, mock_repo_provider
-    ):
-        compare_result = {
-            "diff": {
-                "files": {
-                    "file_1.go": {
-                        "type": "modified",
-                        "before": None,
-                        "segments": [
-                            {
-                                "header": ["4", "7", "4", "7"],
-                                "lines": [
-                                    " ",
-                                    "-Overview",
-                                    "---------",
-                                    "-",
-                                    "-Main website: `Codecov <https://codecov.io/>`_.",
-                                    "-Main website: `Codecov <https://codecov.io/>`_.",
-                                    "+",
-                                    "+website: `Codecov <https://codecov.io/>`_.",
-                                    "+website: `Codecov <https://codecov.io/>`_.",
-                                    "+",
-                                    "+.. code-block:: shell-session",
-                                    "+",
-                                    "-",
-                                ],
-                            },
-                            {
-                                "header": ["46", "12", "47", "19"],
-                                "lines": [
-                                    " ",
-                                    " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
-                                    " -",
-                                ],
-                            },
-                        ],
-                        "stats": {"added": 11, "removed": 4},
-                    }
-                }
-            }
-        }
-        mock_repo_provider.get_compare.return_value = compare_result
-        notifier = CommentNotifier(
-            repository=sample_comparison_no_change.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-                "after_n_builds": 1,
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        assert await notifier.has_enough_changes(sample_comparison_no_change)
-
-    @pytest.mark.asyncio
     async def test_notify_exact_same_report_diff_unrelated_report(
         self, sample_comparison_no_change, mock_repo_provider
     ):
@@ -2992,7 +2829,7 @@ class TestCommentNotifier(object):
                 "layout": "reach, diff, flags, files, footer",
                 "behavior": "default",
                 "after_n_builds": 1,
-                "require_changes": True,
+                "require_changes": [CoverageCommentRequiredChanges.any_change.value],
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -3054,7 +2891,7 @@ class TestCommentNotifier(object):
                 "layout": "reach, diff, flags, files, footer",
                 "behavior": "default",
                 "after_n_builds": 1,
-                "require_changes": True,
+                "require_changes": [CoverageCommentRequiredChanges.any_change.value],
             },
             notifier_site_settings=True,
             current_yaml={},
@@ -3119,7 +2956,7 @@ class TestCommentNotifier(object):
                 "layout": "reach, diff, flags, files, footer",
                 "behavior": "default",
                 "after_n_builds": 1,
-                "require_changes": True,
+                "require_changes": [CoverageCommentRequiredChanges.any_change.value],
             },
             notifier_site_settings=True,
             current_yaml={},

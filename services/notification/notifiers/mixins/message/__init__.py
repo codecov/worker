@@ -52,9 +52,11 @@ class MessageMixin(object):
 
         links = {
             "pull": get_pull_url(pull),
-            "base": get_commit_url(comparison.project_coverage_base.commit)
-            if comparison.project_coverage_base.commit is not None
-            else None,
+            "base": (
+                get_commit_url(comparison.project_coverage_base.commit)
+                if comparison.project_coverage_base.commit is not None
+                else None
+            ),
             "head": get_commit_url(comparison.head.commit),
         }
 

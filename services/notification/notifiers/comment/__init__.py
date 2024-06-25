@@ -78,16 +78,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     async def get_diff(self, comparison: Comparison):
         return await comparison.get_diff()
 
-    async def has_enough_changes(self, comparison):
-        diff = await comparison.get_diff()
-        changes = await comparison.get_changes()
-        if changes:
-            return True
-        res = comparison.head.report.calculate_diff(diff)
-        if res is not None and res["general"].lines > 0:
-            return True
-        return False
-
     async def notify(
         self, comparison: ComparisonProxy, **extra_data
     ) -> NotificationResult:
