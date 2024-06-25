@@ -290,6 +290,9 @@ class Test(CodecovBaseModel):
     # for example: the same test being run on windows vs. mac
     flags_hash = Column(types.String(256), nullable=False)
 
+    failure_rate = Column(types.Float, nullable=True)
+    commits_where_fail = Column(postgresql.ARRAY(types.Text), nullable=True)
+
     __table_args__ = (
         UniqueConstraint(
             "repoid",
@@ -312,6 +315,7 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     failure_message = Column(types.Text)
     branch = Column(types.Text, nullable=True)
     commitid = Column(types.Text, nullable=True)
+    repoid = Column(types.Integer, nullable=True)
 
 
 class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
