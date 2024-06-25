@@ -352,6 +352,58 @@ def get_or_create_author(
         return author
 
 
+WEBHOOK_EVENTS = {
+    "github": ["pull_request", "delete", "push", "public", "status", "repository"],
+    "github_enterprise": [
+        "pull_request",
+        "delete",
+        "push",
+        "public",
+        "status",
+        "repository",
+    ],
+    "bitbucket": [
+        "repo:push",
+        "pullrequest:created",
+        "pullrequest:updated",
+        "pullrequest:fulfilled",
+        "repo:commit_status_created",
+        "repo:commit_status_updated",
+    ],
+    # https://confluence.atlassian.com/bitbucketserver/post-service-webhook-for-bitbucket-server-776640367.html
+    "bitbucket_server": [
+        "repo:modified",
+        "repo:refs_changed",
+        "pr:opened",
+        "pr:merged",
+        "pr:declined",
+        "pr:deleted",
+    ],
+    "gitlab": {
+        "push_events": True,
+        "issues_events": False,
+        "merge_requests_events": True,
+        "tag_push_events": False,
+        "note_events": False,
+        "job_events": False,
+        "build_events": True,
+        "pipeline_events": True,
+        "wiki_events": False,
+    },
+    "gitlab_enterprise": {
+        "push_events": True,
+        "issues_events": False,
+        "merge_requests_events": True,
+        "tag_push_events": False,
+        "note_events": False,
+        "job_events": False,
+        "build_events": True,
+        "pipeline_events": True,
+        "wiki_events": False,
+    },
+}
+
+
 async def create_webhook_on_provider(
     repository_service, token=None, webhook_secret: Optional[str] = None
 ):
@@ -362,56 +414,6 @@ async def create_webhook_on_provider(
     webhook_url = get_config("setup", "webhook_url") or get_config(
         "setup", "codecov_url"
     )
-    WEBHOOK_EVENTS = {
-        "github": ["pull_request", "delete", "push", "public", "status", "repository"],
-        "github_enterprise": [
-            "pull_request",
-            "delete",
-            "push",
-            "public",
-            "status",
-            "repository",
-        ],
-        "bitbucket": [
-            "repo:push",
-            "pullrequest:created",
-            "pullrequest:updated",
-            "pullrequest:fulfilled",
-            "repo:commit_status_created",
-            "repo:commit_status_updated",
-        ],
-        # https://confluence.atlassian.com/bitbucketserver/post-service-webhook-for-bitbucket-server-776640367.html
-        "bitbucket_server": [
-            "repo:modified",
-            "repo:refs_changed",
-            "pr:opened",
-            "pr:merged",
-            "pr:declined",
-            "pr:deleted",
-        ],
-        "gitlab": {
-            "push_events": True,
-            "issues_events": False,
-            "merge_requests_events": True,
-            "tag_push_events": False,
-            "note_events": False,
-            "job_events": False,
-            "build_events": True,
-            "pipeline_events": True,
-            "wiki_events": False,
-        },
-        "gitlab_enterprise": {
-            "push_events": True,
-            "issues_events": False,
-            "merge_requests_events": True,
-            "tag_push_events": False,
-            "note_events": False,
-            "job_events": False,
-            "build_events": True,
-            "pipeline_events": True,
-            "wiki_events": False,
-        },
-    }
 
     if webhook_secret is None:
         webhook_secret = get_config(
@@ -425,6 +427,22 @@ async def create_webhook_on_provider(
         WEBHOOK_EVENTS[repository_service.service],
         webhook_secret,
         token=token,
+    )
+
+
+async def gitlab_webhook_update(repository_service, hookid, secret):
+    """
+    Edits an existing Gitlab webhook - adds a secret.
+    """
+    webhook_url = get_config("setup", "webhook_url") or get_config(
+        "setup", "codecov_url"
+    )
+    return await repository_service.edit_webhook(
+        hookid=hookid,
+        name=f"Codecov Webhook. {webhook_url}",
+        url=f"{webhook_url}/webhooks/{repository_service.service}",
+        events=WEBHOOK_EVENTS[repository_service.service],
+        secret=secret,
     )
 
 

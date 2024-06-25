@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, call
@@ -8,6 +9,7 @@ import pytest
 from celery.exceptions import Retry
 from redis.exceptions import LockError
 from shared.reports.enums import UploadState, UploadType
+from shared.torngit import GitlabEnterprise
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.torngit.gitlab import Gitlab
 from shared.utils.sessions import SessionType
@@ -1496,6 +1498,143 @@ class TestUploadTaskUnit(object):
             commit.repository.webhook_secret,
             token=None,
         )
+
+    def test_needs_webhook_secret_backfill(self, dbsession, mocker, mock_configuration):
+        mock_configuration.set_params({"gitlab": {"bot": {"key": "somekey"}}})
+        repository = RepositoryFactory.create(
+            repoid="5678", hookid="1234", webhook_secret=None
+        )
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        gitlab_provider = mocker.MagicMock(
+            Gitlab, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_provider
+        gitlab_provider.data = mocker.MagicMock()
+        gitlab_provider.service = "gitlab"
+        task = UploadTask()
+        res = task.possibly_setup_webhooks(commit, gitlab_provider)
+        assert res is False
+
+        assert repository.webhook_secret is not None
+        gitlab_provider.edit_webhook.assert_called_with(
+            hookid=repository.hookid,
+            name="Codecov Webhook. None",
+            url="None/webhooks/gitlab",
+            events={
+                "push_events": True,
+                "issues_events": False,
+                "merge_requests_events": True,
+                "tag_push_events": False,
+                "note_events": False,
+                "job_events": False,
+                "build_events": True,
+                "pipeline_events": True,
+                "wiki_events": False,
+            },
+            secret=commit.repository.webhook_secret,
+        )
+
+    def test_needs_webhook_secret_backfill_gle(
+        self, dbsession, mocker, mock_configuration
+    ):
+        mock_configuration.set_params(
+            {"gitlab_enterprise": {"bot": {"key": "somekey"}}}
+        )
+        repository = RepositoryFactory.create(
+            repoid="5678", hookid="1234", webhook_secret=None
+        )
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        gitlab_e_provider = mocker.MagicMock(
+            GitlabEnterprise, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_e_provider
+        gitlab_e_provider.data = mocker.MagicMock()
+        gitlab_e_provider.service = "gitlab"
+        task = UploadTask()
+        res = task.possibly_setup_webhooks(commit, gitlab_e_provider)
+        assert res is False
+
+        assert repository.webhook_secret is not None
+        gitlab_e_provider.edit_webhook.assert_called_with(
+            hookid=repository.hookid,
+            name="Codecov Webhook. None",
+            url="None/webhooks/gitlab",
+            events={
+                "push_events": True,
+                "issues_events": False,
+                "merge_requests_events": True,
+                "tag_push_events": False,
+                "note_events": False,
+                "job_events": False,
+                "build_events": True,
+                "pipeline_events": True,
+                "wiki_events": False,
+            },
+            secret=commit.repository.webhook_secret,
+        )
+
+    def test_doesnt_need_webhook_secret_backfill(
+        self, dbsession, mocker, mock_configuration
+    ):
+        mock_configuration.set_params({"gitlab": {"bot": {"key": "somekey"}}})
+        secret = str(uuid.uuid4())
+        repository = RepositoryFactory.create(
+            repoid="5678", hookid="1234", webhook_secret=secret
+        )
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        gitlab_provider = mocker.MagicMock(
+            Gitlab, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_provider
+        gitlab_provider.data = mocker.MagicMock()
+        gitlab_provider.service = "gitlab"
+        task = UploadTask()
+        res = task.possibly_setup_webhooks(commit, gitlab_provider)
+        assert res is False
+
+        assert repository.webhook_secret is secret
+        gitlab_provider.edit_webhook.assert_not_called()
+
+    def test_doesnt_need_webhook_secret_backfill_no_hookid(
+        self, dbsession, mocker, mock_configuration
+    ):
+        mock_configuration.set_params({"gitlab": {"bot": {"key": "somekey"}}})
+        repository = RepositoryFactory.create(
+            repoid="5678", hookid=None, webhook_secret=None, using_integration=True
+        )
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        gitlab_provider = mocker.MagicMock(
+            Gitlab, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_provider
+        gitlab_provider.data = mocker.MagicMock()
+        gitlab_provider.service = "gitlab"
+        task = UploadTask()
+        res = task.possibly_setup_webhooks(commit, gitlab_provider)
+        assert res is False
+
+        assert repository.webhook_secret is None
+        gitlab_provider.edit_webhook.assert_not_called()
 
     def test_upload_not_ready_to_build_report(
         self, dbsession, mocker, mock_configuration, mock_repo_provider, mock_redis
