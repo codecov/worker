@@ -31,7 +31,7 @@ python-redis-lock
 PyYAML
 redis>=4.4.4
 regex
-requests>=2.31.0
+requests>=2.32.0
 respx
 sentry-sdk>=1.40.0
 SQLAlchemy-Utils
