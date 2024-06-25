@@ -7,7 +7,6 @@
 >
 > By making our code public, we’re not only joining the community that’s supported us from the start — but also want to make sure that every developer can contribute to and build on the Codecov experience.
 
-
 Code for Background Workers of Codecov. This is built on top of the `celery` async framework
 
 ## Quickstart
@@ -27,6 +26,7 @@ Then you should clone this project when inside `workerenv` folder.
 ### Installing dependencies
 
 Make sure to:
+
 - Install rust. See https://www.rust-lang.org/tools/install
 - Have access to any private codecov repos listed in the requirements.txt file. See [here](https://codecovio.atlassian.net/wiki/spaces/ENG/pages/1270743045/Setup) for help on getting that set up.
 
@@ -85,31 +85,13 @@ If you are unsure whether you need to change that version at a given moment, the
 
 ## Upgrading Dependencies
 
-This repository uses `pip-tools` to manage dependencies, so make sure you've installed it with `pip install pip-tools`. To add or update dependencies, change `requirements.in`,  Then run
+This repository uses `pip-tools` to manage dependencies, so make sure you've installed it with `pip install pip-tools`. To add or update dependencies, change `requirements.in`, Then run
 
 ```
 make update-requirements
 ```
 
 Do not change `requirements.txt` directly
-
-## Deploying
-
-To deploy, all you have to do is create a release (preferred option) or push a tag with the pattern production-year-month-number. More specifically, it needs to follow the regex:
-
-```
-/^prod(uction)?-[0-9]{4}-[0-9]{2}-[0-9]{3,4}/
-```
-
-Which means, for example:
-
-- `production-2020-11-0001` - First deploy of 2020-11
-- `production-2020-12-0015` - Fifteenth deploy of 2020-12
-- `prod-2020-12-015` - Fifteenth deploy of 2020-12
-
-Notice that, while the dates are really useful for understanding when code was deployed, it doesn't affect whether or not your release will go to production. If your regex matches the pattern, regardless of what date is tagged, that version will go to production.
-
-To create releases on Github, you can go to https://github.com/codecov/worker/releases or use Github CLI. to push tags you can follow instructions on https://git-scm.com/book/en/v2/Git-Basics-Tagging
 
 ### After deploying
 
@@ -133,4 +115,4 @@ You will also notice some usage of the package https://github.com/codecov/shared
 
 ## Contributing
 
-This repository, like all of Codecov's repositories, strives to follow our general [Contributing guidlines](https://github.com/codecov/contributing). If you're considering making a contribution to this repository, we encourage review of our Contributing guidelines first. 
+This repository, like all of Codecov's repositories, strives to follow our general [Contributing guidlines](https://github.com/codecov/contributing). If you're considering making a contribution to this repository, we encourage review of our Contributing guidelines first.
