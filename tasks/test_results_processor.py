@@ -138,6 +138,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         failure_message=failure_message,
                         commitid=commitid,
                         branch=branch,
+                        repoid=repoid,
                     )
                 )
 
@@ -189,7 +190,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_id = upload_obj.id
         branch = upload_obj.report.commit.branch
         self._bulk_write_tests_to_db(
-            db_session, repoid, commitid, upload_id, branch, parsed_testruns, flags_hash
+            db_session,
+            repoid,
+            commitid,
+            upload_id,
+            branch,
+            parsed_testruns,
+            flags_hash,
         )
 
         return {
