@@ -111,6 +111,10 @@ backfill_existing_individual_gh_app_installation_name = "app.tasks.backfill_exis
 backfill_owners_without_gh_app_installations_name = "app.tasks.backfill_owners_without_gh_app_installations.BackfillOwnersWithoutGHAppInstallationsTask"
 backfill_owners_without_gh_app_installation_individual_name = "app.tasks.backfill_owners_without_gh_app_installation_individual.BackfillOwnersWithoutGHAppInstallationIndividualTask"
 
+backfill_test_instances_task_name = (
+    "app.tasks.backfill_test_instances.BackfillTestInstancesTask"
+)
+
 trial_expiration_task_name = "app.tasks.plan.TrialExpirationTask"
 trial_expiration_cron_task_name = "app.cron.plan.TrialExpirationCronTask"
 
