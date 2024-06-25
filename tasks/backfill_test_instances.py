@@ -1,5 +1,6 @@
 import logging
 
+from django.db.models import Q
 from shared.django_apps.reports.models import TestInstance
 
 from app import celery_app
@@ -17,27 +18,34 @@ class BackfillTestInstancesTask(
             "Updating test instances",
         )
 
-        test_instance_filter = TestInstance.objects.select_related(
-            "upload__report__commit"
-        ).filter(
-            branch=None,
-            commitid=None,
+        test_instance_list = (
+            TestInstance.objects.select_related("upload__report__commit")
+            .filter(
+                Q(branch__isnull=True)
+                | Q(commitid__isnull=True)
+                | Q(repoid__isnull=True)
+            )
+            .all()
         )
-        num_test_instances = test_instance_filter.count()
-        all_test_instances = test_instance_filter.all()
 
-        chunk_size = 1000
-
-        chunks = [
-            all_test_instances[i : i + chunk_size]
-            for i in range(0, num_test_instances, chunk_size)
-        ]
-
-        for chunk in chunks:
-            for test_instance in chunk:
+        for i in range(0, test_instance_list.count(), 1000):
+            updates = []
+            test_instances_missing_info = (
+                TestInstance.objects.select_related("upload__report__commit")
+                .filter(
+                    Q(branch__isnull=True)
+                    | Q(commitid__isnull=True)
+                    | Q(repoid__isnull=True)
+                )
+                .order_by("id")[0:1000]
+            )
+            for test_instance in test_instances_missing_info:
                 test_instance.branch = test_instance.upload.report.commit.branch
                 test_instance.commitid = test_instance.upload.report.commit.commitid
-            TestInstance.objects.bulk_update(chunk, ["branch", "commit"])
+                test_instance.repoid = test_instance.upload.report.commit.repository_id
+                updates.append(test_instance)
+
+            TestInstance.objects.bulk_update(updates, ["branch", "commitid", "repoid"])
 
         log.info(
             "Done updating test instances",
