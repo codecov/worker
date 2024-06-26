@@ -313,6 +313,11 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     branch = Column(types.Text, nullable=True)
     commitid = Column(types.Text, nullable=True)
 
+    reduced_error_id = Column(
+        types.Integer, ForeignKey("reports_reducederror.id"), nullable=True
+    )
+    reduced_error = relationship("ReducedError", backref=backref("testinstances"))
+
 
 class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_testresultreporttotals"

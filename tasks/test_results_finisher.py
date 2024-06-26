@@ -10,7 +10,7 @@ from test_results_parser import Outcome
 
 from app import celery_app
 from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
-from database.models import Commit, Flake, TestResultReportTotals
+from database.models import Commit, Flake, Repository, TestResultReportTotals
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
@@ -25,6 +25,7 @@ from services.test_results import (
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.notify import notify_task_name
+from tasks.process_flakes import process_flakes_task_name
 
 log = logging.getLogger(__name__)
 
@@ -346,6 +347,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
             for testid in matching_flake_test_ids:
                 flaky_test_ids.add(testid[0])
+
+            repo = db_session.query(Repository).filter_by(repoid=repoid).first()
+
+            if commit.merged is True or commit.branch == repo.branch:
+                self.app.tasks[process_flakes_task_name].apply_async(
+                    kwargs=dict(
+                        repo_id=repoid,
+                        commit_id_list=[commit.commitid],
+                        branch=repo.branch,
+                    )
+                )
 
             return flaky_test_ids
 
