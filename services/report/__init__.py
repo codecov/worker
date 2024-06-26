@@ -771,6 +771,11 @@ class ReportService(BaseReportService):
                 repo_id=commit.repoid,
                 owner_id=repo.ownerid,
             )
+
+            # This experiment is inactive because the data went back and forth
+            # on whether it was impactful or not. The `Feature` is left here as
+            # a knob to turn for support requests about carryforward flags, and
+            # maybe we'll revisit a general rollout at a later time.
             max_parenthood_deepness = (
                 await CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value_async(
                     identifier=repo.ownerid, default=10
