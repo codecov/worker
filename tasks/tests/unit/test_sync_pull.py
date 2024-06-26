@@ -2,6 +2,8 @@ import json
 import os
 from pathlib import Path
 
+import pytest
+from mock.mock import MagicMock
 from redis.exceptions import LockError
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
@@ -16,7 +18,8 @@ here = Path(__file__)
 
 
 class TestPullSyncTask(object):
-    def test_update_pull_commits_merged(self, dbsession):
+    @pytest.mark.parametrize("flake_detection", [False, True])
+    def test_update_pull_commits_merged(self, dbsession, mocker, flake_detection):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -53,14 +56,46 @@ class TestPullSyncTask(object):
         dbsession.flush()
         task = PullSyncTask()
         enriched_pull = EnrichedPull(
-            database_pull=pull, provider_pull=dict(base=dict(branch="lookatthis"))
+            database_pull=pull,
+            provider_pull=dict(
+                base=dict(branch="lookatthis"), head=dict(branch="thing")
+            ),
         )
         commits = [first_commit.commitid, third_commit.commitid]
         commits_at_base = {
             "commitid": first_commit.commitid,
             "parents": [{"commitid": third_commit.commitid, "parents": []}],
         }
-        res = task.update_pull_commits(enriched_pull, commits, commits_at_base)
+
+        apply_async: MagicMock = mocker.patch.object(
+            task.app.tasks["app.tasks.flakes.ProcessFlakesTask"], "apply_async"
+        )
+
+        current_yaml = UserYaml.from_dict(
+            {
+                "test_analytics": {
+                    "flake_detection": flake_detection,
+                }
+            }
+        )
+        res = task.update_pull_commits(
+            enriched_pull, commits, commits_at_base, current_yaml
+        )
+
+        if flake_detection:
+            apply_async.assert_called_once_with(
+                kwargs=dict(
+                    repo_id=repository.repoid,
+                    commit_id_list=[
+                        first_commit.commitid,
+                        third_commit.commitid,
+                    ],
+                    branch="thing",
+                )
+            )
+        else:
+            apply_async.assert_not_called()
+
         assert res == {"merged_count": 2, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
         dbsession.refresh(second_commit)
@@ -121,7 +156,10 @@ class TestPullSyncTask(object):
             "commitid": first_commit.commitid,
             "parents": [{"commitid": third_commit.commitid, "parents": []}],
         }
-        res = task.update_pull_commits(enriched_pull, commits, commits_at_base)
+        current_yaml = UserYaml.from_dict(dict())
+        res = task.update_pull_commits(
+            enriched_pull, commits, commits_at_base, current_yaml
+        )
         assert res == {"merged_count": 0, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
         dbsession.refresh(second_commit)
@@ -434,3 +472,45 @@ class TestPullSyncTask(object):
         )
         task.trigger_ai_pr_review(enriched_pull, current_yaml)
         assert not apply_async.called
+
+    @pytest.mark.parametrize("flake_detection", [False, True])
+    def test_trigger_process_flakes(self, dbsession, mocker, flake_detection):
+        repository = RepositoryFactory.create()
+        dbsession.add(repository)
+        dbsession.flush()
+        commits = [CommitFactory.create(repository=repository) for i in range(3)]
+        for commit in commits:
+            dbsession.add(commit)
+        dbsession.flush()
+
+        dbsession.flush()
+        task = PullSyncTask()
+
+        apply_async: MagicMock = mocker.patch.object(
+            task.app.tasks["app.tasks.flakes.ProcessFlakesTask"], "apply_async"
+        )
+
+        current_yaml = UserYaml.from_dict(
+            {
+                "test_analytics": {
+                    "flake_detection": flake_detection,
+                }
+            }
+        )
+        commit_id_list = [commit.commitid for commit in commits]
+        task.trigger_process_flakes(
+            repository.repoid,
+            commit_id_list,
+            dict(head=dict(branch="main")),
+            current_yaml,
+        )
+        if flake_detection:
+            apply_async.assert_called_once_with(
+                kwargs=dict(
+                    repo_id=repository.repoid,
+                    commit_id_list=commit_id_list,
+                    branch="main",
+                )
+            )
+        else:
+            apply_async.assert_not_called()
