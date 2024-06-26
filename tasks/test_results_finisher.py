@@ -5,6 +5,7 @@ from typing import Any, Dict
 from asgiref.sync import async_to_sync
 from sentry_sdk import metrics
 from shared.yaml import UserYaml
+from sqlalchemy.orm import Session
 from test_results_parser import Outcome
 
 from app import celery_app
@@ -51,7 +52,7 @@ class FlakeUpdateInfo:
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
     def run_impl(
         self,
-        db_session,
+        db_session: Session,
         chord_result: Dict[str, Any],
         *,
         repoid: int,
@@ -113,7 +114,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
     def process_impl_within_lock(
         self,
         *,
-        db_session,
+        db_session: Session,
         repoid: int,
         commitid: str,
         commit_yaml: UserYaml,
@@ -309,7 +310,14 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             QUEUE_NOTIFY_KEY: False,
         }
 
-    def get_flaky_tests(self, db_session, commit_yaml, repoid, commit, failures):
+    def get_flaky_tests(
+        self,
+        db_session: Session,
+        commit_yaml: UserYaml,
+        repoid: int,
+        commit: Commit,
+        failures: list[TestResultsNotificationFailure],
+    ):
         if FLAKY_TEST_DETECTION.check_value(
             identifier=repoid, default=False
         ) and read_yaml_field(
