@@ -311,8 +311,10 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
     def get_flaky_tests(self, db_session, commit_yaml, repoid, commit, failures):
         if FLAKY_TEST_DETECTION.check_value(
-            identifier=repoid, default=True
-        ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True):
+            identifier=repoid, default=False
+        ) and read_yaml_field(
+            commit_yaml, ("test_analytics", "flake_detection"), False
+        ):
             flaky_tests = set()
             repo_flakes = db_session.query(Flake).filter_by(repoid=repoid).all()
             failure_dict = {failure.test_id: failure for failure in failures}
