@@ -10,7 +10,6 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
-
 FlakeDict = dict[Any, Flake]
 
 
@@ -39,18 +38,22 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         for commit_id in commit_id_list:
             test_instances = get_test_instances(commit_id, repo_id, branch)
             for test_instance in test_instances:
-                if test_instance.outcome == TestInstance.Outcome.PASS.value:
-                    flake = flake_dict.get(test_instance.test_id)
-                    if flake is not None:
-                        update_passed_flakes(flake)
+                flake = flake_dict.get(
+                    (test_instance.test_id, test_instance.reduced_error_id)
+                )
+                if (
+                    test_instance.outcome == TestInstance.Outcome.PASS.value
+                    and flake is not None
+                ):
+                    update_passed_flakes(flake)
                 elif (
                     test_instance.outcome == TestInstance.Outcome.FAILURE.value
                     or test_instance.outcome == TestInstance.Outcome.ERROR.value
                 ):
-                    flake = flake_dict.get(test_instance.test_id)
                     upserted_flake = upsert_failed_flake(test_instance, repo_id, flake)
-                    if flake is None:
-                        flake_dict[upserted_flake.test_id] = upserted_flake
+                    flake_dict[
+                        (upserted_flake.test_id, upserted_flake.reduced_error_id)
+                    ] = upserted_flake
 
         return {"successful": True}
 
@@ -66,7 +69,7 @@ def generate_flake_dict(repo_id) -> FlakeDict:
     flakes = Flake.objects.filter(repository_id=repo_id, end_date__isnull=True).all()
     flake_dict = dict()
     for flake in flakes:
-        flake_dict[flake.test_id] = flake
+        flake_dict[(flake.test_id, flake.reduced_error_id)] = flake
     return flake_dict
 
 

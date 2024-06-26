@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import zlib
+from collections import defaultdict
 from io import BytesIO
 from sys import getsizeof
 from typing import List
@@ -21,8 +22,9 @@ from test_results_parser import (
 )
 
 from app import celery_app
-from database.models import Repository, Test, TestInstance, Upload
+from database.models import ReducedError, Repository, Test, TestInstance, Upload
 from services.archive import ArchiveService
+from services.failure_normalizer import reduce_error
 from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -110,6 +112,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         with metrics.timing(key="test_results.processor.write_to_db"):
             test_data = []
             test_instance_data = []
+            reduced_error_messages = []
+
+            reduced_error_dict = defaultdict(list)
             for testrun in parsed_testruns:
                 # Build up the data for bulk insert
                 name = testrun.name
@@ -119,34 +124,55 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 failure_message = testrun.failure_message
                 test_id = generate_test_id(repoid, testsuite, name, flags_hash)
 
-                test_data.append(
-                    dict(
-                        id=test_id,
-                        repoid=repoid,
-                        name=name,
-                        testsuite=testsuite,
-                        flags_hash=flags_hash,
-                    )
+                test_dict = dict(
+                    id=test_id,
+                    repoid=repoid,
+                    name=name,
+                    testsuite=testsuite,
+                    flags_hash=flags_hash,
                 )
+                test_data.append(test_dict)
 
-                test_instance_data.append(
-                    dict(
-                        test_id=test_id,
-                        upload_id=upload_id,
-                        duration_seconds=duration_seconds,
-                        outcome=outcome,
-                        failure_message=failure_message,
-                        commitid=commitid,
-                        branch=branch,
-                        reduced_error_id=None,
-                    )
+                instance_dict = dict(
+                    test_id=test_id,
+                    upload_id=upload_id,
+                    duration_seconds=duration_seconds,
+                    outcome=outcome,
+                    failure_message=failure_message,
+                    commitid=commitid,
+                    branch=branch,
+                    reduced_error_id=None,
                 )
+                test_instance_data.append(instance_dict)
+                if failure_message:
+                    reduced_error_message = reduce_error(failure_message)
+                    reduced_error_dict[reduced_error_message].append(instance_dict)
+
+            reduced_error_insert_on_conflict_do_nothing = (
+                insert(ReducedError.__table__)
+                .values(
+                    [{"message": reduced_error} for reduced_error in reduced_error_dict]
+                )
+                .on_conflict_do_nothing()
+            )
+            db_session.execute(reduced_error_insert_on_conflict_do_nothing)
+            db_session.flush()
+
+            reduced_errors = (
+                db_session.query(ReducedError)
+                .filter(ReducedError.message.in_(reduced_error_messages))
+                .all()
+            )
+
+            for reduced_error in reduced_errors:
+                for ti in reduced_error_dict[reduced_error]:
+                    ti["reduced_error_id"] = reduced_error.id
 
             # Save Tests
-            insert_on_conflict_do_nothing = (
+            test_insert_on_conflict_do_nothing = (
                 insert(Test.__table__).values(test_data).on_conflict_do_nothing()
             )
-            db_session.execute(insert_on_conflict_do_nothing)
+            db_session.execute(test_insert_on_conflict_do_nothing)
             db_session.flush()
             # Save TestInstances
             insert_test_instances = insert(TestInstance.__table__).values(
@@ -190,7 +216,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_id = upload_obj.id
         branch = upload_obj.report.commit.branch
         self._bulk_write_tests_to_db(
-            db_session, repoid, commitid, upload_id, branch, parsed_testruns, flags_hash
+            db_session,
+            repoid,
+            commitid,
+            upload_id,
+            branch,
+            parsed_testruns,
+            flags_hash,
         )
 
         return {
