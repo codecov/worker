@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -7,7 +7,14 @@ from shared.torngit.exceptions import TorngitClientError
 from test_results_parser import Outcome
 
 from database.enums import ReportType
-from database.models import CommitReport, RepositoryFlag, Test, TestInstance
+from database.models import (
+    CommitReport,
+    Flake,
+    ReducedError,
+    RepositoryFlag,
+    Test,
+    TestInstance,
+)
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
@@ -30,7 +37,10 @@ def test_results_mock_app(mocker):
     mocked_app = mocker.patch.object(
         TestResultsFinisherTask,
         "app",
-        tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
+        tasks={
+            "app.tasks.notify.Notify": mocker.MagicMock(),
+            "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
+        },
     )
     return mocked_app
 
@@ -86,7 +96,7 @@ def test_results_setup(mocker, dbsession):
     )
 
     uploads = [UploadFactory.create() for _ in range(4)]
-    uploads[3].created_at += datetime.timedelta(0, 3)
+    uploads[3].created_at += timedelta(0, 3)
 
     for upload in uploads:
         upload.report = current_report_row
@@ -229,7 +239,7 @@ def test_results_setup_no_instances(mocker, dbsession):
     )
 
     uploads = [UploadFactory.create() for _ in range(4)]
-    uploads[3].created_at += datetime.timedelta(0, 3)
+    uploads[3].created_at += timedelta(0, 3)
 
     for upload in uploads:
         upload.report = current_report_row
@@ -619,7 +629,26 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = True
 
-        repoid, commit, pull, _ = test_results_setup
+        repoid, commit, pull, test_instances = test_results_setup
+
+        r = ReducedError()
+        r.message = "failure_message"
+
+        dbsession.add(r)
+        dbsession.flush()
+
+        f = Flake()
+        f.repoid = repoid
+        f.testid = test_instances[0].test_id
+        f.reduced_error = r
+        f.count = 5
+        f.fail_count = 2
+        f.recent_passes_count = 1
+        f.start_date = datetime.now()
+        f.end_date = None
+
+        dbsession.add(f)
+        dbsession.flush()
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
@@ -628,7 +657,10 @@ class TestUploadTestFinisherTask(object):
             ],
             repoid=repoid,
             commitid=commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": False}},
+            commit_yaml={
+                "codecov": {"max_report_age": False},
+                "test_analytics": {"flake_detection": True},
+            },
         )
 
         expected_result = {
@@ -641,13 +673,7 @@ class TestUploadTestFinisherTask(object):
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
-        )
-
-        mock_repo_provider_comments.edit_comment.assert_called_with(
-            pull.pullid,
-            1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(4 newly detected flaky), 0 passed and 0 skipped.\n- Total :snowflake:**4 flaky tests.**\n<details><summary>View the full list of flaky tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(1 known flakes hit), 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>\n<details><summary>View the full list of flaky tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n</details>",
         )
 
         mock_metrics.incr.assert_has_calls(
