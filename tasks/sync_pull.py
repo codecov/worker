@@ -32,6 +32,7 @@ from services.repository import (
 )
 from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
+from tasks.process_flakes import process_flakes_task_name
 
 log = logging.getLogger(__name__)
 
@@ -241,7 +242,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 enriched_pull.provider_pull["base"]["branch"]
             )
             commit_updates_done = self.update_pull_commits(
-                enriched_pull, commits, base_ancestors_tree
+                enriched_pull, commits, base_ancestors_tree, current_yaml
             )
             db_session.commit()
         except TorngitClientError:
@@ -349,6 +350,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         enriched_pull: EnrichedPull,
         commits_on_pr: Sequence,
         ancestors_tree_on_base: Dict[str, Any],
+        current_yaml,
     ) -> dict:
         """Updates commits considering what the new PR situation is.
 
@@ -408,6 +410,9 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                             synchronize_session=False,
                         )
                     )
+                self.trigger_process_flakes(
+                    repoid, commits_on_pr, pull_dict, current_yaml
+                )
 
             # set the rest of the commits to deleted (do not show in the UI)
             deleted_count = (
@@ -469,6 +474,18 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             ),
         )
         return True
+
+    def trigger_process_flakes(
+        self, repoid, commits_on_pr, pull_dict, current_yaml: UserYaml
+    ):
+        # but only if flake processing is enabled for this repo
+        if read_yaml_field(current_yaml, ("test_analytics", "flake_detection"), False):
+            branch = pull_dict["head"]["branch"]
+            self.app.tasks[process_flakes_task_name].apply_async(
+                kwargs=dict(
+                    repo_id=repoid, commit_id_list=list(commits_on_pr), branch=branch
+                )
+            )
 
     def trigger_ai_pr_review(self, enriched_pull: EnrichedPull, current_yaml: UserYaml):
         pull = enriched_pull.database_pull

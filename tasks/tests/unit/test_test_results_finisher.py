@@ -694,3 +694,56 @@ class TestUploadTestFinisherTask(object):
         ]
         for c in calls:
             assert c in mock_metrics.timing.mock_calls
+
+    @pytest.mark.integration
+    def test_upload_finisher_task_call_main_branch(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        mock_metrics,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = True
+
+        repoid, commit, pull, test_instances = test_results_setup
+
+        commit.merged = True
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            [
+                [{"successful": True}],
+            ],
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={
+                "codecov": {"max_report_age": False},
+                "test_analytics": {"flake_detection": True},
+            },
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
+        test_results_mock_app.tasks[
+            "app.tasks.flakes.ProcessFlakesTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repo_id": repoid,
+                "commit_id_list": [commit.commitid],
+                "branch": "main",
+            },
+        )
