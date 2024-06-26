@@ -1023,7 +1023,7 @@ class ReportService(BaseReportService):
                 error=ProcessingError(code="report_expired", params={}),
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
-                raw_report=None,
+                raw_report=raw_uploaded_report,
                 upload_obj=upload,
             )
         except ReportEmptyError:
@@ -1038,7 +1038,7 @@ class ReportService(BaseReportService):
                 error=ProcessingError(code="report_empty", params={}),
                 fully_deleted_sessions=None,
                 partially_deleted_sessions=None,
-                raw_report=None,
+                raw_report=raw_uploaded_report,
                 upload_obj=upload,
             )
 
