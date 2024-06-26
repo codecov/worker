@@ -1,6 +1,6 @@
 https://github.com/codecov/shared/archive/390e62c4858ee41ffd035e5d7fe77c71a179d76a.tar.gz#egg=shared
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
-https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz#egg=test-results-parser
+https://github.com/codecov/test-results-parser/archive/1507de2241601d678e514c08b38426e48bb6d47d.tar.gz#egg=test-results-parser
 boto3>=1.34
 celery>=5.3.6
 click
@@ -38,6 +38,7 @@ SQLAlchemy-Utils
 SQLAlchemy
 statsd
 stripe>=9.6.0
+time-machine
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 urllib3>=1.26.18
 vcrpy

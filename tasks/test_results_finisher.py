@@ -9,23 +9,14 @@ from test_results_parser import Outcome
 
 from app import celery_app
 from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
-from database.models import Commit, TestResultReportTotals
+from database.models import Commit, Flake, TestResultReportTotals
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from rollouts import FLAKY_TEST_DETECTION
-from services.failure_normalizer import FailureNormalizer
-from services.flake_detection import (
-    DefaultBranchFailureDetector,
-    DiffOutcomeDetector,
-    FlakeDetectionEngine,
-    FlakeDetectionResult,
-    UnrelatedMatchesDetector,
-)
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotificationFailure,
-    TestResultsNotificationFlake,
     TestResultsNotificationPayload,
     TestResultsNotifier,
     latest_test_instances_for_a_given_commit,
@@ -71,13 +62,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid = int(repoid)
         commit_yaml = UserYaml.from_dict(commit_yaml)
 
+        self.extra_dict = {
+            "repoid": repoid,
+            "commit": commitid,
+            "commit_yaml": commit_yaml,
+        }
+
         log.info(
             "Starting test results finisher task",
-            extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                commit_yaml=commit_yaml,
-            ),
+            extra=self.extra_dict,
         )
 
         lock_manager = LockManager(
@@ -129,12 +122,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
     ):
         log.info(
             "Running test results finishers",
-            extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                commit_yaml=commit_yaml,
-                parent_task=self.request.parent_id,
-            ),
+            extra=self.extra_dict,
         )
 
         checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
@@ -155,6 +143,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         commit: Commit = (
             db_session.query(Commit).filter_by(repoid=repoid, commitid=commitid).first()
         )
+
         assert commit, "commit not found"
 
         notifier = TestResultsNotifier(commit, commit_yaml)
@@ -277,11 +266,13 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             "test_results.finisher",
             tags={"status": "success", "reason": "tests_failed"},
         )
-        flaky_tests = None
-        if FLAKY_TEST_DETECTION.check_value(identifier=repoid):
-            flaky_tests = dict()
+
+        flaky_tests = self.get_flaky_tests(
+            db_session, commit_yaml, repoid, commit, failures
+        )
 
         failures = sorted(failures, key=lambda x: x.testsuite + x.testname)
+
         payload = TestResultsNotificationPayload(
             failed_tests, passed_tests, skipped_tests, failures, flaky_tests
         )
@@ -300,15 +291,10 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             )
             success, reason = async_to_sync(notifier.notify)(payload)
 
+        self.extra_dict["success"] = success
         log.info(
             "Finished test results notify",
-            extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                commit_yaml=commit_yaml,
-                parent_task=self.request.parent_id,
-                success=success,
-            ),
+            extra=self.extra_dict,
         )
 
         # using a var as a tag here will be fine as it's a boolean
@@ -317,132 +303,27 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             tags={"status": success, "reason": reason},
         )
 
-        if FLAKY_TEST_DETECTION.check_value(identifier=repoid):
-            log.info(
-                "Running flaky test detection",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    commit_yaml=commit_yaml,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            with metrics.timing("test_results.finisher.run_flaky_test_detection"):
-                success, reason = self.run_flaky_test_detection(
-                    db_session, repoid, notifier, payload, checkpoints=checkpoints
-                )
-
-            metrics.incr(
-                "test_results.finisher.flaky_test_detection",
-                tags={"status": success, "reason": reason},
-            )
-
         return {
             "notify_attempted": True,
             "notify_succeeded": success,
             QUEUE_NOTIFY_KEY: False,
         }
 
-    def run_flaky_test_detection(
-        self,
-        db_session,
-        repoid,
-        notifier: TestResultsNotifier,
-        payload: TestResultsNotificationPayload,
-        checkpoints=None,
-    ):
-        ignore_predefined = read_yaml_field(
-            "test_analytics", "ignore_predefined", _else=False
-        )
+    def get_flaky_tests(self, db_session, commit_yaml, repoid, commit, failures):
+        if FLAKY_TEST_DETECTION.check_value(
+            identifier=repoid, default=True
+        ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True):
+            flaky_tests = set()
+            repo_flakes = db_session.query(Flake).filter_by(repoid=repoid).all()
+            failure_dict = {failure.test_id: failure for failure in failures}
 
-        user_normalization_regex = read_yaml_field(
-            "test_analytics", "normalization_regex", _else=dict()
-        )
+            for flake in repo_flakes:
+                if flake.testid in failure_dict:
+                    flaky_tests.add(flake.testid)
 
-        failure_normalizer = FailureNormalizer(
-            user_normalization_regex, ignore_predefined
-        )
+            return flaky_tests
 
-        default_branch_failure_detector = DefaultBranchFailureDetector(
-            db_session, repoid, "main"
-        )
-        unrelated_matches_detector = UnrelatedMatchesDetector(failure_normalizer)
-        diff_outcome_detector = DiffOutcomeDetector()
-
-        flake_detection_engine = FlakeDetectionEngine(
-            db_session,
-            repoid,
-            [
-                default_branch_failure_detector,
-                unrelated_matches_detector,
-                diff_outcome_detector,
-            ],
-        )
-
-        log.info(
-            "Starting flake detection",
-            extra=dict(
-                repoid=repoid,
-                parent_task=self.request.parent_id,
-            ),
-        )
-        current_state_of_repo_flakes = flake_detection_engine.detect_flakes()
-
-        for test_id, symptoms in current_state_of_repo_flakes.items():
-            log.info(
-                "Discovered flaky test",
-                extra=dict(
-                    repoid=repoid,
-                    parent_task=self.request.parent_id,
-                    test_id=test_id,
-                    symptoms=list(symptoms),
-                ),
-            )
-            payload.flaky_tests[test_id] = TestResultsNotificationFlake(
-                list(symptoms),
-                True,
-            )
-            db_session.flush()
-
-        if checkpoints:
-            checkpoints.log(TestResultsFlow.FLAKE_DETECTION_NOTIFY)
-
-            # TODO: remove this later, we can do this now because there aren't many users using this
-            metrics.distribution(
-                "test_results_processing_time",
-                checkpoints._subflow_duration(
-                    TestResultsFlow.TEST_RESULTS_NOTIFY,
-                    TestResultsFlow.FLAKE_DETECTION_NOTIFY,
-                ),
-                unit="millisecond",
-                tags={"repoid": repoid},
-            )
-        success, reason = async_to_sync(notifier.notify)(payload)
-        log.info(
-            "Added flaky test information to the PR comment",
-            extra=dict(
-                repoid=repoid,
-                parent_task=self.request.parent_id,
-                success=success,
-                reason=reason,
-            ),
-        )
-
-        return success, reason
-
-    def get_flake_diff(
-        self,
-        newly_calculated_flakes: FlakeDetectionResult,
-        existing_flakes_from_db: dict[str, TestResultsNotificationFlake],
-    ):
-        newly_discovered_flakes = set(newly_calculated_flakes.keys()) - set(
-            existing_flakes_from_db.keys()
-        )
-        no_longer_flakes = set(existing_flakes_from_db.keys()) - set(
-            newly_calculated_flakes.keys()
-        )
-
-        return list(newly_discovered_flakes), list(no_longer_flakes)
+        return None
 
     def check_if_no_success(self, previous_result):
         return all(

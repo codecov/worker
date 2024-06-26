@@ -2,11 +2,9 @@ import mock
 import pytest
 from shared.torngit.exceptions import TorngitClientError
 
-from database.enums import FlakeSymptomType
 from database.models.core import Commit
 from services.test_results import (
     TestResultsNotificationFailure,
-    TestResultsNotificationFlake,
     TestResultsNotificationPayload,
     TestResultsNotifier,
     generate_flags_hash,
@@ -130,11 +128,8 @@ def test_build_message_with_flake(tn):
     fail = TestResultsNotificationFailure(
         "hello world", "testsuite", "testname", [], test_id
     )
-    flake = TestResultsNotificationFlake(
-        [FlakeSymptomType.FAILED_IN_DEFAULT_BRANCH],
-        True,
-    )
-    payload = TestResultsNotificationPayload(1, 2, 3, [fail], {test_id: flake})
+
+    payload = TestResultsNotificationPayload(1, 2, 3, [fail], {test_id})
     res = tn.build_message(payload)
 
     assert (
@@ -142,8 +137,7 @@ def test_build_message_with_flake(tn):
         == """**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.
 
 ### :x: Failed Test Results: 
-Completed 6 tests with **`1 failed`**(1 newly detected flaky), 2 passed and 3 skipped.
-- Total :snowflake:**1 flaky tests.**
+Completed 6 tests with **`1 failed`**(1 known flakes hit), 2 passed and 3 skipped.
 <details><summary>View the full list of flaky tests</summary>
 
 ## testsuite
