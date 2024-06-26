@@ -148,7 +148,6 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
             # We don't know if there was a coverage drop, because we can't compare BASE and HEAD (missing some info)
             # But we default to showing the comment. It might have info for the user about _what_ info we are missing
             return True
-        print(comparison.head.report.totals.coverage)
         head_coverage = Decimal(comparison.head.report.totals.coverage).quantize(
             Decimal("0.00000")
         )
