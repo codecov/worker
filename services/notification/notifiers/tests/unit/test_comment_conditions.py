@@ -5,8 +5,10 @@ from shared.validation.types import (
     CoverageCommentRequiredChanges,
     CoverageCommentRequiredChangesANDGroup,
 )
+from shared.yaml import UserYaml
 
 from database.models.core import Repository
+from services.comparison import ComparisonProxy
 from services.notification.notifiers.comment import CommentNotifier
 from services.notification.notifiers.comment.conditions import HasEnoughRequiredChanges
 
@@ -215,4 +217,43 @@ async def test_uncovered_patch(
             notifier, sample_comparison_no_change
         )
         == expected
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "comparison_name, yaml, expected",
+    [
+        pytest.param("sample_comparison", {}, False, id="positive_change"),
+        pytest.param(
+            "sample_comparison_negative_change",
+            {},
+            True,
+            id="negative_change_no_extra_config",
+        ),
+        pytest.param(
+            "sample_comparison_negative_change",
+            {"coverage": {"status": {"project": True}}},
+            True,
+            id="negative_change_bool_config",
+        ),
+        pytest.param(
+            "sample_comparison_negative_change",
+            {"coverage": {"status": {"project": {"threshold": 10}}}},
+            False,
+            id="negative_change_high_threshold",
+        ),
+    ],
+)
+async def test_coverage_drop_with_different_project_configs(
+    comparison_name, yaml, expected, request
+):
+    comparison: ComparisonProxy = request.getfixturevalue(comparison_name)
+    comparison.comparison.current_yaml = UserYaml(yaml)
+    notifier = _get_notifier(
+        comparison.head.commit.repository,
+        [CoverageCommentRequiredChanges.coverage_drop.value],
+    )
+    assert (
+        await HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected
     )
