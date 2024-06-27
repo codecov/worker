@@ -27,8 +27,12 @@ from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from helpers.checkpoint_logger import _kwargs_key
-from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger import (
+    _kwargs_key,
+)
+from helpers.checkpoint_logger import (
+    from_kwargs as checkpoints_from_kwargs,
+)
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
@@ -46,6 +50,7 @@ from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
+    gitlab_webhook_update,
     possibly_update_commit_from_provider_info,
 )
 from services.test_results import TestResultsReportService
@@ -420,7 +425,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         elif report_type == ReportType.TEST_RESULTS:
             checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
 
-        commit = None
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
         )
@@ -946,38 +950,73 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             and hasattr(repository_service, "post_webhook")
         )
 
+        needs_webhook_secret_backfill = (
+            repository_service.service in ["gitlab", "gitlab_enterprise"]
+            and repository.hookid
+            and not repository.webhook_secret
+            and hasattr(repository_service, "edit_webhook")
+        )
+
         # try to add webhook
-        if should_post_webhook:
+        if should_post_webhook or needs_webhook_secret_backfill:
             log.info(
-                "Setting up webhook",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                "Setting or editing webhook",
+                extra=dict(
+                    repoid=repository.repoid,
+                    commit=commit.commitid,
+                    action="SET" if should_post_webhook else "EDIT",
+                ),
             )
             try:
                 if repository_service.service in ["gitlab", "gitlab_enterprise"]:
                     # we use per-repo webhook secrets in this case
                     webhook_secret = repository.webhook_secret or str(uuid.uuid4())
+                    repository.webhook_secret = webhook_secret
                 else:
                     # service-level config value will be used instead in this case
                     webhook_secret = None
-                hook_result = async_to_sync(create_webhook_on_provider)(
-                    repository_service, webhook_secret=webhook_secret
-                )
-                hookid = hook_result["id"]
-                log.info(
-                    "Registered hook",
-                    extra=dict(
-                        repoid=commit.repoid, commit=commit.commitid, hookid=hookid
-                    ),
-                )
-                repository.hookid = hookid
-                if webhook_secret is not None:
-                    repository.webhook_secret = webhook_secret
-                repo_data["repo"]["hookid"] = hookid
-                return True
+                if should_post_webhook:
+                    hook_result = async_to_sync(create_webhook_on_provider)(
+                        repository_service, webhook_secret=webhook_secret
+                    )
+                    hookid = hook_result["id"]
+                    log.info(
+                        "Registered hook",
+                        extra=dict(
+                            repoid=commit.repoid,
+                            commit=commit.commitid,
+                            hookid=hookid,
+                            action="SET",
+                        ),
+                    )
+                    repository.hookid = hookid
+                    repo_data["repo"]["hookid"] = hookid
+                    return True  # was_setup
+                else:
+                    async_to_sync(gitlab_webhook_update)(
+                        repository_service=repository_service,
+                        hookid=repository.hookid,
+                        secret=webhook_secret,
+                    )
+                    log.info(
+                        "Updated hook",
+                        extra=dict(
+                            repository_service=repository_service.service,
+                            repoid=repository.repoid,
+                            commit=commit.commitid,
+                            hookid=repository.hookid,
+                            action="EDIT",
+                        ),
+                    )
+                    return False  # was_setup
             except TorngitClientError:
                 log.warning(
-                    "Failed to create project webhook",
-                    extra=dict(repoid=repository.repoid, commit=commit.commitid),
+                    "Failed to create or update project webhook",
+                    extra=dict(
+                        repoid=repository.repoid,
+                        commit=commit.commitid,
+                        action="SET" if should_post_webhook else "EDIT",
+                    ),
                 )
         return False
 
