@@ -3,6 +3,7 @@ import os
 import mock
 import pytest
 from shared.torngit.exceptions import TorngitClientError, TorngitServerUnreachableError
+from shared.validation.types import CoverageCommentRequiredChanges
 from shared.yaml import UserYaml
 
 from database.tests.factories import CommitFactory
@@ -123,7 +124,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -163,7 +166,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -175,7 +180,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -220,7 +227,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -234,7 +243,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -276,7 +287,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -293,7 +306,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -325,7 +340,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -339,7 +356,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -371,6 +390,8 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }

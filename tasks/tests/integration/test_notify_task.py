@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from mock import PropertyMock
+from shared.validation.types import CoverageCommentRequiredChanges
 
 from database.models import Pull
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
@@ -845,7 +846,9 @@ class TestNotifyTask(object):
                 "comment": {
                     "layout": "reach, diff, flags, files, footer",
                     "behavior": "default",
-                    "require_changes": False,
+                    "require_changes": [
+                        CoverageCommentRequiredChanges.no_requirements.value
+                    ],
                     "require_base": False,
                     "require_head": True,
                 },
