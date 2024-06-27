@@ -331,11 +331,19 @@ class ComparisonProxy(object):
         reports_per_flag = self.get_reports_uploaded_count_per_flag()
 
         def is_valid_diff(obj: ReportUploadedCount):
+            if self.comparison.current_yaml:
+                flag_config = self.comparison.current_yaml.get_flag_configuration(
+                    obj["flag"]
+                )
+                is_flag_carryforward = flag_config.get("carryforward", False)
+            else:
+                is_flag_carryforward = False
+            head_and_base_have_uploads = obj["base_count"] > 0 and obj["head_count"] > 0
+            head_or_base_have_uploads = obj["base_count"] > 0 or obj["head_count"] > 0
             return (
-                obj["base_count"] > 0
-                and obj["head_count"] > 0
-                and obj["base_count"] != obj["head_count"]
-            )
+                (is_flag_carryforward and head_and_base_have_uploads)
+                or (not is_flag_carryforward and head_or_base_have_uploads)
+            ) and obj["base_count"] > obj["head_count"]
 
         per_flag_diff = list(filter(is_valid_diff, reports_per_flag))
         self._cached_reports_uploaded_per_flag = per_flag_diff
