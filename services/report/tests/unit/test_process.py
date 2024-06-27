@@ -11,7 +11,11 @@ from shared.reports.types import ReportTotals
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
-from helpers.exceptions import CorruptRawReportError, ReportEmptyError
+from helpers.exceptions import (
+    CorruptRawReportError,
+    ReportEmptyError,
+    ReportExpiredException,
+)
 from services.report import raw_upload_processor as process
 from services.report.parser import LegacyReportParser
 from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedReportFile
@@ -983,6 +987,38 @@ class TestProcessReport(BaseTestCase):
         )
         assert sorted(res.sessions.keys()) == [0, 1]
         assert res.sessions[1] == session
+
+    def test_process_raw_upload_expired_report(self, mocker):
+        filename = "/Users/path/to/app.coverage.txt"
+        uploaded_reports = LegacyParsedRawReport(
+            toc=None,
+            env=None,
+            report_fixes=None,
+            uploaded_files=[
+                ParsedUploadedReportFile(
+                    filename="/Users/path/to/app.coverage.txt",
+                    file_contents=BytesIO("<data>".encode()),
+                ),
+            ],
+        )
+        mocker.patch.object(
+            process,
+            "process_report",
+            side_effect=[
+                ReportExpiredException(),
+            ],
+        )
+        session = Session()
+        with pytest.raises(ReportExpiredException) as e:
+            _ = process.process_raw_upload(
+                UserYaml({}),
+                None,
+                uploaded_reports,
+                ["flag_one", "flag_two"],
+                session=session,
+            )
+
+        assert e.value.filename == filename
 
 
 class TestProcessRawUploadCarryforwardFlags(BaseTestCase):

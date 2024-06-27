@@ -11,7 +11,7 @@ from shared.reports.resources import Report
 from shared.utils.sessions import Session, SessionType
 
 from database.models.reports import Upload
-from helpers.exceptions import ReportEmptyError
+from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.path_fixer import PathFixer
@@ -155,9 +155,13 @@ def process_raw_upload(
                 path_fixer_to_use,
                 should_use_encoded_labels,
             )
-            report = process_report(
-                report=report_file, report_builder=report_builder_to_use
-            )
+            try:
+                report = process_report(
+                    report=report_file, report_builder=report_builder_to_use
+                )
+            except ReportExpiredException as r:
+                r.filename = current_filename
+                raise
             if report:
                 if should_use_encoded_labels:
                     # Copies the labels from report into temporary_report

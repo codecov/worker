@@ -1016,11 +1016,16 @@ class ReportService(BaseReportService):
                 raw_report=result.raw_report,
                 upload_obj=upload,
             )
-        except ReportExpiredException:
+        except ReportExpiredException as r:
             log.info(
                 "Report %s is expired",
                 reportid,
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    archive_path=archive_url,
+                    file_name=r.filename,
+                ),
             )
             return ProcessingResult(
                 report=None,
