@@ -335,7 +335,11 @@ class ComparisonProxy(object):
                 flag_config = self.comparison.current_yaml.get_flag_configuration(
                     obj["flag"]
                 )
-                is_flag_carryforward = flag_config.get("carryforward", False)
+                is_flag_carryforward = (
+                    flag_config.get("carryforward", False)
+                    if flag_config is not None
+                    else False
+                )
             else:
                 is_flag_carryforward = False
             head_and_base_have_uploads = obj["base_count"] > 0 and obj["head_count"] > 0
