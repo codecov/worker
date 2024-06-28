@@ -8,8 +8,9 @@ from shared.celery_config import (
     notify_task_name,
     status_set_error_task_name,
 )
+from shared.config import get_config
 from shared.reports.readonly import ReadOnlyReport
-from shared.torngit.base import TorngitBaseAdapter
+from shared.torngit.base import TokenType, TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
 from sqlalchemy.orm.session import Session
@@ -377,6 +378,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     and test_result_commit_report.test_result_totals.error
                 ),
                 installation_name_to_use=installation_name_to_use,
+                gh_is_using_codecov_commenter=self.is_using_codecov_commenter(
+                    repository_service
+                ),
             )
             self.log_checkpoint(kwargs, UploadFlow.NOTIFIED)
             log.info(
@@ -399,6 +403,22 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
             return {"notified": False, "notifications": None}
+
+    def is_using_codecov_commenter(
+        self, repository_service: TorngitBaseAdapter
+    ) -> bool:
+        """Returns a boolean indicating if the message will be sent by codecov-commenter.
+        If the user doesn't have an installation, and if the token type for the repo is codecov-commenter,
+        then it's likely that they're using the commenter bot.
+        """
+        commenter_bot_token = get_config(repository_service.service, "bots", "comment")
+        return (
+            repository_service.service == "github"
+            and repository_service.data.get("installation") is None
+            and commenter_bot_token is not None
+            and repository_service.get_token_by_type(TokenType.comment)
+            == commenter_bot_token
+        )
 
     def _possibly_refresh_previous_selection(self, commit: Commit) -> bool:
         installation_cached: str = get_github_app_for_commit(commit)
@@ -484,6 +504,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         all_tests_passed: bool = False,
         test_results_error: bool = False,
         installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        gh_is_using_codecov_commenter: bool = False,
     ):
         # base_commit is an "adjusted" base commit; for project coverage, we
         # compare a PR head's report against its base's report, or if the base
@@ -516,6 +537,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 all_tests_passed=all_tests_passed,
                 test_results_error=test_results_error,
                 gh_app_installation_name=installation_name_to_use,
+                gh_is_using_codecov_commenter=gh_is_using_codecov_commenter,
             ),
         )
 

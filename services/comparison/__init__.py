@@ -29,6 +29,7 @@ class ComparisonContext(object):
     all_tests_passed: bool | None = None
     test_results_error: TestResultsProcessingError | None = None
     gh_app_installation_name: str | None = None
+    gh_is_using_codecov_commenter: bool = False
 
 
 class ComparisonProxy(object):
