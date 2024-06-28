@@ -323,22 +323,22 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         ) and read_yaml_field(
             commit_yaml, ("test_analytics", "flake_detection"), False
         ):
-            flaky_tests = set()
-            repo_flakes = (
-                db_session.query(Flake)
+            flaky_test_ids = set()
+            failure_test_ids = [failure.test_id for failure in failures]
+            matching_flake_test_ids = (
+                db_session.query(Flake.testid)
                 .filter(  # type:ignore
                     Flake.repoid == repoid,
+                    Flake.testid.in_(failure_test_ids),
                     Flake.end_date.is_(None),
                 )
                 .all()
             )
-            failure_dict = {failure.test_id: failure for failure in failures}
 
-            for flake in repo_flakes:
-                if flake.testid in failure_dict:
-                    flaky_tests.add(flake.testid)
+            for testid in matching_flake_test_ids:
+                flaky_test_ids.add(testid[0])
 
-            return flaky_tests
+            return flaky_test_ids
 
         return None
 
