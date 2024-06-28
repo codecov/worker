@@ -140,7 +140,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
 
         checkpoints.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
-        
+
         # TODO: remove this later, we can do this now because there aren't many users using this
         metrics.distribution(
             "test_results_processing_time",
@@ -406,7 +406,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         if checkpoints:
             checkpoints.log(TestResultsFlow.FLAKE_DETECTION_NOTIFY)
-            
+
             # TODO: remove this later, we can do this now because there aren't many users using this
             metrics.distribution(
                 "test_results_processing_time",
