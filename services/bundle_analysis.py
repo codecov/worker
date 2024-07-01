@@ -3,7 +3,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple
 
 import sentry_sdk
 from sentry_sdk import metrics as sentry_metrics
@@ -507,6 +507,45 @@ class Notifier:
     def bundle_report(self) -> Optional[BundleAnalysisReport]:
         return self.bundle_analysis_loader.load(self.commit_report.external_id)
 
+    def _has_required_changes(
+        self, comparison: BundleAnalysisComparison, pull: EnrichedPull
+    ) -> bool:
+        """Verifies if the notifier should notify according to the configured required_changes.
+        Changes are defined by the user in UserYaml. Default is "always notify".
+        Required changes are bypassed if a comment already exists, because we should update the comment.
+        """
+        if pull.database_pull.bundle_analysis_commentid:
+            log.info(
+                "Skipping required_changes verification because comment already exists",
+                extra=dict(pullid=pull.database_pull.id, commitid=self.commit.commitid),
+            )
+            return True
+
+        required_changes: bool | Literal["bundle_increase"] = read_yaml_field(
+            self.current_yaml, ("comment", "require_bundle_changes"), False
+        )
+        changes_threshold: int = read_yaml_field(
+            self.current_yaml, ("comment", "bundle_change_threshold"), 0
+        )
+        match required_changes:
+            case False:
+                return True
+            case True:
+                return abs(comparison.total_size_delta) > changes_threshold
+            case "bundle_increase":
+                return (
+                    comparison.total_size_delta > 0
+                    and comparison.total_size_delta > changes_threshold
+                )
+            case _:
+                log.warning(
+                    "Unknown value for required_changes",
+                    extra=dict(
+                        pull=pull.database_pull.id, commitid=self.commit.commitid
+                    ),
+                )
+                return True
+
     async def notify(self) -> bool:
         if self.commit_report is None:
             log.warning(
@@ -541,45 +580,37 @@ class Notifier:
 
         pullid = pull.database_pull.pullid
         bundle_comparison = ComparisonLoader(pull).get_comparison()
-        skip_comment_without_size_changes = (
-            bundle_comparison.total_size_delta == 0
-            and read_yaml_field(
-                self.current_yaml, ("comment", "require_bundle_changes"), False
-            )
-        )
 
-        if skip_comment_without_size_changes:
+        if not self._has_required_changes(bundle_comparison, pull):
             # Skips the comment and returns successful notification
             log.info(
-                "Skipping bundle PR comment without size change",
+                "Not enough changes to notify bundle PR comment",
                 extra=dict(
                     commitid=self.commit.commitid,
                     pullid=pullid,
                 ),
             )
             return True
-        else:
-            message = self._build_message(pull=pull, comparison=bundle_comparison)
-            try:
-                comment_id = pull.database_pull.bundle_analysis_commentid
-                if comment_id:
-                    await self.repository_service.edit_comment(
-                        pullid, comment_id, message
-                    )
-                else:
-                    res = await self.repository_service.post_comment(pullid, message)
-                    pull.database_pull.bundle_analysis_commentid = res["id"]
-                return True
-            except TorngitClientError:
-                log.error(
-                    "Error creating/updating PR comment",
-                    extra=dict(
-                        commitid=self.commit.commitid,
-                        report_key=self.commit_report.external_id,
-                        pullid=pullid,
-                    ),
-                )
-                return False
+
+        message = self._build_message(pull=pull, comparison=bundle_comparison)
+        try:
+            comment_id = pull.database_pull.bundle_analysis_commentid
+            if comment_id:
+                await self.repository_service.edit_comment(pullid, comment_id, message)
+            else:
+                res = await self.repository_service.post_comment(pullid, message)
+                pull.database_pull.bundle_analysis_commentid = res["id"]
+            return True
+        except TorngitClientError:
+            log.error(
+                "Error creating/updating PR comment",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                    report_key=self.commit_report.external_id,
+                    pullid=pullid,
+                ),
+            )
+            return False
 
     def _build_message(
         self, pull: EnrichedPull, comparison: BundleAnalysisComparison
