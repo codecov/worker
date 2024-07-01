@@ -1,10 +1,12 @@
 import logging
-from typing import List
+from typing import Callable, List
 
-from shared.reports.resources import Report, ReportTotals
+from shared.django_apps.core.models import Repository
+from shared.reports.resources import ReportTotals
 from shared.validation.helpers import LayoutStructure
 
 from database.models.core import Owner
+from helpers.environment import is_enterprise
 from helpers.metrics import metrics
 from services.billing import BillingPlan
 from services.comparison import ComparisonProxy
@@ -69,9 +71,14 @@ class MessageMixin(object):
                 or (head_report.totals if head_report else ReportTotals()).complexity
             )
 
-        message = [
-            f'## [Codecov]({links["pull"]}?dropdown=coverage&src=pr&el=h1) Report',
-        ]
+        message = []
+        # note: since we're using append, calling write("") will add a newline to the message
+        write = message.append
+
+        await self._possibly_write_install_app(comparison, write)
+
+        # Write Header
+        write(f'## [Codecov]({links["pull"]}?dropdown=coverage&src=pr&el=h1) Report')
 
         repo = comparison.head.commit.repository
         owner: Owner = repo.owner
@@ -89,9 +96,6 @@ class MessageMixin(object):
                 links=links,
                 current_yaml=current_yaml,
             )
-
-        write = message.append
-        # note: since we're using append, calling write("") will add a newline to the message
 
         upper_section_names = self.get_upper_section_names(settings)
         # We write the header and then the messages_to_user section
@@ -113,9 +117,6 @@ class MessageMixin(object):
             )
 
         is_compact_message = should_message_be_compact(comparison, settings)
-
-        if base_report is None:
-            base_report = Report()
 
         if head_report:
             if is_compact_message:
@@ -179,6 +180,24 @@ class MessageMixin(object):
                     )
 
         return [m for m in message if m is not None]
+
+    async def _possibly_write_install_app(
+        self, comparison: ComparisonProxy, write: Callable
+    ) -> None:
+        """Write a message if the user does not have any GH installations
+        and will be writing with a Codecov Commenter Account.
+        """
+        repo: Repository = comparison.head.commit.repository
+        repo_owner: Owner = repo.owner
+        if (
+            repo_owner.service == "github"
+            and not is_enterprise()
+            and repo_owner.github_app_installations == []
+            and comparison.context.gh_is_using_codecov_commenter
+        ):
+            message_to_display = ":warning: Please install the !['codecov app svg image'](https://github.com/codecov/engineering-team/assets/152432831/e90313f4-9d3a-4b63-8b54-cfe14e7ec20d) to ensure uploads and comments are reliably processed by Codecov."
+            write(message_to_display)
+            write("")
 
     def _team_plan_notification(
         self,

@@ -802,6 +802,32 @@ class TestCommentNotifier(object):
         assert mocked_search_files_for_critical_changes.call_count == 2
 
     @pytest.mark.asyncio
+    async def test_create_message_with_github_app_comment(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+        mocker,
+    ):
+        comparison = sample_comparison
+        comparison.context = ComparisonContext(gh_is_using_codecov_commenter=True)
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "files,betaprofiling",
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        res = await notifier.build_message(comparison)
+        assert (
+            res[0]
+            == ":warning: Please install the !['codecov app svg image'](https://github.com/codecov/engineering-team/assets/152432831/e90313f4-9d3a-4b63-8b54-cfe14e7ec20d) to ensure uploads and comments are reliably processed by Codecov."
+        )
+
+    @pytest.mark.asyncio
     async def test_build_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -5493,6 +5519,7 @@ class TestMessagesToUserSection(object):
                     "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
                     + "\n> "
                     + "\n> <details><summary>HEAD has 2 uploads less than BASE</summary>"
+                    + "\n>"
                     + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
                     + "\n>|------|------|------|"
                     + "\n>|unit|4|3|"
@@ -5515,6 +5542,7 @@ class TestMessagesToUserSection(object):
                     "> :exclamation:  There is a different number of reports uploaded between BASE (bbd4a28) and HEAD (cf59ea4). Click for more details."
                     + "\n> "
                     + "\n> <details><summary>HEAD has 1 upload less than BASE</summary>"
+                    + "\n>"
                     + "\n>| Flag | BASE (bbd4a28) | HEAD (cf59ea4) |"
                     + "\n>|------|------|------|"
                     + "\n>|unit|4|3|"

@@ -56,13 +56,14 @@ def get_token_type_mapping(
 
     if admin_bot_token is None:
         log.warning(
-            "No admin_bog_token provided, but still continuing operations in case it is not doing an admin call anyway",
+            "No admin_bot_token provided, but still continuing operations in case it is not doing an admin call anyway",
             extra=dict(repoid=repo.repoid),
         )
 
     mapping = {
         TokenType.admin: admin_bot_token,
-        # [GitHub] Only legacy Personal Access Tokens (PAT) can post statuses and comment to all public repos, so there can't be a dedicated_app for this
+        # [GitHub] Only legacy Personal Access Tokens (PAT) can post statuses and comment to all public repos,
+        # so there can't be a dedicated_app for this
         TokenType.comment: get_config(repo.service, "bots", "comment"),
         TokenType.status: admin_bot_token or get_config(repo.service, "bots", "status"),
     }

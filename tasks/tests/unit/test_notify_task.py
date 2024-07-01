@@ -1,4 +1,5 @@
 import json
+from typing import Any
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -6,10 +7,12 @@ from celery.exceptions import MaxRetriesExceededError, Retry
 from freezegun import freeze_time
 from shared.celery_config import new_user_activated_task_name
 from shared.reports.resources import Report
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientGeneralError,
     TorngitServer5xxCodeError,
 )
+from shared.typings.oauth_token_types import Token
 from shared.typings.torngit import GithubInstallationInfo, TorngitInstanceData
 from shared.yaml import UserYaml
 
@@ -1084,3 +1087,60 @@ class TestNotifyTask(object):
             current_yaml={"coverage": {"status": {"patch": True}}},
         )
         assert not mock_checkpoint_submit.called
+
+    @pytest.mark.parametrize(
+        "service,data,bot_token,expected_response",
+        [
+            pytest.param(
+                "github",
+                {},
+                Token(username="test-codecov-commenter-bot"),
+                True,
+                id="expected_to_be_true",
+            ),
+            pytest.param(
+                "bitbucket",
+                {},
+                Token(username="test-codecov-commenter-bot"),
+                False,
+                id="not_github",
+            ),
+            pytest.param(
+                "github",
+                {"installation": GithubInstallationInfo(installation_id="some_id")},
+                Token(username="test-codecov-commenter-bot"),
+                False,
+                id="has_installation",
+            ),
+            pytest.param(
+                "github",
+                {"installation": GithubInstallationInfo(installation_id="some_id")},
+                None,
+                False,
+                id="not_using_commenter_bot",
+            ),
+        ],
+    )
+    def test_is_using_codecov_commenter(
+        self,
+        mocker,
+        mock_configuration: dict[str, Any],
+        service: str,
+        data: dict[str, Any],
+        bot_token: Token | None,
+        expected_response,
+    ) -> None:
+        mock_repository_service: Any = mocker.MagicMock(spec=TorngitBaseAdapter)
+        mock_repository_service.data = data
+        mock_repository_service.service = service
+        mock_repository_service.get_token_by_type.return_value = bot_token
+
+        mock_configuration.params["github"] = {
+            "bots": {"comment": {"username": "test-codecov-commenter-bot"}}
+        }
+
+        task = NotifyTask()
+        assert (
+            task.is_using_codecov_commenter(mock_repository_service)
+            == expected_response
+        )

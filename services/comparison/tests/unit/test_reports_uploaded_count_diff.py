@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from shared.reports.resources import Report
 from shared.utils.sessions import Session, SessionType
+from shared.yaml import UserYaml
 
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
@@ -66,7 +67,7 @@ from services.comparison.types import Comparison, FullCommit, ReportUploadedCoun
             ],
             [
                 ReportUploadedCount(flag="unit", base_count=3, head_count=2),
-                ReportUploadedCount(flag="integration", base_count=1, head_count=2),
+                ReportUploadedCount(flag="obscure_flag", base_count=1, head_count=0),
             ],
         ),
         (
@@ -86,7 +87,7 @@ from services.comparison.types import Comparison, FullCommit, ReportUploadedCoun
     ],
 )
 def test_get_reports_uploaded_count_per_flag(
-    head_sessions, base_sessions, expected_count, expected_diff
+    head_sessions, base_sessions, expected_count, expected_diff, mock_configuration
 ):
     head_report = Report()
     head_report.sessions = head_sessions
@@ -98,6 +99,16 @@ def test_get_reports_uploaded_count_per_flag(
             project_coverage_base=FullCommit(report=base_report, commit=None),
             patch_coverage_base_commitid=None,
             enriched_pull=None,
+            current_yaml=UserYaml(
+                {
+                    "flag_management": {
+                        "default_rules": {"carryforward": True},
+                        "individual_flags": [
+                            {"name": "obscure_flag", "carryforward": False}
+                        ],
+                    }
+                }
+            ),
         )
     )
     # Python Dicts preserve order, so we can actually test this equality
