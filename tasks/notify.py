@@ -561,7 +561,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             and commit.commitid != enriched_pull.provider_pull["head"]["commitid"]
         ):
             wait_for_ci = read_yaml_field(
-                current_yaml, ("codecov", "notify", "wait_for_ci")
+                current_yaml, ("codecov", "notify", "wait_for_ci"), True
             )
             manual_trigger = read_yaml_field(
                 current_yaml, ("codecov", "notify", "manual_trigger")
