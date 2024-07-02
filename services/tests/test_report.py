@@ -1,4 +1,5 @@
 from asyncio import Future
+from collections import defaultdict
 from decimal import Decimal
 
 import mock
@@ -72,6 +73,42 @@ def sample_report():
             provider="travis",
             session_type=SessionType.carriedforward,
             build="poli",
+        )
+    )
+    return report
+
+
+@pytest.fixture
+def sample_report_with_grandparent_cffs():
+    report = Report()
+    first_file = ReportFile("file_1.go")
+    first_file.append(
+        1, ReportLine.create(coverage=1, sessions=[[0, 1]], complexity=(10, 2))
+    )
+    second_file = ReportFile("file_2.py")
+    second_file.append(12, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+    report.append(first_file)
+    report.append(second_file)
+    report.add_session(
+        Session(
+            name="current_sesh_1",
+            flags=["unit"],
+            provider="circleci",
+            session_type=SessionType.carriedforward,
+            build="aycaramba",
+            totals=ReportTotals(2, 10),
+            session_extras={"carriedforward_from": "parent_sha_123", "parent_depth": 1},
+        ),
+    )
+    report.add_session(
+        Session(
+            name="current_sesh_2",
+            flags=["integration"],
+            provider="circleci",
+            session_type=SessionType.carriedforward,
+            build="aycaramba",
+            totals=ReportTotals(2, 10),
+            session_extras={"carriedforward_from": "parent_sha_123", "parent_depth": 1},
         )
     )
     return report
@@ -1869,7 +1906,10 @@ class TestReportService(BaseTestCase):
                         "N": "Carriedforward",
                         "n": None,
                         "p": None,
-                        "se": {"carriedforward_from": parent_commit.commitid},
+                        "se": {
+                            "carriedforward_from": parent_commit.commitid,
+                            "parent_depth": 1,
+                        },
                         "st": "carriedforward",
                         "t": None,
                         "u": None,
@@ -1884,7 +1924,10 @@ class TestReportService(BaseTestCase):
                         "N": "Carriedforward",
                         "n": None,
                         "p": None,
-                        "se": {"carriedforward_from": parent_commit.commitid},
+                        "se": {
+                            "carriedforward_from": parent_commit.commitid,
+                            "parent_depth": 1,
+                        },
                         "st": "carriedforward",
                         "t": None,
                         "u": None,
@@ -2341,7 +2384,10 @@ class TestReportService(BaseTestCase):
                         "j": None,
                         "n": None,
                         "p": None,
-                        "se": {"carriedforward_from": parent_commit.commitid},
+                        "se": {
+                            "carriedforward_from": parent_commit.commitid,
+                            "parent_depth": 1,
+                        },
                         "st": "carriedforward",
                         "t": None,
                         "u": None,
@@ -3056,7 +3102,10 @@ class TestReportService(BaseTestCase):
                         "N": "Carriedforward",
                         "n": None,
                         "p": None,
-                        "se": {"carriedforward_from": parent_commit.commitid},
+                        "se": {
+                            "carriedforward_from": parent_commit.commitid,
+                            "parent_depth": 1,
+                        },
                         "st": "carriedforward",
                         "t": None,
                         "u": None,
@@ -3071,7 +3120,10 @@ class TestReportService(BaseTestCase):
                         "N": "Carriedforward",
                         "n": None,
                         "p": None,
-                        "se": {"carriedforward_from": parent_commit.commitid},
+                        "se": {
+                            "carriedforward_from": parent_commit.commitid,
+                            "parent_depth": 1,
+                        },
                         "st": "carriedforward",
                         "t": None,
                         "u": None,
@@ -3419,7 +3471,10 @@ class TestReportService(BaseTestCase):
                     "N": "Carriedforward",
                     "n": None,
                     "p": None,
-                    "se": {"carriedforward_from": grandparent_commit.commitid},
+                    "se": {
+                        "carriedforward_from": grandparent_commit.commitid,
+                        "parent_depth": 2,
+                    },
                     "st": "carriedforward",
                     "t": None,
                     "u": None,
@@ -3434,7 +3489,10 @@ class TestReportService(BaseTestCase):
                     "N": "Carriedforward",
                     "n": None,
                     "p": None,
-                    "se": {"carriedforward_from": grandparent_commit.commitid},
+                    "se": {
+                        "carriedforward_from": grandparent_commit.commitid,
+                        "parent_depth": 2,
+                    },
                     "st": "carriedforward",
                     "t": None,
                     "u": None,
@@ -3453,6 +3511,168 @@ class TestReportService(BaseTestCase):
             expected_results_report["sessions"] == readable_report["report"]["sessions"]
         )
         assert expected_results_report == readable_report["report"]
+
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_determine_cffs_and_depths_in_db(self, dbsession):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        commit_report = CommitReport(commit_id=commit.id_)
+        upload_1 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "123test123", "parent_depth": 2},
+        )
+        upload_2 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "456test456", "parent_depth": 3},
+        )
+        dbsession.add_all([commit, commit_report, upload_1, upload_2])
+        dbsession.flush()
+        report_service: ReportService = ReportService({})
+
+        res = report_service._determine_cffs_and_depths_in_db(
+            db_session=dbsession, commit=commit
+        )
+        expected_res = defaultdict(list, {2: [upload_1.id], 3: [upload_2.id]})
+        assert len(res) == 2
+        assert res == expected_res
+
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_possibly_delete_existing_cffs_no_preexisting(self, dbsession):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        commit_report = CommitReport(commit_id=commit.id_)
+        dbsession.add_all([commit, commit_report])
+        dbsession.flush()
+        report_service: ReportService = ReportService({})
+
+        res = report_service._possibly_delete_existing_cffs(
+            db_session=dbsession, commit=commit, carryforward_report=None
+        )
+        assert res == None
+
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_possibly_delete_existing_cffs_empties_db_if_preexisting_cffs_with_older_parent_commit(
+        self, dbsession, sample_report_with_grandparent_cffs
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        commit_report = CommitReport(commit_id=commit.id_)
+        upload_1 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={
+                "carriedforward_from": "grandparent_sha_123",
+                "parent_depth": 2,
+            },
+        )
+        upload_2 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={
+                "carriedforward_from": "great_grandparent_sha_123",
+                "parent_depth": 3,
+            },
+        )
+        dbsession.add_all([commit, commit_report, upload_1, upload_2])
+        dbsession.flush()
+        report_service: ReportService = ReportService({})
+
+        uploads = dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        assert len(uploads) == 2
+        report_service._possibly_delete_existing_cffs(
+            db_session=dbsession,
+            commit=commit,
+            carryforward_report=sample_report_with_grandparent_cffs,
+        )
+
+        uploads = dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        assert len(uploads) == 0
+
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_possibly_delete_existing_cffs_db_unchanged_if_preexisting_cffs_without_parent_commit_depth(
+        self, dbsession, sample_report_with_grandparent_cffs
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        commit_report = CommitReport(commit_id=commit.id_)
+        upload_1 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "parent_sha_123"},
+        )
+        upload_2 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "parent_sha_123"},
+        )
+        upload_3 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "parent_sha_123"},
+        )
+        dbsession.add_all([commit, commit_report, upload_1, upload_2, upload_3])
+        dbsession.flush()
+        report_service: ReportService = ReportService({})
+
+        uploads = dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        assert len(uploads) == 3
+        report_service._possibly_delete_existing_cffs(
+            db_session=dbsession,
+            commit=commit,
+            carryforward_report=sample_report_with_grandparent_cffs,
+        )
+
+        uploads = dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        assert len(uploads) == 3
+
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_possibly_delete_existing_cffs_db_unchanged_if_preexisting_cffs_with_parent_commit(
+        self, dbsession, sample_report_with_grandparent_cffs
+    ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        commit_report = CommitReport(commit_id=commit.id_)
+        upload_1 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "parent_sha_123", "parent_depth": 1},
+        )
+        upload_2 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "parent_sha_123", "parent_depth": 1},
+        )
+        upload_3 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={"carriedforward_from": "parent_sha_123", "parent_depth": 1},
+        )
+        dbsession.add_all([commit, commit_report, upload_1, upload_2, upload_3])
+        dbsession.flush()
+        report_service: ReportService = ReportService({})
+
+        uploads = dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        assert len(uploads) == 3
+        report_service._possibly_delete_existing_cffs(
+            db_session=dbsession,
+            commit=commit,
+            carryforward_report=sample_report_with_grandparent_cffs,
+        )
+
+        uploads = dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        assert len(uploads) == 3
 
     @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
@@ -3529,7 +3749,10 @@ class TestReportService(BaseTestCase):
                     "n": None,
                     "p": None,
                     "st": "carriedforward",
-                    "se": {"carriedforward_from": parent_commit.commitid},
+                    "se": {
+                        "carriedforward_from": parent_commit.commitid,
+                        "parent_depth": 1,
+                    },
                     "t": None,
                     "u": None,
                 },
@@ -3544,7 +3767,10 @@ class TestReportService(BaseTestCase):
                     "n": None,
                     "p": None,
                     "st": "carriedforward",
-                    "se": {"carriedforward_from": parent_commit.commitid},
+                    "se": {
+                        "carriedforward_from": parent_commit.commitid,
+                        "parent_depth": 1,
+                    },
                     "t": None,
                     "u": None,
                 },
@@ -3838,46 +4064,73 @@ class TestReportService(BaseTestCase):
             },
         ]
 
-    def test_save_report_empty_report(self, dbsession, mock_storage):
-        report = Report()
+    def test_save_full_report_with_cffs_that_should_be_deleted(
+        self,
+        dbsession,
+        mock_storage,
+        sample_report_with_grandparent_cffs,
+        mock_configuration,
+    ):
+        mock_configuration.set_params(
+            {
+                "setup": {
+                    "save_report_data_in_storage": {
+                        "only_codecov": False,
+                        "report_details_files_array": True,
+                    },
+                }
+            }
+        )
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
-        current_report_row = CommitReport(commit_id=commit.id_)
-        dbsession.add(current_report_row)
+        commit_report = CommitReport(commit_id=commit.id_)
+        dbsession.add(commit_report)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
-        dbsession.flush()
-        report_service = ReportService({})
-        res = report_service.save_report(commit, report)
-        storage_hash = report_service.get_archive_service(
-            commit.repository
-        ).storage_hash
-        assert res == {
-            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
-        }
-        assert commit.totals == {
-            "f": 0,
-            "n": 0,
-            "h": 0,
-            "m": 0,
-            "p": 0,
-            "c": 0,
-            "b": 0,
-            "d": 0,
-            "M": 0,
-            "s": 0,
-            "C": 0,
-            "N": 0,
-            "diff": None,
-        }
-        assert commit.report_json == {"files": {}, "sessions": {}}
-        assert res["url"] in mock_storage.storage["archive"]
-        assert (
-            mock_storage.storage["archive"][res["url"]].decode()
-            == "{}\n<<<<< end_of_header >>>>>\n"
+        report_details = ReportDetails(report_id=commit_report.id_)
+        upload_1 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={
+                "carriedforward_from": "grandparent_sha_123",
+                "parent_depth": 2,
+            },
         )
+        upload_2 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={
+                "carriedforward_from": "great_grandparent_sha_123",
+                "parent_depth": 3,
+            },
+        )
+        upload_3 = UploadFactory(
+            report=commit_report,
+            order_number=0,
+            upload_type="carriedforward",
+            upload_extras={
+                "carriedforward_from": "great_grandparent_sha_123",
+                "parent_depth": 3,
+            },
+        )
+        dbsession.add_all([report_details, upload_1, upload_2, upload_3])
+        dbsession.flush()
+        preexisting_uploads = (
+            dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        )
+        assert len(preexisting_uploads) == 3
+
+        report_service = ReportService({})
+        report_service.save_full_report(commit, sample_report_with_grandparent_cffs)
+
+        uploads_after_saving = (
+            dbsession.query(Upload).filter_by(report_id=commit_report.id).all()
+        )
+        assert len(uploads_after_saving) == 2
+        assert uploads_after_saving[0].name == "current_sesh_1"
+        assert uploads_after_saving[1].name == "current_sesh_2"
 
     def test_save_report(self, dbsession, mock_storage, sample_report):
         commit = CommitFactory.create()
@@ -4383,7 +4636,8 @@ class TestReportService(BaseTestCase):
         assert first_upload.flags[0].flag_name == "enterprise"
         assert first_upload.totals is None
         assert first_upload.upload_extras == {
-            "carriedforward_from": parent_commit.commitid
+            "carriedforward_from": parent_commit.commitid,
+            "parent_depth": 1,
         }
         assert first_upload.upload_type == "carriedforward"
         assert second_upload.build_code is None
@@ -4403,7 +4657,8 @@ class TestReportService(BaseTestCase):
         ]
         assert second_upload.totals is None
         assert second_upload.upload_extras == {
-            "carriedforward_from": parent_commit.commitid
+            "carriedforward_from": parent_commit.commitid,
+            "parent_depth": 1,
         }
         assert second_upload.upload_type == "carriedforward"
         assert r.details is not None
@@ -4466,7 +4721,8 @@ class TestReportService(BaseTestCase):
         assert first_upload.flags[0].flag_name == "enterprise"
         assert first_upload.totals is None
         assert first_upload.upload_extras == {
-            "carriedforward_from": parent_commit.commitid
+            "carriedforward_from": parent_commit.commitid,
+            "parent_depth": 1,
         }
         assert first_upload.upload_type == "carriedforward"
         assert second_upload.build_code is None
@@ -4486,7 +4742,8 @@ class TestReportService(BaseTestCase):
         ]
         assert second_upload.totals is None
         assert second_upload.upload_extras == {
-            "carriedforward_from": parent_commit.commitid
+            "carriedforward_from": parent_commit.commitid,
+            "parent_depth": 1,
         }
         assert second_upload.upload_type == "carriedforward"
         assert r.details is not None
