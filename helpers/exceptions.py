@@ -21,9 +21,12 @@ class OwnerWithoutValidBotError(Exception):
 
 
 class NoConfiguredAppsAvailable(Exception):
-    def __init__(self, apps_count: int, all_rate_limited: bool) -> None:
+    def __init__(
+        self, apps_count: int, rate_limited_count: int, suspended_count: int
+    ) -> None:
         self.apps_count = apps_count
-        self.all_rate_limited = all_rate_limited
+        self.rate_limited_count = rate_limited_count
+        self.suspended_count = suspended_count
 
 
 class CorruptRawReportError(Exception):
