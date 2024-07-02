@@ -745,6 +745,8 @@ class MessagesToUserSectionWriter(BaseSectionWriter):
                 "> :exclamation:  There is a different number of reports uploaded between BASE ({base_short_sha}) and HEAD ({head_short_sha}). Click for more details."
                 + "\n> "
                 + "\n> <details><summary>HEAD has {aggregated_upload_diff} upload{plural} {more_or_less} than BASE</summary>"
+                # There needs to be a padding line between the <summary> and the table or it won't be rendered correctly
+                + "\n>"
                 + "\n>| Flag | BASE ({base_short_sha}) | HEAD ({head_short_sha}) |"
                 + "\n>|------|------|------|"
                 + "{per_flag_diff_lines}"

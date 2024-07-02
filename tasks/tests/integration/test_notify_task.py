@@ -1211,9 +1211,6 @@ class TestNotifyTask(object):
             ],
         }
 
-        pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
-        assert pull.commentid == "1699669573"
-
         assert len(result["notifications"]) == len(expected_result["notifications"])
         for expected, actual in zip(
             sorted(result["notifications"], key=lambda x: x["notifier"]),
@@ -1239,6 +1236,9 @@ class TestNotifyTask(object):
             expected_result["notifications"], key=lambda x: x["notifier"]
         )
         assert result == expected_result
+
+        pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
+        assert pull.commentid == "1699669573"
 
     def test_notifier_call_no_head_commit_report(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
