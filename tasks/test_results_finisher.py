@@ -141,6 +141,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         checkpoints.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
 
+        # TODO: remove this later, we can do this now because there aren't many users using this
+        metrics.distribution(
+            "test_results_processing_time",
+            checkpoints._subflow_duration(
+                TestResultsFlow.TEST_RESULTS_BEGIN,
+                TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN,
+            ),
+            unit="millisecond",
+            tags={"repoid": repoid},
+        )
+
         commit: Commit = (
             db_session.query(Commit).filter_by(repoid=repoid, commitid=commitid).first()
         )
@@ -277,6 +288,16 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         with metrics.timing("test_results.finisher.notification"):
             checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
+            # TODO: remove this later, we can do this now because there aren't many users using this
+            metrics.distribution(
+                "test_results_processing_time",
+                checkpoints._subflow_duration(
+                    TestResultsFlow.TEST_RESULTS_BEGIN,
+                    TestResultsFlow.TEST_RESULTS_NOTIFY,
+                ),
+                unit="millisecond",
+                tags={"repoid": repoid},
+            )
             success, reason = async_to_sync(notifier.notify)(payload)
 
         log.info(
@@ -384,7 +405,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             db_session.flush()
 
         if checkpoints:
-            checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
+            checkpoints.log(TestResultsFlow.FLAKE_DETECTION_NOTIFY)
+
+            # TODO: remove this later, we can do this now because there aren't many users using this
+            metrics.distribution(
+                "test_results_processing_time",
+                checkpoints._subflow_duration(
+                    TestResultsFlow.TEST_RESULTS_NOTIFY,
+                    TestResultsFlow.FLAKE_DETECTION_NOTIFY,
+                ),
+                unit="millisecond",
+                tags={"repoid": repoid},
+            )
         success, reason = async_to_sync(notifier.notify)(payload)
         log.info(
             "Added flaky test information to the PR comment",
