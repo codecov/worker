@@ -8,7 +8,7 @@ from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
 from sqlalchemy import desc
 
-from database.enums import FlakeSymptomType, ReportType
+from database.enums import ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
 from services.report import BaseReportService
 from services.repository import (
@@ -120,18 +120,12 @@ class TestResultsNotificationFailure:
 
 
 @dataclass
-class TestResultsNotificationFlake:
-    flake_type: list[FlakeSymptomType]
-    is_new_flake: bool
-
-
-@dataclass
 class TestResultsNotificationPayload:
     failed: int
     passed: int
     skipped: int
     failures: List[TestResultsNotificationFailure]
-    flaky_tests: dict[str, TestResultsNotificationFlake] | None = None
+    flaky_tests: set[str] | None = None
 
 
 class TestResultsNotifier:
@@ -210,32 +204,11 @@ class TestResultsNotifier:
 
         completed = payload.failed + payload.passed + payload.skipped
         if payload.flaky_tests:
-            new_flakes = 0
-            existing_flakes = 0
-
-            for failure in payload.failures:
-                flake = payload.flaky_tests.get(failure.test_id, None)
-                if flake is not None:
-                    if flake.is_new_flake:
-                        new_flakes += 1
-                    else:
-                        existing_flakes += 1
-            existing_flake_section = (
-                f"{existing_flakes} known flaky" if existing_flakes else ""
-            )
-            comma_section = ", " if new_flakes and existing_flakes else ""
-            new_flake_section = (
-                f"{new_flakes} newly detected flaky" if new_flakes else ""
-            )
-            flake_section = (
-                f"({existing_flake_section}{comma_section}{new_flake_section})"
-                if (existing_flakes or new_flakes)
-                else ""
-            )
+            num = len(payload.flaky_tests)
+            flake_section = f"({num} known flakes hit)" if (num) else ""
 
             results = [
                 f"Completed {completed} tests with **`{payload.failed} failed`**{flake_section}, {payload.passed} passed and {payload.skipped} skipped.",
-                f"- Total :snowflake:**{len(payload.flaky_tests)} flaky tests.**",
             ]
             message += results
         else:
@@ -246,10 +219,7 @@ class TestResultsNotifier:
         flake_dict = defaultdict(list)
         for fail in payload.failures:
             flake = None
-            if payload.flaky_tests is not None:
-                flake = payload.flaky_tests.get(fail.test_id, None)
-
-            if flake is not None:
+            if payload.flaky_tests is not None and fail.test_id in payload.flaky_tests:
                 flake_dict[fail.testsuite].append(fail)
             else:
                 fail_dict[fail.testsuite].append(fail)

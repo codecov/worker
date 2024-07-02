@@ -323,6 +323,7 @@ python-dateutil==2.9.0.post0
     #   django-postgres-extra
     #   faker
     #   freezegun
+    #   time-machine
     #   timeconvert
 python-json-logger==0.1.11
     # via -r requirements.in
@@ -403,10 +404,12 @@ statsd==3.3.0
     #   shared
 stripe==9.6.0
     # via -r requirements.in
-test-results-parser @ https://github.com/codecov/test-results-parser/archive/5515e960d5d38881036e9127f86320efca649f13.tar.gz
+test-results-parser @ https://github.com/codecov/test-results-parser/archive/1507de2241601d678e514c08b38426e48bb6d47d.tar.gz
     # via -r requirements.in
 text-unidecode==1.3
     # via faker
+time-machine==2.14.1
+    # via -r requirements.in
 timeconvert==3.0.13
     # via excel-base
 timestring @ https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz
