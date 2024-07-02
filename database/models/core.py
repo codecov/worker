@@ -194,6 +194,8 @@ class GithubAppInstallation(CodecovBaseModel, MixinBaseClass):
         Owner, foreign_keys=[ownerid], back_populates="github_app_installations"
     )
 
+    is_suspended = Column(types.Boolean, server_default=FetchedValue())
+
     def repository_queryset(self, dbsession: Session):
         """Returns a query set of repositories covered by this installation"""
         if self.repository_service_ids is None:
