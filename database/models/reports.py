@@ -322,3 +322,28 @@ class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     skipped = Column(types.Integer)
     failed = Column(types.Integer)
     error = Column(types.String(100), nullable=True)
+
+
+class ReducedError(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "reports_reducederror"
+    message = Column(types.Text)
+
+
+class Flake(CodecovBaseModel, MixinBaseClass):
+    __tablename__ = "reports_flake"
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"))
+    repository = relationship("Repository", backref=backref("flakes"))
+
+    testid = Column(types.Text, ForeignKey("reports_test.id"))
+    test = relationship(Test, backref=backref("flakes"))
+
+    reduced_error_id = Column(
+        types.Integer, ForeignKey("reports_reducederror.id"), nullable=True
+    )
+    reduced_error = relationship(ReducedError, backref=backref("flakes"))
+
+    recent_passes_count = Column(types.Integer)
+    count = Column(types.Integer)
+    fail_count = Column(types.Integer)
+    start_date = Column(types.DateTime)
+    end_date = Column(types.DateTime, nullable=True)
