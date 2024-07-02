@@ -1,4 +1,5 @@
 # ruff: noqa: F401
+
 from app import celery_app
 from tasks.ai_pr_review import ai_pr_view_task
 from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task
@@ -10,6 +11,7 @@ from tasks.backfill_owners_without_gh_app_installations import (
     backfill_owners_without_gh_app_installation_individual_name,
     backfill_owners_without_gh_app_installations_name,
 )
+from tasks.backfill_test_instances import backfill_test_instances_task
 from tasks.brolly_stats_rollup import brolly_stats_rollup_task
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
@@ -45,6 +47,7 @@ from tasks.sync_repo_languages import sync_repo_language_task
 from tasks.sync_repo_languages_gql import sync_repo_languages_gql_task
 from tasks.sync_repos import sync_repos_task
 from tasks.sync_teams import sync_teams_task
+from tasks.sync_test_results import sync_test_results_task
 from tasks.timeseries_backfill import (
     timeseries_backfill_commits_task,
     timeseries_backfill_dataset_task,
