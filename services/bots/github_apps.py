@@ -169,6 +169,26 @@ def get_specific_github_app_details(
     )
 
 
+def _filter_rate_limited_apps(
+    apps_to_consider: List[GithubAppInstallation],
+) -> List[GithubAppInstallation]:
+    redis_connection = get_redis_connection()
+    return list(
+        filter(
+            lambda obj: not is_installation_rate_limited(
+                redis_connection, obj.installation_id, app_id=obj.app_id
+            ),
+            apps_to_consider,
+        )
+    )
+
+
+def _filter_suspended_apps(
+    apps_to_consider: List[GithubAppInstallation],
+) -> List[GithubAppInstallation]:
+    return list(filter(lambda obj: not obj.is_suspended, apps_to_consider))
+
+
 def get_github_app_info_for_owner(
     owner: Owner,
     *,
@@ -225,18 +245,15 @@ def get_github_app_info_for_owner(
         owner, installation_name, repository
     )
     apps_matching_criteria_count = len(apps_to_consider)
-
-    redis_connection = get_redis_connection()
-    apps_to_consider = list(
-        filter(
-            lambda obj: not is_installation_rate_limited(
-                redis_connection, obj.installation_id, app_id=obj.app_id
-            ),
-            apps_to_consider,
-        )
-    )
+    # We can't use apps that are rate limited
+    apps_to_consider = _filter_rate_limited_apps(apps_to_consider)
+    rate_limited_apps_count = apps_matching_criteria_count - len(apps_to_consider)
+    # We can't use apps that are suspended (by the user)
+    apps_to_consider = _filter_suspended_apps(apps_to_consider)
+    suspended_apps_count = rate_limited_apps_count - len(apps_to_consider)
 
     if apps_to_consider:
+        # There's at least 1 app that matches all the criteria and can be used to communicate with GitHub
         main_name = apps_to_consider[0].name
         info_to_get_tokens = list(
             map(
@@ -261,8 +278,12 @@ def get_github_app_info_for_owner(
         )
         return info_to_get_tokens
     elif apps_matching_criteria_count > 0:
+        # There are apps that match the criteria, but we can't use them.
+        # Either they are currently rate limited or they have been suspended.
         raise NoConfiguredAppsAvailable(
-            apps_count=apps_matching_criteria_count, all_rate_limited=True
+            apps_count=apps_matching_criteria_count,
+            rate_limited_count=rate_limited_apps_count,
+            suspended_count=suspended_apps_count,
         )
     # DEPRECATED FLOW - begin
     if owner.integration_id and (
