@@ -325,14 +325,23 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         ):
             flaky_test_ids = set()
             failure_test_ids = [failure.test_id for failure in failures]
-            matching_flake_test_ids = (
+
+            matching_flake_test_ids = list(
                 db_session.query(Flake.testid)
                 .filter(  # type:ignore
                     Flake.repoid == repoid,
                     Flake.testid.in_(failure_test_ids),
                     Flake.end_date.is_(None),
                 )
+                .limit(100)
                 .all()
+            )
+
+            # want to know how often we are hitting the limit
+            metrics.distribution(
+                "flake_detection_matching_flakes_len",
+                len(matching_flake_test_ids),
+                tags={"repoid": repoid},
             )
 
             for testid in matching_flake_test_ids:
