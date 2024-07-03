@@ -42,7 +42,10 @@ class BackfillTestInstancesTask(
             test_instances_missing_info = (
                 TestInstance.objects.select_related("upload__report__commit")
                 .filter(
-                    Q(branch__isnull=True)
+                    (
+                        Q(branch__isnull=True)
+                        & Q(upload__report__commit__branch__isnull=False)
+                    )
                     | Q(commitid__isnull=True)
                     | Q(repoid__isnull=True)
                 )
