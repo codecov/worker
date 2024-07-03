@@ -13,6 +13,8 @@ log = logging.getLogger(__name__)
 
 FlakeDict = dict[Any, Flake]
 
+FLAKE_EXPIRY_COUNT = 30
+
 
 class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
     """
@@ -55,14 +57,16 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         return {"successful": True}
 
 
-def get_test_instances(commit_id, repo_id, branch):
-    test_instances = TestInstance.objects.filter(
-        commitid=commit_id, repoid=repo_id, branch=branch
-    ).all()
+def get_test_instances(commit_id: str, repo_id: int, branch: str) -> list[TestInstance]:
+    test_instances = list(
+        TestInstance.objects.filter(
+            commitid=commit_id, repoid=repo_id, branch=branch
+        ).all()
+    )
     return test_instances
 
 
-def generate_flake_dict(repo_id) -> FlakeDict:
+def generate_flake_dict(repo_id: int) -> FlakeDict:
     flakes = Flake.objects.filter(repository_id=repo_id, end_date__isnull=True).all()
     flake_dict = dict()
     for flake in flakes:
@@ -70,15 +74,15 @@ def generate_flake_dict(repo_id) -> FlakeDict:
     return flake_dict
 
 
-def update_passed_flakes(flake: Flake):
+def update_passed_flakes(flake: Flake) -> None:
     flake.count += 1
     flake.recent_passes_count += 1
-    if flake.recent_passes_count == 30:
+    if flake.recent_passes_count == FLAKE_EXPIRY_COUNT:
         flake.end_date = dt.datetime.now(tz=dt.UTC)
     flake.save()
 
 
-def upsert_failed_flake(test_instance: TestInstance, repo_id, flake: Flake | None):
+def upsert_failed_flake(test_instance: TestInstance, repo_id: int, flake: Flake | None):
     if flake is None:
         flake = Flake(
             repository_id=repo_id,
