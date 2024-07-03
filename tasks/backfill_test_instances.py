@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from django.db.models import Q
 from shared.django_apps.reports.models import TestInstance
 
@@ -8,8 +9,6 @@ from celery_config import backfill_test_instances_task_name
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
-
-from django.db import transaction
 
 
 class BackfillTestInstancesTask(
