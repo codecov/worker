@@ -138,6 +138,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         failure_message=failure_message,
                         commitid=commitid,
                         branch=branch,
+                        reduced_error_id=None,
                     )
                 )
 
