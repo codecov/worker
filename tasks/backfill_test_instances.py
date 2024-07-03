@@ -19,6 +19,7 @@ class BackfillTestInstancesTask(
         self,
         *args,
         count=None,
+        increment=1000,
         **kwargs,
     ):
         log.info(
@@ -34,9 +35,9 @@ class BackfillTestInstancesTask(
         else:
             count = min(count, test_instances_missing_info_count)
 
-        log.info("Updating {count} test instances")
+        log.info(f"Updating {count} test instances")
 
-        for _ in range(0, test_instances_missing_info_count, 1000):
+        for _ in range(0, count, increment):
             updates = []
             test_instances_missing_info = (
                 TestInstance.objects.select_related("upload__report__commit")
@@ -45,7 +46,7 @@ class BackfillTestInstancesTask(
                     | Q(commitid__isnull=True)
                     | Q(repoid__isnull=True)
                 )
-                .order_by("id")[0:1000]
+                .order_by("id")[0:increment]
             )
 
             log.info("gathered test instances missing info")
