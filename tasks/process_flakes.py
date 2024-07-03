@@ -1,7 +1,7 @@
 import datetime as dt
 import logging
-from typing import Any
 
+from sentry_sdk import metrics
 from shared.celery_config import process_flakes_task_name
 from shared.django_apps.reports.models import Flake, TestInstance
 
@@ -11,7 +11,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-FlakeDict = dict[Any, Flake]
+FlakeDict = dict[str, Flake]
 
 FLAKE_EXPIRY_COUNT = 30
 
@@ -36,24 +36,31 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
             extra=dict(repoid=repo_id, commit=commit_id_list),
         )
 
-        flake_dict = generate_flake_dict(repo_id)
+        with metrics.timing("process_flakes", tags={"repo_id": repo_id}):
+            flake_dict = generate_flake_dict(repo_id)
 
-        for commit_id in commit_id_list:
-            test_instances = get_test_instances(commit_id, repo_id, branch)
-            for test_instance in test_instances:
-                if test_instance.outcome == TestInstance.Outcome.PASS.value:
-                    flake = flake_dict.get(test_instance.test_id)
-                    if flake is not None:
-                        update_passed_flakes(flake)
-                elif (
-                    test_instance.outcome == TestInstance.Outcome.FAILURE.value
-                    or test_instance.outcome == TestInstance.Outcome.ERROR.value
-                ):
-                    flake = flake_dict.get(test_instance.test_id)
-                    upserted_flake = upsert_failed_flake(test_instance, repo_id, flake)
-                    if flake is None:
-                        flake_dict[upserted_flake.test_id] = upserted_flake
+            for commit_id in commit_id_list:
+                test_instances = get_test_instances(commit_id, repo_id, branch)
+                for test_instance in test_instances:
+                    if test_instance.outcome == TestInstance.Outcome.PASS.value:
+                        flake = flake_dict.get(test_instance.test_id)
+                        if flake is not None:
+                            update_passed_flakes(flake)
+                    elif test_instance.outcome in (
+                        TestInstance.Outcome.FAILURE.value,
+                        TestInstance.Outcome.ERROR.value,
+                    ):
+                        flake = flake_dict.get(test_instance.test_id)
+                        upserted_flake = upsert_failed_flake(
+                            test_instance, repo_id, flake
+                        )
+                        if flake is None:
+                            flake_dict[upserted_flake.test_id] = upserted_flake
 
+        log.info(
+            "Successfully processed flakes",
+            extra=dict(repoid=repo_id, commit=commit_id_list),
+        )
         return {"successful": True}
 
 
@@ -82,7 +89,9 @@ def update_passed_flakes(flake: Flake) -> None:
     flake.save()
 
 
-def upsert_failed_flake(test_instance: TestInstance, repo_id: int, flake: Flake | None):
+def upsert_failed_flake(
+    test_instance: TestInstance, repo_id: int, flake: Flake | None
+) -> Flake:
     if flake is None:
         flake = Flake(
             repository_id=repo_id,

@@ -229,7 +229,7 @@ def test_it_creates_flakes_fail_after_merge(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_works_when_processing_commits_together(transactional_db):  # TODO
+def test_it_processes_two_commits_together(transactional_db):
     rs = RepoSimulator()
     c1 = rs.create_commit()
     rs.merge(c1)
@@ -255,7 +255,7 @@ def test_it_works_when_processing_commits_together(transactional_db):  # TODO
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_works_when_processing_commits_separately(transactional_db):  # TODO
+def test_it_processes_two_commits_separately(transactional_db):
     rs = RepoSimulator()
     c1 = rs.create_commit()
     rs.merge(c1)
@@ -287,7 +287,7 @@ def test_it_works_when_processing_commits_separately(transactional_db):  # TODO
     assert flake.start_date == dt.datetime.now(dt.UTC)
 
 
-def test_it_creates_flakes_expires(transactional_db):  # TODO
+def test_it_creates_flakes_expires(transactional_db):
     with time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False) as traveller:
         rs = RepoSimulator()
         commits = []
