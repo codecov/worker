@@ -75,6 +75,8 @@ class SyncTestResultsTask(BaseCodecovTask, name=sync_test_results_task_name):
             commit_agg = commit_agg_dict.get(test.id)
             if commit_agg:
                 test.commits_where_fail = list(commit_agg)
+            else:
+                test.commits_where_fail = None
 
         Test.objects.bulk_update(tests, fields=["failure_rate", "commits_where_fail"])
 
