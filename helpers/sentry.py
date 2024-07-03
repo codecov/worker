@@ -33,6 +33,9 @@ def initialize_sentry() -> None:
         sample_rate=float(os.getenv("SENTRY_PERCENTAGE", 1.0)),
         environment=os.getenv("DD_ENV", "production"),
         traces_sample_rate=float(os.environ.get("SERVICES__SENTRY__SAMPLE_RATE", 1)),
+        profiles_sample_rate=float(
+            os.environ.get("SERVICES__SENTRY__PROFILES_SAMPLE_RATE", 1)
+        ),
         integrations=[
             CeleryIntegration(monitor_beat_tasks=True),
             SqlalchemyIntegration(),
