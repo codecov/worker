@@ -24,16 +24,16 @@ class RepoSimulator:
         self.repo = RepositoryFactory()
         self.repo.save()
         self.test_count = 0
-        self.branch_name = 0
+        self.branch_number = 0
 
         self.test_map = defaultdict(lambda: TestFactory(id=self.test_count))
 
     def create_commit(self):
         c = CommitFactory(
-            repository=self.repo, merged=False, branch=str(self.branch_name)
+            repository=self.repo, merged=False, branch=str(self.branch_number)
         )
         c.save()
-        self.branch_name += 1
+        self.branch_number += 1
         self.test_count = 0
         return c
 
