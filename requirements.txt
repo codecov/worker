@@ -370,7 +370,7 @@ sentry-sdk==1.40.0
     # via
     #   -r requirements.in
     #   shared
-shared @ https://github.com/codecov/shared/archive/390e62c4858ee41ffd035e5d7fe77c71a179d76a.tar.gz
+shared @ https://github.com/codecov/shared/archive/3b44680b87559e7fe69b3e9645172a99f6bdbf98.tar.gz
     # via -r requirements.in
 six==1.16.0
     # via
@@ -432,7 +432,7 @@ tzdata==2024.1
     # via celery
 tzlocal==5.2
     # via timeconvert
-urllib3==1.26.18
+urllib3==1.26.19
     # via
     #   -r requirements.in
     #   botocore

@@ -47,7 +47,7 @@ class TestYamlService(BaseTestCase):
             mock_configuration, "load_yaml_file", side_effect=FileNotFoundError()
         )
         expected_result = {
-            "codecov": {"require_ci_to_pass": True},
+            "codecov": {"require_ci_to_pass": True, "notify": {"wait_for_ci": True}},
             "coverage": {
                 "precision": 2,
                 "round": "down",
