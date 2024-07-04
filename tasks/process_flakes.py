@@ -81,20 +81,21 @@ def get_test_instances(
 ) -> list[TestInstance]:
     # get test instances on this repo commit branch combination that either:
     # - failed
-    # - belong to an already flaky test
+    # - passed but belong to an already flaky test
+
+    repo_commit_branch_filter = (
+        Q(commitid=commit_id) & Q(repoid=repo_id) & Q(branch=branch)
+    )
+    test_failed_filter = Q(outcome=TestInstance.Outcome.ERROR.value) | Q(
+        outcome=TestInstance.Outcome.FAILURE.value
+    )
+    test_passed_but_flaky_filter = Q(outcome=TestInstance.Outcome.PASS.value) & Q(
+        test_id__in=flaky_tests
+    )
     test_instances = list(
         TestInstance.objects.filter(
-            Q(commitid=commit_id)
-            & Q(repoid=repo_id)
-            & Q(branch=branch)
-            & (
-                Q(outcome=TestInstance.Outcome.ERROR.value)
-                | Q(outcome=TestInstance.Outcome.FAILURE.value)
-                | (
-                    Q(outcome=TestInstance.Outcome.PASS.value)
-                    & Q(test_id__in=flaky_tests)
-                )
-            )
+            repo_commit_branch_filter
+            & (test_failed_filter | test_passed_but_flaky_filter)
         ).all()
     )
     return test_instances
