@@ -283,7 +283,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
             # TODO: remove this later, we can do this now because there aren't many users using this
             metrics.distribution(
-                "test_results_processing_time",
+                "test_results_notif_latency",
                 checkpoints._subflow_duration(
                     TestResultsFlow.TEST_RESULTS_BEGIN,
                     TestResultsFlow.TEST_RESULTS_NOTIFY,
