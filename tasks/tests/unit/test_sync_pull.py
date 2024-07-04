@@ -20,6 +20,10 @@ here = Path(__file__)
 class TestPullSyncTask(object):
     @pytest.mark.parametrize("flake_detection", [False, True])
     def test_update_pull_commits_merged(self, dbsession, mocker, flake_detection):
+        if flake_detection:
+            mock_feature = mocker.patch("tasks.sync_pull.FLAKY_TEST_DETECTION")
+            mock_feature.check_value.return_value = True
+
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -475,6 +479,10 @@ class TestPullSyncTask(object):
 
     @pytest.mark.parametrize("flake_detection", [False, True])
     def test_trigger_process_flakes(self, dbsession, mocker, flake_detection):
+        if flake_detection:
+            mock_feature = mocker.patch("tasks.sync_pull.FLAKY_TEST_DETECTION")
+            mock_feature.check_value.return_value = True
+
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
