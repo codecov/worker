@@ -148,6 +148,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         assert commit, "commit not found"
 
+        if self.flaky_test_detection_enabled(repoid, commit_yaml):
+            repo = db_session.query(Repository).filter_by(repoid=repoid).first()
+
+            if commit.merged is True or commit.branch == repo.branch:
+                self.app.tasks[process_flakes_task_name].apply_async(
+                    kwargs=dict(
+                        repo_id=repoid,
+                        commit_id_list=[commit.commitid],
+                        branch=repo.branch,
+                    )
+                )
+
         notifier = TestResultsNotifier(commit, commit_yaml)
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
@@ -269,9 +281,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             tags={"status": "success", "reason": "tests_failed"},
         )
 
-        flaky_tests = self.get_flaky_tests(
-            db_session, commit_yaml, repoid, commit, failures
-        )
+        flaky_tests = self.get_flaky_tests(db_session, commit_yaml, repoid, failures)
 
         failures = sorted(failures, key=lambda x: x.testsuite + x.testname)
 
@@ -316,14 +326,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         db_session: Session,
         commit_yaml: UserYaml,
         repoid: int,
-        commit: Commit,
         failures: list[TestResultsNotificationFailure],
     ):
-        if FLAKY_TEST_DETECTION.check_value(
-            identifier=repoid, default=False
-        ) and read_yaml_field(
-            commit_yaml, ("test_analytics", "flake_detection"), False
-        ):
+        if self.flaky_test_detection_enabled(repoid, commit_yaml):
             flaky_test_ids = set()
             failure_test_ids = [failure.test_id for failure in failures]
 
@@ -348,17 +353,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             for testid in matching_flake_test_ids:
                 flaky_test_ids.add(testid[0])
 
-            repo = db_session.query(Repository).filter_by(repoid=repoid).first()
-
-            if commit.merged is True or commit.branch == repo.branch:
-                self.app.tasks[process_flakes_task_name].apply_async(
-                    kwargs=dict(
-                        repo_id=repoid,
-                        commit_id_list=[commit.commitid],
-                        branch=repo.branch,
-                    )
-                )
-
             return flaky_test_ids
 
         return None
@@ -376,6 +370,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         return all(
             [instance.outcome != str(Outcome.Failure) for instance in testrun_list]
         )
+
+    def flaky_test_detection_enabled(self, repoid: int, commit_yaml: UserYaml):
+        return FLAKY_TEST_DETECTION.check_value(
+            identifier=repoid, default=False
+        ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
 
 
 RegisteredTestResultsFinisherTask = celery_app.register_task(TestResultsFinisherTask())
