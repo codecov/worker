@@ -111,3 +111,7 @@ class FailureNormalizer:
                         # With future matches
                         failure_message = failure_message.replace(actual_match, key, 1)
         return failure_message
+
+
+def reduce_error(err_message: str) -> str:
+    return "".join(err_message.split()[0:3]) + "".join(err_message.split()[-3:])

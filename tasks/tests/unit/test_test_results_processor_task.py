@@ -6,7 +6,7 @@ from shared.storage.exceptions import FileNotInStorageError
 from test_results_parser import Outcome
 
 from database.models import CommitReport
-from database.models.reports import Test, TestInstance
+from database.models.reports import ReducedError, Test, TestInstance
 from database.tests.factories import CommitFactory, UploadFactory
 from services.test_results import generate_test_id
 from tasks.test_results_processor import (
@@ -79,10 +79,13 @@ class TestUploadTestProcessorTask(object):
         failures = (
             dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
+        reduced_errors = dbsession.query(ReducedError).all()
 
         assert len(tests) == 4
         assert len(test_instances) == 4
         assert len(failures) == 1
+
+        assert len(reduced_errors) == 1
 
         assert (
             failures[0].failure_message
@@ -94,6 +97,8 @@ class TestUploadTestProcessorTask(object):
         )
         assert expected_result == result
         assert commit.message == "hello world"
+
+        assert failures[0].reduced_error_id == reduced_errors[0].id
 
         mock_metrics.incr.assert_has_calls(
             [
@@ -164,11 +169,13 @@ class TestUploadTestProcessorTask(object):
         failures = (
             dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
+        reduced_errors = dbsession.query(ReducedError).all()
 
         assert len(tests) == 2
         assert len(test_instances) == 2
         assert len(failures) == 0
 
+        assert len(reduced_errors) == 0
         assert (
             tests[0].flags_hash
             == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -230,9 +237,17 @@ class TestUploadTestProcessorTask(object):
             dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
 
+        reduced_errors = dbsession.query(ReducedError).all()
+
         assert len(tests) == 1
         assert len(test_instances) == 4
         assert len(failures) == 4
+
+        assert len(reduced_errors) == 1
+
+        assert all(
+            [failure.reduced_error_id == reduced_errors[0].id for failure in failures]
+        )
 
         assert (
             tests[0].flags_hash
@@ -296,7 +311,7 @@ class TestUploadTestProcessorTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        print(caplog.text)
+
         assert "File did not match any parser format" in caplog.text
         mock_metrics.incr.assert_has_calls(
             [
@@ -366,7 +381,7 @@ class TestUploadTestProcessorTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        print(caplog.text)
+
         assert "Error parsing file" in caplog.text
         mock_metrics.incr.assert_has_calls(
             [
@@ -576,10 +591,15 @@ class TestUploadTestProcessorTask(object):
         failures = (
             dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
+        reduced_errors = dbsession.query(ReducedError).all()
 
         assert len(tests) == 4
         assert len(test_instances) == 4
         assert len(failures) == 1
+
+        assert len(reduced_errors) == 1
+
+        assert failures[0].reduced_error_id == reduced_errors[0].id
 
         assert (
             failures[0].failure_message
