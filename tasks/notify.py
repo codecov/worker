@@ -210,24 +210,44 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(kwargs, UploadFlow.NOTIF_NO_VALID_INTEGRATION)
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         except NoConfiguredAppsAvailable as exp:
-            # Min wait time of 1 minute
-            retry_delay_seconds = max(60, get_seconds_to_next_hour())
+            if exp.rate_limited_count > 0:
+                # There's at least 1 app that we can use to communicate with GitHub,
+                # but this app happens to be rate limited now. We try again later.
+                # Min wait time of 1 minute
+                retry_delay_seconds = max(60, get_seconds_to_next_hour())
+                log.warning(
+                    "Unable to start notifications. Retrying again later.",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        apps_available=exp.apps_count,
+                        apps_rate_limited=exp.rate_limited_count,
+                        apps_suspended=exp.suspended_count,
+                        countdown_seconds=retry_delay_seconds,
+                    ),
+                )
+                return self._attempt_retry(
+                    max_retries=10,
+                    countdown=retry_delay_seconds,
+                    current_yaml=current_yaml,
+                    commit=commit,
+                    **kwargs,
+                )
+            # Maybe we have apps that are suspended. We can't communicate with github.
             log.warning(
-                "Unable to start notifications because all ghapps available are rate limited",
+                "We can't find an app to communicate with GitHub. Not notifying.",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
                     apps_available=exp.apps_count,
-                    countdown_seconds=retry_delay_seconds,
+                    apps_suspended=exp.suspended_count,
                 ),
             )
-            return self._attempt_retry(
-                max_retries=10,
-                countdown=retry_delay_seconds,
-                current_yaml=current_yaml,
-                commit=commit,
-                **kwargs,
-            )
+            return {
+                "notified": False,
+                "notifications": None,
+                "reason": "no_valid_github_app_found",
+            }
 
         if current_yaml is None:
             current_yaml = async_to_sync(get_current_yaml)(commit, repository_service)

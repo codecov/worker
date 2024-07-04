@@ -809,13 +809,13 @@ class TestNotifyTask(object):
         assert expected_result == res
 
     @freeze_time("2024-04-22T11:15:00")
-    def test_notify_task_no_ghapp_available(self, dbsession, mocker):
+    def test_notify_task_no_ghapp_available_one_rate_limited(self, dbsession, mocker):
         get_repo_provider_service = mocker.patch(
             "tasks.notify.get_repo_provider_service"
         )
         mock_retry = mocker.patch.object(NotifyTask, "retry", return_value=None)
         get_repo_provider_service.side_effect = NoConfiguredAppsAvailable(
-            apps_count=2, all_rate_limited=True
+            apps_count=2, rate_limited_count=1, suspended_count=1
         )
         commit = CommitFactory.create(
             message="",
@@ -836,6 +836,39 @@ class TestNotifyTask(object):
         )
         assert res is None
         mock_retry.assert_called_with(max_retries=10, countdown=45 * 60)
+
+    @freeze_time("2024-04-22T11:15:00")
+    def test_notify_task_no_ghapp_available_all_suspended(self, dbsession, mocker):
+        get_repo_provider_service = mocker.patch(
+            "tasks.notify.get_repo_provider_service"
+        )
+        mock_retry = mocker.patch.object(NotifyTask, "retry", return_value=None)
+        get_repo_provider_service.side_effect = NoConfiguredAppsAvailable(
+            apps_count=1, rate_limited_count=0, suspended_count=1
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            repository__using_integration=True,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        current_yaml = {"codecov": {"require_ci_to_pass": True}}
+        task = NotifyTask()
+        res = task.run_impl_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml=current_yaml,
+        )
+        assert res == {
+            "notified": False,
+            "notifications": None,
+            "reason": "no_valid_github_app_found",
+        }
+        mock_retry.assert_not_called()
 
     def test_submit_third_party_notifications_exception(self, mocker, dbsession):
         current_yaml = {}
