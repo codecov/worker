@@ -80,7 +80,7 @@ def test_generate_test_description(tn, testname, message):
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", testname, flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", testname, [], test_id
+        "hello world", "testsuite", testname, [], test_id, None
     )
     res = tn.generate_test_description(fail)
     assert res == message
@@ -90,7 +90,7 @@ def test_generate_failure_info(tn):
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
+        "hello world", "testsuite", "testname", [], test_id, None
     )
 
     res = tn.generate_failure_info(fail)
@@ -102,7 +102,7 @@ def test_build_message(tn):
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
+        "hello world", "testsuite", "testname", [], test_id, None
     )
     payload = TestResultsNotificationPayload(1, 2, 3, [fail], None)
     res = tn.build_message(payload)
@@ -126,7 +126,7 @@ def test_build_message_with_flake(tn):
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
+        "hello world", "testsuite", "testname", [], test_id, 1
     )
 
     payload = TestResultsNotificationPayload(1, 2, 3, [fail], {test_id})

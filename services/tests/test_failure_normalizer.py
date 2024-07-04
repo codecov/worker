@@ -1,6 +1,6 @@
 import pytest
 
-from services.failure_normalizer import FailureNormalizer
+from services.failure_normalizer import FailureNormalizer, reduce_error
 
 test_string = "abcdefAB-1234-1234-1234-abcdefabcdef test_string 2024-03-10 test 0x44358378 20240312T155215Z 2024-03-12T15:52:15Z  15:52:15Z  2024-03-12T08:52:15-07:00 https://api.codecov.io/commits/list :1:2 :3: :: 0xabcdef1234"
 
@@ -125,3 +125,17 @@ def test_from_random_cases(input, expected):
     )
     s = normalizer_class.normalize_failure_message(test_message)
     assert s == expected
+
+
+def test_reduce_error():
+    failure_message = """def test_subtract():
+&gt;       assert Calculator.subtract(1, 2) == 1.0
+E       assert -1 == 1.0
+E        +  where -1 = &lt;function Calculator.subtract at 0x7f43b21a3130&gt;(1, 2)
+E        +    where &lt;function Calculator.subtract at 0x7f43b21a3130&gt; = Calculator.subtract
+
+app/test_calculator.py:12: AssertionError"""
+    assert (
+        reduce_error(failure_message)
+        == "deftest_subtract():&gt;Calculator.subtractapp/test_calculator.py:12:AssertionError"
+    )
