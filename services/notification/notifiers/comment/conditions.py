@@ -154,7 +154,10 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
         project_status_config = read_yaml_field(
             comparison.comparison.current_yaml, ("coverage", "status", "project"), {}
         )
-        threshold = Decimal(project_status_config.get("threshold", 0))
+        threshold = 0
+        if isinstance(project_status_config, dict):
+            # Project status can also be a bool value, so check is needed
+            threshold = Decimal(project_status_config.get("threshold", 0))
         target_coverage = Decimal(
             comparison.project_coverage_base.report.totals.coverage
         ).quantize(Decimal("0.00000"))
