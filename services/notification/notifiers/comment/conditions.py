@@ -2,9 +2,6 @@ import logging
 from abc import ABC, abstractmethod
 from decimal import Decimal
 
-from shared.torngit.exceptions import (
-    TorngitClientError,
-)
 from shared.validation.types import (
     CoverageCommentRequiredChanges,
     CoverageCommentRequiredChangesORGroup,
@@ -207,6 +204,12 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
     async def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
+        if comparison.pull and comparison.pull.commentid:
+            log.info(
+                "Comment already exists. Skipping required_changes verification to update comment",
+                extra=dict(pull=comparison.pull.pullid, commit=comparison.pull.head),
+            )
+            return True
         required_changes = notifier.notifier_yaml_settings.get(
             "require_changes", [CoverageCommentRequiredChanges.no_requirements.value]
         )
@@ -223,34 +226,3 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
                 for or_group in required_changes
             ]
         )
-
-    async def on_failure_side_effect(
-        notifier: AbstractBaseNotifier, comparison: ComparisonProxy
-    ) -> NotificationResult:
-        pull = comparison.pull
-        data_received = None
-        extra_log_info = dict(
-            repoid=pull.repoid,
-            pullid=pull.pullid,
-            commentid=pull.commentid,
-        )
-        if pull.commentid is not None:
-            # Just porting logic as-is, but not sure if it's the best
-            # TODO: codecov/engineering-team#1761
-            log.info(
-                "Deleting comment because there are not enough changes according to YAML",
-                extra=extra_log_info,
-            )
-            try:
-                await notifier.repository_service.delete_comment(
-                    pull.pullid, pull.commentid
-                )
-                data_received = {"deleted_comment": True}
-            except TorngitClientError:
-                log.warning(
-                    "Comment could not be deleted due to client permissions",
-                    exc_info=True,
-                    extra=extra_log_info,
-                )
-                data_received = {"deleted_comment": False}
-        return NotificationResult(data_received=data_received)
