@@ -117,6 +117,7 @@ class TestResultsNotificationFailure:
     testname: str
     envs: List[str]
     test_id: str
+    reduced_error_id: int | None
 
 
 @dataclass

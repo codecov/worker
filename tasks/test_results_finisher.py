@@ -10,7 +10,12 @@ from test_results_parser import Outcome
 
 from app import celery_app
 from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
-from database.models import Commit, Flake, Repository, TestResultReportTotals
+from database.models import (
+    Commit,
+    Flake,
+    Repository,
+    TestResultReportTotals,
+)
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
@@ -247,6 +252,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                         failure_message=failure_message,
                         test_id=test_instance.test_id,
                         envs=flag_names,
+                        reduced_error_id=test_instance.reduced_error_id,
                     )
                 )
             elif test_instance.outcome == str(Outcome.Skip):
@@ -329,6 +335,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         failures: list[TestResultsNotificationFailure],
     ):
         if self.flaky_test_detection_enabled(repoid, commit_yaml):
+            reduced_error_ids = [failure.reduced_error_id for failure in failures]
+
             flaky_test_ids = set()
             failure_test_ids = [failure.test_id for failure in failures]
 
@@ -337,6 +345,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 .filter(  # type:ignore
                     Flake.repoid == repoid,
                     Flake.testid.in_(failure_test_ids),
+                    Flake.reduced_error_id.in_(reduced_error_ids),
                     Flake.end_date.is_(None),
                 )
                 .limit(100)

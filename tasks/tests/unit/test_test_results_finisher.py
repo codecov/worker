@@ -9,13 +9,21 @@ from test_results_parser import Outcome
 from database.enums import ReportType
 from database.models import (
     CommitReport,
-    Flake,
-    ReducedError,
     RepositoryFlag,
     Test,
-    TestInstance,
 )
-from database.tests.factories import CommitFactory, PullFactory, UploadFactory
+from database.tests.factories import (
+    CommitFactory,
+    PullFactory,
+    ReportFactory,
+    RepositoryFlagFactory,
+    UploadFactory,
+)
+from database.tests.factories.reports import (
+    FlakeFactory,
+    TestFactory,
+    TestInstanceFactory,
+)
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
 from tasks.test_results_finisher import QUEUE_NOTIFY_KEY, TestResultsFinisherTask
@@ -69,24 +77,23 @@ def test_results_setup(mocker, dbsession):
         repository__owner__username="joseph-sentry",
         repository__owner__service="github",
         repository__name="codecov-demo",
+        branch="main",
     )
-    commit.branch = "main"
     dbsession.add(commit)
     dbsession.flush()
 
     commit.repository.branch = "main"
     dbsession.flush()
 
-    repoid = commit.repoid
+    repo = commit.repository
 
-    current_report_row = CommitReport(
-        commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
+    current_report_row = ReportFactory.create(
+        commit=commit, report_type=ReportType.TEST_RESULTS.value, code=None
     )
     dbsession.add(current_report_row)
     dbsession.flush()
 
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
-
     _ = mocker.patch(
         "services.test_results.fetch_and_update_pull_request_information_from_commit",
         return_value=EnrichedPull(
@@ -95,16 +102,17 @@ def test_results_setup(mocker, dbsession):
         ),
     )
 
-    uploads = [UploadFactory.create() for _ in range(4)]
+    uploads = [UploadFactory.create(report=current_report_row) for _ in range(4)]
     uploads[3].created_at += timedelta(0, 3)
 
     for upload in uploads:
-        upload.report = current_report_row
-        upload.report.commit.repoid = repoid
         dbsession.add(upload)
     dbsession.flush()
 
-    flags = [RepositoryFlag(repository_id=repoid, flag_name=str(i)) for i in range(2)]
+    flags = [
+        RepositoryFlagFactory.create(repository=repo, flag_name=str(i))
+        for i in range(2)
+    ]
     for flag in flags:
         dbsession.add(flag)
     dbsession.flush()
@@ -115,94 +123,22 @@ def test_results_setup(mocker, dbsession):
     uploads[3].flags = [flags[0]]
     dbsession.flush()
 
-    test_name = "test_name"
-    test_suite = "test_testsuite"
+    tests = []
 
-    test_id1 = generate_test_id(repoid, test_name + "0", test_suite, "a")
-    test1 = Test(
-        id_=test_id1,
-        repoid=repoid,
-        name="Class Name\x1f" + test_name + "0",
-        testsuite=test_suite,
-        flags_hash="a",
-    )
-    dbsession.add(test1)
-
-    test_id2 = generate_test_id(repoid, test_name + "1", test_suite, "b")
-    test2 = Test(
-        id_=test_id2,
-        repoid=repoid,
-        name=test_name + "1",
-        testsuite=test_suite,
-        flags_hash="b",
-    )
-    dbsession.add(test2)
-
-    test_id3 = generate_test_id(repoid, test_name + "2", test_suite, "")
-    test3 = Test(
-        id_=test_id3,
-        repoid=repoid,
-        name="Other Class Name\x1f" + test_name + "2",
-        testsuite=test_suite,
-        flags_hash="",
-    )
-    dbsession.add(test3)
-
-    test_id4 = generate_test_id(repoid, test_name + "3", test_suite, "")
-    test4 = Test(
-        id_=test_id4,
-        repoid=repoid,
-        name=test_name + "3",
-        testsuite=test_suite,
-        flags_hash="",
-    )
-    dbsession.add(test4)
-
+    for i in range(4):
+        t = TestFactory.create(repository=repo)
+        dbsession.add(t)
+        tests.append(t)
     dbsession.flush()
 
-    duration = 1
-    test_instances = [
-        TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="This should not be in the comment, it will get overwritten by the last test instance",
-            duration_seconds=duration,
-            upload_id=uploads[0].id,
-        ),
-        TestInstance(
-            test_id=test_id2,
-            outcome=str(Outcome.Failure),
-            failure_message="Shared failure message",
-            duration_seconds=duration,
-            upload_id=uploads[1].id,
-        ),
-        TestInstance(
-            test_id=test_id3,
-            outcome=str(Outcome.Failure),
-            failure_message="Shared failure message",
-            duration_seconds=duration,
-            upload_id=uploads[2].id,
-        ),
-        TestInstance(
-            test_id=test_id1,
-            outcome=str(Outcome.Failure),
-            failure_message="<pre>Fourth \r\n\r\n</pre> | test  | instance |",
-            duration_seconds=duration,
-            upload_id=uploads[3].id,
-        ),
-        TestInstance(
-            test_id=test_id4,
-            outcome=str(Outcome.Failure),
-            failure_message=None,
-            duration_seconds=duration,
-            upload_id=uploads[3].id,
-        ),
-    ]
-    for instance in test_instances:
-        dbsession.add(instance)
+    test_instances = []
+    for i in range(5):
+        ti = TestInstanceFactory.create(test=tests[i % 4], upload=uploads[i % 4])
+        dbsession.add(ti)
+        test_instances.append(ti)
     dbsession.flush()
 
-    return (repoid, commit, pull, test_instances)
+    return (repo, commit, pull, test_instances)
 
 
 @pytest.fixture
@@ -326,14 +262,14 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
-        repoid, commit, pull, _ = test_results_setup
+        repo, commit, pull, _ = test_results_setup
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
                 [{"successful": True}],
             ],
-            repoid=repoid,
+            repoid=repo.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
         )
@@ -347,7 +283,7 @@ class TestUploadTestFinisherTask(object):
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## testsuite_0\n- **Class name:** name_0<br>**Test name:** 0\n**Flags:**\n  - 0<br><br>\n  <pre>message_0</pre>\n## testsuite_1\n- **Class name:** name_1<br>**Test name:** 1\n**Flags:**\n  - 1<br><br>\n  <pre>message_1</pre>\n## testsuite_2\n- **Class name:** name_2<br>**Test name:** 2<br><br>\n  <pre>message_2</pre>\n## testsuite_3\n- **Class name:** name_3<br>**Test name:** 3\n**Flags:**\n  - 0<br><br>\n  <pre>message_3</pre>\n</details>",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -387,7 +323,7 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
-        repoid, commit, _, test_instances = test_results_setup
+        repo, commit, _, test_instances = test_results_setup
 
         for instance in test_instances:
             instance.outcome = str(Outcome.Pass)
@@ -398,7 +334,7 @@ class TestUploadTestFinisherTask(object):
             [
                 [{"successful": True}],
             ],
-            repoid=repoid,
+            repoid=repo.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
         )
@@ -415,7 +351,7 @@ class TestUploadTestFinisherTask(object):
             kwargs={
                 "commitid": commit.commitid,
                 "current_yaml": {"codecov": {"max_report_age": False}},
-                "repoid": repoid,
+                "repoid": repo.repoid,
             },
         )
 
@@ -523,7 +459,7 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
-        repoid, commit, pull, _ = test_results_setup
+        repo, commit, pull, _ = test_results_setup
 
         pull.commentid = 1
         dbsession.flush()
@@ -533,7 +469,7 @@ class TestUploadTestFinisherTask(object):
             [
                 [{"successful": True}],
             ],
-            repoid=repoid,
+            repoid=repo.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
         )
@@ -547,7 +483,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## testsuite_10\n- **Class name:** name_10<br>**Test name:** 10<br><br>\n  <pre>message_12</pre>\n## testsuite_11\n- **Class name:** name_11<br>**Test name:** 11\n**Flags:**\n  - 0<br><br>\n  <pre>message_13</pre>\n## testsuite_8\n- **Class name:** name_8<br>**Test name:** 8\n**Flags:**\n  - 0<br><br>\n  <pre>message_10</pre>\n## testsuite_9\n- **Class name:** name_9<br>**Test name:** 9\n**Flags:**\n  - 1<br><br>\n  <pre>message_11</pre>\n</details>",
         )
 
         assert expected_result == result
@@ -570,7 +506,7 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
-        repoid, commit, _, _ = test_results_setup
+        repo, commit, _, _ = test_results_setup
 
         mock_repo_provider_comments.post_comment.side_effect = TorngitClientError
 
@@ -579,7 +515,7 @@ class TestUploadTestFinisherTask(object):
             [
                 [{"successful": True}],
             ],
-            repoid=repoid,
+            repoid=repo.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
         )
@@ -629,24 +565,18 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = True
 
-        repoid, commit, pull, test_instances = test_results_setup
+        repo, commit, pull, test_instances = test_results_setup
 
-        r = ReducedError()
-        r.message = "failure_message"
-
-        dbsession.add(r)
-        dbsession.flush()
-
-        f = Flake()
-        f.repoid = repoid
-        f.testid = test_instances[0].test_id
-        f.reduced_error = r
-        f.count = 5
-        f.fail_count = 2
-        f.recent_passes_count = 1
-        f.start_date = datetime.now()
-        f.end_date = None
-
+        f = FlakeFactory.create(
+            repository=repo,
+            test=test_instances[-2].test,
+            reduced_error=test_instances[-2].reduced_error,
+            count=5,
+            fail_count=2,
+            recent_passes_count=1,
+            start_date=datetime.now(),
+            end_date=None,
+        )
         dbsession.add(f)
         dbsession.flush()
 
@@ -655,7 +585,7 @@ class TestUploadTestFinisherTask(object):
             [
                 [{"successful": True}],
             ],
-            repoid=repoid,
+            repoid=repo.repoid,
             commitid=commit.commitid,
             commit_yaml={
                 "codecov": {"max_report_age": False},
@@ -673,7 +603,7 @@ class TestUploadTestFinisherTask(object):
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(1 known flakes hit), 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>\n<details><summary>View the full list of flaky tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n</details>",
+            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(1 known flakes hit), 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## testsuite_16\n- **Class name:** name_16<br>**Test name:** 16\n**Flags:**\n  - 0<br><br>\n  <pre>message_20</pre>\n## testsuite_17\n- **Class name:** name_17<br>**Test name:** 17\n**Flags:**\n  - 1<br><br>\n  <pre>message_21</pre>\n## testsuite_18\n- **Class name:** name_18<br>**Test name:** 18<br><br>\n  <pre>message_22</pre>\n</details>\n<details><summary>View the full list of flaky tests</summary>\n\n## testsuite_19\n- **Class name:** name_19<br>**Test name:** 19\n**Flags:**\n  - 0<br><br>\n  <pre>message_23</pre>\n</details>",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -713,7 +643,7 @@ class TestUploadTestFinisherTask(object):
         mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = True
 
-        repoid, commit, pull, test_instances = test_results_setup
+        repo, commit, pull, test_instances = test_results_setup
 
         commit.merged = True
 
@@ -722,7 +652,7 @@ class TestUploadTestFinisherTask(object):
             [
                 [{"successful": True}],
             ],
-            repoid=repoid,
+            repoid=repo.repoid,
             commitid=commit.commitid,
             commit_yaml={
                 "codecov": {"max_report_age": False},
@@ -742,7 +672,7 @@ class TestUploadTestFinisherTask(object):
             "app.tasks.flakes.ProcessFlakesTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repo_id": repoid,
+                "repo_id": repo.repoid,
                 "commit_id_list": [commit.commitid],
                 "branch": "main",
             },
