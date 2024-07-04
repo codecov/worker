@@ -33,8 +33,47 @@ def test_bytes_readable():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "config, should_notify",
+    [
+        pytest.param({}, True, id="default_config"),
+        pytest.param(
+            {"comment": {"require_bundle_changes": False}},
+            True,
+            id="no_required_changes",
+        ),
+        pytest.param(
+            {"comment": {"require_bundle_changes": True}}, True, id="required_changes"
+        ),
+        pytest.param(
+            {"comment": {"require_bundle_changes": "bundle_increase"}},
+            True,
+            id="required_increase",
+        ),
+        pytest.param(
+            {
+                "comment": {
+                    "require_bundle_changes": "bundle_increase",
+                    "bundle_change_threshold": 1000,
+                }
+            },
+            True,
+            id="required_increase_with_small_threshold",
+        ),
+        pytest.param(
+            {
+                "comment": {
+                    "require_bundle_changes": "bundle_increase",
+                    "bundle_change_threshold": 1000000,
+                }
+            },
+            False,
+            id="required_increase_with_big_threshold",
+        ),
+    ],
+)
 async def test_bundle_analysis_notify(
-    dbsession, mocker, mock_storage, mock_repo_provider
+    config, should_notify, dbsession, mocker, mock_storage, mock_repo_provider
 ):
     base_commit = CommitFactory()
     dbsession.add(base_commit)
@@ -59,7 +98,7 @@ async def test_bundle_analysis_notify(
     dbsession.add(pull)
     dbsession.commit()
 
-    notifier = Notifier(head_commit, UserYaml.from_dict({}))
+    notifier = Notifier(head_commit, UserYaml.from_dict(config))
 
     repo_key = ArchiveService.get_archive_hash(base_commit.repository)
     mock_storage.write_file(
@@ -123,20 +162,69 @@ Changes will increase total bundle size by 14.57kB :arrow_up:
 
     success = await notifier.notify()
     assert success == True
-    mock_repo_provider.post_comment.assert_called_once_with(
-        pull.pullid, expected_message_increase
-    )
+    if should_notify:
+        assert pull.bundle_analysis_commentid is not None
+        mock_repo_provider.post_comment.assert_called_once_with(
+            pull.pullid, expected_message_increase
+        )
+    else:
+        assert pull.bundle_analysis_commentid is None
+        mock_repo_provider.post_comment.assert_not_called()
 
     success = await notifier.notify()
     assert success == True
-    mock_repo_provider.edit_comment.assert_called_once_with(
-        pull.pullid, "test-comment-id", expected_message_increase
-    )
+    if should_notify:
+        assert pull.bundle_analysis_commentid is not None
+        mock_repo_provider.edit_comment.assert_called_once_with(
+            pull.pullid, "test-comment-id", expected_message_increase
+        )
+    else:
+        assert pull.bundle_analysis_commentid is None
+        mock_repo_provider.edit_comment.assert_not_called()
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "config, should_notify",
+    [
+        pytest.param({}, True, id="default_config"),
+        pytest.param(
+            {"comment": {"require_bundle_changes": False}},
+            True,
+            id="no_required_changes",
+        ),
+        pytest.param(
+            {"comment": {"require_bundle_changes": True}}, True, id="required_changes"
+        ),
+        pytest.param(
+            {"comment": {"require_bundle_changes": "bundle_increase"}},
+            False,
+            id="required_increase",
+        ),
+        pytest.param(
+            {
+                "comment": {
+                    "require_bundle_changes": True,
+                    "bundle_change_threshold": 1000,
+                }
+            },
+            True,
+            id="required_increase_with_small_threshold",
+        ),
+        pytest.param(
+            {
+                "comment": {
+                    "require_bundle_changes": True,
+                    "bundle_change_threshold": 1000000,
+                }
+            },
+            False,
+            id="required_increase_with_big_threshold",
+        ),
+    ],
+)
 async def test_bundle_analysis_notify_size_decrease(
-    dbsession, mocker, mock_storage, mock_repo_provider
+    config, should_notify, dbsession, mocker, mock_storage, mock_repo_provider
 ):
     base_commit = CommitFactory()
     dbsession.add(base_commit)
@@ -161,7 +249,7 @@ async def test_bundle_analysis_notify_size_decrease(
     dbsession.add(pull)
     dbsession.commit()
 
-    notifier = Notifier(head_commit, UserYaml.from_dict({}))
+    notifier = Notifier(head_commit, UserYaml.from_dict(config))
 
     repo_key = ArchiveService.get_archive_hash(base_commit.repository)
     mock_storage.write_file(
@@ -216,9 +304,14 @@ Changes will decrease total bundle size by 3.46kB :arrow_down:
 
     success = await notifier.notify()
     assert success == True
-    mock_repo_provider.post_comment.assert_called_once_with(
-        pull.pullid, expected_message_decrease
-    )
+    if should_notify:
+        assert pull.bundle_analysis_commentid is not None
+        mock_repo_provider.post_comment.assert_called_once_with(
+            pull.pullid, expected_message_decrease
+        )
+    else:
+        assert pull.bundle_analysis_commentid is None
+        mock_repo_provider.post_comment.assert_not_called()
 
 
 @pytest.mark.asyncio
