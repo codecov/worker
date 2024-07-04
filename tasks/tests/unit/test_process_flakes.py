@@ -77,18 +77,74 @@ def test_generate_flake_dict(transactional_db):
     assert "id" in flake_dict
 
 
-def test_get_test_instances(transactional_db):
+def test_get_test_instances_when_test_is_flaky(transactional_db):
     repo = RepositoryFactory()
     commit = CommitFactory()
 
     ti = TestInstanceFactory(
-        commitid=commit.commitid, repoid=repo.repoid, branch="main"
+        commitid=commit.commitid,
+        repoid=repo.repoid,
+        branch="main",
+        outcome=TestInstance.Outcome.FAILURE.value,
     )
     ti.save()
 
-    tis = get_test_instances(commit.commitid, repo.repoid, "main")
+    tis = get_test_instances(
+        commit.commitid, repo.repoid, "main", flaky_tests=[ti.test_id]
+    )
     assert len(tis) == 1
     assert tis[0].commitid
+
+
+def test_get_test_instances_when_instance_is_failure(transactional_db):
+    repo = RepositoryFactory()
+    commit = CommitFactory()
+
+    ti = TestInstanceFactory(
+        commitid=commit.commitid,
+        repoid=repo.repoid,
+        branch="main",
+        outcome=TestInstance.Outcome.FAILURE.value,
+    )
+    ti.save()
+
+    tis = get_test_instances(commit.commitid, repo.repoid, "main", flaky_tests=[])
+    assert len(tis) == 1
+    assert tis[0].commitid
+
+
+def test_get_test_instances_when_test_is_flaky_and_instance_is_skip(transactional_db):
+    repo = RepositoryFactory()
+    commit = CommitFactory()
+
+    ti = TestInstanceFactory(
+        commitid=commit.commitid,
+        repoid=repo.repoid,
+        branch="main",
+        outcome=TestInstance.Outcome.SKIP.value,
+    )
+    ti.save()
+
+    tis = get_test_instances(
+        commit.commitid, repo.repoid, "main", flaky_tests=[ti.test_id]
+    )
+    assert len(tis) == 0
+
+
+def test_get_test_instances_when_instance_is_pass(transactional_db):
+    repo = RepositoryFactory()
+    commit = CommitFactory()
+
+    ti = TestInstanceFactory(
+        commitid=commit.commitid,
+        repoid=repo.repoid,
+        branch="main",
+        outcome=TestInstance.Outcome.PASS.value,
+    )
+    ti.save()
+
+    tis = get_test_instances(commit.commitid, repo.repoid, "main", flaky_tests=[])
+    assert len(tis) == 0
 
 
 def test_update_passed_flakes(transactional_db):

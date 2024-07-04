@@ -1,9 +1,13 @@
 import datetime as dt
 import logging
 
+from django.db.models import Q
 from sentry_sdk import metrics
 from shared.celery_config import process_flakes_task_name
-from shared.django_apps.reports.models import Flake, TestInstance
+from shared.django_apps.reports.models import (
+    Flake,
+    TestInstance,
+)
 
 from app import celery_app
 from tasks.base import BaseCodecovTask
@@ -39,8 +43,12 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         with metrics.timing("process_flakes", tags={"repo_id": repo_id}):
             flake_dict = generate_flake_dict(repo_id)
 
+            flaky_tests = list(flake_dict.keys())
+
             for commit_id in commit_id_list:
-                test_instances = get_test_instances(commit_id, repo_id, branch)
+                test_instances = get_test_instances(
+                    commit_id, repo_id, branch, flaky_tests
+                )
                 for test_instance in test_instances:
                     if test_instance.outcome == TestInstance.Outcome.PASS.value:
                         flake = flake_dict.get(test_instance.test_id)
@@ -61,13 +69,32 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
             "Successfully processed flakes",
             extra=dict(repoid=repo_id, commit=commit_id_list),
         )
+
         return {"successful": True}
 
 
-def get_test_instances(commit_id: str, repo_id: int, branch: str) -> list[TestInstance]:
+def get_test_instances(
+    commit_id: str,
+    repo_id: int,
+    branch: str,
+    flaky_tests: list[str],
+) -> list[TestInstance]:
+    # get test instances on this repo commit branch combination that either:
+    # - failed
+    # - belong to an already flaky test
     test_instances = list(
         TestInstance.objects.filter(
-            commitid=commit_id, repoid=repo_id, branch=branch
+            Q(commitid=commit_id)
+            & Q(repoid=repo_id)
+            & Q(branch=branch)
+            & (
+                Q(outcome=TestInstance.Outcome.ERROR.value)
+                | Q(outcome=TestInstance.Outcome.FAILURE.value)
+                | (
+                    Q(outcome=TestInstance.Outcome.PASS.value)
+                    & Q(test_id__in=flaky_tests)
+                )
+            )
         ).all()
     )
     return test_instances
