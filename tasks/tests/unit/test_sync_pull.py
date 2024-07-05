@@ -82,8 +82,11 @@ class TestPullSyncTask(object):
                 }
             }
         )
+        mock_repo_provider = MagicMock(
+            get_commit=MagicMock(return_value=dict(parents=["1", "2"]))
+        )
         res = task.update_pull_commits(
-            enriched_pull, commits, commits_at_base, current_yaml
+            mock_repo_provider, enriched_pull, commits, commits_at_base, current_yaml
         )
 
         if flake_detection:
@@ -116,7 +119,7 @@ class TestPullSyncTask(object):
         assert first_commit.branch == "lookatthis"
         assert third_commit.branch == "lookatthis"
 
-    def test_update_pull_commits_not_merged(self, dbsession):
+    def test_update_pull_commits_not_merged(self, dbsession, mocker):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -161,8 +164,11 @@ class TestPullSyncTask(object):
             "parents": [{"commitid": third_commit.commitid, "parents": []}],
         }
         current_yaml = UserYaml.from_dict(dict())
+        mock_repo_provider = MagicMock(
+            get_commit=MagicMock(return_value=dict(parents=["1", "2"]))
+        )
         res = task.update_pull_commits(
-            enriched_pull, commits, commits_at_base, current_yaml
+            mock_repo_provider, enriched_pull, commits, commits_at_base, current_yaml
         )
         assert res == {"merged_count": 0, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
@@ -347,11 +353,11 @@ class TestPullSyncTask(object):
             ],
         }
         task = PullSyncTask()
-        assert not task.was_pr_merged_with_squash(
+        assert not task.was_squash_via_ancestor_tree(
             ["c739768fcac68144a3a6d82305b9c4106934d31a"], ancestors_tree
         )
-        assert task.was_pr_merged_with_squash(["some_other_stuff"], ancestors_tree)
-        assert not task.was_pr_merged_with_squash(
+        assert task.was_squash_via_ancestor_tree(["some_other_stuff"], ancestors_tree)
+        assert not task.was_squash_via_ancestor_tree(
             ["some_other_stuff", "some_commit"], ancestors_tree
         )
 
