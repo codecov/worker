@@ -68,13 +68,13 @@ def test_generate_flake_dict(transactional_db):
 
     assert len(flake_dict) == 0
 
-    f = FlakeFactory(repository=repo, test__id="id")
+    f = FlakeFactory(repository=repo, test__id="id", reduced_error__id=10)
     f.save()
 
     flake_dict = generate_flake_dict(repo.repoid)
 
     assert len(flake_dict) == 1
-    assert "id" in flake_dict
+    assert ("id", 10) in flake_dict
 
 
 def test_get_test_instances_when_test_is_flaky(transactional_db):
