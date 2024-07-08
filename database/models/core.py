@@ -40,6 +40,12 @@ class User(CodecovBaseModel):
         return value
 
 
+class Account(object):
+    # __tablename__ = "codecov_auth_account"
+    id_ = Column("id", types.BigInteger, primary_key=True)
+    name = Column(types.String(100), server_default=FetchedValue())
+
+
 class Owner(CodecovBaseModel):
     __tablename__ = "owners"
     ownerid = Column(types.Integer, primary_key=True)
@@ -104,6 +110,31 @@ class Owner(CodecovBaseModel):
         cascade="all, delete",
         passive_deletes=True,
     )
+
+    business_email = Column(types.Text, server_default=FetchedValue())
+    stripe_coupon_id = Column(types.Text, server_default=FetchedValue())
+    root_parent_service_id = Column(types.Text, server_default=FetchedValue())
+    private_access = Column(types.Boolean, server_default=FetchedValue())
+    staff = Column(types.Boolean, server_default=FetchedValue())
+    cache = Column(postgresql.JSON, server_default=FetchedValue())
+    did_trial = Column(types.Boolean, server_default=FetchedValue())
+    invoice_details = Column(types.Text, server_default=FetchedValue())
+    uses_invoice = Column(types.Boolean, server_default=FetchedValue())
+    delinquent = Column(types.Boolean, server_default=FetchedValue())
+    student = Column(types.Boolean, server_default=FetchedValue())
+    student_created_at = Column(types.DateTime, server_default=FetchedValue())
+    student_updated_at = Column(types.DateTime, server_default=FetchedValue())
+    is_superuser = Column(types.Boolean, server_default=FetchedValue())
+    max_upload_limit = Column(types.Integer, server_default=FetchedValue())
+    sentry_user_id = Column(types.Text, server_default=FetchedValue())
+    sentry_user_data = Column(postgresql.JSON, server_default=FetchedValue())
+    # ownerid = Column(types.Integer, ForeignKey("owners.ownerid"))
+    user_id = Column(types.Integer, ForeignKey("users.id"))
+    user = relationship(User, foreign_keys=[user_id])
+
+    account_id = Column(types.Integer, server_default=FetchedValue())
+    # account_id = Column(types.Integer, ForeignKey("account.id"))
+    # account = relationship(Account, foreign_keys=[account_id])
 
     # TODO: Create association between `User` and `Owner` mirroring `codecov-api`
     # https://github.com/codecov/codecov-api/blob/204f7fd7e37896efe0259e4bc91aad20601087e0/codecov_auth/models.py#L196-L202

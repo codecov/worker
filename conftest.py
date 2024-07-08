@@ -88,6 +88,13 @@ def db(engine, sqlalchemy_connect_url):
     Base.metadata.create_all(engine)
 
 
+@pytest.fixture(scope="session")
+def django_db_setup():
+    from django.conf import settings
+
+    settings.DATABASES["default"]["NAME"] = "background_test"
+
+
 @pytest.fixture
 def dbsession(db, engine):
     connection = engine.connect()

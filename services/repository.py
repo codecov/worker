@@ -5,6 +5,9 @@ from datetime import datetime
 from typing import Any, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
+from shared.bots import (
+    get_adapter_auth_information,
+)
 from shared.config import get_config, get_verify_ssl
 from shared.django_apps.codecov_auth.models import Service
 from shared.torngit.exceptions import (
@@ -25,9 +28,6 @@ from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 )
 from helpers.token_refresh import get_token_refresh_callback
-from services.bots import (
-    get_adapter_auth_information,
-)
 from services.bots.github_apps import (
     get_github_app_token,
     get_specific_github_app_details,

@@ -930,12 +930,9 @@ class TestSyncReposTaskUnit(object):
 
         mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_not_called()
 
+    @pytest.mark.django_db(databases={"default"})
     def test_sync_repos_using_integration_affected_repos_known(
-        self,
-        mocker,
-        dbsession,
-        mock_owner_provider,
-        mock_redis,
+        self, mocker, dbsession, mock_owner_provider, mock_redis, engine
     ):
         user = OwnerFactory.create(
             organizations=[],
@@ -946,7 +943,6 @@ class TestSyncReposTaskUnit(object):
             service_id="45343385",
         )
         dbsession.add(user)
-
         mocked_app = mocker.patch.object(
             SyncRepoLanguagesGQLTask,
             "app",
@@ -1043,6 +1039,9 @@ class TestSyncReposTaskUnit(object):
 
         mock_owner_provider.get_repos_from_nodeids_generator.side_effect = side_effect
         mock_owner_provider.service = "github"
+
+        print("le query", dbsession.query(Owner).all())
+        print("le engineee", engine.__dict__)
 
         SyncReposTask().run_impl(
             dbsession,
