@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from asgiref.sync import async_to_sync
 from shared.celery_config import compute_comparison_task_name
