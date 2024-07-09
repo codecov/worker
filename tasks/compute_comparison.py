@@ -97,7 +97,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
     def create_or_update_flag_comparisons(
         self,
         db_session,
-        head_report_flags: List[Flag],
+        head_report_flags: dict[str, Flag],
         comparison: CompareCommit,
         comparison_proxy: ComparisonProxy,
     ):
