@@ -555,17 +555,16 @@ class TestSyncReposTaskUnit(object):
 
         # Three of the four repositories we can see are already in the database.
         # Will we update `using_integration` correctly?
-        preseeded_repos = []
-        for repo in mock_repos[:-1]:
-            preseeded_repos.append(
-                RepositoryFactory.create(
-                    private=repo["repo"]["private"],
-                    name=repo["repo"]["name"],
-                    using_integration=repo["_using_integration"],
-                    service_id=repo["repo"]["service_id"],
-                    owner=user,
-                )
+        preseeded_repos = [
+            RepositoryFactory.create(
+                private=repo["repo"]["private"],
+                name=repo["repo"]["name"],
+                using_integration=repo["_using_integration"],
+                service_id=repo["repo"]["service_id"],
+                owner=user,
             )
+            for repo in mock_repos[:-1]
+        ]
 
         for repo in preseeded_repos:
             dbsession.add(repo)
@@ -809,17 +808,16 @@ class TestSyncReposTaskUnit(object):
 
         # Three of the four repositories we can see are already in the database.
         # Will we update `using_integration` correctly?
-        preseeded_repos = []
-        for repo in mock_repos[:-1]:
-            preseeded_repos.append(
-                RepositoryFactory.create(
-                    private=repo["repo"]["private"],
-                    name=repo["repo"]["name"],
-                    using_integration=repo["_using_integration"],
-                    service_id=repo["repo"]["service_id"],
-                    owner=user,
-                )
+        preseeded_repos = [
+            RepositoryFactory.create(
+                private=repo["repo"]["private"],
+                name=repo["repo"]["name"],
+                using_integration=repo["_using_integration"],
+                service_id=repo["repo"]["service_id"],
+                owner=user,
             )
+            for repo in mock_repos[:-1]
+        ]
 
         for repo in preseeded_repos:
             dbsession.add(repo)
@@ -908,17 +906,16 @@ class TestSyncReposTaskUnit(object):
             mock_repos
         ]
 
-        preseeded_repos = []
-        for repo in mock_repos[:-1]:
-            preseeded_repos.append(
-                RepositoryFactory.create(
-                    private=repo["repo"]["private"],
-                    name=repo["repo"]["name"],
-                    using_integration=repo["_using_integration"],
-                    service_id=repo["repo"]["service_id"],
-                    owner=user,
-                )
+        preseeded_repos = [
+            RepositoryFactory.create(
+                private=repo["repo"]["private"],
+                name=repo["repo"]["name"],
+                using_integration=repo["_using_integration"],
+                service_id=repo["repo"]["service_id"],
+                owner=user,
             )
+            for repo in mock_repos[:-1]
+        ]
 
         for repo in preseeded_repos:
             dbsession.add(repo)

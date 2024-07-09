@@ -102,7 +102,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         comparison_proxy: ComparisonProxy,
     ):
         repository_id = comparison.compare_commit.repository.repoid
-        for flag_name, _ in head_report_flags.items():
+        for flag_name in head_report_flags.keys():
             totals = self.get_flag_comparison_totals(flag_name, comparison_proxy)
             repositoryflag = (
                 db_session.query(RepositoryFlag)

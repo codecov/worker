@@ -567,17 +567,17 @@ class FlagSectionWriter(BaseSectionWriter):
                     }
                 )
 
-        for flag in missing_flags:
-            flags.append(
-                {
-                    "name": flag,
-                    "before": base_flags[flag],
-                    "after": None,
-                    "diff": None,
-                    "carriedforward": False,
-                    "carriedforward_from": None,
-                }
-            )
+        flags.extend(
+            {
+                "name": flag,
+                "before": base_flags[flag],
+                "after": None,
+                "diff": None,
+                "carriedforward": False,
+                "carriedforward_from": None,
+            }
+            for flag in missing_flags
+        )
 
         # TODO: get icons working
         # flag_icon_url = ""
