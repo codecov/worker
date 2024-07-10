@@ -98,7 +98,7 @@ class DiffOutcomeDetector(BaseSymptomDetector):
 
     def detect(self):
         for test_id, commit_dict in self.state.items():
-            for _, obj in commit_dict.items():
+            for obj in commit_dict.values():
                 if str(Outcome.Pass) in obj.outcomes and (
                     str(Outcome.Failure) in obj.outcomes
                     or str(Outcome.Error) in obj.outcomes
@@ -142,7 +142,7 @@ class UnrelatedMatchesDetector(BaseSymptomDetector):
 
     def detect(self):
         for test_id, test_dict in self.state.items():
-            for _, obj in test_dict.items():
+            for obj in test_dict.values():
                 if len(obj.branches) > 1:
                     self.res[test_id] += obj.instances
         return self.res
