@@ -14,7 +14,7 @@ from database.models import Commit, Flake, Repository, TestResultReportTotals
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
-from rollouts import FLAKY_TEST_DETECTION
+from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotificationFailure,
@@ -148,7 +148,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         assert commit, "commit not found"
 
-        if self.flaky_test_detection_enabled(repoid, commit_yaml):
+        if self.flaky_test_detection_enabled(
+            repoid, commit_yaml
+        ) or self.flaky_shadow_mode_enabled(repoid):
             repo = db_session.query(Repository).filter_by(repoid=repoid).first()
 
             if commit.merged is True or commit.branch == repo.branch:
@@ -375,6 +377,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         return FLAKY_TEST_DETECTION.check_value(
             identifier=repoid, default=False
         ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
+
+    def flaky_shadow_mode_enabled(self, repoid: int):
+        return FLAKY_SHADOW_MODE.check_value(identifier=repoid, default=False)
 
 
 RegisteredTestResultsFinisherTask = celery_app.register_task(TestResultsFinisherTask())
