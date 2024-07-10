@@ -166,7 +166,7 @@ async def test_perform_initial_review(
 ):
     mock_configuration.set_params(config_params)
 
-    bot_token = mocker.patch("services.bots.repo_bots.get_repo_particular_bot_token")
+    bot_token = mocker.patch("shared.bots.repo_bots.get_repo_particular_bot_token")
     bot_token.return_value = (torngit_token, None)
 
     owner = OwnerFactory.create(service="github", username="scott-codecov")
@@ -195,7 +195,7 @@ async def test_perform_duplicate_review(
 ):
     mock_configuration.set_params(config_params)
 
-    bot_token = mocker.patch("services.bots.repo_bots.get_repo_particular_bot_token")
+    bot_token = mocker.patch("shared.bots.repo_bots.get_repo_particular_bot_token")
     bot_token.return_value = (torngit_token, None)
 
     owner = OwnerFactory(service="github", username="scott-codecov")
@@ -232,7 +232,7 @@ async def test_perform_new_commit(
 ):
     mock_configuration.set_params(config_params)
 
-    bot_token = mocker.patch("services.bots.repo_bots.get_repo_particular_bot_token")
+    bot_token = mocker.patch("shared.bots.repo_bots.get_repo_particular_bot_token")
     bot_token.return_value = (torngit_token, None)
 
     owner = OwnerFactory(service="github", username="scott-codecov")
