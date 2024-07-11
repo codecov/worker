@@ -421,7 +421,7 @@ class TestUploadTaskIntegration(object):
             jsonified_redis_queue
         )
         mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
-            datetime.utcnow() - timedelta(seconds=10)
+            datetime.now() - timedelta(seconds=10)
         ).timestamp()
         with pytest.raises(Retry):
             UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
@@ -455,7 +455,7 @@ class TestUploadTaskIntegration(object):
             repository__name="example-python",
         )
         mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
-            datetime.utcnow() - timedelta(seconds=1200)
+            datetime.now() - timedelta(seconds=1200)
         ).timestamp()
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
@@ -1635,6 +1635,35 @@ class TestUploadTaskUnit(object):
 
         assert repository.webhook_secret is None
         gitlab_provider.edit_webhook.assert_not_called()
+
+    def test_needs_webhook_secret_backfill_error(
+        self, dbsession, mocker, mock_configuration
+    ):
+        mock_configuration.set_params(
+            {"gitlab_enterprise": {"bot": {"key": "somekey"}}}
+        )
+        repository = RepositoryFactory.create(
+            repoid="5678", hookid="1234", webhook_secret=None
+        )
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        gitlab_e_provider = mocker.MagicMock(
+            GitlabEnterprise, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_e_provider
+        gitlab_e_provider.data = mocker.MagicMock()
+        gitlab_e_provider.service = "gitlab"
+        gitlab_e_provider.edit_webhook.side_effect = TorngitClientError
+        task = UploadTask()
+
+        res = task.possibly_setup_webhooks(commit, gitlab_e_provider)
+        assert res is False
+        assert repository.webhook_secret is None
+        gitlab_e_provider.edit_webhook.assert_called_once()
 
     def test_upload_not_ready_to_build_report(
         self, dbsession, mocker, mock_configuration, mock_repo_provider, mock_redis

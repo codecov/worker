@@ -971,10 +971,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 if repository_service.service in ["gitlab", "gitlab_enterprise"]:
                     # we use per-repo webhook secrets in this case
                     webhook_secret = repository.webhook_secret or str(uuid.uuid4())
-                    repository.webhook_secret = webhook_secret
                 else:
                     # service-level config value will be used instead in this case
                     webhook_secret = None
+
                 if should_post_webhook:
                     hook_result = async_to_sync(create_webhook_on_provider)(
                         repository_service, webhook_secret=webhook_secret
@@ -991,6 +991,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     )
                     repository.hookid = hookid
                     repo_data["repo"]["hookid"] = hookid
+                    repository.webhook_secret = webhook_secret
                     return True  # was_setup
                 else:
                     async_to_sync(gitlab_webhook_update)(
@@ -998,6 +999,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         hookid=repository.hookid,
                         secret=webhook_secret,
                     )
+                    repository.webhook_secret = webhook_secret
                     log.info(
                         "Updated hook",
                         extra=dict(
@@ -1017,6 +1019,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         commit=commit.commitid,
                         action="SET" if should_post_webhook else "EDIT",
                     ),
+                    exc_info=True,
                 )
         return False
 
