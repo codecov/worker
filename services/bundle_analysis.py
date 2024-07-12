@@ -15,6 +15,9 @@ from shared.bundle_analysis import (
 )
 from shared.bundle_analysis.models import AssetType
 from shared.bundle_analysis.storage import get_bucket_name
+from shared.django_apps.bundle_analysis_app.service.bundle_analysis import (
+    BundleAnalysisCacheConfigService,
+)
 from shared.reports.enums import UploadState
 from shared.storage import get_appropriate_storage_service
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
@@ -202,6 +205,14 @@ class BundleAnalysisReportService(BaseReportService):
             prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
             if prev_bar:
                 bundle_report.associate_previous_assets(prev_bar)
+                prev_bar.cleanup()
+
+            # Turn on caching option by default for all new bundles only for default branch
+            if commit.branch == commit.repository.branch:
+                for bundle in bundle_report.bundle_reports():
+                    BundleAnalysisCacheConfigService.update_cache_option(
+                        commit.repoid, bundle.name
+                    )
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
