@@ -668,10 +668,14 @@ def test_bundle_analysis_process_associate_called_two(
     )
     associate.return_value = None
 
+    class MockBundleAnalysisReport:
+        def cleanup(self):
+            pass
+
     prev_bundle_report = mocker.patch(
         "services.bundle_analysis.BundleAnalysisReportService._previous_bundle_analysis_report"
     )
-    prev_bundle_report.return_value = True
+    prev_bundle_report.return_value = MockBundleAnalysisReport()
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,

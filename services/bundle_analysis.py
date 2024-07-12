@@ -68,6 +68,7 @@ class ProcessingResult:
     upload: Upload
     commit: Commit
     bundle_report: Optional[BundleAnalysisReport] = None
+    previous_bundle_report: Optional[BundleAnalysisReport] = None
     session_id: Optional[int] = None
     error: Optional[ProcessingError] = None
 
@@ -205,7 +206,6 @@ class BundleAnalysisReportService(BaseReportService):
             prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
             if prev_bar:
                 bundle_report.associate_previous_assets(prev_bar)
-                prev_bar.cleanup()
 
             # Turn on caching option by default for all new bundles only for default branch
             if commit.branch == commit.repository.branch:
@@ -273,6 +273,7 @@ class BundleAnalysisReportService(BaseReportService):
             upload=upload,
             commit=commit,
             bundle_report=bundle_report,
+            previous_bundle_report=prev_bar,
             session_id=session_id,
         )
 
