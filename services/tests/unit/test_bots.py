@@ -26,6 +26,7 @@ def get_github_integration_token_side_effect(
     return f"installation_token_{installation_id}_{app_id}"
 
 
+# The tests for this fn also exist on shared. These, however, are testing the sqlalchemy implementation of them
 class TestGettingAdapterAuthInformation(object):
     class TestGitHubOwnerNoRepoInfo(object):
         def _generate_test_owner(
