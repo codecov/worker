@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     "shared.django_apps.rollouts",
     "shared.django_apps.user_measurements",
     "shared.django_apps.codecov_metrics",
-    "shared.django_apps.bundle_analysis_app",
+    "shared.django_apps.bundle_analysis",
     "psqlextra",
     # Needed to install legacy migrations
     "django.contrib.admin",

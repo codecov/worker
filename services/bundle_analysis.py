@@ -15,7 +15,7 @@ from shared.bundle_analysis import (
 )
 from shared.bundle_analysis.models import AssetType
 from shared.bundle_analysis.storage import get_bucket_name
-from shared.django_apps.bundle_analysis_app.service.bundle_analysis import (
+from shared.django_apps.bundle_analysis.service.bundle_analysis import (
     BundleAnalysisCacheConfigService,
 )
 from shared.reports.enums import UploadState
