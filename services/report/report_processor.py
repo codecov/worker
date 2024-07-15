@@ -6,6 +6,7 @@ from json import load
 from typing import Any, Optional, Tuple
 
 from lxml import etree
+from sentry_sdk import metrics as sentry_metrics
 from shared.metrics import Counter, Histogram
 from shared.reports.resources import Report
 
@@ -161,6 +162,10 @@ def process_report(
     processors = get_possible_processors_list(report_type)
     for processor in processors:
         if processor.matches_content(parsed_report, first_line, name):
+            sentry_metrics.incr(
+                "services.report.report_processor.parser",
+                tags={"type": type(processor).__name__},
+            )
             with RAW_REPORT_PROCESSOR_RUNTIME_SECONDS.labels(
                 processor=processor.name
             ).time():
