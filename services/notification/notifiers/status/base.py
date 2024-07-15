@@ -132,7 +132,7 @@ class StatusNotifier(AbstractBaseNotifier):
             flag_configuration = self.current_yaml.get_flag_configuration(flag)
             if flag_configuration and head_report and head_report.sessions:
                 number_of_occ = 0
-                for sid, session in head_report.sessions.items():
+                for session in head_report.sessions.values():
                     if session.flags and flag in session.flags:
                         number_of_occ += 1
                 needed_builds = flag_configuration.get("after_n_builds", 0)

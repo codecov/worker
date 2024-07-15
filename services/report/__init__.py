@@ -805,11 +805,11 @@ class ReportService(BaseReportService):
                     ),
                 )
                 return Report()
-            flags_to_carryforward = []
-            report_flags = parent_report.get_flag_names()
-            for flag_name in report_flags:
-                if self.current_yaml.flag_has_carryfoward(flag_name):
-                    flags_to_carryforward.append(flag_name)
+            flags_to_carryforward = [
+                flag_name
+                for flag_name in parent_report.get_flag_names()
+                if self.current_yaml.flag_has_carryfoward(flag_name)
+            ]
             if not flags_to_carryforward:
                 return Report()
             paths_to_carryforward = get_paths_from_flags(

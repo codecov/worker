@@ -90,10 +90,7 @@ class TestPullSyncTask(object):
             apply_async.assert_called_once_with(
                 kwargs=dict(
                     repo_id=repository.repoid,
-                    commit_id_list=[
-                        first_commit.commitid,
-                        third_commit.commitid,
-                    ],
+                    commit_id_list=[head_commit.commitid],
                     branch="thing",
                 )
             )
@@ -486,9 +483,8 @@ class TestPullSyncTask(object):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        commits = [CommitFactory.create(repository=repository) for i in range(3)]
-        for commit in commits:
-            dbsession.add(commit)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
         dbsession.flush()
 
         dbsession.flush()
@@ -505,18 +501,17 @@ class TestPullSyncTask(object):
                 }
             }
         )
-        commit_id_list = [commit.commitid for commit in commits]
         task.trigger_process_flakes(
             repository.repoid,
-            commit_id_list,
-            dict(head=dict(branch="main")),
+            commit.commitid,
+            "main",
             current_yaml,
         )
         if flake_detection:
             apply_async.assert_called_once_with(
                 kwargs=dict(
                     repo_id=repository.repoid,
-                    commit_id_list=commit_id_list,
+                    commit_id_list=[commit.commitid],
                     branch="main",
                 )
             )

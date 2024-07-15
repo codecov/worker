@@ -64,7 +64,7 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
                     ),
                 )
 
-    for fid, content in file_by_id.items():
+    for content in file_by_id.values():
         report_builder_session.append(content)
 
     return report_builder_session.output_report()

@@ -36,9 +36,9 @@ indent-width = 4
 target-version = "py312"
 
 [lint]
-# Currently only enabled for most F (Pyflakes), Pycodestyle (Error), 
+# Currently only enabled for most F (Pyflakes), Pycodestyle (Error), PERF (Perflint),
 # PyLint (Convention, Error), and I (isort) rules: https://docs.astral.sh/ruff/rules/
-select = ["F", "E", "I", "PLC", "PLE"]
+select = ["F", "E", "I", "PLC", "PLE", "PERF"]
 ignore = ["F841", "F405", "F403", "E501", "E712"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

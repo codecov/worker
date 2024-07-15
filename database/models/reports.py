@@ -312,6 +312,7 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     failure_message = Column(types.Text)
     branch = Column(types.Text, nullable=True)
     commitid = Column(types.Text, nullable=True)
+    repoid = Column(types.Integer, nullable=True)
 
     reduced_error_id = Column(
         types.Integer, ForeignKey("reports_reducederror.id"), nullable=True
