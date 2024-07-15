@@ -12,5 +12,3 @@ USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID = Feature(
 PARALLEL_UPLOAD_PROCESSING_BY_REPO = Feature("parallel_upload_processing")
 
 CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER = Feature("carryforward_base_search_range")
-
-SYNC_PULL_LOCK_TIMEOUT = Feature("sync_pull_lock_timeout")
