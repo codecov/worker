@@ -2,7 +2,7 @@ from shared.bundle_analysis.storage import get_bucket_name
 
 from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
-from services.bundle_analysis import ProcessingResult
+from services.bundle_analysis.report import ProcessingResult
 from tasks.bundle_analysis_save_measurements import BundleAnalysisSaveMeasurementsTask
 
 
@@ -29,7 +29,7 @@ def test_bundle_analysis_save_measurements_task_success(
     dbsession.flush()
 
     save_measurements_mock = mocker.patch(
-        "services.bundle_analysis.BundleAnalysisReportService.save_measurements"
+        "services.bundle_analysis.report.BundleAnalysisReportService.save_measurements"
     )
     save_measurements_mock.return_value = ProcessingResult(
         upload=upload, commit=commit, error=None
@@ -69,7 +69,7 @@ def test_bundle_analysis_save_measurements_task_error_from_save_service(
     dbsession.flush()
 
     save_measurements_mock = mocker.patch(
-        "services.bundle_analysis.BundleAnalysisReportService.save_measurements"
+        "services.bundle_analysis.report.BundleAnalysisReportService.save_measurements"
     )
     save_measurements_mock.return_value = ProcessingResult(
         upload=upload, commit=commit, error=True
@@ -109,7 +109,7 @@ def test_bundle_analysis_save_measurements_task_error_from_processor_task(
     dbsession.flush()
 
     save_measurements_mock = mocker.patch(
-        "services.bundle_analysis.BundleAnalysisReportService.save_measurements"
+        "services.bundle_analysis.report.BundleAnalysisReportService.save_measurements"
     )
     save_measurements_mock.return_value = ProcessingResult(
         upload=upload, commit=commit, error=None
