@@ -105,7 +105,7 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
             return dict(checked=False, reason="Enterprise env")
 
         gh_app_token = get_github_integration_token(
-            service="github", integration_id=None
+            service="github", installation_id=None
         )
         gh_handler = Github(
             token=dict(key=gh_app_token),
