@@ -8,7 +8,7 @@ from app import celery_app
 from database.enums import ReportType
 from database.models import Commit
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from services.bundle_analysis import Notifier
+from services.bundle_analysis.notify import Notifier as BundleNotifier
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
 
@@ -104,7 +104,7 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
             installation_name_to_use = get_installation_name_for_owner_for_task(
                 db_session, self.name, commit.repository.owner
             )
-            notifier = Notifier(
+            notifier = BundleNotifier(
                 commit, commit_yaml, gh_app_installation_name=installation_name_to_use
             )
             success = async_to_sync(notifier.notify)()

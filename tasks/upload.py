@@ -40,7 +40,7 @@ from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
-from services.bundle_analysis import BundleAnalysisReportService
+from services.bundle_analysis.report import BundleAnalysisReportService
 from services.redis import (
     download_archive_from_redis,
     get_parallel_upload_processing_session_counter_redis_key,
