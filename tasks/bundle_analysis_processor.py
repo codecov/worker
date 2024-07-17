@@ -10,7 +10,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit, Upload
-from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
+from services.bundle_analysis.report import (
+    BundleAnalysisReportService,
+    ProcessingResult,
+)
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_save_measurements import (

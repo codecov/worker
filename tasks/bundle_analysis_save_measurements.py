@@ -6,7 +6,10 @@ from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Commit, Upload
-from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
+from services.bundle_analysis.report import (
+    BundleAnalysisReportService,
+    ProcessingResult,
+)
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
