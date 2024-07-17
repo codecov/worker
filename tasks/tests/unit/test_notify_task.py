@@ -5,7 +5,10 @@ from unittest.mock import MagicMock, call
 import pytest
 from celery.exceptions import MaxRetriesExceededError, Retry
 from freezegun import freeze_time
-from shared.celery_config import new_user_activated_task_name
+from shared.celery_config import (
+    activate_account_user_task_name,
+    new_user_activated_task_name,
+)
 from shared.reports.resources import Report
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
@@ -235,14 +238,25 @@ class TestNotifyTaskHelpers(object):
             enriched_pull.database_pull.repository.owner.ownerid,
             pr_author.ownerid,
         )
-        assert mocked_send_task.call_count == 1
-        mocked_send_task.assert_called_with(
+        assert mocked_send_task.call_count == 2
+
+        new_user_activation_call = mocked_send_task.call_args_list[0]
+        account_user_activation_call = mocked_send_task.call_args_list[1]
+        assert new_user_activation_call == call(
             new_user_activated_task_name,
             args=None,
             kwargs=dict(
                 org_ownerid=enriched_pull.database_pull.repository.owner.ownerid,
                 user_ownerid=pr_author.ownerid,
             ),
+        )
+        assert account_user_activation_call[0] == (
+            activate_account_user_task_name,
+            None,
+            {
+                "org_ownerid": enriched_pull.database_pull.repository.owner.ownerid,
+                "user_ownerid": pr_author.ownerid,
+            },
         )
 
     @pytest.mark.parametrize("cached_id, app_to_save", [("24", "24"), (None, 12)])
