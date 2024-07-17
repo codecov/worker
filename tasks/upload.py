@@ -27,12 +27,8 @@ from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from helpers.checkpoint_logger import (
-    _kwargs_key,
-)
-from helpers.checkpoint_logger import (
-    from_kwargs as checkpoints_from_kwargs,
-)
+from helpers.checkpoint_logger import _kwargs_key
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
@@ -50,6 +46,7 @@ from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
     create_webhook_on_provider,
     get_repo_provider_service,
+    gitlab_webhook_test,
     gitlab_webhook_update,
     possibly_update_commit_from_provider_info,
 )
@@ -950,12 +947,26 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             and hasattr(repository_service, "post_webhook")
         )
 
-        needs_webhook_secret_backfill = (
+        needs_webhook_secret_check = (
             repository_service.service in ["gitlab", "gitlab_enterprise"]
             and repository.hookid
-            and not repository.webhook_secret
-            and hasattr(repository_service, "edit_webhook")
         )
+
+        # we are into GitLab webhook secrets now, so check that they work, reset if not working
+        needs_webhook_secret_backfill = False
+        if needs_webhook_secret_check:
+            if repository.webhook_secret:
+                successful_test = async_to_sync(gitlab_webhook_test)(
+                    repository_service=repository_service,
+                    hookid=repository.hookid,
+                    secret=repository.webhook_secret,
+                )
+                if not successful_test:
+                    # reset secret
+                    repository.webhook_secret = None
+                    needs_webhook_secret_backfill = True
+            else:
+                needs_webhook_secret_backfill = True
 
         # try to add webhook
         if should_post_webhook or needs_webhook_secret_backfill:

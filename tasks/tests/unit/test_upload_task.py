@@ -2,7 +2,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import AsyncMock, MagicMock, call
 
 import mock
 import pytest
@@ -29,6 +29,7 @@ from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
 from services.report import NotReadyToBuildReportYetError, ReportService
+from services.repository import TEST_SUCCESS_MESSAGE
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
 from tasks.test_results_finisher import test_results_finisher_task
@@ -1603,12 +1604,44 @@ class TestUploadTaskUnit(object):
         mock_repo_provider.return_value = gitlab_provider
         gitlab_provider.data = mocker.MagicMock()
         gitlab_provider.service = "gitlab"
+        gitlab_provider.test_webhook = AsyncMock()
+        gitlab_provider.test_webhook.return_value = {"message": TEST_SUCCESS_MESSAGE}
         task = UploadTask()
         res = task.possibly_setup_webhooks(commit, gitlab_provider)
         assert res is False
 
         assert repository.webhook_secret is secret
         gitlab_provider.edit_webhook.assert_not_called()
+
+    def test_needs_webhook_secret_backfill_outdated_secret(
+        self, dbsession, mocker, mock_configuration
+    ):
+        mock_configuration.set_params({"gitlab": {"bot": {"key": "somekey"}}})
+        old_secret = str(uuid.uuid4())
+        repository = RepositoryFactory.create(
+            repoid="5678", hookid="1234", webhook_secret=old_secret
+        )
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        gitlab_provider = mocker.MagicMock(
+            Gitlab, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_provider
+        gitlab_provider.data = mocker.MagicMock()
+        gitlab_provider.service = "gitlab"
+        gitlab_provider.test_webhook = AsyncMock()
+        gitlab_provider.test_webhook.return_value = {}
+        task = UploadTask()
+        res = task.possibly_setup_webhooks(commit, gitlab_provider)
+        assert res is False
+
+        assert repository.webhook_secret is not old_secret
+        assert repository.webhook_secret is not None
+        gitlab_provider.edit_webhook.assert_called_once()
 
     def test_doesnt_need_webhook_secret_backfill_no_hookid(
         self, dbsession, mocker, mock_configuration

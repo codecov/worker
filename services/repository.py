@@ -402,6 +402,7 @@ WEBHOOK_EVENTS = {
         "wiki_events": False,
     },
 }
+TEST_SUCCESS_MESSAGE = "201 Created"
 
 
 async def create_webhook_on_provider(
@@ -444,6 +445,23 @@ async def gitlab_webhook_update(repository_service, hookid, secret):
         events=WEBHOOK_EVENTS[repository_service.service],
         secret=secret,
     )
+
+
+async def gitlab_webhook_test(repository_service, hookid, secret):
+    """
+    Tests an existing Gitlab webhook.
+    """
+    webhook_url = get_config("setup", "webhook_url") or get_config(
+        "setup", "codecov_url"
+    )
+    response = await repository_service.test_webhook(
+        hookid=hookid,
+        name=f"Codecov Webhook. {webhook_url}",
+        url=f"{webhook_url}/webhooks/{repository_service.service}",
+        events=WEBHOOK_EVENTS[repository_service.service],
+        secret=secret,
+    )
+    return response.get("message") == TEST_SUCCESS_MESSAGE  # check for rate limit
 
 
 def get_repo_provider_service_by_id(db_session, repoid, commitid=None):
