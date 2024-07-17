@@ -1,4 +1,8 @@
+from typing import Any
+
 import pytest
+from pytest import LogCaptureFixture
+from pytest_mock import MockFixture
 from shared.django_apps.codecov_auth.models import AccountsUsers
 from shared.django_apps.codecov_auth.tests.factories import (
     AccountFactory,
@@ -9,13 +13,20 @@ from shared.django_apps.codecov_auth.tests.factories import (
 from tasks.activate_account_user import ActivateAccountUserTask
 
 
+@pytest.fixture
+def mock_db_session(mocker: MockFixture) -> Any:
+    return mocker.Mock()
+
+
 @pytest.mark.django_db
-def test_activate_account_user_skip_no_account(caplog):
+def test_activate_account_user_skip_no_account(
+    caplog: LogCaptureFixture, mock_db_session: Any
+) -> None:
     user = OwnerFactory()
     org = OwnerFactory()
     org.account = None
     ActivateAccountUserTask().run_impl(
-        user_ownerid=user.ownerid, org_ownerid=org.ownerid
+        mock_db_session, user_ownerid=user.ownerid, org_ownerid=org.ownerid
     )
     assert len(caplog.records) == 2
     assert (
@@ -40,7 +51,8 @@ def test_activate_account_user(
     free_seat_count: int,
     is_user_student: bool,
     expected_user_count: int,
-):
+    mock_db_session: Any,
+) -> None:
     user = OwnerFactory()
     user.student = is_user_student
     user.user = UserFactory()
@@ -53,7 +65,7 @@ def test_activate_account_user(
     assert AccountsUsers.objects.count() == 0
 
     ActivateAccountUserTask().run_impl(
-        user_ownerid=user.ownerid, org_ownerid=org.ownerid
+        mock_db_session, user_ownerid=user.ownerid, org_ownerid=org.ownerid
     )
     assert AccountsUsers.objects.count() == expected_user_count
     if expected_user_count > 0:
@@ -62,7 +74,7 @@ def test_activate_account_user(
 
 
 @pytest.mark.django_db
-def test_activate_account_user_already_exists():
+def test_activate_account_user_already_exists(mock_db_session: Any) -> None:
     user = OwnerFactory()
     user.user = UserFactory()
     org = OwnerFactory()
@@ -77,7 +89,7 @@ def test_activate_account_user_already_exists():
     assert AccountsUsers.objects.filter(account=account, user=user.user).count() == 1
 
     ActivateAccountUserTask().run_impl(
-        user_ownerid=user.ownerid, org_ownerid=org.ownerid
+        mock_db_session, user_ownerid=user.ownerid, org_ownerid=org.ownerid
     )
 
     # Nothing happens... user already exists.

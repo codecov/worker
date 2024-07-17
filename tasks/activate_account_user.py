@@ -2,6 +2,7 @@ import logging
 
 from shared.celery_config import activate_account_user_task_name
 from shared.django_apps.codecov_auth.models import Account, Owner
+from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from tasks.base import BaseCodecovTask
@@ -12,6 +13,7 @@ log = logging.getLogger(__name__)
 class ActivateAccountUserTask(BaseCodecovTask, name=activate_account_user_task_name):
     def run_impl(
         self,
+        _db_session: Session,
         *,
         user_ownerid: int,
         org_ownerid: int,
