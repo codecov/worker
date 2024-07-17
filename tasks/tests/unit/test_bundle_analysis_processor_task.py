@@ -668,10 +668,14 @@ def test_bundle_analysis_process_associate_called_two(
     )
     associate.return_value = None
 
+    class MockBundleAnalysisReport:
+        def cleanup(self):
+            pass
+
     prev_bundle_report = mocker.patch(
         "services.bundle_analysis.report.BundleAnalysisReportService._previous_bundle_analysis_report"
     )
-    prev_bundle_report.return_value = True
+    prev_bundle_report.return_value = MockBundleAnalysisReport()
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -688,3 +692,201 @@ def test_bundle_analysis_process_associate_called_two(
     assert commit.state == "complete"
     assert upload.state == "processed"
     associate.assert_called_once()
+
+
+def test_bundle_analysis_processor_task_cache_config_not_saved(
+    mocker,
+    dbsession,
+    mock_storage,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
+
+    class MockBundleReport:
+        def __init__(self, bundle_name, size):
+            self.bundle_name = bundle_name
+            self.size = size
+
+        @property
+        def name(self):
+            return self.bundle_name
+
+    class MockBundleAnalysisReport:
+        def bundle_reports(self):
+            return [
+                MockBundleReport("BundleA", 1111),
+            ]
+
+        def ingest(self, path):
+            return 123
+
+        def cleanup(self):
+            pass
+
+    mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.load",
+        return_value=MockBundleAnalysisReport(),
+    )
+
+    bundle_load_mock_save = mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.save",
+        return_value=MockBundleAnalysisReport(),
+    )
+    bundle_load_mock_save.return_value = None
+
+    bundle_config_mock = mocker.patch(
+        "shared.django_apps.bundle_analysis.service.bundle_analysis.BundleAnalysisCacheConfigService.update_cache_option"
+    )
+
+    commit = CommitFactory.create(state="pending")
+
+    # Using main branch as default and commit is in feat
+    commit.branch = "feat"
+    commit.repository.branch = "main"
+
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    result = BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+    assert result == {
+        "results": [
+            {"previous": "result"},
+            {
+                "error": None,
+                "session_id": 123,
+                "upload_id": upload.id_,
+            },
+        ],
+    }
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+
+    bundle_config_mock.assert_not_called()
+
+
+def test_bundle_analysis_processor_task_cache_config_saved(
+    mocker,
+    dbsession,
+    mock_storage,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
+
+    class MockBundleReport:
+        def __init__(self, bundle_name, size):
+            self.bundle_name = bundle_name
+            self.size = size
+
+        @property
+        def name(self):
+            return self.bundle_name
+
+    class MockBundleAnalysisReport:
+        def bundle_reports(self):
+            return [
+                MockBundleReport("BundleA", 1111),
+            ]
+
+        def ingest(self, path):
+            return 123
+
+        def cleanup(self):
+            pass
+
+    mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.load",
+        return_value=MockBundleAnalysisReport(),
+    )
+
+    bundle_load_mock_save = mocker.patch(
+        "shared.bundle_analysis.BundleAnalysisReportLoader.save",
+        return_value=MockBundleAnalysisReport(),
+    )
+    bundle_load_mock_save.return_value = None
+
+    bundle_config_mock = mocker.patch(
+        "shared.django_apps.bundle_analysis.service.bundle_analysis.BundleAnalysisCacheConfigService.update_cache_option"
+    )
+
+    commit = CommitFactory.create(state="pending")
+
+    # Using main branch as default and commit is in main
+    commit.branch = "main"
+    commit.repository.branch = "main"
+
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    result = BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+    assert result == {
+        "results": [
+            {"previous": "result"},
+            {
+                "error": None,
+                "session_id": 123,
+                "upload_id": upload.id_,
+            },
+        ],
+    }
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+
+    bundle_config_mock.assert_called_with(commit.repository.repoid, "BundleA")

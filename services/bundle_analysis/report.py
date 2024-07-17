@@ -11,6 +11,9 @@ from shared.bundle_analysis import (
 )
 from shared.bundle_analysis.models import AssetType
 from shared.bundle_analysis.storage import get_bucket_name
+from shared.django_apps.bundle_analysis.service.bundle_analysis import (
+    BundleAnalysisCacheConfigService,
+)
 from shared.reports.enums import UploadState
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
 from sqlalchemy.dialects import postgresql
@@ -41,6 +44,7 @@ class ProcessingResult:
     upload: Upload
     commit: Commit
     bundle_report: Optional[BundleAnalysisReport] = None
+    previous_bundle_report: Optional[BundleAnalysisReport] = None
     session_id: Optional[int] = None
     error: Optional[ProcessingError] = None
 
@@ -179,6 +183,13 @@ class BundleAnalysisReportService(BaseReportService):
             if prev_bar:
                 bundle_report.associate_previous_assets(prev_bar)
 
+            # Turn on caching option by default for all new bundles only for default branch
+            if commit.branch == commit.repository.branch:
+                for bundle in bundle_report.bundle_reports():
+                    BundleAnalysisCacheConfigService.update_cache_option(
+                        commit.repoid, bundle.name
+                    )
+
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
         except FileNotInStorageError:
@@ -238,6 +249,7 @@ class BundleAnalysisReportService(BaseReportService):
             upload=upload,
             commit=commit,
             bundle_report=bundle_report,
+            previous_bundle_report=prev_bar,
             session_id=session_id,
         )
 
