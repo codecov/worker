@@ -88,6 +88,8 @@ class ProcessingResult(object):
                 "error": self.error.as_dict(),
                 "report": self.report,
                 "should_retry": False,
+                "raw_report": self.raw_report,
+                "upload_obj": self.upload_obj,
             }
         return {
             "successful": True,
