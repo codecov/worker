@@ -14,7 +14,7 @@ def test_bundle_analysis_notify_task(
     dbsession.add(commit)
     dbsession.flush()
 
-    mocker.patch("services.bundle_analysis.Notifier.notify", return_value=True)
+    mocker.patch("services.bundle_analysis.notify.Notifier.notify", return_value=True)
 
     result = BundleAnalysisNotifyTask().run_impl(
         dbsession,

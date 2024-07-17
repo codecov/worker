@@ -156,7 +156,7 @@ def test_bundle_analysis_processor_task_general_error(
     )
 
     process_upload = mocker.patch(
-        "services.bundle_analysis.BundleAnalysisReportService.process_upload"
+        "services.bundle_analysis.report.BundleAnalysisReportService.process_upload"
     )
     process_upload.side_effect = Exception()
 
@@ -669,7 +669,7 @@ def test_bundle_analysis_process_associate_called_two(
     associate.return_value = None
 
     prev_bundle_report = mocker.patch(
-        "services.bundle_analysis.BundleAnalysisReportService._previous_bundle_analysis_report"
+        "services.bundle_analysis.report.BundleAnalysisReportService._previous_bundle_analysis_report"
     )
     prev_bundle_report.return_value = True
 
