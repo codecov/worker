@@ -21,7 +21,7 @@ class TestPullSyncTask(object):
     @pytest.mark.parametrize("flake_detection", [False, True])
     def test_update_pull_commits_merged(self, dbsession, mocker, flake_detection):
         if flake_detection:
-            mock_feature = mocker.patch("tasks.sync_pull.FLAKY_TEST_DETECTION")
+            mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
             mock_feature.check_value.return_value = True
 
         repository = RepositoryFactory.create()
@@ -480,7 +480,7 @@ class TestPullSyncTask(object):
     def test_trigger_process_flakes(self, dbsession, mocker, flake_detection):
         current_yaml = UserYaml.from_dict(dict())
         if flake_detection:
-            mock_feature = mocker.patch(f"tasks.sync_pull.{flake_detection}")
+            mock_feature = mocker.patch(f"services.test_results.{flake_detection}")
             mock_feature.check_value.return_value = True
 
             if flake_detection == "FLAKY_TEST_DETECTION":
