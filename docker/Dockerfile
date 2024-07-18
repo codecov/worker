@@ -8,6 +8,7 @@ FROM us-docker.pkg.dev/berglas/berglas/berglas:$BERGLAS_VERSION as berglas
 FROM $REQUIREMENTS_IMAGE as app
 COPY . /worker
 WORKDIR /worker
+RUN pip install setuptools==70.3.0
 RUN chmod +x worker.sh
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=$RELEASE_VERSION

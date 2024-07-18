@@ -384,7 +384,7 @@ class TestGettingAdapterAuthInformation(object):
             )
             assert get_adapter_auth_information(repo.owner, repo) == expected
 
-        def test_select_repo_bot_info_public_repo(self, dbsession, mock_configuration):
+        def test_select_repo_bot_info_public_repoo(self, dbsession, mock_configuration):
             repo = self._generate_test_repo(
                 dbsession, with_owner_bot=True, with_bot=True
             )
