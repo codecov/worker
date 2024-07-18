@@ -3,6 +3,8 @@ from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
+from shared.bots import get_adapter_auth_information
+from shared.bots.types import AdapterAuthInformation
 from shared.torngit.base import TokenType
 from shared.typings.oauth_token_types import Token
 from shared.typings.torngit import GithubInstallationInfo
@@ -13,8 +15,6 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
-from services.bots import get_adapter_auth_information
-from services.bots.types import AdapterAuthInformation
 
 
 def get_github_integration_token_side_effect(
@@ -26,6 +26,7 @@ def get_github_integration_token_side_effect(
     return f"installation_token_{installation_id}_{app_id}"
 
 
+# The tests for this fn also exist on shared. These, however, are testing the sqlalchemy implementation of them
 class TestGettingAdapterAuthInformation(object):
     class TestGitHubOwnerNoRepoInfo(object):
         def _generate_test_owner(
@@ -91,7 +92,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(owner) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_owner_single_installation(self, dbsession):
@@ -125,7 +126,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(owner) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_owner_single_installation_ignoring_installations(
@@ -159,7 +160,7 @@ class TestGettingAdapterAuthInformation(object):
             )
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_owner_deprecated_using_integration(self, dbsession):
@@ -181,7 +182,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(owner) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_owner_multiple_installations_default_name(self, dbsession):
@@ -224,7 +225,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(owner) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_owner_multiple_installations_custom_name(self, dbsession):
@@ -425,7 +426,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(repo.owner, repo) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_repo_single_installation(self, dbsession):
@@ -462,7 +463,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(repo.owner, repo) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_repo_deprecated_using_integration(self, dbsession):
@@ -486,7 +487,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(repo.owner, repo) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_repo_multiple_installations_default_name(self, dbsession):
@@ -532,7 +533,7 @@ class TestGettingAdapterAuthInformation(object):
             assert get_adapter_auth_information(repo.owner, repo) == expected
 
         @patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             side_effect=get_github_integration_token_side_effect,
         )
         def test_select_repo_multiple_installations_custom_name(self, dbsession):
