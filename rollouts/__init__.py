@@ -2,6 +2,7 @@ from shared.rollouts import Feature
 
 # Declare the feature variants and parameters via Django Admin
 FLAKY_TEST_DETECTION = Feature("flaky_test_detection")
+FLAKY_SHADOW_MODE = Feature("flaky_shadow_mode")
 
 # Eventually we want all repos to use this
 # This flag will just help us with the rollout process

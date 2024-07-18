@@ -20,7 +20,6 @@ from database.models import Commit, Pull, Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
-from rollouts import FLAKY_TEST_DETECTION
 from services.comparison.changes import get_changes
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
@@ -29,6 +28,7 @@ from services.repository import (
     fetch_and_update_pull_request_information,
     get_repo_provider_service,
 )
+from services.test_results import should_write_flaky_detection
 from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.process_flakes import process_flakes_task_name
@@ -432,11 +432,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         self, repoid: int, pull_head: str, branch: str, current_yaml: UserYaml
     ):
         # but only if flake processing is enabled for this repo
-        if FLAKY_TEST_DETECTION.check_value(
-            identifier=repoid, default=False
-        ) and read_yaml_field(
-            current_yaml, ("test_analytics", "flake_detection"), False
-        ):
+        if should_write_flaky_detection(repoid, current_yaml):
             self.app.tasks[process_flakes_task_name].apply_async(
                 kwargs=dict(repo_id=repoid, commit_id_list=[pull_head], branch=branch)
             )

@@ -10,11 +10,13 @@ from sqlalchemy import desc
 
 from database.enums import ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.report import BaseReportService
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -333,3 +335,17 @@ def latest_test_instances_for_a_given_commit(db_session, commit_id):
         .distinct(TestInstance.test_id)
         .all()
     )
+
+
+def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml):
+    return (
+        FLAKY_TEST_DETECTION.check_value(identifier=repoid, default=False)
+        and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
+        or FLAKY_SHADOW_MODE.check_value(identifier=repoid, default=False)
+    )
+
+
+def should_read_flaky_detection(repoid: int, commit_yaml: UserYaml):
+    return FLAKY_TEST_DETECTION.check_value(
+        identifier=repoid, default=False
+    ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
