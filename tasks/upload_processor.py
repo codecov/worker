@@ -207,6 +207,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
         processings_so_far = previous_results.get("processings_so_far", [])
         n_processed = 0
+        n_failed = 0
 
         commit_yaml = UserYaml(commit_yaml)
         commit = None
@@ -301,6 +302,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 if individual_info.get("successful"):
                     report = individual_info.pop("report")
                     n_processed += 1
+                else:
+                    n_failed += 1
                 processings_so_far.append(individual_info)
             log.info(
                 f"Finishing the processing of {n_processed} reports"
@@ -379,7 +382,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 processed_individual_report.pop("upload_obj", None)
                 processed_individual_report.pop("raw_report", None)
             log.info(
-                f"Processed {n_processed} reports"
+                f"Processed {n_processed} reports (+ {n_failed} failed)"
                 + (" (in parallel)" if in_parallel else ""),
                 extra=dict(
                     repoid=repoid,
