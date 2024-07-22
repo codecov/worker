@@ -9,7 +9,11 @@ from shared.yaml import UserYaml
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
-from tasks.upload_finisher import ReportService, UploadFinisherTask
+from tasks.upload_finisher import (
+    ReportService,
+    ShouldCallNotifResult,
+    UploadFinisherTask,
+)
 
 here = Path(__file__)
 
@@ -217,8 +221,11 @@ class TestUploadFinisherTask(object):
         processing_results = {
             "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.NOTIFY
         )
 
     def test_should_call_notifications_local_upload(self, dbsession):
@@ -233,8 +240,11 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         processing_results = {}
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, "local_report1"
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, "local_report1"
+            )
+            == ShouldCallNotifResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_manual_trigger(self, dbsession):
@@ -249,8 +259,11 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         processing_results = {}
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_manual_trigger_off(self, dbsession):
@@ -269,8 +282,11 @@ class TestUploadFinisherTask(object):
         processing_results = {
             "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.NOTIFY
         )
 
     def test_should_call_notifications_no_successful_reports(self, dbsession):
@@ -288,8 +304,11 @@ class TestUploadFinisherTask(object):
             "processings_so_far": 12
             * [{"arguments": {"url": "url"}, "successful": False}]
         }
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.NOTIFY_ERROR
         )
 
     def test_should_call_notifications_not_enough_builds(self, dbsession, mocker):
@@ -314,8 +333,11 @@ class TestUploadFinisherTask(object):
             "processings_so_far": 9
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_more_than_enough_builds(self, dbsession, mocker):
@@ -340,8 +362,11 @@ class TestUploadFinisherTask(object):
             "processings_so_far": 2
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.NOTIFY
         )
 
     def test_finish_reports_processing(self, dbsession, mocker):
@@ -509,7 +534,13 @@ class TestUploadFinisherTask(object):
 
     def test_finish_reports_processing_no_notification(self, dbsession, mocker):
         commit_yaml = {}
-        mocked_app = mocker.patch.object(UploadFinisherTask, "app")
+        mocked_app = mocker.patch.object(
+            UploadFinisherTask,
+            "app",
+            tasks={
+                "app.tasks.notify.NotifyErrorTask": mocker.MagicMock(),
+            },
+        )
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -532,7 +563,9 @@ class TestUploadFinisherTask(object):
         )
         assert res == {"notifications_called": False}
         assert mocked_app.send_task.call_count == 0
-        assert not mocked_app.tasks["app.tasks.notify.Notify"].apply_async.called
+        mocked_app.tasks[
+            "app.tasks.notify.NotifyErrorTask"
+        ].apply_async.assert_called_once()
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_calls_save_commit_measurements_task(
@@ -543,6 +576,7 @@ class TestUploadFinisherTask(object):
             "app",
             tasks={
                 timeseries_save_commit_measurements_task_name: mocker.MagicMock(),
+                "app.tasks.notify.Notify": mocker.MagicMock(),
             },
         )
 
@@ -552,7 +586,7 @@ class TestUploadFinisherTask(object):
 
         UploadFinisherTask().run_impl(
             dbsession,
-            {},
+            {"processings_so_far": [{"successful": True}]},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
