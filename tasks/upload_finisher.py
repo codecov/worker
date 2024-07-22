@@ -374,18 +374,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
             return ShouldCallNotifResult.DO_NOT_NOTIFY
 
-        processing_successses = [
-            x["successful"] for x in processing_results.get("processings_so_far", [])
-        ]
-
-        if len(processing_successses) == 0 or not all(processing_successses):
-            log.info(
-                "Not scheduling notify because there is a non-successful processing result",
-                extra=extra_dict,
-            )
-
-            return ShouldCallNotifResult.NOTIFY_ERROR
-
         after_n_builds = (
             read_yaml_field(commit_yaml, ("codecov", "notify", "after_n_builds")) or 0
         )
@@ -400,6 +388,18 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     extra=extra_dict,
                 )
                 return ShouldCallNotifResult.DO_NOT_NOTIFY
+
+        processing_successses = [
+            x["successful"] for x in processing_results.get("processings_so_far", [])
+        ]
+
+        if len(processing_successses) == 0 or not all(processing_successses):
+            log.info(
+                "Not scheduling notify because there is a non-successful processing result",
+                extra=extra_dict,
+            )
+
+            return ShouldCallNotifResult.NOTIFY_ERROR
 
         return ShouldCallNotifResult.NOTIFY
 
