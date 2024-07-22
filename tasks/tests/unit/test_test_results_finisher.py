@@ -52,6 +52,10 @@ def mock_repo_provider_comments(mocker):
         post_comment=AsyncMock(return_value={"id": 1}),
     )
     _ = mocker.patch(
+        "helpers.notifier.get_repo_provider_service",
+        return_value=m,
+    )
+    _ = mocker.patch(
         "services.test_results.get_repo_provider_service",
         return_value=m,
     )
@@ -88,7 +92,7 @@ def test_results_setup(mocker, dbsession):
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
 
     _ = mocker.patch(
-        "services.test_results.fetch_and_update_pull_request_information_from_commit",
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=EnrichedPull(
             database_pull=pull,
             provider_pull={},
@@ -231,7 +235,7 @@ def test_results_setup_no_instances(mocker, dbsession):
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
 
     _ = mocker.patch(
-        "services.test_results.fetch_and_update_pull_request_information_from_commit",
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=EnrichedPull(
             database_pull=pull,
             provider_pull={},
