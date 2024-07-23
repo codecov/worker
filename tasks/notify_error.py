@@ -2,11 +2,11 @@ import logging
 from dataclasses import dataclass
 
 from asgiref.sync import async_to_sync
-from shared.django_apps.core.models import Commit
-from shared.django_apps.reports.models import CommitReport, ReportSession
 from sqlalchemy.orm import Session
 
 from celery_config import notify_error_task_name
+from database.enums import ReportType
+from database.models import Commit, CommitReport, Upload
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.notifier import BaseNotifier, NotifierResult
@@ -31,7 +31,7 @@ class ErrorNotifier(BaseNotifier):
 class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
     def run_impl(
         self,
-        _db_session: Session,
+        db_session: Session,
         *,
         repoid: int,
         commitid: str,
@@ -49,12 +49,17 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
 
         checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
 
-        commit = Commit.objects.get(repoid=repoid, commitid=commitid)
-        assert commit
+        commits_query = db_session.query(Commit).filter(  # type:ignore
+            Commit.repoid == repoid,
+            Commit.commitid == commitid,  # type:ignore
+        )
 
-        report: CommitReport = commit.commitreport  # type:ignore
+        commit: Commit = commits_query.first()
+        assert commit, "Commit not found in database."
 
-        uploads = ReportSession.objects.filter(report_id=report.id)
+        report: CommitReport = commit.commit_report(ReportType.COVERAGE)  # type:ignore
+
+        uploads = db_session.query(Upload).filter(Upload.report_id == report.id).all()
 
         num_total_upload = len(uploads)
 
@@ -66,29 +71,48 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
 
         num_failed_upload = len(list(filter(is_failed, list(uploads))))
 
-        log.info("Notifying upload errors", extra=dict())
+        log.info(
+            "Notifying upload errors",
+            extra=dict(
+                repoid=repoid,
+                commitid=commitid,
+                num_failed_upload=num_failed_upload,
+                num_total_upload=num_total_upload,
+            ),
+        )
 
         error_notifier = ErrorNotifier(
             commit, commit_yaml, num_failed_upload, num_total_upload
         )
-        notification_result: NotifierResult = async_to_sync(error_notifier.notify())()
+        notification_result: NotifierResult = async_to_sync(error_notifier.notify)()
         match notification_result:
             case NotifierResult.COMMENT_POSTED:
+                log.info(
+                    "Finished notify error task",
+                    extra=dict(
+                        commit=commitid,
+                        repoid=repoid,
+                        commit_yaml=current_yaml,
+                        num_failed_upload=num_failed_upload,
+                        num_total_upload=num_total_upload,
+                    ),
+                )
                 checkpoints.log(UploadFlow.NOTIFIED_ERROR)
+                return {"success": True}
             case NotifierResult.NO_PULL | NotifierResult.TORNGIT_ERROR:
                 checkpoints.log(UploadFlow.ERROR_NOTIFYING_ERROR)
-
-        log.info(
-            "Finished notify error task",
-            extra=dict(
-                commit=commitid,
-                repoid=repoid,
-                commit_yaml=current_yaml,
-                num_failed_upload=num_failed_upload,
-                num_total_upload=num_total_upload,
-                notification_result=notification_result.value,
-            ),
-        )
+                log.info(
+                    "Failed to comment in notify error task",
+                    extra=dict(
+                        commit=commitid,
+                        repoid=repoid,
+                        commit_yaml=current_yaml,
+                        num_failed_upload=num_failed_upload,
+                        num_total_upload=num_total_upload,
+                        notification_result=notification_result.value,
+                    ),
+                )
+                return {"success": False}
 
 
 RegisteredNotifyErrorTask = celery_app.register_task(NotifyErrorTask())

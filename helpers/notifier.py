@@ -2,9 +2,9 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
-from shared.django_apps.core.models import Commit
 from shared.torngit.exceptions import TorngitClientError
 
+from database.models import Commit
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
