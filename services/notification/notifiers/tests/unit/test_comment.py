@@ -4316,6 +4316,49 @@ class TestCommentNotifierInNewLayout(object):
         assert result == expected_result
 
     @pytest.mark.asyncio
+    async def test_build_message_no_project_coverage_files(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "newheader, files, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
+        expected_result = [
+            f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            "",
+            f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            "|---|---|---|---|",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            "",
+            f"... and [1 file with indirect coverage changes]({pull_url}/indirect-changes?src=pr&el=tree-more)",
+            "",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+            "",
+        ]
+        assert result == expected_result
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+
+    @pytest.mark.asyncio
     async def test_build_message_no_project_coverage_condensed_yaml_configs(
         self,
         dbsession,

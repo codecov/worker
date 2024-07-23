@@ -275,6 +275,14 @@ class MessageMixin(object):
         if all(x not in sections for x in headers):
             sections.insert(0, "condensed_header")
 
+        print(sections)
+        if (
+            "files" in sections
+            and "newfiles" not in sections
+            and "condensed_files" not in sections
+        ):
+            sections.insert(0, "newfiles")
+
         return [
             section
             for section in sections
