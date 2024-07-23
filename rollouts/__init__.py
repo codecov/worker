@@ -13,3 +13,7 @@ USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID = Feature(
 PARALLEL_UPLOAD_PROCESSING_BY_REPO = Feature("parallel_upload_processing")
 
 CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER = Feature("carryforward_base_search_range")
+
+NEW_ACCOUNT_MODEL_ENABLED_BY_OWNER_ID = Feature(
+	"new_account_model_enabled"
+)

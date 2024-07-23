@@ -26,6 +26,7 @@ from helpers.clock import get_seconds_to_next_hour
 from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
+from rollouts import NEW_ACCOUNT_MODEL_ENABLED_BY_OWNER_ID
 from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
 from services.comparison import ComparisonContext, ComparisonProxy
@@ -679,13 +680,14 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             args=None,
             kwargs=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid),
         )
-        # Activate the account user if it exists.
-        self.app.tasks[activate_account_user_task_name].apply_async(
-            kwargs=dict(
-                user_ownerid=user_ownerid,
-                org_ownerid=org_ownerid,
-            ),
-        )
+        if NEW_ACCOUNT_MODEL_ENABLED_BY_OWNER_ID.check_value(identifier=org_ownerid, default=False):
+            # Activate the account user if it exists.
+            self.app.tasks[activate_account_user_task_name].apply_async(
+                kwargs=dict(
+                    user_ownerid=user_ownerid,
+                    org_ownerid=org_ownerid,
+                ),
+            )
 
     def fetch_and_update_whether_ci_passed(
         self, repository_service, commit, current_yaml
