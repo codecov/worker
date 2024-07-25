@@ -23,6 +23,8 @@ log = logging.getLogger(__name__)
 
 
 class BundleAnalysisCommentNotificationContext(BaseBundleAnalysisNotificationContext):
+    notification_type = NotificationType.PR_COMMENT
+
     @property
     def pull(self) -> EnrichedPull:
         return self._pull

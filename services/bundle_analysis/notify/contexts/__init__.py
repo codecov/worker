@@ -19,6 +19,8 @@ from services.storage import get_storage_client
 
 
 class BaseBundleAnalysisNotificationContext:
+    notification_type: NotificationType
+
     def __init__(
         self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
     ) -> None:
@@ -67,9 +69,6 @@ class WrongContextBuilderError(Exception):
 
 
 class NotificationContextBuilder:
-    commit_report_loaded: bool = False
-    bundle_analysis_report_loaded: bool = False
-
     # TODO: Find a way to re-use the base-context (by cloning it instead of recreating it for every notification)
     # The annoying bit is creating a specialized class from the base one without having to nitpick the details
     # @classmethod
@@ -101,22 +100,17 @@ class NotificationContextBuilder:
         """Loads the CommitReport into the NotificationContext
         Raises: Fail if no CommitReport
         """
-        if self.commit_report_loaded:
-            return
         commit_report = self._notification_context.commit.commit_report(
             report_type=ReportType.BUNDLE_ANALYSIS
         )
         if commit_report is None:
             raise NotificationContextBuildError("load_commit_report")
         self._notification_context.commit_report = commit_report
-        self.commit_report_loaded = True
 
     def load_bundle_analysis_report(self) -> None:
         """Loads the BundleAnalysisReport into the NotificationContext
         Raises: Fail if no BundleAnalysisReport
         """
-        if self.bundle_analysis_report_loaded:
-            return
         repo_hash = ArchiveService.get_archive_hash(
             self._notification_context.repository
         )
@@ -128,7 +122,6 @@ class NotificationContextBuilder:
         if bundle_analysis_report is None:
             raise NotificationContextBuildError("load_bundle_analysis_report")
         self._notification_context.bundle_analysis_report = bundle_analysis_report
-        self.bundle_analysis_report_loaded = True
 
     def build_base_context(self) -> BaseBundleAnalysisNotificationContext:
         """Raises: Fail if any of the build steps fail"""
