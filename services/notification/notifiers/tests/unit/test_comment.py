@@ -799,7 +799,9 @@ class TestCommentNotifier(object):
         mocked_search_files_for_critical_changes.assert_called_with(
             {"file_2.py", "file_1.go"}
         )
-        assert mocked_search_files_for_critical_changes.call_count == 2
+        assert (
+            mocked_search_files_for_critical_changes.call_count == 3
+        )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
     @pytest.mark.asyncio
     async def test_create_message_with_github_app_comment(
@@ -847,6 +849,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -972,6 +978,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -1265,6 +1275,10 @@ class TestCommentNotifier(object):
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
             "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
             "```diff",
@@ -1339,6 +1353,10 @@ class TestCommentNotifier(object):
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
             "```diff",
@@ -1409,6 +1427,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             "> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -1482,6 +1504,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -1749,6 +1775,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -2124,6 +2154,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -4138,7 +4172,9 @@ class TestCommentNotifierInNewLayout(object):
         mocked_search_files_for_critical_changes.assert_called_with(
             {"file_2.py", "file_1.go"}
         )
-        assert mocked_search_files_for_critical_changes.call_count == 2
+        assert (
+            mocked_search_files_for_critical_changes.call_count == 3
+        )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
     @pytest.mark.asyncio
     async def test_build_message_no_base_commit_new_layout(
@@ -4167,6 +4203,10 @@ class TestCommentNotifierInNewLayout(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             "> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -4233,6 +4273,10 @@ class TestCommentNotifierInNewLayout(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             "<details><summary>Additional details and impacted files</summary>\n",
             "",
@@ -4343,6 +4387,10 @@ class TestCommentNotifierInNewLayout(object):
         expected_result = [
             f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            "",
+            f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
             "",
             f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
