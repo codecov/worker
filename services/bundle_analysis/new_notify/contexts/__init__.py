@@ -11,7 +11,7 @@ from database.enums import ReportType
 from database.models.core import Commit, Repository
 from database.models.reports import CommitReport
 from services.archive import ArchiveService
-from services.bundle_analysis.notify.types import NotificationType
+from services.bundle_analysis.new_notify.types import NotificationType
 from services.repository import (
     get_repo_provider_service,
 )
@@ -55,13 +55,12 @@ class BaseBundleAnalysisNotificationContext:
     def bundle_analysis_report(self, report: BundleAnalysisReport) -> None:
         self._bundle_analysis_report = report
 
-    # TODO: message build+send strategy
-
 
 class NotificationContextBuildError(Exception):
-    def __init__(self, failed_step: str) -> None:
+    def __init__(self, failed_step: str, detail: str | None = None) -> None:
         super()
         self.failed_step = failed_step
+        self.detail = detail
 
 
 class WrongContextBuilderError(Exception):
@@ -92,11 +91,9 @@ class NotificationContextBuilder:
             current_yaml=current_yaml,
             gh_app_installation_name=gh_app_installation_name,
         )
-        self.commit_report_loaded = False
-        self.bundle_analysis_report_loaded = False
         return self
 
-    def load_commit_report(self) -> None:
+    def load_commit_report(self) -> "NotificationContextBuilder":
         """Loads the CommitReport into the NotificationContext
         Raises: Fail if no CommitReport
         """
@@ -106,8 +103,9 @@ class NotificationContextBuilder:
         if commit_report is None:
             raise NotificationContextBuildError("load_commit_report")
         self._notification_context.commit_report = commit_report
+        return self
 
-    def load_bundle_analysis_report(self) -> None:
+    def load_bundle_analysis_report(self) -> "NotificationContextBuilder":
         """Loads the BundleAnalysisReport into the NotificationContext
         Raises: Fail if no BundleAnalysisReport
         """
@@ -122,16 +120,13 @@ class NotificationContextBuilder:
         if bundle_analysis_report is None:
             raise NotificationContextBuildError("load_bundle_analysis_report")
         self._notification_context.bundle_analysis_report = bundle_analysis_report
+        return self
 
-    def build_base_context(self) -> BaseBundleAnalysisNotificationContext:
+    def build_context(self) -> "NotificationContextBuilder":
         """Raises: Fail if any of the build steps fail"""
         self.load_commit_report()
         self.load_bundle_analysis_report()
-        return self._notification_context
+        return self
 
-    def build_specialized_context(
-        self, notification_type: NotificationType
-    ) -> BaseBundleAnalysisNotificationContext:
-        raise WrongContextBuilderError(
-            "Base context builder can't be used to create specialized context"
-        )
+    def get_result(self) -> BaseBundleAnalysisNotificationContext:
+        return self._notification_context

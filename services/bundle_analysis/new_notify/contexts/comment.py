@@ -5,15 +5,22 @@ from asgiref.sync import async_to_sync
 from shared.bundle_analysis import (
     BundleAnalysisComparison,
 )
+from shared.yaml import UserYaml
 
+from database.models.core import Commit
 from services.bundle_analysis.comparison import ComparisonLoader
-from services.bundle_analysis.notify.contexts import (
+from services.bundle_analysis.exceptions import (
+    MissingBaseCommit,
+    MissingBaseReport,
+    MissingHeadCommit,
+    MissingHeadReport,
+)
+from services.bundle_analysis.new_notify.contexts import (
     BaseBundleAnalysisNotificationContext,
     NotificationContextBuilder,
     NotificationContextBuildError,
-    WrongContextBuilderError,
 )
-from services.bundle_analysis.notify.types import NotificationType
+from services.bundle_analysis.new_notify.types import NotificationType
 from services.repository import (
     EnrichedPull,
     fetch_and_update_pull_request_information_from_commit,
@@ -43,7 +50,17 @@ class BundleAnalysisCommentNotificationContext(BaseBundleAnalysisNotificationCon
 
 
 class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
-    async def load_enriched_pull(self) -> None:
+    def initialize(
+        self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
+    ) -> "NotificationContextBuilder":
+        self._notification_context = BundleAnalysisCommentNotificationContext(
+            commit=commit,
+            current_yaml=current_yaml,
+            gh_app_installation_name=gh_app_installation_name,
+        )
+        return self
+
+    async def load_enriched_pull(self) -> "BundleAnalysisCommentContextBuilder":
         """Loads the EnrichedPull into the NotificationContext
         Raises: Fail if no EnrichedPull
         """
@@ -57,13 +74,25 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
         if pull is None:
             raise NotificationContextBuildError("load_enriched_pull")
         self._notification_context.pull = pull
+        return self
 
-    def load_bundle_comparison(self) -> None:
+    def load_bundle_comparison(self) -> "BundleAnalysisCommentContextBuilder":
         pull = self._notification_context.pull
-        comparison = ComparisonLoader(pull).get_comparison()
-        self._notification_context.bundle_analysis_comparison = comparison
+        try:
+            comparison = ComparisonLoader(pull).get_comparison()
+            self._notification_context.bundle_analysis_comparison = comparison
+            return self
+        except (
+            MissingBaseCommit,
+            MissingHeadCommit,
+            MissingBaseReport,
+            MissingHeadReport,
+        ) as exp:
+            raise NotificationContextBuildError(
+                "load_bundle_comparison", detail=exp.__class__.__name__
+            )
 
-    def evaluate_has_enough_changes(self) -> None:
+    def evaluate_has_enough_changes(self) -> "BundleAnalysisCommentContextBuilder":
         """Evaluates if the NotificationContext includes enough changes to send the notification
         Aborts notification if there are not enough changes
         """
@@ -76,15 +105,14 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
         changes_threshold: int = current_yaml.read_yaml_field(
             "comment", "bundle_change_threshold", _else=0
         )
-        pull = self._notify_context.pull
+        pull = self._notification_context.pull
         if pull.database_pull.bundle_analysis_commentid:
             log.info(
                 "Skipping required_changes verification because comment already exists",
                 extra=dict(pullid=pull.database_pull.id, commitid=self.commit.commitid),
             )
-            return True
-
-        comparison = self._notify_context.bundle_analysis_comparison
+            return self
+        comparison = self._notification_context.bundle_analysis_comparison
         should_continue = {
             False: True,
             True: abs(comparison.total_size_delta) > changes_threshold,
@@ -92,18 +120,17 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
                 comparison.total_size_delta > 0
                 and comparison.total_size_delta > changes_threshold
             ),
-        }.get(required_changes, default=True)
+        }.get(required_changes, True)
         if not should_continue:
             raise NotificationContextBuildError("evaluate_has_enough_changes")
+        return self
 
-    def build_specialized_context(
-        self, notification_type: NotificationType
-    ) -> BundleAnalysisCommentNotificationContext:
-        if notification_type != NotificationType.PR_COMMENT:
-            msg = f"Wrong notification type for BundleAnalysisCommentContextBuilder. Expected PR_COMMENT, received {notification_type.name}"
-            raise WrongContextBuilderError(msg)
-        self.build_base_context()
-        async_to_sync(self.load_enriched_pull())
+    def build_context(self) -> BundleAnalysisCommentNotificationContext:
+        super().build_context()
+        async_to_sync(self.load_enriched_pull)()
         self.load_bundle_comparison()
         self.evaluate_has_enough_changes()
+        return self
+
+    def get_result(self) -> BundleAnalysisCommentNotificationContext:
         return self._notification_context

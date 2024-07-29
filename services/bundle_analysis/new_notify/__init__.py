@@ -5,21 +5,23 @@ from asgiref.sync import async_to_sync
 from shared.django_apps.codecov_auth.models import Service
 from shared.yaml import UserYaml
 
-from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Commit
-from services.bundle_analysis.notify.contexts import (
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Commit, Owner
+from services.bundle_analysis.new_notify.contexts import (
     BaseBundleAnalysisNotificationContext,
     NotificationContextBuilder,
     NotificationContextBuildError,
 )
-from services.bundle_analysis.notify.contexts.comment import (
+from services.bundle_analysis.new_notify.contexts.comment import (
     BundleAnalysisCommentContextBuilder,
 )
-from services.bundle_analysis.notify.helpers import get_notification_types_configured
-from services.bundle_analysis.notify.messages import MessageStrategyInterface
-from services.bundle_analysis.notify.messages.comment import (
+from services.bundle_analysis.new_notify.helpers import (
+    get_notification_types_configured,
+)
+from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
+from services.bundle_analysis.new_notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
 )
-from services.bundle_analysis.notify.types import NotificationType
+from services.bundle_analysis.new_notify.types import NotificationType
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ def create_context_for_notification(
     notification_type: NotificationType,
 ) -> NotificationFullContext | None:
     """Builds the NotificationContext for the given notification_type
-    If te NotificationContext failed to build we can't send this notification.
+    If the NotificationContext failed to build we can't send this notification.
     """
     builders_lookup: dict[NotificationType, NotificationContextBuilder] = {
         NotificationType.PR_COMMENT: NotificationFullContext(
@@ -48,7 +50,7 @@ def create_context_for_notification(
         return None
     try:
         return NotificationFullContext(
-            builder_class.build_specialized_context(notification_type),
+            builder_class.build_context().get_result(),
             message_strategy_class(),
         )
     except NotificationContextBuildError as exp:
@@ -80,12 +82,12 @@ class BundleAnalysisNotifyService:
         )
 
     @property
-    def owner_service(self) -> Service:
-        return Service(self.commit.repository.service)
+    def owner(self) -> Owner:
+        return Service(self.commit.repository.owner)
 
     def notify(self) -> BundleAnalysisNotifyReturn:
         notification_types = get_notification_types_configured(
-            self.current_yaml, self.owner_service
+            self.current_yaml, self.owner
         )
         notification_full_contexts = filter(
             None, map(create_context_for_notification, notification_types)

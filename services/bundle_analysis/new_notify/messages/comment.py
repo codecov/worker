@@ -8,11 +8,11 @@ from shared.bundle_analysis import (
 )
 from shared.torngit.exceptions import TorngitClientError
 
-from services.bundle_analysis.notify.contexts.comment import (
+from services.bundle_analysis.new_notify.contexts.comment import (
     BundleAnalysisCommentNotificationContext,
 )
-from services.bundle_analysis.notify.helpers import bytes_readable
-from services.bundle_analysis.notify.messages import MessageStrategyInterface
+from services.bundle_analysis.new_notify.helpers import bytes_readable
+from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
 from services.notification.notifiers.base import NotificationResult
 from services.urls import get_bundle_analysis_pull_url
 
@@ -43,7 +43,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
             total_size_delta=total_size_delta,
             total_size_readable=bytes_readable(total_size_delta),
         )
-        return template.render(context=context)
+        return template.render(context)
 
     async def send_message(
         self, context: BundleAnalysisCommentNotificationContext, message: str
