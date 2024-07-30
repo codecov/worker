@@ -2,7 +2,6 @@ import logging
 from typing import NamedTuple
 
 from asgiref.sync import async_to_sync
-from shared.django_apps.codecov_auth.models import Service
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Commit, Owner
@@ -37,12 +36,16 @@ def create_context_for_notification(
     """Builds the NotificationContext for the given notification_type
     If the NotificationContext failed to build we can't send this notification.
     """
-    builders_lookup: dict[NotificationType, NotificationContextBuilder] = {
+    builders_lookup: dict[
+        NotificationType, tuple[NotificationContextBuilder, MessageStrategyInterface]
+    ] = {
         NotificationType.PR_COMMENT: NotificationFullContext(
             BundleAnalysisCommentContextBuilder, BundleAnalysisCommentMarkdownStrategy
         )
     }
-    builder_class, message_strategy_class = builders_lookup.get(notification_type)
+    builder_class, message_strategy_class = builders_lookup.get(
+        notification_type, (None, None)
+    )
 
     if builder_class is None:
         msg = f"No context builder for {notification_type.name}. Skipping"
@@ -50,7 +53,7 @@ def create_context_for_notification(
         return None
     try:
         return NotificationFullContext(
-            builder_class.build_context().get_result(),
+            builder_class().build_context().get_result(),
             message_strategy_class(),
         )
     except NotificationContextBuildError as exp:
@@ -83,7 +86,7 @@ class BundleAnalysisNotifyService:
 
     @property
     def owner(self) -> Owner:
-        return Service(self.commit.repository.owner)
+        return self.commit.repository.owner
 
     def notify(self) -> BundleAnalysisNotifyReturn:
         notification_types = get_notification_types_configured(
@@ -109,5 +112,5 @@ class BundleAnalysisNotifyService:
 
         return BundleAnalysisNotifyReturn(
             notifications_configured=notification_types,
-            notifications_successful=tuple(*notifications_sent),
+            notifications_successful=tuple(notifications_sent),
         )
