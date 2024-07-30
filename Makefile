@@ -235,7 +235,7 @@ test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
 	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml
 	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
-	codecovcli -u ${CODECOV_URL} do-upload --file garbage.xml
+	codecovcli -u ${CODECOV_URL} do-upload --file garbage1.xml
 
 test_env.container_upload_test_results:
 	codecovcli -v -u ${CODECOV_URL} do-upload --report-type test_results || true
