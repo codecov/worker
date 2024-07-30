@@ -232,9 +232,6 @@ test_env.upload:
 	docker-compose exec worker make test_env.container_upload_test_results CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
-	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
-	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml
-	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
 	codecovcli -u ${CODECOV_URL} do-upload --file garbage1.xml
 
 test_env.container_upload_test_results:
