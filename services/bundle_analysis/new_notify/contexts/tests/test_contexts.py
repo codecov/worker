@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 from shared.yaml import UserYaml
 
@@ -144,3 +146,172 @@ class TestBundleAnalysisCommentNotificationContext:
             builder.load_bundle_comparison()
         assert exp.value.failed_step == "load_bundle_comparison"
         assert exp.value.detail == expected_missing_detail
+
+    @pytest.mark.parametrize(
+        "config, total_size_delta",
+        [
+            pytest.param(
+                {
+                    "comment": {
+                        "require_bundle_changes": "bundle_increase",
+                        "bundle_change_threshold": 1000000,
+                    }
+                },
+                100,
+                id="required_increase_with_big_threshold",
+            ),
+            pytest.param(
+                {
+                    "comment": {
+                        "require_bundle_changes": "bundle_increase",
+                        "bundle_change_threshold": 10,
+                    }
+                },
+                -100,
+                id="required_increase_but_decreased",
+            ),
+            pytest.param(
+                {
+                    "comment": {
+                        "require_bundle_changes": True,
+                        "bundle_change_threshold": 1000000,
+                    }
+                },
+                100,
+                id="required_changes_with_big_threshold",
+            ),
+        ],
+    )
+    def test_evaluate_changes_fail(self, config, total_size_delta, dbsession, mocker):
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict(config)
+        builder = BundleAnalysisCommentContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        mock_pull = MagicMock(
+            name="fake_pull",
+            database_pull=MagicMock(bundle_analysis_commentid=None, id=12),
+        )
+        builder._notification_context._pull = mock_pull
+        mock_comparison = MagicMock(
+            name="fake_bundle_analysis_comparison", total_size_delta=total_size_delta
+        )
+        builder._notification_context._bundle_analysis_comparison = mock_comparison
+        with pytest.raises(NotificationContextBuildError) as exp:
+            builder.evaluate_has_enough_changes()
+        assert exp.value.failed_step == "evaluate_has_enough_changes"
+
+    @pytest.mark.parametrize(
+        "config, total_size_delta",
+        [
+            pytest.param({}, 100, id="default_config"),
+            pytest.param(
+                {"comment": {"require_bundle_changes": False}},
+                100,
+                id="no_required_changes",
+            ),
+            pytest.param(
+                {"comment": {"require_bundle_changes": True}},
+                100,
+                id="required_changes_increase",
+            ),
+            pytest.param(
+                {"comment": {"require_bundle_changes": True}},
+                -100,
+                id="required_changes_decrease",
+            ),
+            pytest.param(
+                {"comment": {"require_bundle_changes": "bundle_increase"}},
+                100,
+                id="required_increase",
+            ),
+            pytest.param(
+                {
+                    "comment": {
+                        "require_bundle_changes": "bundle_increase",
+                        "bundle_change_threshold": 1000,
+                    }
+                },
+                1001,
+                id="required_increase_with_small_threshold",
+            ),
+        ],
+    )
+    def test_evaluate_changes_success(self, config, total_size_delta, dbsession):
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict(config)
+        builder = BundleAnalysisCommentContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        mock_pull = MagicMock(
+            name="fake_pull",
+            database_pull=MagicMock(bundle_analysis_commentid=None, id=12),
+        )
+        builder._notification_context._pull = mock_pull
+        mock_comparison = MagicMock(
+            name="fake_bundle_analysis_comparison", total_size_delta=total_size_delta
+        )
+        builder._notification_context._bundle_analysis_comparison = mock_comparison
+        result = builder.evaluate_has_enough_changes()
+        assert result == builder
+
+    def test_evaluate_changes_comment_exists(self, dbsession):
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict(
+            {
+                "comment": {
+                    "require_bundle_changes": "bundle_increase",
+                    "bundle_change_threshold": 1000000,
+                }
+            }
+        )
+        builder = BundleAnalysisCommentContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        mock_pull = MagicMock(
+            name="fake_pull",
+            database_pull=MagicMock(bundle_analysis_commentid=12345, id=12),
+        )
+        builder._notification_context._pull = mock_pull
+        mock_comparison = MagicMock(
+            name="fake_bundle_analysis_comparison", total_size_delta=100
+        )
+        builder._notification_context._bundle_analysis_comparison = mock_comparison
+        result = builder.evaluate_has_enough_changes()
+        assert result == builder
+
+    def test_build_context(self, dbsession, mocker, mock_storage):
+        head_commit, base_commit = get_commit_pair(dbsession)
+        repository = head_commit.repository
+        head_commit_report, base_commit_report = get_report_pair(
+            dbsession, (head_commit, base_commit)
+        )
+        save_mock_bundle_analysis_report(
+            repository, head_commit_report, mock_storage, sample_report_number=2
+        )
+        save_mock_bundle_analysis_report(
+            repository, base_commit_report, mock_storage, sample_report_number=1
+        )
+        enriched_pull = get_enriched_pull_setting_up_mocks(
+            dbsession, mocker, (head_commit, base_commit)
+        )
+        user_yaml = UserYaml.from_dict({})
+        builder = BundleAnalysisCommentContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        mocker.patch(
+            "services.bundle_analysis.comparison.get_appropriate_storage_service",
+            return_value=mock_storage,
+        )
+        context = builder.build_context().get_result()
+        assert context.commit_report == head_commit_report
+        assert context.bundle_analysis_report.session_count() == 18
+        assert context.pull == enriched_pull
+        assert (
+            context.bundle_analysis_comparison.base_report_key
+            == base_commit_report.external_id
+        )
+        assert (
+            context.bundle_analysis_comparison.head_report_key
+            == head_commit_report.external_id
+        )

@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 from shared.yaml import UserYaml
 
@@ -9,6 +11,7 @@ from database.models.core import (
 from database.tests.factories.core import OwnerFactory
 from services.bundle_analysis.new_notify.helpers import (
     bytes_readable,
+    get_github_app_used,
     get_notification_types_configured,
 )
 from services.bundle_analysis.new_notify.types import NotificationType
@@ -111,3 +114,21 @@ def test_get_configuration_types_configured(config, owner_fixture, expected, req
     owner = request.getfixturevalue(owner_fixture)
     yaml = UserYaml.from_dict(config)
     assert get_notification_types_configured(yaml, owner) == expected
+
+
+@pytest.mark.parametrize(
+    "torngit, expected",
+    [
+        pytest.param(None, None, id="no_torngit"),
+        pytest.param(
+            MagicMock(data={"installation": None}), None, id="torngit_no_installation"
+        ),
+        pytest.param(
+            MagicMock(data={"installation": {"id": 12}}),
+            12,
+            id="torngit_with_installation",
+        ),
+    ],
+)
+def test_get_github_app_used(torngit, expected):
+    assert get_github_app_used(torngit) == expected

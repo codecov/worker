@@ -1,6 +1,7 @@
 from typing import Literal
 
 from shared.django_apps.codecov_auth.models import Service
+from shared.torngit.base import TorngitBaseAdapter
 from shared.yaml import UserYaml
 
 from database.models.core import Owner
@@ -47,6 +48,16 @@ def get_notification_types_configured(
         is_comment_configured(yaml, owner),
     ]
     return tuple(filter(None, notification_types))
+
+
+def get_github_app_used(torngit: TorngitBaseAdapter | None) -> int | None:
+    if torngit is None:
+        return None
+    torngit_installation = torngit.data.get("installation")
+    selected_installation_id = (
+        torngit_installation.get("id") if torngit_installation else None
+    )
+    return selected_installation_id
 
 
 def bytes_readable(bytes: int) -> str:

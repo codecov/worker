@@ -11,7 +11,10 @@ from shared.torngit.exceptions import TorngitClientError
 from services.bundle_analysis.new_notify.contexts.comment import (
     BundleAnalysisCommentNotificationContext,
 )
-from services.bundle_analysis.new_notify.helpers import bytes_readable
+from services.bundle_analysis.new_notify.helpers import (
+    bytes_readable,
+    get_github_app_used,
+)
 from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
 from services.notification.notifiers.base import NotificationResult
 from services.urls import get_bundle_analysis_pull_url
@@ -48,26 +51,27 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
     async def send_message(
         self, context: BundleAnalysisCommentNotificationContext, message: str
     ) -> NotificationResult:
-        pull = context.pull
-        pullid = context.pull.database_pull.pullid
+        pull = context.pull.database_pull
         repository_service = context.repository_service
         try:
-            comment_id = pull.database_pull.bundle_analysis_commentid
+            comment_id = pull.bundle_analysis_commentid
             if comment_id:
-                await repository_service.edit_comment(pullid, comment_id, message)
+                await repository_service.edit_comment(pull.pullid, comment_id, message)
             else:
                 res = await repository_service.post_comment(pull.pullid, message)
-                pull.database_pull.bundle_analysis_commentid = res["id"]
+                pull.bundle_analysis_commentid = res["id"]
             return NotificationResult(
-                notification_attempted=True, notification_successful=True
+                notification_attempted=True,
+                notification_successful=True,
+                github_app_used=get_github_app_used(repository_service),
             )
         except TorngitClientError:
             log.error(
                 "Error creating/updating PR comment",
                 extra=dict(
-                    commitid=self.commit.commitid,
-                    report_key=self.commit_report.external_id,
-                    pullid=pullid,
+                    commitid=context.commit.commitid,
+                    report_key=context.commit_report.external_id,
+                    pullid=pull.pullid,
                 ),
             )
             return NotificationResult(

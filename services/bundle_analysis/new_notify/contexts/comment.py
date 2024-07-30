@@ -52,7 +52,7 @@ class BundleAnalysisCommentNotificationContext(BaseBundleAnalysisNotificationCon
 class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
     def initialize(
         self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
-    ) -> "NotificationContextBuilder":
+    ) -> "BundleAnalysisCommentContextBuilder":
         self._notification_context = BundleAnalysisCommentNotificationContext(
             commit=commit,
             current_yaml=current_yaml,
@@ -109,7 +109,10 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
         if pull.database_pull.bundle_analysis_commentid:
             log.info(
                 "Skipping required_changes verification because comment already exists",
-                extra=dict(pullid=pull.database_pull.id, commitid=self.commit.commitid),
+                extra=dict(
+                    pullid=pull.database_pull.id,
+                    commitid=self._notification_context.commit.commitid,
+                ),
             )
             return self
         comparison = self._notification_context.bundle_analysis_comparison
@@ -125,7 +128,7 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
             raise NotificationContextBuildError("evaluate_has_enough_changes")
         return self
 
-    def build_context(self) -> BundleAnalysisCommentNotificationContext:
+    def build_context(self) -> "BundleAnalysisCommentContextBuilder":
         super().build_context()
         async_to_sync(self.load_enriched_pull)()
         self.load_bundle_comparison()
