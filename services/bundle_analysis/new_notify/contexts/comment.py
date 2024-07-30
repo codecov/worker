@@ -30,6 +30,8 @@ log = logging.getLogger(__name__)
 
 
 class BundleAnalysisCommentNotificationContext(BaseBundleAnalysisNotificationContext):
+    """Context for the Bundle Analysis PR Comment. Extends BaseBundleAnalysisNotificationContext."""
+
     notification_type = NotificationType.PR_COMMENT
 
     @property
@@ -61,8 +63,12 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
         return self
 
     async def load_enriched_pull(self) -> "BundleAnalysisCommentContextBuilder":
-        """Loads the EnrichedPull into the NotificationContext
-        Raises: Fail if no EnrichedPull
+        """Loads the EnrichedPull into the NotificationContext.
+        EnrichedPull includes updated info from the git provider and info saved in the database.
+        Raises:
+            NotificationContextBuildError: failed to get EnrichedPull.
+                This can be because there's no Pull saved in the database,
+                or because we couldn't update the pull's info from the git provider.
         """
         pull: (
             EnrichedPull | None
@@ -77,6 +83,13 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
         return self
 
     def load_bundle_comparison(self) -> "BundleAnalysisCommentContextBuilder":
+        """Loads the BundleAnalysisComparison into the NotificationContext.
+        BundleAnalysisComparison is the diff between 2 BundleAnalysisReports,
+        respectively the one for the pull's base and one for the pull's head.
+        Raises:
+            NotificationContextBuildError: missing some information necessary to create
+                the BundleAnalysisComparison.
+        """
         pull = self._notification_context.pull
         try:
             comparison = ComparisonLoader(pull).get_comparison()
@@ -93,8 +106,12 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
             )
 
     def evaluate_has_enough_changes(self) -> "BundleAnalysisCommentContextBuilder":
-        """Evaluates if the NotificationContext includes enough changes to send the notification
-        Aborts notification if there are not enough changes
+        """Evaluates if the NotificationContext includes enough changes to send the notification.
+        Configuration is done via UserYaml.
+        If a comment was previously made for this PR the required changes are bypassed so that we
+        update the existing comment with the latest information.
+        Raises:
+            NotificationContextBuildError: required changes are not met.
         """
         current_yaml = self._notification_context.current_yaml
         required_changes: bool | Literal["bundle_increase"] = (

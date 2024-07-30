@@ -11,6 +11,7 @@ class MessageStrategyInterface(ABC):
     def build_message(
         self, context: BaseBundleAnalysisNotificationContext
     ) -> str | bytes:
+        """Builds the message to be sent using the `context` information"""
         pass
 
     @abstractmethod

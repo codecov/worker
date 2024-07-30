@@ -35,6 +35,9 @@ def create_context_for_notification(
 ) -> NotificationFullContext | None:
     """Builds the NotificationContext for the given notification_type
     If the NotificationContext failed to build we can't send this notification.
+
+    Each NotificationType is paired with a ContextBuilder and MessageStrategyInterface.
+    The MessageStrategy is later used to build and send the message based on the NotificationContext
     """
     builders_lookup: dict[
         NotificationType, tuple[NotificationContextBuilder, MessageStrategyInterface]
