@@ -275,9 +275,8 @@ class MessageMixin(object):
         if all(x not in sections for x in headers):
             sections.insert(0, "condensed_header")
 
-        for i, section in enumerate(sections):
-            if section == "files" or section == "tree":
-                sections.append("newfiles")
+        if "files" in sections or "tree" in sections:
+            sections.append("newfiles")
 
         return [
             section
