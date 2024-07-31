@@ -393,13 +393,21 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             x["successful"] for x in processing_results.get("processings_so_far", [])
         ]
 
-        if len(processing_successses) == 0 or not all(processing_successses):
-            log.info(
-                "Not scheduling notify because there is a non-successful processing result",
-                extra=extra_dict,
-            )
+        if read_yaml_field(
+            commit_yaml,
+            ("codecov", "notify", "notify_error"),
+            _else=False,
+        ):
+            if len(processing_successses) == 0 or not all(processing_successses):
+                log.info(
+                    "Not scheduling notify because there is a non-successful processing result",
+                    extra=extra_dict,
+                )
 
-            return ShouldCallNotifResult.NOTIFY_ERROR
+                return ShouldCallNotifResult.NOTIFY_ERROR
+        else:
+            if not any(processing_successses):
+                return ShouldCallNotifResult.DO_NOT_NOTIFY
 
         return ShouldCallNotifResult.NOTIFY
 

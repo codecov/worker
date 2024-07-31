@@ -289,8 +289,22 @@ class TestUploadFinisherTask(object):
             == ShouldCallNotifResult.NOTIFY
         )
 
-    def test_should_call_notifications_no_successful_reports(self, dbsession):
-        commit_yaml = {"codecov": {"max_report_age": "1y ago"}}
+    @pytest.mark.parametrize(
+        "notify_error,result",
+        [
+            (True, ShouldCallNotifResult.NOTIFY_ERROR),
+            (False, ShouldCallNotifResult.DO_NOT_NOTIFY),
+        ],
+    )
+    def test_should_call_notifications_no_successful_reports(
+        self, dbsession, notify_error, result
+    ):
+        commit_yaml = {
+            "codecov": {
+                "max_report_age": "1y ago",
+                "notify": {"notify_error": notify_error},
+            }
+        }
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -308,7 +322,7 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask().should_call_notifications(
                 commit, commit_yaml, processing_results, None
             )
-            == ShouldCallNotifResult.NOTIFY_ERROR
+            == result
         )
 
     def test_should_call_notifications_not_enough_builds(self, dbsession, mocker):
@@ -532,13 +546,20 @@ class TestUploadFinisherTask(object):
         )
         assert mocked_app.send_task.call_count == 0
 
-    def test_finish_reports_processing_no_notification(self, dbsession, mocker):
-        commit_yaml = {}
+    @pytest.mark.parametrize(
+        "notify_error",
+        [True, False],
+    )
+    def test_finish_reports_processing_no_notification(
+        self, dbsession, mocker, notify_error
+    ):
+        commit_yaml = {"codecov": {"notify": {"notify_error": notify_error}}}
         mocked_app = mocker.patch.object(
             UploadFinisherTask,
             "app",
             tasks={
                 "app.tasks.notify.NotifyErrorTask": mocker.MagicMock(),
+                "app.tasks.notify.Notify": mocker.MagicMock(),
             },
         )
         commit = CommitFactory.create(
@@ -562,10 +583,18 @@ class TestUploadFinisherTask(object):
             checkpoints,
         )
         assert res == {"notifications_called": False}
-        assert mocked_app.send_task.call_count == 0
-        mocked_app.tasks[
-            "app.tasks.notify.NotifyErrorTask"
-        ].apply_async.assert_called_once()
+        if notify_error:
+            assert mocked_app.send_task.call_count == 0
+            mocked_app.tasks[
+                "app.tasks.notify.NotifyErrorTask"
+            ].apply_async.assert_called_once()
+            mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_not_called()
+        else:
+            assert mocked_app.send_task.call_count == 0
+            mocked_app.tasks[
+                "app.tasks.notify.NotifyErrorTask"
+            ].apply_async.assert_not_called()
+            mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_not_called()
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_calls_save_commit_measurements_task(
