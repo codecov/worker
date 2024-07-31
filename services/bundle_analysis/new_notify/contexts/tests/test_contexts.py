@@ -114,7 +114,7 @@ class TestBaseBundleAnalysisNotificationContextBuild:
         ]
 
 
-class TestBundleAnalysisCommentNotificationContext:
+class TestBundleAnalysisPRCommentNotificationContext:
     @pytest.mark.asyncio
     async def test_load_pull_not_found(self, dbsession, mocker):
         head_commit, _ = get_commit_pair(dbsession)
