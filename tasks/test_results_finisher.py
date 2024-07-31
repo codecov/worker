@@ -13,6 +13,7 @@ from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingEr
 from database.models import Commit, Flake, Repository, TestResultReportTotals
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
+from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
@@ -160,8 +161,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     )
                 )
 
-        notifier = TestResultsNotifier(commit, commit_yaml)
-
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
 
         totals = commit_report.test_result_totals
@@ -193,6 +192,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             # if error is None this whole process should be a noop
             if totals.error is not None:
                 # make an attempt to make test results comment
+                notifier = TestResultsNotifier(commit, commit_yaml, None)
+
                 success, reason = async_to_sync(notifier.error_comment)()
 
                 # also make attempt to make coverage comment
@@ -289,6 +290,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             failed_tests, passed_tests, skipped_tests, failures, flaky_tests
         )
 
+        notifier = TestResultsNotifier(commit, commit_yaml, payload)
+
         with metrics.timing("test_results.finisher.notification"):
             checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
             # TODO: remove this later, we can do this now because there aren't many users using this
@@ -301,7 +304,13 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 unit="millisecond",
                 tags={"repoid": repoid},
             )
-            success, reason = async_to_sync(notifier.notify)(payload)
+            notifier_result: NotifierResult = async_to_sync(notifier.notify)()
+
+        match notifier_result:
+            case NotifierResult.COMMENT_POSTED:
+                success = True
+            case _:
+                success = False
 
         self.extra_dict["success"] = success
         log.info(
@@ -312,7 +321,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         # using a var as a tag here will be fine as it's a boolean
         metrics.incr(
             "test_results.finisher.test_result_notifier",
-            tags={"status": success, "reason": reason},
+            tags={"status": success, "reason": notifier_result.value},
         )
 
         return {

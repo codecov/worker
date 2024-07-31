@@ -2,18 +2,17 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import List, Mapping, Sequence, Tuple
+from typing import List, Mapping, Sequence
 
-from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
 from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.report import BaseReportService
 from services.repository import (
-    fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
 from services.yaml import read_yaml_field
@@ -130,39 +129,9 @@ class TestResultsNotificationPayload:
     flaky_tests: set[str] | None = None
 
 
-class TestResultsNotifier:
-    def __init__(
-        self,
-        commit: Commit,
-        commit_yaml,
-    ):
-        self.commit = commit
-        self.commit_yaml = commit_yaml
-
-    async def get_pull(self):
-        self.pull = await fetch_and_update_pull_request_information_from_commit(
-            self.repo_service, self.commit, self.commit_yaml
-        )
-
-    async def send_to_provider(self, message):
-        pullid = self.pull.database_pull.pullid
-        try:
-            comment_id = self.pull.database_pull.commentid
-            if comment_id:
-                await self.repo_service.edit_comment(pullid, comment_id, message)
-            else:
-                res = await self.repo_service.post_comment(pullid, message)
-                self.pull.database_pull.commentid = res["id"]
-            return True
-        except TorngitClientError:
-            log.error(
-                "Error creating/updating PR comment",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                    pullid=pullid,
-                ),
-            )
-            return False
+@dataclass
+class TestResultsNotifier(BaseNotifier):
+    payload: TestResultsNotificationPayload | None
 
     def generate_test_description(
         self,
@@ -195,7 +164,10 @@ class TestResultsNotifier:
 
         return f"  <pre>{failure_message}</pre>"
 
-    def build_message(self, payload: TestResultsNotificationPayload) -> str:
+    def build_message(self) -> str:
+        if self.payload is None:
+            raise ValueError("Payload passed to notifier is None, cannot build message")
+
         message = []
 
         message += [
@@ -204,24 +176,27 @@ class TestResultsNotifier:
             "### :x: Failed Test Results: ",
         ]
 
-        completed = payload.failed + payload.passed + payload.skipped
-        if payload.flaky_tests:
-            num = len(payload.flaky_tests)
+        completed = self.payload.failed + self.payload.passed + self.payload.skipped
+        if self.payload.flaky_tests:
+            num = len(self.payload.flaky_tests)
             flake_section = f"({num} known flakes hit)" if (num) else ""
 
             results = [
-                f"Completed {completed} tests with **`{payload.failed} failed`**{flake_section}, {payload.passed} passed and {payload.skipped} skipped.",
+                f"Completed {completed} tests with **`{self.payload.failed} failed`**{flake_section}, {self.payload.passed} passed and {self.payload.skipped} skipped.",
             ]
             message += results
         else:
-            results = f"Completed {completed} tests with **`{payload.failed} failed`**, {payload.passed} passed and {payload.skipped} skipped."
+            results = f"Completed {completed} tests with **`{self.payload.failed} failed`**, {self.payload.passed} passed and {self.payload.skipped} skipped."
             message.append(results)
 
         fail_dict = defaultdict(list)
         flake_dict = defaultdict(list)
-        for fail in payload.failures:
+        for fail in self.payload.failures:
             flake = None
-            if payload.flaky_tests is not None and fail.test_id in payload.flaky_tests:
+            if (
+                self.payload.flaky_tests is not None
+                and fail.test_id in self.payload.flaky_tests
+            ):
                 flake_dict[fail.testsuite].append(fail)
             else:
                 fail_dict[fail.testsuite].append(fail)
@@ -245,38 +220,6 @@ class TestResultsNotifier:
             message.append("</details>")
 
         return "\n".join(message)
-
-    async def notify(self, payload: TestResultsNotificationPayload) -> Tuple[bool, str]:
-        self.repo_service = get_repo_provider_service(self.commit.repository)
-
-        await self.get_pull()
-        if self.pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                ),
-            )
-            return False, "no_pull"
-
-        message = self.build_message(payload)
-
-        sent_to_provider = await self.send_to_provider(message)
-        if sent_to_provider == False:
-            return (False, "torngit_error")
-
-        return (True, "comment_posted")
-
-    def insert_breaks(self, table_value):
-        line_size = 70
-        lines = table_value.split("<br>")
-        for i, line in enumerate(lines):
-            line_with_breaks = [
-                line[i : i + line_size] for i in range(0, len(line), line_size)
-            ]
-            lines[i] = "<br>".join(line_with_breaks)
-
-        return "<br>".join(lines)
 
     async def error_comment(self):
         self.repo_service = get_repo_provider_service(self.commit.repository)

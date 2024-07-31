@@ -17,6 +17,8 @@ from helpers.checkpoint_logger import (
     "NOTIF_GIT_SERVICE_ERROR",
     "NOTIF_TOO_MANY_RETRIES",
     "NOTIF_ERROR_NO_REPORT",
+    "NOTIFIED_ERROR",
+    "ERROR_NOTIFYING_ERROR",
 )
 @success_events(
     "SKIPPING_NOTIFICATION",
@@ -35,6 +37,7 @@ from helpers.checkpoint_logger import (
     ),
     ("total_processing_duration", "PROCESSING_BEGIN", "PROCESSING_COMPLETE"),
     ("notification_latency", "UPLOAD_TASK_BEGIN", "NOTIFIED"),
+    ("error_notification_latency", "UPLOAD_TASK_BEGIN", "NOTIFIED_ERROR"),
 )
 @reliability_counters
 class UploadFlow(BaseFlow):
@@ -48,6 +51,8 @@ class UploadFlow(BaseFlow):
     PROCESSING_COMPLETE = auto()
     SKIPPING_NOTIFICATION = auto()
     NOTIFIED = auto()
+    NOTIFIED_ERROR = auto()
+    ERROR_NOTIFYING_ERROR = auto()
     NOTIF_LOCK_ERROR = auto()
     NOTIF_NO_VALID_INTEGRATION = auto()
     NOTIF_GIT_CLIENT_ERROR = auto()
