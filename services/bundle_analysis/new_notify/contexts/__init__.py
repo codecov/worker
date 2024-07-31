@@ -1,5 +1,6 @@
+from abc import abstractmethod
 from functools import cached_property
-from typing import Generic, TypeVar
+from typing import Generic, Self, TypeVar
 
 from shared.bundle_analysis import (
     BundleAnalysisReport,
@@ -104,6 +105,12 @@ class NotificationContextBuilder:
             gh_app_installation_name=gh_app_installation_name,
         )
         return self
+
+    @abstractmethod
+    def initialize_from_context(
+        self, context: BaseBundleAnalysisNotificationContext
+    ) -> Self:
+        pass
 
     def is_field_loaded(self, field_name: str):
         return field_name in self._notification_context.__dict__
