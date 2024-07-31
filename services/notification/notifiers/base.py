@@ -15,8 +15,8 @@ class NotificationResult(object):
     notification_attempted: bool = False
     notification_successful: bool = False
     explanation: str = None
-    data_sent: Mapping[str, Any] = None
-    data_received: Mapping[str, Any] = None
+    data_sent: Mapping[str, Any] | None = None
+    data_received: Mapping[str, Any] | None = None
     github_app_used: int | None = None
 
     def merge(self, other: "NotificationResult") -> "NotificationResult":
