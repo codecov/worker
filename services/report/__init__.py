@@ -13,7 +13,7 @@ import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.config import get_config
 from shared.django_apps.reports.models import ReportType
-from shared.metrics import metrics
+from shared.metrics import Histogram, metrics
 from shared.reports.carryforward import generate_carryforward_report
 from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState, UploadType
@@ -55,9 +55,29 @@ from services.redis import (
 )
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
+from services.report.parser.version_one import VersionOneReportParser
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
+
+KiB = 1024
+MiB = KiB * KiB
+RAW_UPLOAD_SIZE = Histogram(
+    "worker_services_report_raw_upload_size",
+    "Size (in bytes) of a raw upload (which may contain several raw reports)",
+    ["version"],
+    buckets=[
+        100 * KiB,
+        500 * KiB,
+        1 * MiB,
+        5 * MiB,
+        10 * MiB,
+        50 * MiB,
+        100 * MiB,
+        200 * MiB,
+        500 * MiB,
+    ],
+)
 
 
 @dataclass
@@ -913,6 +933,11 @@ class ReportService(BaseReportService):
             archive_file = archive_service.read_file(archive_url)
 
         parser = get_proper_parser(upload)
+
+        upload_version = (
+            "v1" if isinstance(parser, VersionOneReportParser) else "legacy"
+        )
+        RAW_UPLOAD_SIZE.labels(version=upload_version).observe(len(archive_file))
 
         raw_uploaded_report = parser.parse_raw_report_from_bytes(archive_file)
         return raw_uploaded_report
