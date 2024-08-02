@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 from openai import AsyncOpenAI
 from shared.config import get_config
+from shared.rate_limits.exceptions import EntityRateLimitedException
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.base import TokenType, TorngitBaseAdapter
 
@@ -333,7 +334,12 @@ class Review:
 
 
 async def perform_review(repository: Repository, pullid: int):
-    repository_service = get_repo_provider_service(repository)
+    try:
+        repository_service = get_repo_provider_service(repository)
+    except EntityRateLimitedException as e:
+        log.warning(
+            f"Entity {e.entity_name} rate limited on AI PR review. Please try again later"
+        )
     pull_wrapper = PullWrapper(repository_service, pullid)
 
     archive = ArchiveService(repository)

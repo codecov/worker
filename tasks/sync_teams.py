@@ -3,6 +3,7 @@ from datetime import datetime
 
 from asgiref.sync import async_to_sync
 from shared.celery_config import sync_teams_task_name
+from shared.rate_limits.exceptions import EntityRateLimitedException
 
 from app import celery_app
 from database.models import Owner
@@ -24,7 +25,12 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
         assert owner, "Owner not found"
         service = owner.service
 
-        git = get_owner_provider_service(owner, ignore_installation=True)
+        try:
+            git = get_owner_provider_service(owner, ignore_installation=True)
+        except EntityRateLimitedException as e:
+            log.warning(
+                f"Entity {e.entity_name} rate limited trying to sync teams. Please try again later"
+            )
 
         # get list of teams with username, name, email, id (service_id), etc
         teams = async_to_sync(git.list_teams)()

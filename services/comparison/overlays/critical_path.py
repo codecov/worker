@@ -1,9 +1,11 @@
 import json
+import logging
 import re
 from typing import Sequence
 
 from cc_rustyribs import rustify_diff
 from shared.profiling import ProfilingDataFullAnalyzer, ProfilingSummaryDataAnalyzer
+from shared.rate_limits.exceptions import EntityRateLimitedException
 from shared.storage.exceptions import FileNotInStorageError
 
 from database.models.profiling import ProfilingCommit
@@ -11,6 +13,7 @@ from services.repository import get_repo_provider_service
 from services.yaml import get_current_yaml
 
 sentinel = object()
+log = logging.getLogger(__name__)
 
 
 def _get_latest_profiling_commit(comparison):
@@ -84,9 +87,14 @@ class CriticalPathOverlay(object):
         if current_yaml is None:
             repo = self._comparison.head.commit.repository
             gh_app_installation_name = self._comparison.context.gh_app_installation_name
-            repo_provider = get_repo_provider_service(
-                repo, installation_name_to_use=gh_app_installation_name
-            )
+            try:
+                repo_provider = get_repo_provider_service(
+                    repo, installation_name_to_use=gh_app_installation_name
+                )
+            except EntityRateLimitedException as e:
+                log.warning(
+                    f"Entity {e.entity_name} rate limited trying to get critical files. Please try again later"
+                )
             current_yaml = await get_current_yaml(
                 self._comparison.head.commit, repo_provider
             )

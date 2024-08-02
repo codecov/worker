@@ -12,6 +12,7 @@ from shared.celery_config import (
 )
 from shared.config import get_config
 from shared.metrics import metrics
+from shared.rate_limits.exceptions import EntityRateLimitedException
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from sqlalchemy import and_
@@ -128,6 +129,10 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                         manual_trigger=manual_trigger,
                         current_owner=owner,
                     )
+        except EntityRateLimitedException as e:
+            log.warning(
+                f"Entity {e.entity_name} rate limited trying to sync repos. Please try again later"
+            )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 

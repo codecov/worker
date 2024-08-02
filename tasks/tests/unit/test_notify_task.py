@@ -5,6 +5,10 @@ from unittest.mock import MagicMock, call
 import pytest
 from celery.exceptions import MaxRetriesExceededError, Retry
 from freezegun import freeze_time
+from shared.bots.exceptions import (
+    NoConfiguredAppsAvailable,
+    RepositoryWithoutValidBotError,
+)
 from shared.celery_config import (
     activate_account_user_task_name,
     new_user_activated_task_name,
@@ -29,7 +33,6 @@ from database.tests.factories import (
 )
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
 from services.lock_manager import LockRetry
 from services.notification import NotificationService

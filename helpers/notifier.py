@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
+from shared.rate_limits.exceptions import EntityRateLimitedException
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Commit
@@ -56,7 +57,12 @@ class BaseNotifier:
     async def notify(
         self,
     ) -> NotifierResult:
-        self.repo_service = get_repo_provider_service(self.commit.repository)
+        try:
+            self.repo_service = get_repo_provider_service(self.commit.repository)
+        except EntityRateLimitedException as e:
+            log.warning(
+                f"Entity {e.entity_name} rate limited trying to notify. Please try again later"
+            )
 
         await self.get_pull()
         if self.pull is None:

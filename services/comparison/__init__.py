@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from shared.rate_limits.exceptions import EntityRateLimitedException
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
 from shared.reports.types import Change
 from shared.torngit.exceptions import (
@@ -87,10 +88,15 @@ class ComparisonProxy(object):
     @property
     def repository_service(self):
         if self._repository_service is None:
-            self._repository_service = get_repo_provider_service(
-                self.comparison.head.commit.repository,
-                installation_name_to_use=self.context.gh_app_installation_name,
-            )
+            try:
+                self._repository_service = get_repo_provider_service(
+                    self.comparison.head.commit.repository,
+                    installation_name_to_use=self.context.gh_app_installation_name,
+                )
+            except EntityRateLimitedException as e:
+                log.warning(
+                    f"Entity {e.entity_name} rate limited trying to get the repository service. Please try again later"
+                )
         return self._repository_service
 
     def has_project_coverage_base_report(self):

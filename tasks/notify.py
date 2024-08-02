@@ -3,6 +3,10 @@ from typing import Optional
 
 from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
+from shared.bots.exceptions import (
+    NoConfiguredAppsAvailable,
+    RepositoryWithoutValidBotError,
+)
 from shared.celery_config import (
     activate_account_user_task_name,
     new_user_activated_task_name,
@@ -23,7 +27,6 @@ from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.clock import get_seconds_to_next_hour
-from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
