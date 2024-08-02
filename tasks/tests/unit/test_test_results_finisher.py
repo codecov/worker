@@ -164,41 +164,40 @@ def test_results_setup(mocker, dbsession):
 
     dbsession.flush()
 
-    duration = 1
     test_instances = [
         TestInstance(
             test_id=test_id1,
             outcome=str(Outcome.Failure),
             failure_message="This should not be in the comment, it will get overwritten by the last test instance",
-            duration_seconds=duration,
+            duration_seconds=1.0,
             upload_id=uploads[0].id,
         ),
         TestInstance(
             test_id=test_id2,
             outcome=str(Outcome.Failure),
             failure_message="Shared failure message",
-            duration_seconds=duration,
+            duration_seconds=2.0,
             upload_id=uploads[1].id,
         ),
         TestInstance(
             test_id=test_id3,
             outcome=str(Outcome.Failure),
             failure_message="Shared failure message",
-            duration_seconds=duration,
+            duration_seconds=3.0,
             upload_id=uploads[2].id,
         ),
         TestInstance(
             test_id=test_id1,
             outcome=str(Outcome.Failure),
             failure_message="<pre>Fourth \r\n\r\n</pre> | test  | instance |",
-            duration_seconds=duration,
+            duration_seconds=4.0,
             upload_id=uploads[3].id,
         ),
         TestInstance(
             test_id=test_id4,
             outcome=str(Outcome.Failure),
             failure_message=None,
-            duration_seconds=duration,
+            duration_seconds=5.0,
             upload_id=uploads[3].id,
         ),
     ]
@@ -351,7 +350,7 @@ class TestUploadTestFinisherTask(object):
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "### :x: 4 Tests Failed:\n| Tests completed | Failed | Passed | Skipped |\n|---|---|---|---|\n| 4 | 4 | 0 | 0 |\n<details><summary>View the top 3 failed tests by shortest run time</summary>\n\n> <pre>\n> test_name1\n> </pre>\n> <details><summary>Stack Traces | 2s run time</summary>\n> \n> >   <pre>Shared failure message</pre>\n> \n> </details>\n\n\n> <pre>\n> Other Class Name\x1ftest_name2\n> </pre>\n> <details><summary>Stack Traces | 3s run time</summary>\n> \n> >   <pre>Shared failure message</pre>\n> \n> </details>\n\n\n> <pre>\n> Class Name\x1ftest_name0\n> </pre>\n> <details><summary>Stack Traces | 4s run time</summary>\n> \n> >   <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n> \n> </details>\n\n</details>",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -551,7 +550,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**, 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>",
+            "### :x: 4 Tests Failed:\n| Tests completed | Failed | Passed | Skipped |\n|---|---|---|---|\n| 4 | 4 | 0 | 0 |\n<details><summary>View the top 3 failed tests by shortest run time</summary>\n\n> <pre>\n> test_name1\n> </pre>\n> <details><summary>Stack Traces | 2s run time</summary>\n> \n> >   <pre>Shared failure message</pre>\n> \n> </details>\n\n\n> <pre>\n> Other Class Name\x1ftest_name2\n> </pre>\n> <details><summary>Stack Traces | 3s run time</summary>\n> \n> >   <pre>Shared failure message</pre>\n> \n> </details>\n\n\n> <pre>\n> Class Name\x1ftest_name0\n> </pre>\n> <details><summary>Stack Traces | 4s run time</summary>\n> \n> >   <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n> \n> </details>\n\n</details>",
         )
 
         assert expected_result == result
@@ -643,7 +642,7 @@ class TestUploadTestFinisherTask(object):
 
         f = Flake()
         f.repoid = repoid
-        f.testid = test_instances[0].test_id
+        f.testid = test_instances[2].test_id
         f.reduced_error = r
         f.count = 5
         f.fail_count = 2
@@ -677,7 +676,7 @@ class TestUploadTestFinisherTask(object):
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.\n\n### :x: Failed Test Results: \nCompleted 4 tests with **`4 failed`**(1 known flakes hit), 0 passed and 0 skipped.\n<details><summary>View the full list of failed tests</summary>\n\n## test_testsuite\n- **Class name:** Other Class Name<br>**Test name:** test_name2<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name1\n**Flags:**\n  - 1<br><br>\n  <pre>Shared failure message</pre>\n- **Test name:** test_name3\n**Flags:**\n  - 0<br><br>\n  <pre>No failure message available</pre>\n</details>\n<details><summary>View the full list of flaky tests</summary>\n\n## test_testsuite\n- **Class name:** Class Name<br>**Test name:** test_name0\n**Flags:**\n  - 0<br><br>\n  <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n</details>",
+            "### :x: 4 Tests Failed:\n| Tests completed | Failed | Passed | Skipped |\n|---|---|---|---|\n| 4 | 4 | 0 | 0 |\n<details><summary>View the top 3 failed tests by shortest run time</summary>\n\n> <pre>\n> test_name1\n> </pre>\n> <details><summary>Stack Traces | 2s run time</summary>\n> \n> >   <pre>Shared failure message</pre>\n> \n> </details>\n\n\n> <pre>\n> Class Name\x1ftest_name0\n> </pre>\n> <details><summary>Stack Traces | 4s run time</summary>\n> \n> >   <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n> \n> </details>\n\n</details>\n<details><summary>View the full list of 1 :snowflake: flaky tests</summary>\n\n> <pre>\n> Other Class Name\x1ftest_name2\n> </pre>\n> **Flake rate in main:** 0.4% (Passed 3 times, Failed 2 times)\n> <details><summary>Stack Traces | 3s run time</summary>\n> \n> >   <pre>Shared failure message</pre>\n> \n> </details>\n\n</details>",
         )
 
         mock_metrics.incr.assert_has_calls(
