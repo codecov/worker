@@ -214,19 +214,22 @@ class MessageMixin(object):
             f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
         ):
             # Settings here enable failed tests results for now as a new product
-            for line in writer_class.header_lines(
-                comparison=comparison, diff=diff, settings=settings
-            ):
-                message.append(line)
-            for line in writer_class.middle_lines(
-                comparison=comparison,
-                diff=diff,
-                links=links,
-                current_yaml=current_yaml,
-            ):
-                message.append(line)
-            for line in writer_class.footer_lines():
-                message.append(line)
+            message.extend(
+                line
+                for line in writer_class.header_lines(
+                    comparison=comparison, diff=diff, settings=settings
+                )
+            )
+            message.extend(
+                line
+                for line in writer_class.middle_lines(
+                    comparison=comparison,
+                    diff=diff,
+                    links=links,
+                    current_yaml=current_yaml,
+                )
+            )
+            message.extend(line for line in writer_class.footer_lines())
 
             return message
 
@@ -271,6 +274,9 @@ class MessageMixin(object):
         headers = ["newheader", "header", "condensed_header"]
         if all(x not in sections for x in headers):
             sections.insert(0, "condensed_header")
+
+        if "files" in sections or "tree" in sections:
+            sections.append("newfiles")
 
         return [
             section

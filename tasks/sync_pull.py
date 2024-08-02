@@ -10,7 +10,6 @@ import sqlalchemy.orm
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.celery_config import notify_task_name, pulls_task_name
-from shared.metrics import Counter, Histogram
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
@@ -21,7 +20,6 @@ from database.models import Commit, Pull, Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
-from rollouts import FLAKY_TEST_DETECTION, SYNC_PULL_LOCK_TIMEOUT
 from services.comparison.changes import get_changes
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
@@ -30,48 +28,12 @@ from services.repository import (
     fetch_and_update_pull_request_information,
     get_repo_provider_service,
 )
+from services.test_results import should_write_flaky_detection
 from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.process_flakes import process_flakes_task_name
 
 log = logging.getLogger(__name__)
-
-TASK_RUN_COUNT = Counter(
-    "sync_pull_task_run_count",
-    "Number of SyncPull tasks that were executed (per wait group)",
-    ["wait_group"],
-)
-
-TASK_REJECTED_COUNT = Counter(
-    "sync_pull_task_rejected_count",
-    "Number of SyncPull tasks that were _not_ executed because they couldn't get a lock (per wait group)",
-    ["wait_group"],
-)
-
-TIME_FOR_LOCK_HISTOGRAM = Histogram(
-    "sync_pull_time_to_get_lock",
-    "Distribution of the time a SyncPull task was waiting for the lock (per wait group)",
-    ["wait_group"],
-    unit="milliseconds",
-    buckets=[
-        100,
-        200,
-        300,
-        400,
-        500,
-        600,
-        700,
-        800,
-        900,
-        1000,
-        2000,
-        3000,
-        4000,
-        5000,
-        6000,
-        10000,
-    ],
-)
 
 
 class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
@@ -105,21 +67,13 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         pullid = int(pullid)
         repoid = int(repoid)
         lock_name = f"pullsync_{repoid}_{pullid}"
-        wait_for_lock_timeout_seconds, metrics_tag = SYNC_PULL_LOCK_TIMEOUT.check_value(
-            identifier=repoid, default=(5, "long_timeout")
-        )
         start_wait = time.monotonic()
         try:
             with redis_connection.lock(
                 lock_name,
                 timeout=60 * 5,
-                blocking_timeout=wait_for_lock_timeout_seconds,
+                blocking_timeout=0.5,
             ):
-                TASK_RUN_COUNT.labels(wait_group=metrics_tag).inc()
-                time_to_get_lock_seconds = time.monotonic() - start_wait
-                TIME_FOR_LOCK_HISTOGRAM.labels(wait_group=metrics_tag).observe(
-                    time_to_get_lock_seconds * 1000
-                )
                 return self.run_impl_within_lock(
                     db_session,
                     redis_connection,
@@ -133,7 +87,6 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "Unable to acquire PullSync lock. Not retrying because pull is being synced already",
                 extra=dict(pullid=pullid, repoid=repoid),
             )
-            TASK_REJECTED_COUNT.labels(wait_group=metrics_tag).inc()
             return {
                 "notifier_called": False,
                 "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
@@ -479,11 +432,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         self, repoid: int, pull_head: str, branch: str, current_yaml: UserYaml
     ):
         # but only if flake processing is enabled for this repo
-        if FLAKY_TEST_DETECTION.check_value(
-            identifier=repoid, default=False
-        ) and read_yaml_field(
-            current_yaml, ("test_analytics", "flake_detection"), False
-        ):
+        if should_write_flaky_detection(repoid, current_yaml):
             self.app.tasks[process_flakes_task_name].apply_async(
                 kwargs=dict(repo_id=repoid, commit_id_list=[pull_head], branch=branch)
             )

@@ -32,7 +32,7 @@ class TestOwnerServiceTestCase(object):
 
     def test_get_owner_provider_service_with_installation(self, dbsession, mocker):
         mocker.patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             return_value="integration_token",
         )
         owner = OwnerFactory.create(

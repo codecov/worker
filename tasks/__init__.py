@@ -1,5 +1,6 @@
 # ruff: noqa: F401
 from app import celery_app
+from tasks.activate_account_user import activate_account_user_task
 from tasks.ai_pr_review import ai_pr_view_task
 from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task
 from tasks.backfill_existing_gh_app_installations import (
@@ -30,6 +31,7 @@ from tasks.manual_trigger import manual_trigger_task
 from tasks.mutation_test_upload import mutation_test_upload_task
 from tasks.new_user_activated import new_user_activated_task
 from tasks.notify import notify_task
+from tasks.notify_error import notify_error_task
 from tasks.plan_manager_task import daily_plan_manager_task_name
 from tasks.preprocess_upload import preprocess_upload_task
 from tasks.process_flakes import process_flakes_task

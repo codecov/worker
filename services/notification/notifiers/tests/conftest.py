@@ -339,7 +339,7 @@ def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
 @pytest.fixture
 def create_sample_comparison(dbsession, request, sample_report, mocker):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
 
@@ -379,7 +379,7 @@ def create_sample_comparison(dbsession, request, sample_report, mocker):
 @pytest.fixture
 def sample_comparison(dbsession, request, sample_report, mocker):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(
@@ -440,7 +440,7 @@ async def sample_comparison_coverage_carriedforward(
     dbsession, request, sample_commit_with_report_already_carriedforward, mocker
 ):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     head_commit = sample_commit_with_report_already_carriedforward
@@ -496,7 +496,7 @@ async def sample_comparison_coverage_carriedforward(
 @pytest.fixture
 def sample_comparison_negative_change(dbsession, request, sample_report, mocker):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(
@@ -550,7 +550,7 @@ def sample_comparison_negative_change(dbsession, request, sample_report, mocker)
 @pytest.fixture
 def sample_comparison_no_change(dbsession, request, sample_report, mocker):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(
@@ -604,7 +604,7 @@ def sample_comparison_no_change(dbsession, request, sample_report, mocker):
 @pytest.fixture
 def sample_comparison_without_pull(dbsession, request, sample_report, mocker):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(
@@ -644,7 +644,7 @@ def sample_comparison_database_pull_without_provider(
     dbsession, request, sample_report, mocker
 ):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(
@@ -730,7 +730,7 @@ def generate_sample_comparison(username, dbsession, base_report, head_report):
 @pytest.fixture
 def sample_comparison_without_base_report(dbsession, request, sample_report, mocker):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(
@@ -792,7 +792,7 @@ def sample_comparison_matching_flags(dbsession, request, sample_report):
 @pytest.fixture
 def sample_comparison_without_base_with_pull(dbsession, request, sample_report, mocker):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(
@@ -846,7 +846,7 @@ def sample_comparison_head_and_pull_head_differ(
     dbsession, request, sample_report, mocker
 ):
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     repository = RepositoryFactory.create(

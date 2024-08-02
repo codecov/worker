@@ -82,7 +82,7 @@ class TestRepositoryServiceTestCase(object):
         self, dbsession, mocker
     ):
         mocker.patch(
-            "services.bots.github_apps.get_github_integration_token",
+            "shared.bots.github_apps.get_github_integration_token",
             return_value="installation_token",
         )
         repo = RepositoryFactory.create(

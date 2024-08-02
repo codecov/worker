@@ -4,6 +4,7 @@ from typing import Optional
 from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from shared.celery_config import (
+    activate_account_user_task_name,
     new_user_activated_task_name,
     notify_task_name,
     status_set_error_task_name,
@@ -677,6 +678,13 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             new_user_activated_task_name,
             args=None,
             kwargs=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid),
+        )
+        # Activate the account user if it exists.
+        self.app.tasks[activate_account_user_task_name].apply_async(
+            kwargs=dict(
+                user_ownerid=user_ownerid,
+                org_ownerid=org_ownerid,
+            ),
         )
 
     def fetch_and_update_whether_ci_passed(

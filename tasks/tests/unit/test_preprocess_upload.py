@@ -153,7 +153,7 @@ class TestPreProcessUpload(object):
                 "diff_totals": None,
             },
         ]
-        for sess_id, session in sample_report.sessions.items():
+        for sess_id in sample_report.sessions.keys():
             upload = (
                 dbsession.query(Upload)
                 .filter_by(report_id=commit.report.id_, order_number=sess_id)

@@ -52,6 +52,10 @@ def mock_repo_provider_comments(mocker):
         post_comment=AsyncMock(return_value={"id": 1}),
     )
     _ = mocker.patch(
+        "helpers.notifier.get_repo_provider_service",
+        return_value=m,
+    )
+    _ = mocker.patch(
         "services.test_results.get_repo_provider_service",
         return_value=m,
     )
@@ -88,7 +92,7 @@ def test_results_setup(mocker, dbsession):
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
 
     _ = mocker.patch(
-        "services.test_results.fetch_and_update_pull_request_information_from_commit",
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=EnrichedPull(
             database_pull=pull,
             provider_pull={},
@@ -231,7 +235,7 @@ def test_results_setup_no_instances(mocker, dbsession):
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
 
     _ = mocker.patch(
-        "services.test_results.fetch_and_update_pull_request_information_from_commit",
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=EnrichedPull(
             database_pull=pull,
             provider_pull={},
@@ -323,7 +327,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
         repoid, commit, pull, _ = test_results_setup
@@ -384,7 +388,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
         repoid, commit, _, test_instances = test_results_setup
@@ -453,7 +457,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup_no_instances,
     ):
-        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
         repoid, commit, pull, _ = test_results_setup_no_instances
@@ -520,7 +524,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
         repoid, commit, pull, _ = test_results_setup
@@ -567,7 +571,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
 
         repoid, commit, _, _ = test_results_setup
@@ -626,7 +630,7 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = True
 
         repoid, commit, pull, test_instances = test_results_setup
@@ -696,6 +700,9 @@ class TestUploadTestFinisherTask(object):
             assert c in mock_metrics.timing.mock_calls
 
     @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "flake_detection", ["FLAKY_TEST_DETECTION", "FLAKY_SHADOW_MODE"]
+    )
     def test_upload_finisher_task_call_main_branch(
         self,
         mocker,
@@ -709,9 +716,15 @@ class TestUploadTestFinisherTask(object):
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
+        flake_detection,
     ):
-        mock_feature = mocker.patch("tasks.test_results_finisher.FLAKY_TEST_DETECTION")
+        mock_feature = mocker.patch(f"services.test_results.{flake_detection}")
         mock_feature.check_value.return_value = True
+        commit_yaml = {
+            "codecov": {"max_report_age": False},
+        }
+        if flake_detection == "FLAKY_TEST_DETECTION":
+            commit_yaml["test_analytics"] = {"flake_detection": True}
 
         repoid, commit, pull, test_instances = test_results_setup
 
@@ -724,10 +737,7 @@ class TestUploadTestFinisherTask(object):
             ],
             repoid=repoid,
             commitid=commit.commitid,
-            commit_yaml={
-                "codecov": {"max_report_age": False},
-                "test_analytics": {"flake_detection": True},
-            },
+            commit_yaml=commit_yaml,
         )
 
         expected_result = {

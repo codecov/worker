@@ -13,16 +13,17 @@ from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingEr
 from database.models import Commit, Flake, Repository, TestResultReportTotals
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
+from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
-from rollouts import FLAKY_TEST_DETECTION
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
     TestResultsNotificationFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
     latest_test_instances_for_a_given_commit,
+    should_read_flaky_detection,
+    should_write_flaky_detection,
 )
-from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.notify import notify_task_name
 from tasks.process_flakes import process_flakes_task_name
@@ -148,7 +149,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         assert commit, "commit not found"
 
-        if self.flaky_test_detection_enabled(repoid, commit_yaml):
+        if should_write_flaky_detection(repoid, commit_yaml):
             repo = db_session.query(Repository).filter_by(repoid=repoid).first()
 
             if commit.merged is True or commit.branch == repo.branch:
@@ -159,8 +160,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                         branch=repo.branch,
                     )
                 )
-
-        notifier = TestResultsNotifier(commit, commit_yaml)
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
 
@@ -193,6 +192,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             # if error is None this whole process should be a noop
             if totals.error is not None:
                 # make an attempt to make test results comment
+                notifier = TestResultsNotifier(commit, commit_yaml, None)
+
                 success, reason = async_to_sync(notifier.error_comment)()
 
                 # also make attempt to make coverage comment
@@ -289,6 +290,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             failed_tests, passed_tests, skipped_tests, failures, flaky_tests
         )
 
+        notifier = TestResultsNotifier(commit, commit_yaml, payload)
+
         with metrics.timing("test_results.finisher.notification"):
             checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
             # TODO: remove this later, we can do this now because there aren't many users using this
@@ -301,7 +304,13 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 unit="millisecond",
                 tags={"repoid": repoid},
             )
-            success, reason = async_to_sync(notifier.notify)(payload)
+            notifier_result: NotifierResult = async_to_sync(notifier.notify)()
+
+        match notifier_result:
+            case NotifierResult.COMMENT_POSTED:
+                success = True
+            case _:
+                success = False
 
         self.extra_dict["success"] = success
         log.info(
@@ -312,7 +321,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         # using a var as a tag here will be fine as it's a boolean
         metrics.incr(
             "test_results.finisher.test_result_notifier",
-            tags={"status": success, "reason": reason},
+            tags={"status": success, "reason": notifier_result.value},
         )
 
         return {
@@ -328,7 +337,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid: int,
         failures: list[TestResultsNotificationFailure],
     ):
-        if self.flaky_test_detection_enabled(repoid, commit_yaml):
+        if should_read_flaky_detection(repoid, commit_yaml):
             flaky_test_ids = set()
             failure_test_ids = [failure.test_id for failure in failures]
 
@@ -370,11 +379,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         return all(
             [instance.outcome != str(Outcome.Failure) for instance in testrun_list]
         )
-
-    def flaky_test_detection_enabled(self, repoid: int, commit_yaml: UserYaml):
-        return FLAKY_TEST_DETECTION.check_value(
-            identifier=repoid, default=False
-        ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
 
 
 RegisteredTestResultsFinisherTask = celery_app.register_task(TestResultsFinisherTask())
