@@ -11,6 +11,7 @@ from shared.metrics import Counter, Histogram
 from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
+from helpers.metrics import KiB, MiB
 from services.report.languages import (
     BullseyeProcessor,
     CloverProcessor,
@@ -55,8 +56,6 @@ RAW_REPORT_PROCESSOR_RUNTIME_SECONDS = Histogram(
     buckets=[0.05, 0.1, 0.5, 1, 2, 5, 7.5, 10, 15, 20, 30, 60, 120, 180, 300, 600, 900],
 )
 
-KiB = 1024
-MiB = KiB * KiB
 RAW_REPORT_SIZE = Histogram(
     "worker_services_report_raw_report_size",
     "Size (in bytes) of a raw report",
