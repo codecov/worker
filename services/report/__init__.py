@@ -55,6 +55,11 @@ from services.redis import (
 )
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
+from services.report.parser.version_one import VersionOneReportParser
+from services.report.prometheus_metrics import (
+    RAW_UPLOAD_RAW_REPORT_COUNT,
+    RAW_UPLOAD_SIZE,
+)
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
@@ -914,7 +919,17 @@ class ReportService(BaseReportService):
 
         parser = get_proper_parser(upload)
 
+        upload_version = (
+            "v1" if isinstance(parser, VersionOneReportParser) else "legacy"
+        )
+        RAW_UPLOAD_SIZE.labels(version=upload_version).observe(len(archive_file))
+
         raw_uploaded_report = parser.parse_raw_report_from_bytes(archive_file)
+
+        RAW_UPLOAD_RAW_REPORT_COUNT.labels(version=upload_version).observe(
+            len(raw_uploaded_report.get_uploaded_files())
+        )
+
         return raw_uploaded_report
 
     @sentry_sdk.trace
