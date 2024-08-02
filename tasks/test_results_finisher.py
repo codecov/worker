@@ -17,6 +17,7 @@ from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.test_results import (
+    FlakeInfo,
     TestResultsNotificationFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
@@ -248,6 +249,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                         failure_message=failure_message,
                         test_id=test_instance.test_id,
                         envs=flag_names,
+                        duration_seconds=test_instance.duration_seconds,
                     )
                 )
             elif test_instance.outcome == str(Outcome.Skip):
@@ -284,7 +286,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         flaky_tests = self.get_flaky_tests(db_session, commit_yaml, repoid, failures)
 
-        failures = sorted(failures, key=lambda x: x.testsuite + x.testname)
+        failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
 
         payload = TestResultsNotificationPayload(
             failed_tests, passed_tests, skipped_tests, failures, flaky_tests
@@ -339,13 +341,13 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         commit_yaml: UserYaml,
         repoid: int,
         failures: list[TestResultsNotificationFailure],
-    ):
+    ) -> dict[str, FlakeInfo]:
         if should_read_flaky_detection(repoid, commit_yaml):
-            flaky_test_ids = set()
+            flaky_test_ids = dict()
             failure_test_ids = [failure.test_id for failure in failures]
 
-            matching_flake_test_ids = list(
-                db_session.query(Flake.testid)
+            matching_flakes = list(
+                db_session.query(Flake)
                 .filter(  # type:ignore
                     Flake.repoid == repoid,
                     Flake.testid.in_(failure_test_ids),
@@ -358,16 +360,16 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             # want to know how often we are hitting the limit
             metrics.distribution(
                 "flake_detection_matching_flakes_len",
-                len(matching_flake_test_ids),
+                len(matching_flakes),
                 tags={"repoid": repoid},
             )
 
-            for testid in matching_flake_test_ids:
-                flaky_test_ids.add(testid[0])
+            for flake in matching_flakes:
+                flaky_test_ids[flake.testid] = FlakeInfo(flake.fail_count, flake.count)
 
             return flaky_test_ids
 
-        return None
+        return dict()
 
     def check_if_no_success(self, previous_result):
         return all(
