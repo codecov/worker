@@ -5,6 +5,7 @@ from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.tests.factories.core import CommitFactory
+from services.bundle_analysis.comparison import ComparisonLoader
 from services.bundle_analysis.new_notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
@@ -33,6 +34,24 @@ class TestBaseBundleAnalysisNotificationContextBuild:
             str(exp.value)
             == "The property you are trying to access is not loaded. Make sure to build the context before using it."
         )
+
+    @pytest.mark.parametrize(
+        "field_name, expected",
+        [
+            ("commit_report", True),
+            ("bundle_analysis_report", False),
+            ("field_doesnt_exist", False),
+        ],
+    )
+    def test_is_field_loaded(self, field_name, expected, dbsession):
+        head_commit, _ = get_commit_pair(dbsession)
+        builder = NotificationContextBuilder().initialize(
+            head_commit, UserYaml.from_dict({}), GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        builder._notification_context.commit_report = MagicMock(
+            name="fake_commit_report"
+        )
+        assert builder.is_field_loaded(field_name) == expected
 
     def test_load_commit_report_no_report(self, dbsession):
         head_commit, _ = get_commit_pair(dbsession)
@@ -328,3 +347,38 @@ class TestBundleAnalysisCommentNotificationContext:
             context.bundle_analysis_comparison.head_report_key
             == head_commit_report.external_id
         )
+
+    def test_initialize_from_context(self, dbsession, mocker):
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict({})
+        builder = BundleAnalysisCommentContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        context = builder.get_result()
+        context.commit_report = MagicMock(name="fake_commit_report")
+        context.bundle_analysis_report = MagicMock(name="fake_bundle_analysis_report")
+        context.pull = MagicMock(name="fake_pull")
+
+        other_builder = BundleAnalysisCommentContextBuilder().initialize_from_context(
+            context
+        )
+        other_context = other_builder.get_result()
+
+        assert context.commit == other_context.commit
+        assert context.commit_report == other_context.commit_report
+        assert context.bundle_analysis_report == other_context.bundle_analysis_report
+        assert context.pull == other_context.pull
+        with pytest.raises(ContextNotLoadedError):
+            other_context.bundle_analysis_comparison
+
+        fake_comparison = MagicMock(name="fake_comparison")
+        mocker.patch.object(
+            ComparisonLoader, "get_comparison", return_value=fake_comparison
+        )
+        other_context = other_builder.build_context().get_result()
+
+        assert context.commit == other_context.commit
+        assert context.commit_report == other_context.commit_report
+        assert context.bundle_analysis_report == other_context.bundle_analysis_report
+        assert context.pull == other_context.pull
+        assert other_context.bundle_analysis_comparison == fake_comparison

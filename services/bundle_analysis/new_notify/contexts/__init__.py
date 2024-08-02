@@ -100,11 +100,16 @@ class NotificationContextBuilder:
         )
         return self
 
+    def is_field_loaded(self, field_name: str):
+        return field_name in self._notification_context.__dict__
+
     def load_commit_report(self) -> "NotificationContextBuilder":
         """Loads the CommitReport into the NotificationContext
         Raises:
             NotificationContextBuildError: no CommitReport exist for the commit
         """
+        if self.is_field_loaded("commit_report"):
+            return self
         commit_report = self._notification_context.commit.commit_report(
             report_type=ReportType.BUNDLE_ANALYSIS
         )
@@ -119,6 +124,8 @@ class NotificationContextBuilder:
         Raises:
             NotificationContextBuildError: no BundleAnalysisReport exists for the commit.
         """
+        if self.is_field_loaded("bundle_analysis_report"):
+            return self
         repo_hash = ArchiveService.get_archive_hash(
             self._notification_context.repository
         )
