@@ -1,5 +1,29 @@
+import pytest
+
 from database.tests.factories import CommitFactory
+from services.bundle_analysis.new_notify import BundleAnalysisNotifyReturn
+from services.bundle_analysis.new_notify.types import NotificationType
 from tasks.bundle_analysis_notify import BundleAnalysisNotifyTask
+
+
+@pytest.mark.parametrize(
+    "configured_notifications_count, successful_notifications_count, expected",
+    [
+        (0, 0, "nothing_to_notify"),
+        (2, 2, "full_success"),
+        (2, 1, "partial_success"),
+    ],
+)
+def test_bundle_analysis_notify_task_get_success(
+    configured_notifications_count, successful_notifications_count, expected
+):
+    task = BundleAnalysisNotifyTask()
+    assert (
+        task.get_success_value(
+            configured_notifications_count, successful_notifications_count
+        )
+        == expected
+    )
 
 
 def test_bundle_analysis_notify_task(
@@ -14,7 +38,13 @@ def test_bundle_analysis_notify_task(
     dbsession.add(commit)
     dbsession.flush()
 
-    mocker.patch("services.bundle_analysis.notify.Notifier.notify", return_value=True)
+    mocker.patch(
+        "services.bundle_analysis.new_notify.BundleAnalysisNotifyService.notify",
+        return_value=BundleAnalysisNotifyReturn(
+            notifications_configured=(NotificationType.PR_COMMENT,),
+            notifications_successful=(NotificationType.PR_COMMENT,),
+        ),
+    )
 
     result = BundleAnalysisNotifyTask().run_impl(
         dbsession,
@@ -25,5 +55,5 @@ def test_bundle_analysis_notify_task(
     )
     assert result == {
         "notify_attempted": True,
-        "notify_succeeded": True,
+        "notify_succeeded": "full_success",
     }
