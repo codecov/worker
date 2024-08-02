@@ -19,6 +19,7 @@ from services.bundle_analysis.new_notify.contexts import (
     BaseBundleAnalysisNotificationContext,
     NotificationContextBuilder,
     NotificationContextBuildError,
+    NotificationContextField,
 )
 from services.bundle_analysis.new_notify.types import NotificationType
 from services.repository import (
@@ -34,21 +35,10 @@ class BundleAnalysisCommentNotificationContext(BaseBundleAnalysisNotificationCon
 
     notification_type = NotificationType.PR_COMMENT
 
-    @property
-    def pull(self) -> EnrichedPull:
-        return self._pull
-
-    @pull.setter
-    def pull(self, pull: EnrichedPull):
-        self._pull = pull
-
-    @property
-    def bundle_analysis_comparison(self) -> BundleAnalysisComparison:
-        return self._bundle_analysis_comparison
-
-    @bundle_analysis_comparison.setter
-    def bundle_analysis_comparison(self, comparison: BundleAnalysisComparison):
-        self._bundle_analysis_comparison = comparison
+    pull: EnrichedPull = NotificationContextField[EnrichedPull]()
+    bundle_analysis_comparison: BundleAnalysisComparison = NotificationContextField[
+        BundleAnalysisComparison
+    ]()
 
 
 class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):

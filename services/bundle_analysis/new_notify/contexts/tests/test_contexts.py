@@ -12,6 +12,7 @@ from services.bundle_analysis.new_notify.conftest import (
     save_mock_bundle_analysis_report,
 )
 from services.bundle_analysis.new_notify.contexts import (
+    ContextNotLoadedError,
     NotificationContextBuilder,
     NotificationContextBuildError,
 )
@@ -21,6 +22,18 @@ from services.bundle_analysis.new_notify.contexts.comment import (
 
 
 class TestBaseBundleAnalysisNotificationContextBuild:
+    def test_access_not_loaded_field_raises(self, dbsession):
+        head_commit, _ = get_commit_pair(dbsession)
+        builder = NotificationContextBuilder().initialize(
+            head_commit, UserYaml.from_dict({}), GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        with pytest.raises(ContextNotLoadedError) as exp:
+            builder._notification_context.commit_report
+        assert (
+            str(exp.value)
+            == "The property you are trying to access is not loaded. Make sure to build the context before using it."
+        )
+
     def test_load_commit_report_no_report(self, dbsession):
         head_commit, _ = get_commit_pair(dbsession)
         builder = NotificationContextBuilder().initialize(
@@ -192,11 +205,11 @@ class TestBundleAnalysisCommentNotificationContext:
             name="fake_pull",
             database_pull=MagicMock(bundle_analysis_commentid=None, id=12),
         )
-        builder._notification_context._pull = mock_pull
+        builder._notification_context.pull = mock_pull
         mock_comparison = MagicMock(
             name="fake_bundle_analysis_comparison", total_size_delta=total_size_delta
         )
-        builder._notification_context._bundle_analysis_comparison = mock_comparison
+        builder._notification_context.bundle_analysis_comparison = mock_comparison
         with pytest.raises(NotificationContextBuildError) as exp:
             builder.evaluate_has_enough_changes()
         assert exp.value.failed_step == "evaluate_has_enough_changes"
@@ -247,11 +260,11 @@ class TestBundleAnalysisCommentNotificationContext:
             name="fake_pull",
             database_pull=MagicMock(bundle_analysis_commentid=None, id=12),
         )
-        builder._notification_context._pull = mock_pull
+        builder._notification_context.pull = mock_pull
         mock_comparison = MagicMock(
             name="fake_bundle_analysis_comparison", total_size_delta=total_size_delta
         )
-        builder._notification_context._bundle_analysis_comparison = mock_comparison
+        builder._notification_context.bundle_analysis_comparison = mock_comparison
         result = builder.evaluate_has_enough_changes()
         assert result == builder
 
@@ -272,11 +285,11 @@ class TestBundleAnalysisCommentNotificationContext:
             name="fake_pull",
             database_pull=MagicMock(bundle_analysis_commentid=12345, id=12),
         )
-        builder._notification_context._pull = mock_pull
+        builder._notification_context.pull = mock_pull
         mock_comparison = MagicMock(
             name="fake_bundle_analysis_comparison", total_size_delta=100
         )
-        builder._notification_context._bundle_analysis_comparison = mock_comparison
+        builder._notification_context.bundle_analysis_comparison = mock_comparison
         result = builder.evaluate_has_enough_changes()
         assert result == builder
 

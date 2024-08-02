@@ -1,4 +1,5 @@
 from functools import cached_property
+from typing import Generic, TypeVar
 
 from shared.bundle_analysis import (
     BundleAnalysisReport,
@@ -16,6 +17,27 @@ from services.repository import (
     get_repo_provider_service,
 )
 from services.storage import get_storage_client
+
+T = TypeVar("T")
+
+
+class ContextNotLoadedError(Exception):
+    pass
+
+
+class NotificationContextField(Generic[T]):
+    def __set_name__(self, owner, name) -> None:
+        self._name = name
+
+    def __get__(self, instance: "NotificationContextField", owner) -> T:
+        if self._name not in instance.__dict__:
+            raise ContextNotLoadedError(
+                "The property you are trying to access is not loaded. Make sure to build the context before using it."
+            )
+        return instance.__dict__[self._name]
+
+    def __set__(self, instance: "NotificationContextField", value: T) -> None:
+        instance.__dict__[self._name] = value
 
 
 class BaseBundleAnalysisNotificationContext:
@@ -48,21 +70,10 @@ class BaseBundleAnalysisNotificationContext:
             installation_name_to_use=self.gh_app_installation_name,
         )
 
-    @property
-    def commit_report(self) -> CommitReport:
-        return self._commit_report
-
-    @commit_report.setter
-    def commit_report(self, report: CommitReport) -> None:
-        self._commit_report = report
-
-    @property
-    def bundle_analysis_report(self) -> BundleAnalysisReport:
-        return self._bundle_analysis_report
-
-    @bundle_analysis_report.setter
-    def bundle_analysis_report(self, report: BundleAnalysisReport) -> None:
-        self._bundle_analysis_report = report
+    commit_report: CommitReport = NotificationContextField[CommitReport]()
+    bundle_analysis_report: BundleAnalysisReport = NotificationContextField[
+        BundleAnalysisReport
+    ]()
 
 
 class NotificationContextBuildError(Exception):
@@ -78,21 +89,6 @@ class WrongContextBuilderError(Exception):
 
 class NotificationContextBuilder:
     """Creates the BaseBundleAnalysisNotificationContext one step at a time, in the correct order."""
-
-    # TODO: Find a way to re-use the base-context (by cloning it instead of recreating it for every notification)
-    # The annoying bit is creating a specialized class from the base one without having to nitpick the details
-    # @classmethod
-    # def clone_builder(
-    #     cls, builder: "NotificationContextBuilder"
-    # ) -> "NotificationContextBuilder":
-    #     context_copy = deepcopy(builder._notification_context)
-    #     new_builder = cls()
-    #     new_builder._notification_context = context_copy
-    #     new_builder.commit_report_loaded = builder.commit_report_loaded
-    #     new_builder.bundle_analysis_report_loaded = (
-    #         builder.bundle_analysis_report_loaded
-    #     )
-    #     return new_builder
 
     def initialize(
         self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
