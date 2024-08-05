@@ -1,7 +1,7 @@
 from shared.metrics import Histogram
 
-KiB = 1024
-MiB = KiB * KiB
+from helpers.metrics import KiB, MiB
+
 RAW_UPLOAD_SIZE = Histogram(
     "worker_services_report_raw_upload_size",
     "Size (in bytes) of a raw upload (which may contain several raw reports)",
