@@ -1,6 +1,5 @@
 import logging
 import random
-import re
 from copy import deepcopy
 from typing import Optional
 
@@ -35,8 +34,6 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
-regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]").search
-merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 FIRST_RETRY_DELAY = 20
 
 """ The upload_processing_lock.

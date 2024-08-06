@@ -1,10 +1,8 @@
 import logging
-import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time
 from json import loads
-from math import ceil
-from typing import Any, List, Mapping, Optional
+from typing import Any, Generator, List, Mapping, Optional, TypeVar
 
 from asgiref.sync import async_to_sync
 from celery import chain, chord
@@ -66,10 +64,16 @@ from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor
 
 log = logging.getLogger(__name__)
 
-regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]").search
-merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
-
 CHUNK_SIZE = 3
+
+T = TypeVar("T")
+
+
+def chunks(size: int, list: List[T]) -> Generator[List[T], None, None]:
+    for i in range(0, len(list), size):
+        chunk = list[i : i + size]
+        if chunk:
+            yield chunk
 
 
 class UploadContext:
@@ -112,17 +116,13 @@ class UploadContext:
 
     def is_locked(self, lock_type: str) -> bool:
         lock_name = self.lock_name(lock_type)
-        if self.redis_connection.get(lock_name):
-            return True
-        return False
+        return bool(self.redis_connection.get(lock_name))
 
     def is_currently_processing(self) -> bool:
         return self.is_locked("upload_processing")
 
     def has_pending_jobs(self) -> bool:
-        if self.redis_connection.exists(self.upload_location):
-            return True
-        return False
+        return bool(self.redis_connection.exists(self.upload_location))
 
     def last_upload_timestamp(self):
         if self.report_type == ReportType.COVERAGE:
@@ -146,27 +146,20 @@ class UploadContext:
 
     def arguments_list(self):
         """
-        Retrieves a list of arguments from redis on the `uploads_list_key`, parses them
+        Retrieves a list of arguments from redis, parses them
         and feeds them to the processing code.
 
         This function doesn't go infinite because it keeps emptying the respective key on redis.
         It will only go arbitrarily long if someone else keeps uploading more and more arguments
         to such list
 
-        Args:
-            redis_connection (Redis): An instance of a redis connection
-            uploads_list_key (str): The key where the list is
-
         Yields:
             dict: A dict with the parameters to be passed
         """
-        uploads_locations = [self.upload_location]
-        for uploads_list_key in uploads_locations:
-            log.debug("Fetching arguments from redis %s", uploads_list_key)
-            while self.redis_connection.exists(uploads_list_key):
-                arguments = self.redis_connection.lpop(uploads_list_key)
-                if arguments:
-                    yield loads(arguments)
+        uploads_list_key = self.upload_location
+        log.debug("Fetching arguments from redis %s", uploads_list_key)
+        while arguments := self.redis_connection.lpop(uploads_list_key):
+            yield loads(arguments)
 
     def normalize_arguments(self, commit: Commit, arguments: Mapping[str, Any]):
         """
@@ -179,9 +172,8 @@ class UploadContext:
         """
         commit_sha = commit.commitid
         reportid = arguments.get("reportid")
-        if arguments.get("redis_key"):
+        if redis_key := arguments.get("redis_key"):
             archive_service = ArchiveService(commit.repository)
-            redis_key = arguments.pop("redis_key")
             content = download_archive_from_redis(self.redis_connection, redis_key)
             written_path = archive_service.write_raw_upload(
                 commit_sha, reportid, content
@@ -195,6 +187,25 @@ class UploadContext:
             arguments["url"] = written_path
         arguments.pop("token", None)
         return arguments
+
+
+def _should_debounce_processing(upload_context: UploadContext) -> Optional[float]:
+    """
+    Queries the `UploadContext`s `last_upload_timestamp` and determines if
+    another upload should be debounced by some time.
+    """
+    upload_processing_delay = get_config("setup", "upload_processing_delay")
+    if upload_processing_delay is None:
+        return None
+
+    upload_processing_delay = float(upload_processing_delay)
+    last_upload_timestamp = upload_context.last_upload_timestamp()
+    if last_upload_timestamp is None:
+        return None
+
+    last_upload_delta = time.time() - float(last_upload_timestamp)
+    if last_upload_delta < upload_processing_delay:
+        return max(30, upload_processing_delay - last_upload_delta)
 
 
 class UploadTask(BaseCodecovTask, name=upload_task_name):
@@ -271,9 +282,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 TestResultsFlow.TEST_RESULTS_BEGIN, kwargs=kwargs, ignore_repeat=True
             )
 
-        repoid = int(repoid)
-        log.info(
-            "Received upload task",
+        self.log = logging.LoggerAdapter(
+            logger=log,
             extra=dict(
                 repoid=repoid,
                 commit=commitid,
@@ -281,6 +291,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 report_code=report_code,
             ),
         )
+
+        repoid = int(repoid)
+        self.log.info("Received upload task")
         upload_context = UploadContext(
             repoid=repoid,
             commitid=commitid,
@@ -290,12 +303,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         lock_name = upload_context.lock_name("upload")
 
         if upload_context.is_currently_processing() and self.request.retries == 0:
-            log.info(
+            self.log.info(
                 "Currently processing upload. Retrying in 60s.",
                 extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    report_type=report_type,
                     has_pending_jobs=upload_context.has_pending_jobs(),
                 ),
             )
@@ -315,15 +325,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     **kwargs,
                 )
         except LockError:
-            log.warning(
+            self.log.warning(
                 "Unable to acquire lock for key %s.",
                 lock_name,
-                extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
             )
             if not upload_context.has_pending_jobs():
-                log.info(
+                self.log.info(
                     "Not retrying since there are likely no jobs that need scheduling",
-                    extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
                 )
                 if checkpoints:
                     checkpoints.log(UploadFlow.NO_PENDING_JOBS)
@@ -333,9 +341,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "tasks_were_scheduled": False,
                 }
             if self.request.retries > 1:
-                log.info(
+                self.log.info(
                     "Not retrying since we already had too many retries",
-                    extra=dict(commit=commitid, repoid=repoid, report_type=report_type),
                 )
                 if checkpoints:
                     checkpoints.log(UploadFlow.TOO_MANY_RETRIES)
@@ -346,12 +353,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "reason": "too_many_retries",
                 }
             retry_countdown = 20 * 2**self.request.retries
-            log.warning(
+            self.log.warning(
                 "Retrying upload",
                 extra=dict(
-                    commit=commitid,
-                    repoid=repoid,
-                    report_type=report_type,
                     countdown=int(retry_countdown),
                 ),
             )
@@ -365,48 +369,26 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         *args,
         **kwargs,
     ):
-        log.info(
+        self.log.info(
             "Starting processing of report",
-            extra=dict(
-                repoid=upload_context.repoid,
-                commit=upload_context.commitid,
-                report_type=upload_context.report_type.value,
-                report_code=upload_context.report_code,
-            ),
         )
         if not upload_context.has_pending_jobs():
-            log.info("No pending jobs. Upload task is done.")
+            self.log.info("No pending jobs. Upload task is done.")
             return {
                 "was_setup": False,
                 "was_updated": False,
                 "tasks_were_scheduled": False,
             }
 
-        upload_processing_delay = get_config("setup", "upload_processing_delay")
-        if upload_processing_delay is not None:
-            upload_processing_delay = int(upload_processing_delay)
-            last_upload_timestamp = upload_context.last_upload_timestamp()
-            if last_upload_timestamp is not None:
-                last_upload = datetime.fromtimestamp(
-                    float(last_upload_timestamp), timezone.utc
-                )
-                if (
-                    datetime.now(timezone.utc)
-                    - timedelta(seconds=upload_processing_delay)
-                    < last_upload
-                ):
-                    retry_countdown = max(30, upload_processing_delay)
-                    log.info(
-                        "Retrying due to very recent uploads.",
-                        extra=dict(
-                            repoid=upload_context.repoid,
-                            commit=upload_context.commitid,
-                            report_type=upload_context.report_type.value,
-                            countdown=retry_countdown,
-                        ),
-                    )
-                    upload_context.prepare_kwargs_for_retry(kwargs)
-                    self.retry(countdown=retry_countdown, kwargs=kwargs)
+        if retry_countdown := _should_debounce_processing(upload_context):
+            self.log.info(
+                "Retrying due to very recent uploads.",
+                extra=dict(
+                    countdown=retry_countdown,
+                ),
+            )
+            upload_context.prepare_kwargs_for_retry(kwargs)
+            self.retry(countdown=retry_countdown, kwargs=kwargs)
 
         repoid = upload_context.repoid
         commitid = upload_context.commitid
@@ -419,7 +401,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
                 checkpoints.log(UploadFlow.PROCESSING_BEGIN)
             except ValueError as e:
-                log.warning(
+                self.log.warning(
                     "CheckpointLogger failed to log/submit", extra=dict(error=e)
                 )
         elif report_type == ReportType.TEST_RESULTS:
@@ -452,19 +434,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 error_params=dict(repoid=repoid, repository_service=repository_service),
             )
 
-            log.warning(
+            self.log.warning(
                 "Unable to reach git provider because repo doesn't have a valid bot",
-                extra=dict(repoid=repoid, commit=commitid),
             )
         except TorngitRepoNotFoundError:
-            log.warning(
+            self.log.warning(
                 "Unable to reach git provider because this specific bot/integration can't see that repository",
-                extra=dict(repoid=repoid, commit=commitid),
             )
         except TorngitClientError:
-            log.warning(
+            self.log.warning(
                 "Unable to reach git provider because there was a 4xx error",
-                extra=dict(repoid=repoid, commit=commitid),
                 exc_info=True,
             )
         if repository_service:
@@ -497,23 +476,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             raise NotImplementedError(f"no report service for: {report_type.value}")
 
         try:
-            log.info(
+            self.log.info(
                 "Initializing and saving report",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    report_type=report_type.value,
-                    report_code=report_code,
-                ),
             )
             commit_report = async_to_sync(report_service.initialize_and_save_report)(
                 commit,
                 report_code,
             )
         except NotReadyToBuildReportYetError:
-            log.warning(
+            self.log.warning(
                 "Commit not yet ready to build its initial report. Retrying in 60s.",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
@@ -523,7 +495,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
 
         argument_list = []
-
         for arguments in upload_context.arguments_list():
             normalized_arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" in normalized_arguments:
@@ -537,6 +508,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
             normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
+
         if argument_list:
             db_session.commit()
             self.schedule_task(
@@ -552,22 +524,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             if checkpoints:
                 checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
                 checkpoints.log(UploadFlow.NO_REPORTS_FOUND)
-            log.info(
+            self.log.info(
                 "Not scheduling task because there were no arguments were found on redis",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    argument_list=argument_list,
-                ),
             )
         return {"was_setup": was_setup, "was_updated": was_updated}
 
-    def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
+    def fetch_commit_yaml_and_possibly_store(self, commit: Commit, repository_service):
         repository = commit.repository
         try:
-            log.info(
+            self.log.info(
                 "Fetching commit yaml from provider for commit",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             commit_yaml = async_to_sync(fetch_commit_yaml_from_provider)(
                 commit, repository_service
@@ -583,20 +549,17 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     error_location=ex.error_location,
                 ),
             )
-            log.warning(
+            self.log.warning(
                 "Unable to use yaml from commit because it is invalid",
                 extra=dict(
-                    repoid=repository.repoid,
-                    commit=commit.commitid,
                     error_location=ex.error_location,
                 ),
                 exc_info=True,
             )
             commit_yaml = None
         except TorngitClientError:
-            log.warning(
+            self.log.warning(
                 "Unable to use yaml from commit because it cannot be fetched",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid),
                 exc_info=True,
             )
             commit_yaml = None
@@ -614,9 +577,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def schedule_task(
         self,
-        commit,
-        commit_yaml,
-        argument_list,
+        commit: Commit,
+        commit_yaml: UserYaml,
+        argument_list: List[dict],
         commit_report: CommitReport,
         upload_context: UploadContext,
         db_session,
@@ -652,11 +615,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         if res:
             return res
 
-        log.info(
-            "Not scheduling task because there were no reports to be processed found",
+        self.log.info(
+            "Not scheduling task because there were no reports to be processed",
             extra=dict(
-                repoid=commit.repoid,
-                commit=commit.commitid,
                 argument_list=argument_list,
             ),
         )
@@ -666,56 +627,67 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def _schedule_coverage_processing_task(
         self,
-        commit,
-        commit_yaml,
-        argument_list,
-        commit_report,
+        commit: Commit,
+        commit_yaml: dict,
+        argument_list: List[dict],
+        commit_report: CommitReport,
         upload_context: UploadContext,
         db_session,
         checkpoints=None,
     ):
-        chunk_size = CHUNK_SIZE
-        parallel_session_id = 0
-
         checkpoint_data = None
         if checkpoints:
             checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
             checkpoint_data = checkpoints.data
 
-        processing_tasks = []
-        for i in range(0, len(argument_list), chunk_size):
-            chunk = argument_list[i : i + chunk_size]
-            if chunk:
-                is_final = i == ceil(len(argument_list) / chunk_size) - 1
-                sig = upload_processor_task.signature(
-                    args=({},) if i == 0 else (),
-                    kwargs=dict(
-                        repoid=commit.repoid,
-                        commitid=commit.commitid,
-                        commit_yaml=commit_yaml,
-                        arguments_list=chunk,
-                        report_code=commit_report.code,
-                        in_parallel=False,
-                        is_final=is_final,
-                    ),
-                )
-                processing_tasks.append(sig)
+        processing_tasks = [
+            upload_processor_task.s(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml,
+                arguments_list=chunk,
+                report_code=commit_report.code,
+                in_parallel=False,
+                is_final=len(chunk) < CHUNK_SIZE,
+            )
+            for chunk in chunks(CHUNK_SIZE, argument_list)
+        ]
+        if not processing_tasks:
+            return None
 
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+        processing_tasks.append(
+            upload_finisher_task.signature(
+                kwargs={
+                    "repoid": commit.repoid,
+                    "commitid": commit.commitid,
+                    "commit_yaml": commit_yaml,
+                    "report_code": commit_report.code,
+                    "in_parallel": False,
+                    _kwargs_key(UploadFlow): checkpoint_data,
+                },
+            )
+        )
+
+        serial_tasks = chain(processing_tasks)
+
+        do_parallel_processing = PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
             identifier=commit.repository.repoid
-        ):
-            parallel_chunk_size = 1
-            num_sessions = len(argument_list)
+        )
+
+        if not do_parallel_processing:
+            res = serial_tasks.apply_async()
+
+        else:
+            report_service = ReportService(commit_yaml)
+            sessions = report_service.build_sessions(commit=commit)
+
+            # if session count expired due to TTL (which is unlikely for most cases), recalculate the
+            # session ids used and set it in redis.
             redis_key = get_parallel_upload_processing_session_counter_redis_key(
                 repoid=commit.repository.repoid, commitid=commit.commitid
             )
-            report_service = ReportService(commit_yaml)
-            sessions = report_service.build_sessions(commit=commit)
-            commit_yaml = UserYaml(commit_yaml)
-            # if session count expired due to TTL (which is unlikely for most cases), recalculate the
-            # session ids used and set it in redis.
-            if self.parallel_session_count_key_expired(
-                redis_key, upload_context.redis_connection
+            if not upload_context.redis_connection.exists(
+                redis_key,
             ):
                 upload_context.redis_connection.set(
                     redis_key,
@@ -740,55 +712,36 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             #     name=redis_key,
             #     time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
             # )
-            original_session_ids = list(sessions.keys())
             parallel_session_ids = get_parallel_session_ids(
-                sessions, argument_list, db_session, report_service, commit_yaml
+                sessions,
+                argument_list,
+                db_session,
+                report_service,
+                UserYaml(commit_yaml),
             )
 
-            log.info(
+            self.log.info(
                 "Allocated the following session ids for parallel upload processing: "
                 + " ".join(str(id) for id in parallel_session_ids),
                 extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    original_session_ids=original_session_ids,
+                    original_session_ids=list(sessions.keys()),
                 ),
             )
 
-            parallel_processing_tasks = []
-            commit_yaml = commit_yaml.to_dict()
+            parallel_processing_tasks = [
+                upload_processor_task.s(
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    arguments_list=[arguments],
+                    report_code=commit_report.code,
+                    parallel_idx=parallel_session_ids[i],  # i + parallel_session_id,
+                    in_parallel=True,
+                    is_final=i == len(argument_list) - 1,
+                )
+                for i, arguments in enumerate(argument_list)
+            ]
 
-            for i in range(0, num_sessions, parallel_chunk_size):
-                chunk = argument_list[i : i + parallel_chunk_size]
-                if chunk:
-                    sig = upload_processor_task.signature(
-                        args=(),
-                        kwargs=dict(
-                            repoid=commit.repoid,
-                            commitid=commit.commitid,
-                            commit_yaml=commit_yaml,
-                            arguments_list=chunk,
-                            report_code=commit_report.code,
-                            parallel_idx=parallel_session_ids[
-                                i
-                            ],  # i + parallel_session_id,
-                            in_parallel=True,
-                            is_final=True if i == num_sessions - 1 else False,
-                        ),
-                    )
-                    parallel_processing_tasks.append(sig)
-
-        if processing_tasks:
-            finish_sig = upload_finisher_task.signature(
-                kwargs={
-                    "repoid": commit.repoid,
-                    "commitid": commit.commitid,
-                    "commit_yaml": commit_yaml,
-                    "report_code": commit_report.code,
-                    "in_parallel": False,
-                    _kwargs_key(UploadFlow): checkpoint_data,
-                },
-            )
             finish_parallel_sig = upload_finisher_task.signature(
                 kwargs={
                     "repoid": commit.repoid,
@@ -799,67 +752,52 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     _kwargs_key(UploadFlow): checkpoint_data,
                 },
             )
-            processing_tasks.append(finish_sig)
-            serial_tasks = chain(*processing_tasks)
 
-            if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                identifier=commit.repository.repoid
-            ):
-                parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
-                parallel_shadow_experiment = serial_tasks | parallel_tasks
-                res = parallel_shadow_experiment.apply_async()
-            else:
-                res = serial_tasks.apply_async()
+            parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
+            parallel_shadow_experiment = serial_tasks | parallel_tasks
+            res = parallel_shadow_experiment.apply_async()
 
-            log.info(
-                "Scheduling coverage processing tasks for %s different reports",
-                len(argument_list),
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    argument_list=argument_list,
-                    number_arguments=len(argument_list),
-                    scheduled_task_ids=res.as_tuple(),
-                ),
-            )
-            return res
+        self.log.info(
+            "Scheduling coverage processing tasks for %s different reports",
+            len(argument_list),
+            extra=dict(
+                argument_list=argument_list,
+                number_arguments=len(argument_list),
+                scheduled_task_ids=res.as_tuple(),
+            ),
+        )
+        return res
 
     def _schedule_bundle_analysis_processing_task(
         self,
         commit: Commit,
-        commit_yaml: UserYaml,
+        commit_yaml: dict,
         argument_list: List[dict],
     ):
         task_signatures = [
-            bundle_analysis_processor_task.signature(
-                args=({},) if i == 0 else (),  # to support Celery `chain`
-                kwargs=dict(
-                    repoid=commit.repoid,
-                    commitid=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    params=params,
-                ),
+            bundle_analysis_processor_task.s(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml,
+                params=params,
             )
-            for i, params in enumerate(argument_list)
+            for params in argument_list
         ]
 
         # it might make sense to eventually have a "finisher" task that
         # does whatever extra stuff + enqueues a notify
-        notify_sig = bundle_analysis_notify_task.signature(
-            kwargs={
-                "repoid": commit.repoid,
-                "commitid": commit.commitid,
-                "commit_yaml": commit_yaml,
-            },
+        task_signatures.append(
+            bundle_analysis_notify_task.s(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml,
+            )
         )
-        task_signatures.append(notify_sig)
 
-        res = chain(*task_signatures).apply_async()
-        log.info(
+        res = chain(task_signatures).apply_async()
+        self.log.info(
             "Scheduling bundle analysis processor tasks",
             extra=dict(
-                repoid=commit.repoid,
-                commit=commit.commitid,
                 argument_list=argument_list,
                 number_arguments=len(argument_list),
                 scheduled_task_ids=res.as_tuple(),
@@ -868,64 +806,58 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         return res
 
     def _schedule_test_results_processing_task(
-        self, commit, commit_yaml, argument_list, commit_report, checkpoints=None
+        self,
+        commit: Commit,
+        commit_yaml: dict,
+        argument_list: List[dict],
+        commit_report: CommitReport,
+        checkpoints=None,
     ):
-        processor_task_group = []
-        for i in range(0, len(argument_list), CHUNK_SIZE):
-            chunk = argument_list[i : i + CHUNK_SIZE]
-            if chunk:
-                sig = test_results_processor_task.signature(
-                    args=(),
-                    kwargs=dict(
-                        repoid=commit.repoid,
-                        commitid=commit.commitid,
-                        commit_yaml=commit_yaml,
-                        arguments_list=chunk,
-                        report_code=commit_report.code,
-                    ),
-                )
-                processor_task_group.append(sig)
-        if processor_task_group:
-            checkpoint_data = None
-            if checkpoints:
-                checkpoint_data = checkpoints.data
-            kwargs = {
-                "repoid": commit.repoid,
-                "commitid": commit.commitid,
-                "commit_yaml": commit_yaml,
-                _kwargs_key(TestResultsFlow): checkpoint_data,
-            }
-            res = chord(
-                processor_task_group,
-                test_results_finisher_task.signature(
-                    args=(),
-                    kwargs=kwargs,
-                ),
-            ).apply_async()
-
-            log.info(
-                "Scheduling test results processing tasks for %s different reports",
-                len(argument_list),
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    argument_list=argument_list,
-                    number_arguments=len(argument_list),
-                    scheduled_task_ids=res.as_tuple(),
-                ),
-            )
-            return res
-        log.info(
-            "Not scheduling test results processing tasks because there were no reports to be processed found",
-            extra=dict(
+        processor_task_group = [
+            test_results_processor_task.s(
                 repoid=commit.repoid,
-                commit=commit.commitid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml,
+                arguments_list=chunk,
+                report_code=commit_report.code,
+            )
+            for chunk in chunks(CHUNK_SIZE, argument_list)
+        ]
+
+        if not processor_task_group:
+            self.log.info(
+                "Not scheduling test results processing tasks because there were no reports to be processed",
+            )
+            return None
+
+        checkpoint_data = None
+        if checkpoints:
+            checkpoint_data = checkpoints.data
+
+        res = chord(
+            processor_task_group,
+            test_results_finisher_task.signature(
+                kwargs={
+                    "repoid": commit.repoid,
+                    "commitid": commit.commitid,
+                    "commit_yaml": commit_yaml,
+                    _kwargs_key(TestResultsFlow): checkpoint_data,
+                }
+            ),
+        ).apply_async()
+
+        self.log.info(
+            "Scheduling test results processing tasks for %s different reports",
+            len(argument_list),
+            extra=dict(
                 argument_list=argument_list,
+                number_arguments=len(argument_list),
+                scheduled_task_ids=res.as_tuple(),
             ),
         )
-        return None
+        return res
 
-    def possibly_setup_webhooks(self, commit, repository_service):
+    def possibly_setup_webhooks(self, commit: Commit, repository_service):
         repository = commit.repository
         repo_data = repository_service.data
 
@@ -959,11 +891,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         # try to add webhook
         if should_post_webhook or needs_webhook_secret_backfill:
-            log.info(
+            self.log.info(
                 "Setting or editing webhook",
                 extra=dict(
-                    repoid=repository.repoid,
-                    commit=commit.commitid,
                     action="SET" if should_post_webhook else "EDIT",
                 ),
             )
@@ -980,11 +910,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         repository_service, webhook_secret=webhook_secret
                     )
                     hookid = hook_result["id"]
-                    log.info(
+                    self.log.info(
                         "Registered hook",
                         extra=dict(
-                            repoid=commit.repoid,
-                            commit=commit.commitid,
                             hookid=hookid,
                             action="SET",
                         ),
@@ -1000,33 +928,24 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                         secret=webhook_secret,
                     )
                     repository.webhook_secret = webhook_secret
-                    log.info(
+                    self.log.info(
                         "Updated hook",
                         extra=dict(
                             repository_service=repository_service.service,
-                            repoid=repository.repoid,
-                            commit=commit.commitid,
                             hookid=repository.hookid,
                             action="EDIT",
                         ),
                     )
                     return False  # was_setup
             except TorngitClientError:
-                log.warning(
+                self.log.warning(
                     "Failed to create or update project webhook",
                     extra=dict(
-                        repoid=repository.repoid,
-                        commit=commit.commitid,
                         action="SET" if should_post_webhook else "EDIT",
                     ),
                     exc_info=True,
                 )
         return False
-
-    def parallel_session_count_key_expired(self, redis_key, redis_connection):
-        if redis_connection.exists(redis_key):
-            return False
-        return True
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

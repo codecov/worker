@@ -40,7 +40,6 @@ from tasks.upload_clean_labels_index import task_name as clean_labels_index_task
 log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]")
-merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 
 PYREPORT_REPORT_JSON_SIZE = Histogram(
     "worker_tasks_upload_finisher_report_json_size",
