@@ -53,6 +53,7 @@ PYREPORT_REPORT_JSON_SIZE = Histogram(
         10 * MiB,
         100 * MiB,
         500 * MiB,
+        1000 * MiB,
     ],
 )
 
@@ -67,6 +68,7 @@ PYREPORT_CHUNKS_FILE_SIZE = Histogram(
         100 * MiB,
         500 * MiB,
         1000 * MiB,
+        1500 * MiB,
     ],
 )
 
