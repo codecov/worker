@@ -727,7 +727,7 @@ class TestUploadProcessorTask(object):
             report_service=ReportService({"codecov": {"max_report_age": False}}),
             commit=commit,
             report=false_report,
-            upload_obj=upload,
+            upload=upload,
         )
         expected_result = {
             "error": {
@@ -780,7 +780,7 @@ class TestUploadProcessorTask(object):
                 report_service=ReportService({"codecov": {"max_report_age": False}}),
                 commit=commit,
                 report=false_report,
-                upload_obj=upload,
+                upload=upload,
             )
         mock_schedule_for_later_try.assert_called_with()
 
