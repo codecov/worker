@@ -26,5 +26,5 @@ RAW_UPLOAD_RAW_REPORT_COUNT = Histogram(
     ["version"],
     # The 0.98 bucket is to stop Prometheus from interpolating values much
     # lower than 1 in its histogram_quantile function.
-    buckets=[0.98, 1, 5, 10, 20, 50, 100],
+    buckets=[0.98, 1, 2, 3, 4, 5, 7, 10, 30, 50, 100],
 )
