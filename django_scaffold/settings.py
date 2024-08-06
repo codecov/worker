@@ -45,10 +45,13 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
+BUNDLE_ANALYSIS_NOTIFY_MESSAGE_TEMPLATES = (
+    BASE_DIR / "services" / "bundle_analysis" / "new_notify" / "messages" / "templates"
+)
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BUNDLE_ANALYSIS_NOTIFY_MESSAGE_TEMPLATES],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
