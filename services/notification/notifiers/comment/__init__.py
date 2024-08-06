@@ -25,7 +25,6 @@ from services.notification.notifiers.comment.conditions import (
     NotifyCondition,
     PullHeadMatchesComparisonHead,
     PullRequestInProvider,
-    PullRequestOpen,
 )
 from services.notification.notifiers.mixins.message import MessageMixin
 from services.repository import get_repo_provider_service
@@ -38,7 +37,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     notify_conditions: List[NotifyCondition] = [
         ComparisonHasPull,
         PullRequestInProvider,
-        PullRequestOpen,
         PullHeadMatchesComparisonHead,
         HasEnoughBuilds,
         HasEnoughRequiredChanges,

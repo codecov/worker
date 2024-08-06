@@ -2732,28 +2732,6 @@ class TestCommentNotifier(object):
         assert sample_comparison.pull.commentid is None
 
     @pytest.mark.asyncio
-    async def test_notify_closed_pull_request(self, dbsession, sample_comparison):
-        notifier = CommentNotifier(
-            repository=sample_comparison.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        sample_comparison.pull.state = "closed"
-        dbsession.flush()
-        dbsession.refresh(sample_comparison.pull)
-        result = await notifier.notify(sample_comparison)
-        assert not result.notification_attempted
-        assert result.notification_successful is False
-        assert result.explanation == "pull_request_closed"
-        assert result.data_sent is None
-        assert result.data_received is None
-
-    @pytest.mark.asyncio
     async def test_notify_unable_to_fetch_info(
         self, dbsession, mocker, sample_comparison
     ):
@@ -2800,8 +2778,9 @@ class TestCommentNotifier(object):
         assert result.data_received is None
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("pull_state", ["open", "closed"])
     async def test_notify_with_enough_builds(
-        self, dbsession, sample_comparison, mocker
+        self, dbsession, sample_comparison, mocker, pull_state
     ):
         build_message_mocker = mocker.patch.object(
             CommentNotifier,
@@ -2829,6 +2808,9 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
+        sample_comparison.pull.state = pull_state
+        dbsession.flush()
+        dbsession.refresh(sample_comparison.pull)
         result = await notifier.notify(sample_comparison)
         assert result.notification_attempted
         assert result.notification_successful
