@@ -26,6 +26,11 @@ class ContextNotLoadedError(Exception):
 
 
 class NotificationContextField(Generic[T]):
+    """NotificationContextField is a descriptor akin to a Django model field.
+    If you create one as a class member named `foo`, it will define the behavior to get and set an instance member named `foo`.
+    It is also similar to @property
+    """
+
     def __set_name__(self, owner, name) -> None:
         self._name = name
 

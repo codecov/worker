@@ -18,7 +18,7 @@ from services.bundle_analysis.new_notify.contexts import (
     NotificationContextBuildError,
 )
 from services.bundle_analysis.new_notify.contexts.comment import (
-    BundleAnalysisCommentContextBuilder,
+    BundleAnalysisPRCommentContextBuilder,
 )
 
 
@@ -128,7 +128,7 @@ class TestBundleAnalysisCommentNotificationContext:
             "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
             return_value=fake_repo_service,
         )
-        builder = BundleAnalysisCommentContextBuilder().initialize(
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         with pytest.raises(NotificationContextBuildError) as exp:
@@ -157,7 +157,7 @@ class TestBundleAnalysisCommentNotificationContext:
             dbsession, mocker, (head_commit, base_commit)
         )
         user_yaml = UserYaml.from_dict({})
-        builder = BundleAnalysisCommentContextBuilder().initialize(
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         builder.load_commit_report()
@@ -217,7 +217,7 @@ class TestBundleAnalysisCommentNotificationContext:
     def test_evaluate_changes_fail(self, config, total_size_delta, dbsession, mocker):
         head_commit, _ = get_commit_pair(dbsession)
         user_yaml = UserYaml.from_dict(config)
-        builder = BundleAnalysisCommentContextBuilder().initialize(
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         mock_pull = MagicMock(
@@ -272,7 +272,7 @@ class TestBundleAnalysisCommentNotificationContext:
     def test_evaluate_changes_success(self, config, total_size_delta, dbsession):
         head_commit, _ = get_commit_pair(dbsession)
         user_yaml = UserYaml.from_dict(config)
-        builder = BundleAnalysisCommentContextBuilder().initialize(
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         mock_pull = MagicMock(
@@ -297,7 +297,7 @@ class TestBundleAnalysisCommentNotificationContext:
                 }
             }
         )
-        builder = BundleAnalysisCommentContextBuilder().initialize(
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         mock_pull = MagicMock(
@@ -328,7 +328,7 @@ class TestBundleAnalysisCommentNotificationContext:
             dbsession, mocker, (head_commit, base_commit)
         )
         user_yaml = UserYaml.from_dict({})
-        builder = BundleAnalysisCommentContextBuilder().initialize(
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         mocker.patch(
@@ -351,7 +351,7 @@ class TestBundleAnalysisCommentNotificationContext:
     def test_initialize_from_context(self, dbsession, mocker):
         head_commit, _ = get_commit_pair(dbsession)
         user_yaml = UserYaml.from_dict({})
-        builder = BundleAnalysisCommentContextBuilder().initialize(
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         context = builder.get_result()
@@ -359,7 +359,7 @@ class TestBundleAnalysisCommentNotificationContext:
         context.bundle_analysis_report = MagicMock(name="fake_bundle_analysis_report")
         context.pull = MagicMock(name="fake_pull")
 
-        other_builder = BundleAnalysisCommentContextBuilder().initialize_from_context(
+        other_builder = BundleAnalysisPRCommentContextBuilder().initialize_from_context(
             context
         )
         other_context = other_builder.get_result()

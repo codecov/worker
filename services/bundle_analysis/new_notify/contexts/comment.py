@@ -30,7 +30,7 @@ from services.repository import (
 log = logging.getLogger(__name__)
 
 
-class BundleAnalysisCommentNotificationContext(BaseBundleAnalysisNotificationContext):
+class BundleAnalysisPRCommentNotificationContext(BaseBundleAnalysisNotificationContext):
     """Context for the Bundle Analysis PR Comment. Extends BaseBundleAnalysisNotificationContext."""
 
     notification_type = NotificationType.PR_COMMENT
@@ -41,11 +41,11 @@ class BundleAnalysisCommentNotificationContext(BaseBundleAnalysisNotificationCon
     ]()
 
 
-class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
+class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
     def initialize(
         self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
-    ) -> "BundleAnalysisCommentContextBuilder":
-        self._notification_context = BundleAnalysisCommentNotificationContext(
+    ) -> "BundleAnalysisPRCommentContextBuilder":
+        self._notification_context = BundleAnalysisPRCommentNotificationContext(
             commit=commit,
             current_yaml=current_yaml,
             gh_app_installation_name=gh_app_installation_name,
@@ -53,8 +53,8 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
         return self
 
     def initialize_from_context(
-        self, context: BundleAnalysisCommentNotificationContext
-    ) -> "BundleAnalysisCommentContextBuilder":
+        self, context: BundleAnalysisPRCommentNotificationContext
+    ) -> "BundleAnalysisPRCommentContextBuilder":
         self.initialize(
             commit=context.commit,
             current_yaml=context.current_yaml,
@@ -73,7 +73,7 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
                 ]
         return self
 
-    async def load_enriched_pull(self) -> "BundleAnalysisCommentContextBuilder":
+    async def load_enriched_pull(self) -> "BundleAnalysisPRCommentContextBuilder":
         """Loads the EnrichedPull into the NotificationContext.
         EnrichedPull includes updated info from the git provider and info saved in the database.
         Raises:
@@ -95,7 +95,7 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
         self._notification_context.pull = pull
         return self
 
-    def load_bundle_comparison(self) -> "BundleAnalysisCommentContextBuilder":
+    def load_bundle_comparison(self) -> "BundleAnalysisPRCommentContextBuilder":
         """Loads the BundleAnalysisComparison into the NotificationContext.
         BundleAnalysisComparison is the diff between 2 BundleAnalysisReports,
         respectively the one for the pull's base and one for the pull's head.
@@ -120,7 +120,7 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
                 "load_bundle_comparison", detail=exp.__class__.__name__
             )
 
-    def evaluate_has_enough_changes(self) -> "BundleAnalysisCommentContextBuilder":
+    def evaluate_has_enough_changes(self) -> "BundleAnalysisPRCommentContextBuilder":
         """Evaluates if the NotificationContext includes enough changes to send the notification.
         Configuration is done via UserYaml.
         If a comment was previously made for this PR the required changes are bypassed so that we
@@ -160,12 +160,12 @@ class BundleAnalysisCommentContextBuilder(NotificationContextBuilder):
             raise NotificationContextBuildError("evaluate_has_enough_changes")
         return self
 
-    def build_context(self) -> "BundleAnalysisCommentContextBuilder":
+    def build_context(self) -> "BundleAnalysisPRCommentContextBuilder":
         super().build_context()
         async_to_sync(self.load_enriched_pull)()
         self.load_bundle_comparison()
         self.evaluate_has_enough_changes()
         return self
 
-    def get_result(self) -> BundleAnalysisCommentNotificationContext:
+    def get_result(self) -> BundleAnalysisPRCommentNotificationContext:
         return self._notification_context
