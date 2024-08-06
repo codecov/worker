@@ -14,6 +14,7 @@ from shared.celery_config import (
     timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
+from shared.metrics import Histogram
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
 from shared.yaml import UserYaml
@@ -24,9 +25,9 @@ from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.metrics import metrics
+from helpers.metrics import KiB, MiB, metrics
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
-from services.archive import MinioEndpoints
+from services.archive import ArchiveService, MinioEndpoints
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -40,6 +41,36 @@ log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]")
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
+
+PYREPORT_REPORT_JSON_SIZE = Histogram(
+    "worker_tasks_upload_finisher_report_json_size",
+    "Size (in bytes) of a report's report_json measured in `UploadFinisherTask`. Be aware: if we get more uploads for the same commit after `UploadFinisherTask` finishes, we will emit this metric again without deleting the first value. As a result, aggregate metrics will be biased towards smaller sizes.",
+    buckets=[
+        10 * KiB,
+        100 * KiB,
+        500 * KiB,
+        1 * MiB,
+        10 * MiB,
+        100 * MiB,
+        500 * MiB,
+        1000 * MiB,
+    ],
+)
+
+PYREPORT_CHUNKS_FILE_SIZE = Histogram(
+    "worker_tasks_upload_finisher_chunks_file_size",
+    "Size (in bytes) of a report's chunks file measured in `UploadFinisherTask`. Be aware: if we get more uploads for the same commit after `UploadFinisherTask` finishes, we will emit this metric again without deleting the first value. As a result, aggregate metrics will be biased towards smaller sizes.",
+    buckets=[
+        100 * KiB,
+        500 * KiB,
+        1 * MiB,
+        10 * MiB,
+        100 * MiB,
+        500 * MiB,
+        1000 * MiB,
+        1500 * MiB,
+    ],
+)
 
 
 class ShouldCallNotifResult(Enum):
@@ -207,6 +238,30 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
+    def _emit_report_size_metrics(self, commit: Commit, report_code: str):
+        # This is only used to emit chunks/report_json size metrics. We have to
+        # do it here instead of in UploadProcessorTask where the report is
+        # normally saved because that task saves after every upload and can't
+        # tell when the report is final.
+        try:
+            if commit.report_json:
+                report_json_size = len(json.dumps(commit.report_json))
+                archive_service = ArchiveService(commit.repository)
+                chunks_size = len(
+                    archive_service.read_chunks(commit.commitid, report_code)
+                )
+
+                PYREPORT_REPORT_JSON_SIZE.observe(report_json_size)
+                PYREPORT_CHUNKS_FILE_SIZE.observe(chunks_size)
+        except Exception as e:
+            log.exception(
+                "Failed to emit report size metrics",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                ),
+            )
+
     def finish_reports_processing(
         self,
         db_session,
@@ -219,6 +274,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
         repoid = commit.repoid
+
+        self._emit_report_size_metrics(commit, report_code)
 
         # always notify, let the notify handle if it should submit
         notifications_called = False
