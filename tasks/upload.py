@@ -1,6 +1,7 @@
 import logging
 import uuid
-from datetime import datetime, time
+import time
+from datetime import datetime
 from json import loads
 from typing import Any, Generator, List, Mapping, Optional, TypeVar
 
@@ -172,7 +173,7 @@ class UploadContext:
         """
         commit_sha = commit.commitid
         reportid = arguments.get("reportid")
-        if redis_key := arguments.get("redis_key"):
+        if redis_key := arguments.pop("redis_key", None):
             archive_service = ArchiveService(commit.repository)
             content = download_archive_from_redis(self.redis_connection, redis_key)
             written_path = archive_service.write_raw_upload(
@@ -259,6 +260,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         - In the end, the tasks are scheduled (sent to celery), and this task finishes
 
     """
+
+    def __init__(self):
+        self.log = log
 
     def run_impl(
         self,
@@ -648,12 +652,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 arguments_list=chunk,
                 report_code=commit_report.code,
                 in_parallel=False,
-                is_final=len(chunk) < CHUNK_SIZE,
+                is_final=False,
             )
             for chunk in chunks(CHUNK_SIZE, argument_list)
         ]
         if not processing_tasks:
             return None
+        processing_tasks[-1].kwargs.update(is_final=True)
 
         processing_tasks.append(
             upload_finisher_task.signature(
@@ -735,12 +740,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     commit_yaml=commit_yaml,
                     arguments_list=[arguments],
                     report_code=commit_report.code,
-                    parallel_idx=parallel_session_ids[i],  # i + parallel_session_id,
+                    parallel_idx=parallel_session_id,
                     in_parallel=True,
-                    is_final=i == len(argument_list) - 1,
+                    is_final=False,
                 )
-                for i, arguments in enumerate(argument_list)
+                for arguments, parallel_session_id in zip(argument_list, parallel_session_ids)
             ]
+            parallel_processing_tasks[-1].kwargs.update(is_final=True)
 
             finish_parallel_sig = upload_finisher_task.signature(
                 kwargs={

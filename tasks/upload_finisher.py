@@ -155,10 +155,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 commit_yaml,
                 repository,
                 commit,
-                report_code,
                 report_service,
                 processing_results,
-                db_session,
             )
 
             log.info(
@@ -479,13 +477,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
     def merge_incremental_reports(
         self,
-        commit_yaml,
+        commit_yaml: dict,
         repository,
-        commit,
-        report_code,
-        report_service,
+        commit: Commit,
+        report_service: ReportService,
         processing_results,
-        db_session,
     ):
         archive_service = report_service.get_archive_service(repository)
         repoid = repository.repoid
@@ -575,7 +571,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
             session.id = session_id
 
-            session_manipulation_result = _adjust_sessions(
+            _adjust_sessions(
                 cumulative_report, incremental_report, session, UserYaml(commit_yaml)
             )
             # ReportService.update_upload_with_processing_result should use this result

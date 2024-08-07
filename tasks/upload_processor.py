@@ -441,7 +441,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
     def _possibly_delete_archive(
         self, processing_result: dict, report_service: ReportService, commit: Commit
     ):
-        if not self.should_delete_archive(report_service.current_yaml):
+        if self.should_delete_archive(report_service.current_yaml):
             upload = processing_result.get("upload_obj")
             archive_url = upload.storage_path
             if archive_url and not archive_url.startswith("http"):

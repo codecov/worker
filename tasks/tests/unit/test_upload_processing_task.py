@@ -303,7 +303,7 @@ class TestUploadProcessorTask(object):
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_call_with_upload_obj(
-        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_storage
     ):
         mocker.patch.object(
             USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
@@ -346,7 +346,6 @@ class TestUploadProcessorTask(object):
         mocked_3.send_task.return_value = True
         result = UploadProcessorTask().process_impl_within_lock(
             db_session=dbsession,
-            redis_connection=mock_redis,
             previous_results={},
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -510,9 +509,7 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(
-            UploadProcessorTask, "do_process_individual_report"
-        )
+        mocked_2 = mocker.patch.object(ReportService, "build_report_from_raw_content")
         mocked_2.side_effect = Exception("first", "aruba", "digimon")
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
@@ -548,9 +545,7 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         assert exc.value.args == ("first", "aruba", "digimon")
-        mocked_2.assert_called_with(
-            mocker.ANY, mocker.ANY, upload=upload, parallel_idx=mocker.ANY
-        )
+        mocked_2.assert_called_with(mocker.ANY, upload=upload, parallel_idx=mocker.ANY)
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
