@@ -9,6 +9,7 @@ from shared.bundle_analysis import (
     BundleAnalysisReportLoader,
     BundleChange,
 )
+from shared.rate_limits.exceptions import EntityRateLimitedException
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
@@ -64,10 +65,15 @@ class Notifier:
 
     @cached_property
     def repository_service(self) -> TorngitBaseAdapter:
-        return get_repo_provider_service(
-            self.commit.repository,
-            installation_name_to_use=self.gh_app_installation_name,
-        )
+        try:
+            return get_repo_provider_service(
+                self.commit.repository,
+                installation_name_to_use=self.gh_app_installation_name,
+            )
+        except EntityRateLimitedException as e:
+            log.warning(
+                f"Entity {e.entity_name} rate limited trying get the repository service. Please try again later"
+            )
 
     @cached_property
     def bundle_analysis_loader(self):
