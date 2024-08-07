@@ -1,9 +1,9 @@
 import logging
-import uuid
 import time
+import uuid
 from datetime import datetime
 from json import loads
-from typing import Any, Generator, List, Mapping, Optional, TypeVar
+from typing import Any, Dict, Generator, List, Optional, TypeVar
 
 from asgiref.sync import async_to_sync
 from celery import chain, chord
@@ -162,7 +162,7 @@ class UploadContext:
         while arguments := self.redis_connection.lpop(uploads_list_key):
             yield loads(arguments)
 
-    def normalize_arguments(self, commit: Commit, arguments: Mapping[str, Any]):
+    def normalize_arguments(self, commit: Commit, arguments: Dict[str, Any]):
         """
         Normalizes and validates the argument list from the user.
 
@@ -207,6 +207,7 @@ def _should_debounce_processing(upload_context: UploadContext) -> Optional[float
     last_upload_delta = time.time() - float(last_upload_timestamp)
     if last_upload_delta < upload_processing_delay:
         return max(30, upload_processing_delay - last_upload_delta)
+    return None
 
 
 class UploadTask(BaseCodecovTask, name=upload_task_name):
@@ -744,7 +745,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     in_parallel=True,
                     is_final=False,
                 )
-                for arguments, parallel_session_id in zip(argument_list, parallel_session_ids)
+                for arguments, parallel_session_id in zip(
+                    argument_list, parallel_session_ids
+                )
             ]
             parallel_processing_tasks[-1].kwargs.update(is_final=True)
 

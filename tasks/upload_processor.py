@@ -27,6 +27,7 @@ from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
+from services.report.parser.types import ParsedRawReport
 from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -204,7 +205,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         assert commit, "Commit not found in database."
         repository = commit.repository
         pr = None
-        try_later = []
         report_service = ReportService(UserYaml(commit_yaml))
 
         if in_parallel:
@@ -352,15 +352,16 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
 
             for processed_individual_report in processings_so_far:
-                deleted_archive = self._possibly_delete_archive(
-                    processed_individual_report, report_service, commit
-                )
-                if not deleted_archive:
-                    self._rewrite_raw_report_readable(
-                        processed_individual_report, report_service, commit
+                upload = processed_individual_report.pop("upload_obj", None)
+                raw_report = processed_individual_report.pop("raw_report", None)
+                if upload:
+                    deleted_archive = self._possibly_delete_archive(
+                        upload, report_service, commit
                     )
-                processed_individual_report.pop("upload_obj", None)
-                processed_individual_report.pop("raw_report", None)
+                    if not deleted_archive and raw_report:
+                        self._rewrite_raw_report_readable(
+                            raw_report, upload, report_service, commit
+                        )
             log.info(
                 f"Processed {n_processed} reports (+ {n_failed} failed)"
                 + (" (in parallel)" if in_parallel else ""),
@@ -387,7 +388,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             commit.state = "error"
             log.exception(
                 "Could not properly process commit",
-                extra=dict(repoid=repoid, commit=commitid, arguments=try_later),
+                extra=dict(repoid=repoid, commit=commitid),
             )
             raise
 
@@ -431,7 +432,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             )
         return processing_result.as_dict()
 
-    def should_delete_archive(self, commit_yaml):
+    def should_delete_archive(self, commit_yaml: UserYaml) -> bool:
         if get_config("services", "minio", "expire_raw_after_n_days"):
             return True
         return not read_yaml_field(
@@ -439,10 +440,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         )
 
     def _possibly_delete_archive(
-        self, processing_result: dict, report_service: ReportService, commit: Commit
-    ):
+        self, upload: Upload, report_service: ReportService, commit: Commit
+    ) -> bool:
         if self.should_delete_archive(report_service.current_yaml):
-            upload = processing_result.get("upload_obj")
             archive_url = upload.storage_path
             if archive_url and not archive_url.startswith("http"):
                 log.info(
@@ -461,7 +461,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
     def _attempt_rewrite_raw_report_readable_error_case(
         self, report_service: ReportService, commit: Commit, upload: Upload
-    ):
+    ) -> None:
         log.info(
             "Attempting to rewrite raw upload in readable format for debugging purposes (processing already failed)",
             extra=dict(commit=commit.commitid, upload=upload.external_id),
@@ -471,7 +471,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 commit.repository, upload, is_error_case=True
             )
             self._rewrite_raw_report_readable(
-                processing_result={"raw_report": raw_report, "upload_obj": upload},
+                raw_report,
+                upload,
                 report_service=report_service,
                 commit=commit,
             )
@@ -483,25 +484,23 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
     def _rewrite_raw_report_readable(
         self,
-        processing_result: dict,
+        raw_report: ParsedRawReport,
+        upload: Upload,
         report_service: ReportService,
         commit: Commit,
-    ):
-        raw_report = processing_result.get("raw_report")
-        if raw_report:
-            upload = processing_result.get("upload_obj")
-            archive_url = upload.storage_path
-            log.info(
-                "Re-writing raw report in readable format",
-                extra=dict(
-                    archive_url=archive_url,
-                    commit=commit.commitid,
-                    upload=upload.external_id,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            archive_service = report_service.get_archive_service(commit.repository)
-            archive_service.write_file(archive_url, raw_report.content().getvalue())
+    ) -> None:
+        archive_url = upload.storage_path
+        log.info(
+            "Re-writing raw report in readable format",
+            extra=dict(
+                archive_url=archive_url,
+                commit=commit.commitid,
+                upload=upload.external_id,
+                parent_task=self.request.parent_id,
+            ),
+        )
+        archive_service = report_service.get_archive_service(commit.repository)
+        archive_service.write_file(archive_url, raw_report.content().getvalue())
 
     def save_report_results(
         self,

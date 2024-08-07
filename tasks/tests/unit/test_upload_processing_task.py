@@ -26,7 +26,7 @@ from tasks.upload_processor import UploadProcessorTask
 here = Path(__file__)
 
 
-def test_default_acks_late():
+def test_default_acks_late() -> None:
     task = UploadProcessorTask()
     # task.acks_late is defined at import time, so it's difficult to test
     # This test ensures that, in the absence of config the default is False

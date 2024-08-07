@@ -166,19 +166,19 @@ class TestUploadTaskIntegration(object):
             .first()
         )
         t1 = upload_processor_task.s(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {
-                        "url": url,
-                        "build": "some_random_build",
-                        "upload_pk": first_session.id,
-                    }
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=True,
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {
+                    "url": url,
+                    "build": "some_random_build",
+                    "upload_pk": first_session.id,
+                }
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=True,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -255,19 +255,19 @@ class TestUploadTaskIntegration(object):
         assert len(uploads) == 1
         upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
         processor_sig = bundle_analysis_processor_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                params={
-                    "url": storage_path,
-                    "build_code": "some_random_build",
-                    "upload_pk": upload.id,
-                },
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            params={
+                "url": storage_path,
+                "build_code": "some_random_build",
+                "upload_pk": upload.id,
+            },
         )
         notify_sig = bundle_analysis_notify_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
         )
         chain.assert_called_with([processor_sig, notify_sig])
 
@@ -319,17 +319,17 @@ class TestUploadTaskIntegration(object):
         assert len(uploads) == 1
         upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
         processor_sig = test_results_processor_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {
-                        "url": storage_path,
-                        "build_code": "some_random_build",
-                        "upload_pk": upload.id,
-                    }
-                ],
-                report_code=None,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {
+                    "url": storage_path,
+                    "build_code": "some_random_build",
+                    "upload_pk": upload.id,
+                }
+            ],
+            report_code=None,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -560,42 +560,42 @@ class TestUploadTaskIntegration(object):
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id is None
         t1 = upload_processor_task.s(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {"build": "part1", "url": "someurl1", "upload_pk": mocker.ANY},
-                    {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
-                    {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=False,
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {"build": "part1", "url": "someurl1", "upload_pk": mocker.ANY},
+                {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
+                {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=False,
         )
         t2 = upload_processor_task.s(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {"build": "part4", "url": "someurl4", "upload_pk": mocker.ANY},
-                    {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
-                    {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=False,
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {"build": "part4", "url": "someurl4", "upload_pk": mocker.ANY},
+                {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
+                {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=False,
         )
         t3 = upload_processor_task.s(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
-                    {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=True,
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
+                {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=True,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -1101,13 +1101,13 @@ class TestUploadTaskUnit(object):
         )
         assert result == mocked_chain.return_value.apply_async.return_value
         t1 = upload_processor_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml.to_dict(),
-                arguments_list=argument_list,
-                report_code=None,
-                in_parallel=False,
-                is_final=True,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml=commit_yaml.to_dict(),
+            arguments_list=argument_list,
+            report_code=None,
+            in_parallel=False,
+            is_final=True,
         )
         t2 = upload_finisher_task.signature(
             kwargs={
