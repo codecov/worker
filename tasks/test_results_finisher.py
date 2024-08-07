@@ -302,7 +302,10 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     TestResultsFlow.TEST_RESULTS_NOTIFY,
                 ),
                 unit="millisecond",
-                tags={"repoid": repoid},
+                tags={
+                    "repoid": repoid,
+                    "flake_detection": should_read_flaky_detection(repoid, commit_yaml),
+                },
             )
             notifier_result: NotifierResult = async_to_sync(notifier.notify)()
 

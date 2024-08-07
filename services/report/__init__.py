@@ -926,8 +926,20 @@ class ReportService(BaseReportService):
 
         raw_uploaded_report = parser.parse_raw_report_from_bytes(archive_file)
 
+        raw_report_count = len(raw_uploaded_report.get_uploaded_files())
+        if raw_report_count < 1:
+            log.warning(
+                "Raw upload contains no uploaded files",
+                extra=dict(
+                    commit=upload.report.commit_id,
+                    repoid=repo.repoid,
+                    raw_report_count=raw_report_count,
+                    upload_version=upload_version,
+                    archive_url=archive_url,
+                ),
+            )
         RAW_UPLOAD_RAW_REPORT_COUNT.labels(version=upload_version).observe(
-            len(raw_uploaded_report.get_uploaded_files())
+            raw_report_count
         )
 
         return raw_uploaded_report

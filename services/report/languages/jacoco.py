@@ -1,3 +1,4 @@
+import logging
 import typing
 from collections import defaultdict
 
@@ -13,6 +14,8 @@ from services.report.report_builder import (
     ReportBuilderSession,
 )
 from services.yaml import read_yaml_field
+
+log = logging.getLogger(__name__)
 
 
 class JacocoProcessor(BaseLanguageProcessor):
@@ -125,16 +128,21 @@ def from_xml(xml, report_builder_session: ReportBuilderSession):
                     cov = 1
 
                 ln = int(line["nr"])
-                complexity = method_complixity.get(ln)
-                if complexity:
-                    coverage_type = CoverageType.method
-                # add line to file
-                report_file_obj[ln] = report_builder_session.create_coverage_line(
-                    filename,
-                    coverage=cov,
-                    coverage_type=coverage_type,
-                    complexity=complexity,
-                )
+                if ln > 0:
+                    complexity = method_complixity.get(ln)
+                    if complexity:
+                        coverage_type = CoverageType.method
+                    # add line to file
+                    report_file_obj[ln] = report_builder_session.create_coverage_line(
+                        filename,
+                        coverage=cov,
+                        coverage_type=coverage_type,
+                        complexity=complexity,
+                    )
+                else:
+                    log.warning(
+                        f"Jacoco report has an invalid coverage line: nr={ln}. Skipping processing line."
+                    )
 
             # append file to report
             report_builder_session.append(report_file_obj)

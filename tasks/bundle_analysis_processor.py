@@ -159,6 +159,8 @@ class BundleAnalysisProcessorTask(
         finally:
             if result.bundle_report:
                 result.bundle_report.cleanup()
+            if result.previous_bundle_report:
+                result.previous_bundle_report.cleanup()
 
         # Create task to save bundle measurements
         self.app.tasks[bundle_analysis_save_measurements_task_name].apply_async(
