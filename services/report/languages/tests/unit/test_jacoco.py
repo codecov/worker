@@ -1,8 +1,10 @@
 import datetime
+import logging
 import xml.etree.cElementTree as etree
 from time import time
 
 import pytest
+from pytest import LogCaptureFixture
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import jacoco
@@ -32,6 +34,7 @@ xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
           </method>
         </class>
         <sourcefile name="source.java">
+            <line nr="0" mi="0" ci="20" mb="0" cb="0" />
             <line nr="1" mi="99" ci="99" mb="0" cb="2" />
             <line nr="2" mi="0" ci="2" mb="1" cb="1" />
             <line nr="3" mi="1" ci="0" mb="0" cb="0" />
@@ -51,6 +54,10 @@ xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 
 
 class TestJacoco(BaseTestCase):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog: LogCaptureFixture):
+        self.caplog = caplog
+
     def test_report(self):
         def fixes(path):
             if path == "base/ignore":
@@ -64,9 +71,16 @@ class TestJacoco(BaseTestCase):
         report_builder_session = report_builder.create_report_builder_session(
             "file_name"
         )
-        report = jacoco.from_xml(
-            etree.fromstring(xml % int(time())), report_builder_session
-        )
+        with self.caplog.at_level(logging.WARNING, logger=jacoco.__name__):
+            report = jacoco.from_xml(
+                etree.fromstring(xml % int(time())), report_builder_session
+            )
+
+            assert (
+                self.caplog.records[-1].message
+                == "Jacoco report has an invalid coverage line: nr=0. Skipping processing line."
+            )
+
         processed_report = self.convert_report_to_better_readable(report)
         import pprint
 
