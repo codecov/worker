@@ -9,7 +9,11 @@ from shared.yaml import UserYaml
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
-from tasks.upload_finisher import ReportService, UploadFinisherTask
+from tasks.upload_finisher import (
+    ReportService,
+    ShouldCallNotifResult,
+    UploadFinisherTask,
+)
 
 here = Path(__file__)
 
@@ -217,8 +221,11 @@ class TestUploadFinisherTask(object):
         processing_results = {
             "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.NOTIFY
         )
 
     def test_should_call_notifications_local_upload(self, dbsession):
@@ -233,8 +240,11 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         processing_results = {}
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, "local_report1"
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, "local_report1"
+            )
+            == ShouldCallNotifResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_manual_trigger(self, dbsession):
@@ -249,8 +259,11 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
         processing_results = {}
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_manual_trigger_off(self, dbsession):
@@ -269,12 +282,29 @@ class TestUploadFinisherTask(object):
         processing_results = {
             "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.NOTIFY
         )
 
-    def test_should_call_notifications_no_successful_reports(self, dbsession):
-        commit_yaml = {"codecov": {"max_report_age": "1y ago"}}
+    @pytest.mark.parametrize(
+        "notify_error,result",
+        [
+            (True, ShouldCallNotifResult.NOTIFY_ERROR),
+            (False, ShouldCallNotifResult.DO_NOT_NOTIFY),
+        ],
+    )
+    def test_should_call_notifications_no_successful_reports(
+        self, dbsession, notify_error, result
+    ):
+        commit_yaml = {
+            "codecov": {
+                "max_report_age": "1y ago",
+                "notify": {"notify_error": notify_error},
+            }
+        }
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -288,8 +318,11 @@ class TestUploadFinisherTask(object):
             "processings_so_far": 12
             * [{"arguments": {"url": "url"}, "successful": False}]
         }
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == result
         )
 
     def test_should_call_notifications_not_enough_builds(self, dbsession, mocker):
@@ -314,8 +347,11 @@ class TestUploadFinisherTask(object):
             "processings_so_far": 9
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert not UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_more_than_enough_builds(self, dbsession, mocker):
@@ -340,8 +376,11 @@ class TestUploadFinisherTask(object):
             "processings_so_far": 2
             * [{"arguments": {"url": "url"}, "successful": True}]
         }
-        assert UploadFinisherTask().should_call_notifications(
-            commit, commit_yaml, processing_results, None
+        assert (
+            UploadFinisherTask().should_call_notifications(
+                commit, commit_yaml, processing_results, None
+            )
+            == ShouldCallNotifResult.NOTIFY
         )
 
     def test_finish_reports_processing(self, dbsession, mocker):
@@ -507,9 +546,22 @@ class TestUploadFinisherTask(object):
         )
         assert mocked_app.send_task.call_count == 0
 
-    def test_finish_reports_processing_no_notification(self, dbsession, mocker):
-        commit_yaml = {}
-        mocked_app = mocker.patch.object(UploadFinisherTask, "app")
+    @pytest.mark.parametrize(
+        "notify_error",
+        [True, False],
+    )
+    def test_finish_reports_processing_no_notification(
+        self, dbsession, mocker, notify_error
+    ):
+        commit_yaml = {"codecov": {"notify": {"notify_error": notify_error}}}
+        mocked_app = mocker.patch.object(
+            UploadFinisherTask,
+            "app",
+            tasks={
+                "app.tasks.notify.NotifyErrorTask": mocker.MagicMock(),
+                "app.tasks.notify.Notify": mocker.MagicMock(),
+            },
+        )
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -531,8 +583,18 @@ class TestUploadFinisherTask(object):
             checkpoints,
         )
         assert res == {"notifications_called": False}
-        assert mocked_app.send_task.call_count == 0
-        assert not mocked_app.tasks["app.tasks.notify.Notify"].apply_async.called
+        if notify_error:
+            assert mocked_app.send_task.call_count == 0
+            mocked_app.tasks[
+                "app.tasks.notify.NotifyErrorTask"
+            ].apply_async.assert_called_once()
+            mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_not_called()
+        else:
+            assert mocked_app.send_task.call_count == 0
+            mocked_app.tasks[
+                "app.tasks.notify.NotifyErrorTask"
+            ].apply_async.assert_not_called()
+            mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_not_called()
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_calls_save_commit_measurements_task(
@@ -543,6 +605,7 @@ class TestUploadFinisherTask(object):
             "app",
             tasks={
                 timeseries_save_commit_measurements_task_name: mocker.MagicMock(),
+                "app.tasks.notify.Notify": mocker.MagicMock(),
             },
         )
 
@@ -552,7 +615,7 @@ class TestUploadFinisherTask(object):
 
         UploadFinisherTask().run_impl(
             dbsession,
-            {},
+            {"processings_so_far": [{"successful": True}]},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},

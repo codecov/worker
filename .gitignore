@@ -132,3 +132,6 @@ background_app/.report.json
 
 # Pycharm/Intellij
 .idea/
+
+.sl
+.git

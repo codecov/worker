@@ -737,6 +737,8 @@ class TestUploadProcessorTask(object):
             "report": None,
             "should_retry": False,
             "successful": False,
+            "raw_report": None,
+            "upload_obj": upload,
         }
         assert expected_result == result
         assert commit.state == "complete"

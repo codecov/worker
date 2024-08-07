@@ -3,7 +3,7 @@
 import logging
 import numbers
 from json import load
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from lxml import etree
 from sentry_sdk import metrics as sentry_metrics
@@ -11,6 +11,7 @@ from shared.metrics import Counter, Histogram
 from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
+from helpers.metrics import KiB, MiB
 from services.report.languages import (
     BullseyeProcessor,
     CloverProcessor,
@@ -53,6 +54,26 @@ RAW_REPORT_PROCESSOR_RUNTIME_SECONDS = Histogram(
     "Time it takes (in seconds) for a raw report processor to run",
     ["processor"],
     buckets=[0.05, 0.1, 0.5, 1, 2, 5, 7.5, 10, 15, 20, 30, 60, 120, 180, 300, 600, 900],
+)
+
+RAW_REPORT_SIZE = Histogram(
+    "worker_services_report_raw_report_size",
+    "Size (in bytes) of a raw report",
+    ["processor"],
+    buckets=[
+        10 * KiB,
+        100 * KiB,
+        200 * KiB,
+        500 * KiB,
+        1 * MiB,
+        2 * MiB,
+        5 * MiB,
+        10 * MiB,
+        20 * MiB,
+        50 * MiB,
+        100 * MiB,
+        200 * MiB,
+    ],
 )
 
 RAW_REPORT_PROCESSOR_COUNTER = Counter(
@@ -109,8 +130,8 @@ def report_type_matching(report: ParsedUploadedReportFile) -> Tuple[Any, Optiona
     return raw_report, "txt"
 
 
-def get_possible_processors_list(report_type) -> list:
-    processor_dict = {
+def get_possible_processors_list(report_type: str) -> List[Any]:
+    processor_dict: Dict[str, List[Any]] = {
         "plist": [XCodePlistProcessor()],
         "xml": [
             BullseyeProcessor(),
@@ -159,13 +180,14 @@ def process_report(
     if report_type == "txt" and parsed_report[-11:] == b"has no code":
         # empty [dlst]
         return None
-    processors = get_possible_processors_list(report_type)
+    processors = get_possible_processors_list(report_type) if report_type else []
     for processor in processors:
         if processor.matches_content(parsed_report, first_line, name):
             sentry_metrics.incr(
                 "services.report.report_processor.parser",
                 tags={"type": type(processor).__name__},
             )
+            RAW_REPORT_SIZE.labels(processor=processor.name).observe(report.size)
             with RAW_REPORT_PROCESSOR_RUNTIME_SECONDS.labels(
                 processor=processor.name
             ).time():
