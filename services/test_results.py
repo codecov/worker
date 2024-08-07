@@ -280,7 +280,7 @@ def latest_test_instances_for_a_given_commit(db_session, commit_id):
     )
 
 
-def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml):
+def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
     return (
         FLAKY_TEST_DETECTION.check_value(identifier=repoid, default=False)
         and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
@@ -288,7 +288,7 @@ def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml):
     )
 
 
-def should_read_flaky_detection(repoid: int, commit_yaml: UserYaml):
+def should_read_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
     return FLAKY_TEST_DETECTION.check_value(
         identifier=repoid, default=False
     ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
