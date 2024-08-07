@@ -1,3 +1,11 @@
+import shared.bots.exceptions
+
+RepositoryWithoutValidBotError = shared.bots.exceptions.RepositoryWithoutValidBotError
+OwnerWithoutValidBotError = shared.bots.exceptions.OwnerWithoutValidBotError
+RequestedGithubAppNotFound = shared.bots.exceptions.RequestedGithubAppNotFound
+NoConfiguredAppsAvailable = shared.bots.exceptions.NoConfiguredAppsAvailable
+
+
 class ReportExpiredException(Exception):
     def __init__(self, message=None, filename=None) -> None:
         super().__init__(message)
@@ -6,27 +14,6 @@ class ReportExpiredException(Exception):
 
 class ReportEmptyError(Exception):
     pass
-
-
-class RepositoryWithoutValidBotError(Exception):
-    pass
-
-
-class RequestedGithubAppNotFound(Exception):
-    pass
-
-
-class OwnerWithoutValidBotError(Exception):
-    pass
-
-
-class NoConfiguredAppsAvailable(Exception):
-    def __init__(
-        self, apps_count: int, rate_limited_count: int, suspended_count: int
-    ) -> None:
-        self.apps_count = apps_count
-        self.rate_limited_count = rate_limited_count
-        self.suspended_count = suspended_count
 
 
 class CorruptRawReportError(Exception):
