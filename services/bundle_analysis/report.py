@@ -11,6 +11,10 @@ from shared.bundle_analysis import (
 )
 from shared.bundle_analysis.models import AssetType
 from shared.bundle_analysis.storage import get_bucket_name
+from shared.django_apps.bundle_analysis.models import CacheConfig
+from shared.django_apps.bundle_analysis.service.bundle_analysis import (
+    BundleAnalysisCacheConfigService,
+)
 from shared.reports.enums import UploadState
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
 from sqlalchemy.dialects import postgresql
@@ -41,6 +45,7 @@ class ProcessingResult:
     upload: Upload
     commit: Commit
     bundle_report: Optional[BundleAnalysisReport] = None
+    previous_bundle_report: Optional[BundleAnalysisReport] = None
     session_id: Optional[int] = None
     error: Optional[ProcessingError] = None
 
@@ -160,6 +165,32 @@ class BundleAnalysisReportService(BaseReportService):
         # fetch existing bundle report from storage
         bundle_report = bundle_loader.load(commit_report.external_id)
 
+        # attempt to carry over parent bundle analysis report if commit doesn't have a report
+        if bundle_report is None:
+            # load a new copy of the previous bundle report into temp file
+            bundle_report = self._previous_bundle_analysis_report(bundle_loader, commit)
+            if bundle_report:
+                # query which bundle names has caching turned on
+                qs = CacheConfig.objects.filter(
+                    is_caching=True,
+                    repo_id=commit.repoid,
+                )
+                bundles_to_be_cached = [item.bundle_name for item in qs]
+
+                # For each bundle,
+                # if caching is on then update bundle.is_cached property to true
+                # if caching is off then delete that bundle from the report
+                update_fields = {}
+                for bundle in bundle_report.bundle_reports():
+                    if bundle.name in bundles_to_be_cached:
+                        update_fields[bundle.name] = True
+                    else:
+                        bundle_report.delete_bundle_by_name(bundle.name)
+                if update_fields:
+                    bundle_report.update_is_cached(update_fields)
+
+        # fallback to create a fresh bundle analysis report if there is no previous
+        # report to carry over from
         if bundle_report is None:
             bundle_report = BundleAnalysisReport()
 
@@ -178,6 +209,13 @@ class BundleAnalysisReportService(BaseReportService):
             prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
             if prev_bar:
                 bundle_report.associate_previous_assets(prev_bar)
+
+            # Turn on caching option by default for all new bundles only for default branch
+            if commit.branch == commit.repository.branch:
+                for bundle in bundle_report.bundle_reports():
+                    BundleAnalysisCacheConfigService.update_cache_option(
+                        commit.repoid, bundle.name
+                    )
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
@@ -238,6 +276,7 @@ class BundleAnalysisReportService(BaseReportService):
             upload=upload,
             commit=commit,
             bundle_report=bundle_report,
+            previous_bundle_report=prev_bar,
             session_id=session_id,
         )
 
