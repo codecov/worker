@@ -5,9 +5,11 @@ from shared.torngit.exceptions import TorngitClientError
 from database.models.core import Commit
 from helpers.notifier import NotifierResult
 from services.test_results import (
+    FlakeInfo,
     TestResultsNotificationFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
+    generate_failure_info,
     generate_flags_hash,
     generate_test_id,
 )
@@ -63,36 +65,15 @@ async def test_send_to_provider_fail():
     assert res == False
 
 
-@pytest.mark.parametrize(
-    "testname,message",
-    [
-        ("testname", "- **Test name:** testname<br><br>"),
-        (
-            "Test\x1ftestname",
-            "- **Class name:** Test<br>**Test name:** testname<br><br>",
-        ),
-    ],
-)
-def test_generate_test_description(testname, message):
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
-    flags_hash = generate_flags_hash([])
-    test_id = generate_test_id(1, "testsuite", testname, flags_hash)
-    fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", testname, [], test_id
-    )
-    res = tn.generate_test_description(fail)
-    assert res == message
-
-
 def test_generate_failure_info():
     tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
+        "hello world", "testsuite", "testname", [], test_id, 1.0
     )
 
-    res = tn.generate_failure_info(fail)
+    res = generate_failure_info(fail)
 
     assert res == "  <pre>hello world</pre>"
 
@@ -101,23 +82,29 @@ def test_build_message():
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
+        "hello world", "testsuite", "testname", [], test_id, 1.0
     )
-    payload = TestResultsNotificationPayload(1, 2, 3, [fail], None)
+    payload = TestResultsNotificationPayload(1, 2, 3, [fail], dict())
     tn = TestResultsNotifier(Commit(), None, payload)  # type:ignore
     res = tn.build_message()
 
     assert (
         res
-        == """**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.
+        == """### :x: 1 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 3 | 1 | 2 | 3 |
+<details><summary>View the top 1 failed tests by shortest run time</summary>
 
-### :x: Failed Test Results: 
-Completed 6 tests with **`1 failed`**, 2 passed and 3 skipped.
-<details><summary>View the full list of failed tests</summary>
+> <pre>
+> testname
+> </pre>
+> <details><summary>Stack Traces | 1s run time</summary>
+> 
+> >   <pre>hello world</pre>
+> 
+> </details>
 
-## testsuite
-- **Test name:** testname<br><br>
-  <pre>hello world</pre>
 </details>"""
     )
 
@@ -126,24 +113,36 @@ def test_build_message_with_flake():
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id
+        "hello world", "testsuite", "testname", [], test_id, 1.0
     )
 
-    payload = TestResultsNotificationPayload(1, 2, 3, [fail], {test_id})
+    payload = TestResultsNotificationPayload(
+        1, 2, 3, [fail], {test_id: FlakeInfo(1, 3)}
+    )
     tn = TestResultsNotifier(Commit(), None, payload)  # type:ignore
     res = tn.build_message()
 
     assert (
         res
-        == """**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.
+        == """### :x: 1 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 3 | 1 | 2 | 3 |
+<details><summary>View the top 1 failed tests by shortest run time</summary>
 
-### :x: Failed Test Results: 
-Completed 6 tests with **`1 failed`**(1 known flakes hit), 2 passed and 3 skipped.
-<details><summary>View the full list of flaky tests</summary>
+</details>
+<details><summary>View the full list of 1 :snowflake: flaky tests</summary>
 
-## testsuite
-- **Test name:** testname<br><br>
-  <pre>hello world</pre>
+> <pre>
+> testname
+> </pre>
+> **Flake rate in main:** 0.3333333333333333% (Passed 2 times, Failed 1 times)
+> <details><summary>Stack Traces | 1s run time</summary>
+> 
+> >   <pre>hello world</pre>
+> 
+> </details>
+
 </details>"""
     )
 
