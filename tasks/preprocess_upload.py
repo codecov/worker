@@ -7,7 +7,7 @@ from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
-from shared.yaml.user_yaml import OwnerContext
+from shared.yaml.user_yaml import OwnerContext, RepoContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes
@@ -201,16 +201,18 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 exc_info=True,
             )
             commit_yaml = None
-        context = OwnerContext(
+        owner_context = OwnerContext(
             owner_onboarding_date=repository.owner.createstamp,
             owner_plan=repository.owner.plan,
             ownerid=repository.ownerid,
         )
+        repo_context = RepoContext(repo_creation_date=repository.created_at)
         return UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
             commit_yaml=commit_yaml,
-            owner_context=context,
+            owner_context=owner_context,
+            repo_context=repo_context,
         )
 
 

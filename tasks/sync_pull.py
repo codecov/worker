@@ -13,7 +13,7 @@ from shared.celery_config import notify_task_name, pulls_task_name
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
-from shared.yaml.user_yaml import OwnerContext
+from shared.yaml.user_yaml import OwnerContext, RepoContext
 
 from app import celery_app
 from database.models import Commit, Pull, Repository
@@ -126,15 +126,17 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "pull_updated": False,
                 "reason": "no_bot",
             }
-        context = OwnerContext(
+        owner_context = OwnerContext(
             owner_onboarding_date=repository.owner.createstamp,
             owner_plan=repository.owner.plan,
             ownerid=repository.ownerid,
         )
+        repo_context = RepoContext(repo_creation_date=repository.created_at)
         current_yaml = UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
-            owner_context=context,
+            owner_context=owner_context,
+            repo_context=repo_context,
         )
         with metrics.timer(f"{self.metrics_prefix}.fetch_pull"):
             enriched_pull = async_to_sync(fetch_and_update_pull_request_information)(

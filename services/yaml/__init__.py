@@ -3,7 +3,7 @@ import logging
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
-from shared.yaml.user_yaml import OwnerContext
+from shared.yaml.user_yaml import OwnerContext, RepoContext
 
 from database.enums import CommitErrorTypes
 from database.models import Commit
@@ -16,15 +16,17 @@ log = logging.getLogger(__name__)
 
 
 def get_repo_yaml(repository: Repository):
-    context = OwnerContext(
+    owner_context = OwnerContext(
         owner_onboarding_date=repository.owner.createstamp,
         owner_plan=repository.owner.plan,
         ownerid=repository.ownerid,
     )
+    repo_context = RepoContext(repo_creation_date=repository.created_at)
     return UserYaml.get_final_yaml(
         owner_yaml=repository.owner.yaml,
         repo_yaml=repository.yaml,
-        owner_context=context,
+        owner_context=owner_context,
+        repo_context=repo_context,
     )
 
 
@@ -100,16 +102,19 @@ async def get_current_yaml(commit: Commit, repository_service) -> dict:
             extra=dict(repoid=repository.repoid, commit=commit.commitid),
             exc_info=True,
         )
-    context = OwnerContext(
+    owner_context = OwnerContext(
         owner_onboarding_date=repository.owner.createstamp,
         owner_plan=repository.owner.plan,
         ownerid=repository.ownerid,
     )
+    repo_context = RepoContext(repo_creation_date=repository.created_at)
+
     return UserYaml.get_final_yaml(
         owner_yaml=repository.owner.yaml,
         repo_yaml=repository.yaml,
         commit_yaml=commit_yaml,
-        owner_context=context,
+        owner_context=owner_context,
+        repo_context=repo_context,
     )
 
 
