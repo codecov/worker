@@ -83,7 +83,7 @@ class BundleAnalysisNotifyService:
         Each NotificationType is paired with a ContextBuilder and MessageStrategyInterface.
         The MessageStrategy is later used to build and send the message based on the NotificationContext
         """
-        builders_lookup: dict[
+        notifier_lookup: dict[
             NotificationType,
             tuple[NotificationContextBuilder, MessageStrategyInterface],
         ] = {
@@ -92,14 +92,13 @@ class BundleAnalysisNotifyService:
                 BundleAnalysisCommentMarkdownStrategy,
             )
         }
-        builder_class, message_strategy_class = builders_lookup.get(
-            notification_type, (None, None)
-        )
+        notifier_strategy = notifier_lookup.get(notification_type)
 
-        if builder_class is None:
+        if notifier_strategy is None:
             msg = f"No context builder for {notification_type.name}. Skipping"
             log.error(msg)
             return None
+        builder_class, message_strategy_class = notifier_strategy
         try:
             builder = builder_class().initialize_from_context(base_context)
             return NotificationFullContext(
