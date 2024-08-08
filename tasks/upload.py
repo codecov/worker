@@ -18,7 +18,6 @@ from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitRepoNotFoundError,
 )
-from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
 
@@ -48,13 +47,12 @@ from services.redis import (
 from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
     create_webhook_on_provider,
+    fetch_commit_yaml_and_possibly_store,
     get_repo_provider_service,
     gitlab_webhook_update,
     possibly_update_commit_from_provider_info,
 )
 from services.test_results import TestResultsReportService
-from services.yaml import save_repo_yaml_to_database_if_needed
-from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
@@ -452,7 +450,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 exc_info=True,
             )
         if repository_service:
-            commit_yaml = self.fetch_commit_yaml_and_possibly_store(
+            commit_yaml = fetch_commit_yaml_and_possibly_store(
                 commit, repository_service
             )
         else:
@@ -533,52 +531,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "Not scheduling task because there were no arguments were found on redis",
             )
         return {"was_setup": was_setup, "was_updated": was_updated}
-
-    def fetch_commit_yaml_and_possibly_store(self, commit: Commit, repository_service):
-        repository = commit.repository
-        try:
-            self.log.info(
-                "Fetching commit yaml from provider for commit",
-            )
-            commit_yaml = async_to_sync(fetch_commit_yaml_from_provider)(
-                commit, repository_service
-            )
-            save_repo_yaml_to_database_if_needed(commit, commit_yaml)
-        except InvalidYamlException as ex:
-            save_commit_error(
-                commit,
-                error_code=CommitErrorTypes.INVALID_YAML.value,
-                error_params=dict(
-                    repoid=repository.repoid,
-                    commit=commit.commitid,
-                    error_location=ex.error_location,
-                ),
-            )
-            self.log.warning(
-                "Unable to use yaml from commit because it is invalid",
-                extra=dict(
-                    error_location=ex.error_location,
-                ),
-                exc_info=True,
-            )
-            commit_yaml = None
-        except TorngitClientError:
-            self.log.warning(
-                "Unable to use yaml from commit because it cannot be fetched",
-                exc_info=True,
-            )
-            commit_yaml = None
-        context = OwnerContext(
-            owner_onboarding_date=repository.owner.createstamp,
-            owner_plan=repository.owner.plan,
-            ownerid=repository.ownerid,
-        )
-        return UserYaml.get_final_yaml(
-            owner_yaml=repository.owner.yaml,
-            repo_yaml=repository.yaml,
-            commit_yaml=commit_yaml,
-            owner_context=context,
-        )
 
     def schedule_task(
         self,
