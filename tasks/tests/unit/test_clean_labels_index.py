@@ -11,6 +11,7 @@ from tasks.upload_clean_labels_index import (
     CleanLabelsIndexTask,
     OwnerContext,
     ReadOnlyArgs,
+    RepoContext,
     ReportService,
     UserYaml,
 )
@@ -244,6 +245,7 @@ class TestCleanLabelsIndexReadOnlyArgs(object):
                 owner_plan=owner.plan,
                 owner_onboarding_date=owner.createstamp,
             ),
+            repo_context=RepoContext(repo_creation_date=commit.repository.created_at),
         )
 
 

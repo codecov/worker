@@ -153,6 +153,8 @@ class Repository(CodecovBaseModel):
     owner = relationship(Owner, foreign_keys=[ownerid], back_populates="repositories")
     bot = relationship(Owner, foreign_keys=[bot_id])
 
+    created_at = Column(types.DateTime, nullable=True)
+
     __table_args__ = (
         Index("repos_slug", "ownerid", "name", unique=True),
         Index("repos_service_ids", "ownerid", "service_id", unique=True),
