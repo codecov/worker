@@ -1,7 +1,12 @@
+import numbers
 from typing import Literal
 
+from shared.bundle_analysis import (
+    BundleAnalysisComparison,
+)
 from shared.django_apps.codecov_auth.models import Service
 from shared.torngit.base import TorngitBaseAdapter
+from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
 from database.models.core import Owner
@@ -72,3 +77,24 @@ def bytes_readable(bytes: int) -> str:
     expoent_str = [" bytes", "kB", "MB", "GB"][expoent_index]
     rounted_value = round(value, 2)
     return f"{rounted_value}{expoent_str}"
+
+
+def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
+    # Currently the yaml validator returns the raw values, not the BundleThreshold object
+    # Because the changes are not forwards compatible.
+    # https://github.com/codecov/engineering-team/issues/2087 is to fix that
+    # and then this function can be removed too
+    if isinstance(value, BundleThreshold):
+        return value
+    if isinstance(value, numbers.Integral):
+        return BundleThreshold("absolute", value)
+    return BundleThreshold("percentage", value)
+
+
+def is_bundle_change_within_bundle_threshold(
+    comparison: BundleAnalysisComparison, threshold: BundleThreshold
+) -> bool:
+    if threshold.type == "absolute":
+        return abs(comparison.total_size_delta) <= threshold.threshold
+    else:
+        return comparison.percentage_delta <= threshold.threshold
