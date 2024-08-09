@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
 from database.models.core import (
@@ -13,6 +14,8 @@ from services.bundle_analysis.new_notify.helpers import (
     bytes_readable,
     get_github_app_used,
     get_notification_types_configured,
+    is_bundle_change_within_bundle_threshold,
+    to_BundleThreshold,
 )
 from services.bundle_analysis.new_notify.types import NotificationType
 
@@ -132,3 +135,34 @@ def test_get_configuration_types_configured(config, owner_fixture, expected, req
 )
 def test_get_github_app_used(torngit, expected):
     assert get_github_app_used(torngit) == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (100, BundleThreshold("absolute", 100)),
+        (0, BundleThreshold("absolute", 0)),
+        (14.5, BundleThreshold("percentage", 14.5)),
+    ],
+)
+def test_to_BundleThreshold(value, expected):
+    assert to_BundleThreshold(value) == expected
+
+
+@pytest.mark.parametrize(
+    "threshold, expected",
+    [
+        (BundleThreshold("absolute", 10001), True),
+        (BundleThreshold("absolute", 10000), True),
+        (BundleThreshold("absolute", 9999), False),
+        (BundleThreshold("percentage", 13.0), True),
+        (BundleThreshold("percentage", 12.5), True),
+        (BundleThreshold("percentage", 12.0), False),
+    ],
+)
+def test_is_bundle_change_within_bundle_threshold(threshold, expected):
+    comparison = MagicMock(
+        name="fake_comparison", total_size_delta=10000, percentage_delta=12.5
+    )
+    assert comparison.total_size_delta == 10000
+    assert is_bundle_change_within_bundle_threshold(comparison, threshold) == expected
