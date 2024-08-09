@@ -19,6 +19,7 @@ from services.repository import (
     possibly_update_commit_from_provider_info,
 )
 from tasks.base import BaseCodecovTask
+from tasks.upload import UPLOAD_LOCK_NAME
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             "Received preprocess upload task",
             extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
         )
-        lock_name = f"preprocess_upload_lock_{repoid}_{commitid}_{report_code}"
+        lock_name = UPLOAD_LOCK_NAME(repoid, commitid)
         redis_connection = get_redis_connection()
         # This task only needs to run once per commit (per report_code)
         # To generate the report. So if one is already running we don't need another
@@ -57,7 +58,10 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             with redis_connection.lock(
                 lock_name,
                 timeout=60 * 5,
-                blocking_timeout=None,
+                # This is the timeout that this task will wait to wait for the lock. This should
+                # be non-zero as otherwise it waits indefinitely to get the lock. It's also smaller than
+                # the upload task's blocking timeout to guarantee an Upload tasks runs
+                blocking_timeout=3,
             ):
                 return self.process_impl_within_lock(
                     db_session=db_session,
