@@ -7,3 +7,9 @@ class NotificationType(Enum):
     # See docs on the difference between COMMIT_STATUS and GITHUB_COMMIT_CHECK
     # https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks#types-of-status-checks-on-github
     GITHUB_COMMIT_CHECK = "github_commit_check"
+
+
+class NotificationSuccess(Enum):
+    NOTHING_TO_NOTIFY = "nothing_to_notify"
+    FULL_SUCCESS = "full_success"
+    PARTIAL_SUCCESS = "partial_success"

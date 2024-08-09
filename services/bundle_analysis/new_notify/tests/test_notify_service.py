@@ -9,6 +9,7 @@ from services.bundle_analysis.new_notify import (
     BundleAnalysisNotifyReturn,
     BundleAnalysisNotifyService,
     NotificationFullContext,
+    NotificationSuccess,
 )
 from services.bundle_analysis.new_notify.conftest import (
     get_commit_pair,
@@ -208,3 +209,25 @@ class TestBundleAnalysisNotifyService:
         )
         assert len(result.notifications_configured) == expected_configured_count
         assert len(result.notifications_successful) == expected_success_count
+
+    @pytest.mark.parametrize(
+        "result, success_value",
+        [
+            (BundleAnalysisNotifyReturn([], []), NotificationSuccess.NOTHING_TO_NOTIFY),
+            (
+                BundleAnalysisNotifyReturn(
+                    [NotificationType.COMMIT_STATUS], [NotificationType.COMMIT_STATUS]
+                ),
+                NotificationSuccess.FULL_SUCCESS,
+            ),
+            (
+                BundleAnalysisNotifyReturn(
+                    [NotificationType.COMMIT_STATUS, NotificationType.PR_COMMENT],
+                    [NotificationType.COMMIT_STATUS],
+                ),
+                NotificationSuccess.PARTIAL_SUCCESS,
+            ),
+        ],
+    )
+    def test_to_NotificationSuccess(self, result, success_value):
+        assert result.to_NotificationSuccess() == success_value

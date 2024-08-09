@@ -63,15 +63,6 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
-    def get_success_value(
-        self, configured_notifications_count: int, successful_notifications_count: int
-    ) -> str:
-        if configured_notifications_count == 0:
-            return "nothing_to_notify"
-        if configured_notifications_count == successful_notifications_count:
-            return "full_success"
-        return "partial_success"
-
     def process_impl_within_lock(
         self,
         *,
@@ -98,8 +89,6 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         assert commit, "commit not found"
 
         notify = True
-        configured_notifications_count = 0
-        successful_notifications_count = 0
 
         # these are the task results from prior processor tasks in the chain
         # (they get accumulated as we execute each task in succession)
@@ -117,8 +106,6 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
                 commit, commit_yaml, gh_app_installation_name=installation_name_to_use
             )
             result = notifier.notify()
-            configured_notifications_count = len(result.notifications_configured)
-            successful_notifications_count = len(result.notifications_successful)
 
         log.info(
             "Finished bundle analysis notify",
@@ -133,9 +120,7 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
 
         return {
             "notify_attempted": notify,
-            "notify_succeeded": self.get_success_value(
-                configured_notifications_count, successful_notifications_count
-            ),
+            "notify_succeeded": result.to_NotificationSuccess(),
         }
 
 
