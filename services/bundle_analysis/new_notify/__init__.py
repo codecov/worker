@@ -21,7 +21,10 @@ from services.bundle_analysis.new_notify.messages import MessageStrategyInterfac
 from services.bundle_analysis.new_notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
 )
-from services.bundle_analysis.new_notify.types import NotificationType
+from services.bundle_analysis.new_notify.types import (
+    NotificationSuccess,
+    NotificationType,
+)
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +37,15 @@ class NotificationFullContext(NamedTuple):
 class BundleAnalysisNotifyReturn(NamedTuple):
     notifications_configured: tuple[NotificationType]
     notifications_successful: tuple[NotificationType]
+
+    def to_NotificationSuccess(self) -> NotificationSuccess:
+        notification_configured_count = len(self.notifications_configured)
+        notifications_successful_count = len(self.notifications_successful)
+        if notification_configured_count == 0:
+            return NotificationSuccess.NOTHING_TO_NOTIFY
+        if notification_configured_count == notifications_successful_count:
+            return NotificationSuccess.FULL_SUCCESS
+        return NotificationSuccess.PARTIAL_SUCCESS
 
 
 class BundleAnalysisNotifyService:
