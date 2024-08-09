@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Mapping, Optional, Tuple
 
 import shared.torngit as torngit
+from asgiref.sync import async_to_sync
 from shared.bots import (
     get_adapter_auth_information,
 )
@@ -14,6 +15,7 @@ from shared.bots.github_apps import (
 )
 from shared.config import get_config, get_verify_ssl
 from shared.django_apps.codecov_auth.models import Service
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitError,
@@ -24,16 +26,22 @@ from shared.typings.torngit import (
     RepoInfo,
     TorngitInstanceData,
 )
+from shared.validation.exceptions import InvalidYamlException
+from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
+from database.enums import CommitErrorTypes
 from database.models import Commit, Owner, Pull, Repository
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 )
+from helpers.save_commit_error import save_commit_error
 from helpers.token_refresh import get_token_refresh_callback
 from services.github import get_github_app_for_commit
-from services.yaml import read_yaml_field
+from services.yaml import read_yaml_field, save_repo_yaml_to_database_if_needed
+from services.yaml.fetcher import fetch_commit_yaml_from_provider
 
 log = logging.getLogger(__name__)
 
@@ -588,3 +596,56 @@ async def fetch_and_update_pull_request_information(
             pull.author = pr_author
 
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)
+
+
+def fetch_commit_yaml_and_possibly_store(
+    commit: Commit, repository_service: TorngitBaseAdapter
+) -> UserYaml:
+    repository = commit.repository
+    try:
+        log.info(
+            "Fetching commit yaml from provider for commit",
+            extra=dict(repoid=commit.repoid, commit=commit.commitid),
+        )
+        commit_yaml = async_to_sync(fetch_commit_yaml_from_provider)(
+            commit, repository_service
+        )
+        save_repo_yaml_to_database_if_needed(commit, commit_yaml)
+    except InvalidYamlException as ex:
+        save_commit_error(
+            commit,
+            error_code=CommitErrorTypes.INVALID_YAML.value,
+            error_params=dict(
+                repoid=repository.repoid,
+                commit=commit.commitid,
+                error_location=ex.error_location,
+            ),
+        )
+        log.warning(
+            "Unable to use yaml from commit because it is invalid",
+            extra=dict(
+                repoid=repository.repoid,
+                commit=commit.commitid,
+                error_location=ex.error_location,
+            ),
+            exc_info=True,
+        )
+        commit_yaml = None
+    except TorngitClientError:
+        log.warning(
+            "Unable to use yaml from commit because it cannot be fetched",
+            extra=dict(repoid=repository.repoid, commit=commit.commitid),
+            exc_info=True,
+        )
+        commit_yaml = None
+    context = OwnerContext(
+        owner_onboarding_date=repository.owner.createstamp,
+        owner_plan=repository.owner.plan,
+        ownerid=repository.ownerid,
+    )
+    return UserYaml.get_final_yaml(
+        owner_yaml=repository.owner.yaml,
+        repo_yaml=repository.yaml,
+        commit_yaml=commit_yaml,
+        owner_context=context,
+    )

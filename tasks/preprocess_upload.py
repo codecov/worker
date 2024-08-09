@@ -4,10 +4,6 @@ from typing import Optional
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.torngit.base import TorngitBaseAdapter
-from shared.torngit.exceptions import TorngitClientError
-from shared.validation.exceptions import InvalidYamlException
-from shared.yaml import UserYaml
-from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes
@@ -18,11 +14,10 @@ from helpers.save_commit_error import save_commit_error
 from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import (
+    fetch_commit_yaml_and_possibly_store,
     get_repo_provider_service,
     possibly_update_commit_from_provider_info,
 )
-from services.yaml import save_repo_yaml_to_database_if_needed
-from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -121,9 +116,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         updated_commit = async_to_sync(possibly_update_commit_from_provider_info)(
             commit=commit, repository_service=repository_service
         )
-        commit_yaml = self.fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
+        commit_yaml = fetch_commit_yaml_and_possibly_store(commit, repository_service)
         report_service = ReportService(
             commit_yaml, gh_app_installation_name=installation_name_to_use
         )
@@ -162,56 +155,6 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             )
 
         return repository_service
-
-    def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
-        repository = commit.repository
-        try:
-            log.info(
-                "Fetching commit yaml from provider for commit",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-            )
-            commit_yaml = async_to_sync(fetch_commit_yaml_from_provider)(
-                commit, repository_service
-            )
-            save_repo_yaml_to_database_if_needed(commit, commit_yaml)
-        except InvalidYamlException as ex:
-            save_commit_error(
-                commit,
-                error_code=CommitErrorTypes.INVALID_YAML.value,
-                error_params=dict(
-                    repoid=repository.repoid,
-                    commit=commit.commitid,
-                    error_location=ex.error_location,
-                ),
-            )
-            log.warning(
-                "Unable to use yaml from commit because it is invalid",
-                extra=dict(
-                    repoid=repository.repoid,
-                    commit=commit.commitid,
-                    error_location=ex.error_location,
-                ),
-                exc_info=True,
-            )
-            commit_yaml = None
-        except TorngitClientError:
-            log.warning(
-                "Unable to use yaml from commit because it cannot be fetched",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid),
-                exc_info=True,
-            )
-            commit_yaml = None
-        context = OwnerContext(
-            owner_onboarding_date=repository.owner.createstamp,
-            owner_plan=repository.owner.plan,
-            ownerid=repository.ownerid,
-        )
-        return UserYaml.get_final_yaml(
-            owner_yaml=repository.owner.yaml,
-            repo_yaml=repository.yaml,
-            commit_yaml=commit_yaml,
-            owner_context=context,
-        )
 
 
 RegisteredUploadTask = celery_app.register_task(PreProcessUpload())

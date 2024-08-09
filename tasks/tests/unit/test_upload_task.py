@@ -397,7 +397,6 @@ class TestUploadTaskIntegration(object):
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
         redis_queue = [
@@ -444,7 +443,6 @@ class TestUploadTaskIntegration(object):
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         commit = CommitFactory.create(
             parent_commit_id=None,
             message="",
@@ -460,7 +458,6 @@ class TestUploadTaskIntegration(object):
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
         redis_queue = [
             {"build": "part1", "url": "someurl1"},
@@ -494,7 +491,6 @@ class TestUploadTaskIntegration(object):
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
         redis_queue = [
             {"build": "part1", "url": "someurl1"},
@@ -710,8 +706,8 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocked_fetch_yaml = mocker.patch.object(
-            UploadTask, "fetch_commit_yaml_and_possibly_store"
+        mocked_fetch_yaml = mocker.patch(
+            "services.repository.fetch_commit_yaml_and_possibly_store"
         )
         redis_queue = [
             {"build": "part1", "url": "url1"},
@@ -765,8 +761,8 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocked_fetch_yaml = mocker.patch.object(
-            UploadTask, "fetch_commit_yaml_and_possibly_store"
+        mocked_fetch_yaml = mocker.patch(
+            "services.repository.fetch_commit_yaml_and_possibly_store"
         )
         redis_queue = [
             {"build": "part1", "url": "url1"},
@@ -1236,183 +1232,6 @@ class TestUploadTaskUnit(object):
         task.request.retries = 0
         with pytest.raises(Retry):
             task.run_impl(dbsession, commit.repoid, commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_only_commit_yaml(
-        self, dbsession, mocker, mock_configuration
-    ):
-        commit = CommitFactory.create()
-        get_source_result = {
-            "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-            {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
-            {"name": "README.rst", "path": "README.rst", "type": "file"},
-            {"name": "awesome", "path": "awesome", "type": "folder"},
-            {"name": "codecov", "path": "codecov", "type": "file"},
-            {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
-            {"name": "tests", "path": "tests", "type": "folder"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {"codecov": {"notify": {}, "require_ci_to_pass": True}}
-        assert result.to_dict() == expected_result
-        repository_service.get_source.assert_called_with(
-            "codecov.yaml", commit.commitid
-        )
-        repository_service.list_top_level_files.assert_called_with(commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_base_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
-        commit = CommitFactory.create()
-        get_source_result = {
-            "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
-            {"name": "awesome", "path": "awesome", "type": "folder"},
-            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "coverage": {"precision": 14},
-        }
-        assert result.to_dict() == expected_result
-        repository_service.get_source.assert_called_with(
-            ".codecov.yaml", commit.commitid
-        )
-        repository_service.list_top_level_files.assert_called_with(commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_repo_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
-        commit = CommitFactory.create(
-            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
-            repository__branch="supeduperbranch",
-            branch="supeduperbranch",
-        )
-        get_source_result = {
-            "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-            {"name": "tests", "path": "tests", "type": "folder"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "coverage": {"precision": 14},
-        }
-        assert result.to_dict() == expected_result
-        assert commit.repository.yaml == {
-            "codecov": {"notify": {}, "require_ci_to_pass": True}
-        }
-        repository_service.get_source.assert_called_with(
-            ".codecov.yaml", commit.commitid
-        )
-        repository_service.list_top_level_files.assert_called_with(commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_no_commit_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"coverage": {"round": "up"}}})
-        commit = CommitFactory.create(
-            repository__owner__yaml={"coverage": {"precision": 2}},
-            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
-            repository__branch="supeduperbranch",
-            branch="supeduperbranch",
-        )
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                side_effect=TorngitClientError(404, "fake_response", "message")
-            )
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "coverage": {"precision": 2, "round": "up"},
-            "codecov": {"max_report_age": "1y ago"},
-        }
-        assert result.to_dict() == expected_result
-        assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_invalid_commit_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"comment": {"behavior": "new"}}})
-        commit = CommitFactory.create(
-            repository__owner__yaml={"coverage": {"precision": 2}},
-            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
-            repository__branch="supeduperbranch",
-            branch="supeduperbranch",
-        )
-        dbsession.add(commit)
-        get_source_result = {
-            "content": "\n".join(
-                ["bad_key:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-            {"name": "tests", "path": "tests", "type": "folder"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "coverage": {"precision": 2},
-            "codecov": {"max_report_age": "1y ago"},
-            "comment": {"behavior": "new"},
-        }
-        assert result.to_dict() == expected_result
-        assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
 
     def test_possibly_setup_webhooks_public_repo(
         self, mocker, mock_configuration, mock_repo_provider

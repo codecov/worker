@@ -48,11 +48,11 @@ class TestPreProcessUpload(object):
             }
         }
         mocker.patch(
-            "tasks.preprocess_upload.fetch_commit_yaml_from_provider",
+            "services.repository.fetch_commit_yaml_from_provider",
             return_value=commit_yaml,
         )
         mock_save_commit = mocker.patch(
-            "tasks.preprocess_upload.save_repo_yaml_to_database_if_needed"
+            "services.repository.save_repo_yaml_to_database_if_needed"
         )
         mocker.patch.object(PreProcessUpload, "_is_running", return_value=False)
 
