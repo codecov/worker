@@ -176,6 +176,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 )
                 self.retry(max_retries=5, countdown=retry_in)
 
+    @sentry_sdk.trace
     def process_impl_within_lock(
         self,
         *,

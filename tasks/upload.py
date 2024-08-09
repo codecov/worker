@@ -6,6 +6,7 @@ from json import loads
 from math import ceil
 from typing import Any, List, Mapping, Optional
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery import chain, chord
 from redis import Redis
@@ -356,6 +357,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(max_retries=3, countdown=retry_countdown, kwargs=kwargs)
 
+    @sentry_sdk.trace
     def run_impl_within_lock(
         self,
         db_session,

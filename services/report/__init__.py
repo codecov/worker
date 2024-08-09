@@ -1133,6 +1133,7 @@ class ReportService(BaseReportService):
             db_session.add(error_obj)
             db_session.flush()
 
+    @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):
         rounding: str = read_yaml_field(
             self.current_yaml, ("coverage", "round"), "nearest"
@@ -1211,6 +1212,7 @@ class ReportService(BaseReportService):
         )
         return {"url": url}
 
+    @sentry_sdk.trace
     def save_full_report(self, commit: Commit, report: Report, report_code=None):
         """
             Saves the report (into database and storage) AND takes care of backfilling its sessions
@@ -1262,6 +1264,7 @@ class ReportService(BaseReportService):
                 )
         return res
 
+    @sentry_sdk.trace
     async def save_parallel_report_to_archive(
         self, commit: Commit, report: Report, report_code=None
     ):
