@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 
 import django
+import sentry_sdk
 from asgiref.sync import sync_to_async
 from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
 
@@ -63,6 +64,10 @@ class MetricContext:
         self.commit_sha = commit_sha
         self.owner_id = owner_id
         self.populated = False
+
+        sentry_sdk.set_tag("owner_id", owner_id)
+        sentry_sdk.set_tag("repo_id", repo_id)
+        sentry_sdk.set_tag("commit_sha", commit_sha)
 
     def populate(self):
         if self.populated:
