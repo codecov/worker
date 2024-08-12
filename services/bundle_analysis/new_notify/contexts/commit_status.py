@@ -156,7 +156,7 @@ class CommitStatusNotificationContextBuilder(NotificationContextBuilder):
     def load_commit_status_url(self) -> "CommitStatusNotificationContextBuilder":
         if self._notification_context.pull:
             self._notification_context.commit_status_url = get_bundle_analysis_pull_url(
-                self._notification_context.pull
+                self._notification_context.pull.database_pull
             )
         else:
             self._notification_context.commit_status_url = get_commit_url(

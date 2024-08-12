@@ -67,7 +67,6 @@ def get_github_app_used(torngit: TorngitBaseAdapter | None) -> int | None:
 
 def bytes_readable(bytes: int) -> str:
     """Converts bytes into human-readable string (up to GB)"""
-    negative = bytes < 0
     value = abs(bytes)
     expoent_index = 0
 
@@ -77,8 +76,7 @@ def bytes_readable(bytes: int) -> str:
 
     expoent_str = [" bytes", "kB", "MB", "GB"][expoent_index]
     rounted_value = round(value, 2)
-    prefix = "-" if negative else ""
-    return f"{prefix}{rounted_value}{expoent_str}"
+    return f"{rounted_value}{expoent_str}"
 
 
 def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
