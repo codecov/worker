@@ -11,7 +11,7 @@ from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from tasks.upload_finisher import (
     ReportService,
-    ShouldCallNotifResult,
+    ShouldCallNotifyResult,
     UploadFinisherTask,
 )
 
@@ -225,7 +225,7 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask().should_call_notifications(
                 commit, commit_yaml, processing_results, None
             )
-            == ShouldCallNotifResult.NOTIFY
+            == ShouldCallNotifyResult.NOTIFY
         )
 
     def test_should_call_notifications_local_upload(self, dbsession):
@@ -244,7 +244,7 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask().should_call_notifications(
                 commit, commit_yaml, processing_results, "local_report1"
             )
-            == ShouldCallNotifResult.DO_NOT_NOTIFY
+            == ShouldCallNotifyResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_manual_trigger(self, dbsession):
@@ -263,7 +263,7 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask().should_call_notifications(
                 commit, commit_yaml, processing_results, None
             )
-            == ShouldCallNotifResult.DO_NOT_NOTIFY
+            == ShouldCallNotifyResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_manual_trigger_off(self, dbsession):
@@ -286,14 +286,14 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask().should_call_notifications(
                 commit, commit_yaml, processing_results, None
             )
-            == ShouldCallNotifResult.NOTIFY
+            == ShouldCallNotifyResult.NOTIFY
         )
 
     @pytest.mark.parametrize(
         "notify_error,result",
         [
-            (True, ShouldCallNotifResult.NOTIFY_ERROR),
-            (False, ShouldCallNotifResult.DO_NOT_NOTIFY),
+            (True, ShouldCallNotifyResult.NOTIFY_ERROR),
+            (False, ShouldCallNotifyResult.DO_NOT_NOTIFY),
         ],
     )
     def test_should_call_notifications_no_successful_reports(
@@ -351,7 +351,7 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask().should_call_notifications(
                 commit, commit_yaml, processing_results, None
             )
-            == ShouldCallNotifResult.DO_NOT_NOTIFY
+            == ShouldCallNotifyResult.DO_NOT_NOTIFY
         )
 
     def test_should_call_notifications_more_than_enough_builds(self, dbsession, mocker):
@@ -380,7 +380,7 @@ class TestUploadFinisherTask(object):
             UploadFinisherTask().should_call_notifications(
                 commit, commit_yaml, processing_results, None
             )
-            == ShouldCallNotifResult.NOTIFY
+            == ShouldCallNotifyResult.NOTIFY
         )
 
     def test_finish_reports_processing(self, dbsession, mocker):
