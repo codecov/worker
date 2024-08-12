@@ -150,9 +150,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         assert commit, "commit not found"
 
+        repo = db_session.query(Repository).filter_by(repoid=repoid).first()
         if should_write_flaky_detection(repoid, commit_yaml):
-            repo = db_session.query(Repository).filter_by(repoid=repoid).first()
-
             if commit.merged is True or commit.branch == repo.branch:
                 self.app.tasks[process_flakes_task_name].apply_async(
                     kwargs=dict(
@@ -242,6 +241,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
                     failure_message = escaper.replace(failure_message)
 
+                build_url = test_instance.upload.build_url
+
                 failures.append(
                     TestResultsNotificationFailure(
                         testsuite=test_instance.test.testsuite,
@@ -250,6 +251,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                         test_id=test_instance.test_id,
                         envs=flag_names,
                         duration_seconds=test_instance.duration_seconds,
+                        build_url=build_url,
                     )
                 )
             elif test_instance.outcome == str(Outcome.Skip):
@@ -289,7 +291,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
 
         payload = TestResultsNotificationPayload(
-            failed_tests, passed_tests, skipped_tests, failures, flaky_tests
+            failed_tests,
+            passed_tests,
+            skipped_tests,
+            failures,
+            flaky_tests,
         )
 
         notifier = TestResultsNotifier(commit, commit_yaml, payload)

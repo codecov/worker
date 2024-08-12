@@ -7,13 +7,20 @@ from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
-from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from database.models import (
+    Commit,
+    CommitReport,
+    RepositoryFlag,
+    TestInstance,
+    Upload,
+)
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.report import BaseReportService
 from services.repository import (
     get_repo_provider_service,
 )
+from services.urls import get_test_analytics_url
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -118,6 +125,7 @@ class TestResultsNotificationFailure:
     envs: List[str]
     test_id: str
     duration_seconds: float
+    build_url: str | None = None
 
 
 @dataclass
@@ -169,10 +177,21 @@ def generate_failure_info(
     else:
         failure_message = "No failure message available"
 
-    return f"  <pre>{failure_message}</pre>"
+    if fail.build_url:
+        return f"<pre>{failure_message}</pre>\n[View]({fail.build_url}) the CI Build"
+    else:
+        return f"<pre>{failure_message}</pre>"
 
 
-def messagify_failure(failure: TestResultsNotificationFailure) -> str:
+def generate_view_test_analytics_line(commit: Commit) -> str:
+    repo = commit.repository
+    test_analytics_url = get_test_analytics_url(repo, commit)
+    return f"\nTo view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard]({test_analytics_url})"
+
+
+def messagify_failure(
+    failure: TestResultsNotificationFailure,
+) -> str:
     test_name = wrap_in_code(failure.testname)
     formatted_duration = display_duration(failure.duration_seconds)
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
@@ -184,11 +203,12 @@ def messagify_failure(failure: TestResultsNotificationFailure) -> str:
 
 
 def messagify_flake(
-    flaky_failure: TestResultsNotificationFailure, flake_info: FlakeInfo
+    flaky_failure: TestResultsNotificationFailure,
+    flake_info: FlakeInfo,
 ) -> str:
     test_name = wrap_in_code(flaky_failure.testname)
     formatted_duration = display_duration(flaky_failure.duration_seconds)
-    flake_rate = flake_info.failed / flake_info.count
+    flake_rate = flake_info.failed / flake_info.count * 100
     flake_rate_section = f"**Flake rate in main:** {flake_rate}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
     stack_trace = wrap_in_details(
@@ -226,14 +246,15 @@ class TestResultsNotifier(BaseNotifier):
             key=lambda x: (x.duration_seconds, x.testname),
         )
 
-        failure_content = [f"{messagify_failure(failure)}" for failure in failures]
+        if failures:
+            failure_content = [f"{messagify_failure(failure)}" for failure in failures]
 
-        top_3_failed_section = wrap_in_details(
-            f"View the top {min(3, self.payload.failed)} failed tests by shortest run time",
-            "\n".join(failure_content),
-        )
+            top_3_failed_section = wrap_in_details(
+                f"View the top {min(3, len(failures))} failed tests by shortest run time",
+                "\n".join(failure_content),
+            )
 
-        message.append(top_3_failed_section)
+            message.append(top_3_failed_section)
 
         flaky_failures = list(
             filter(
@@ -255,6 +276,7 @@ class TestResultsNotifier(BaseNotifier):
 
             message.append(flaky_section)
 
+        message.append(generate_view_test_analytics_line(self.commit))
         return "\n".join(message)
 
     async def error_comment(self):

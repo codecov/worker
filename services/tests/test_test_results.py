@@ -2,7 +2,7 @@ import mock
 import pytest
 from shared.torngit.exceptions import TorngitClientError
 
-from database.models.core import Commit
+from database.tests.factories import CommitFactory
 from helpers.notifier import NotifierResult
 from services.test_results import (
     FlakeInfo,
@@ -13,11 +13,12 @@ from services.test_results import (
     generate_flags_hash,
     generate_test_id,
 )
+from services.urls import services_short_dict
 
 
 @pytest.mark.asyncio
 async def test_send_to_provider():
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
     tn.pull = mock.AsyncMock()
     tn.pull.database_pull.commentid = None
     tn.repo_service = mock.AsyncMock()
@@ -36,7 +37,7 @@ async def test_send_to_provider():
 
 @pytest.mark.asyncio
 async def test_send_to_provider_edit():
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
     tn.pull = mock.AsyncMock()
     tn.pull.database_pull.commentid = 1
     tn.repo_service = mock.AsyncMock()
@@ -53,7 +54,7 @@ async def test_send_to_provider_edit():
 
 @pytest.mark.asyncio
 async def test_send_to_provider_fail():
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
     tn.pull = mock.AsyncMock()
     tn.pull.database_pull.commentid = 1
     tn.repo_service = mock.AsyncMock()
@@ -66,31 +67,47 @@ async def test_send_to_provider_fail():
 
 
 def test_generate_failure_info():
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id, 1.0
+        "hello world",
+        "testsuite",
+        "testname",
+        [],
+        test_id,
+        1.0,
+        "https://example.com/build_url",
     )
 
     res = generate_failure_info(fail)
 
-    assert res == "  <pre>hello world</pre>"
+    assert (
+        res
+        == "<pre>hello world</pre>\n[View](https://example.com/build_url) the CI Build"
+    )
 
 
 def test_build_message():
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id, 1.0
+        "hello world",
+        "testsuite",
+        "testname",
+        [],
+        test_id,
+        1.0,
+        "https://example.com/build_url",
     )
     payload = TestResultsNotificationPayload(1, 2, 3, [fail], dict())
-    tn = TestResultsNotifier(Commit(), None, payload)  # type:ignore
+    commit = CommitFactory()
+    tn = TestResultsNotifier(commit, None, payload)  # type:ignore
     res = tn.build_message()
 
     assert (
         res
-        == """### :x: 1 Tests Failed:
+        == f"""### :x: 1 Tests Failed:
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 3 | 1 | 2 | 3 |
@@ -101,11 +118,14 @@ def test_build_message():
 > </pre>
 > <details><summary>Stack Traces | 1s run time</summary>
 > 
-> >   <pre>hello world</pre>
+> > <pre>hello world</pre>
+> > [View](https://example.com/build_url) the CI Build
 > 
 > </details>
 
-</details>"""
+</details>
+
+To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})"""
     )
 
 
@@ -113,37 +133,44 @@ def test_build_message_with_flake():
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
-        "hello world", "testsuite", "testname", [], test_id, 1.0
+        "hello world",
+        "testsuite",
+        "testname",
+        [],
+        test_id,
+        1.0,
+        "https://example.com/build_url",
     )
 
     payload = TestResultsNotificationPayload(
         1, 2, 3, [fail], {test_id: FlakeInfo(1, 3)}
     )
-    tn = TestResultsNotifier(Commit(), None, payload)  # type:ignore
+    commit = CommitFactory(branch="test_branch")
+    tn = TestResultsNotifier(commit, None, payload)  # type:ignore
     res = tn.build_message()
 
     assert (
         res
-        == """### :x: 1 Tests Failed:
+        == f"""### :x: 1 Tests Failed:
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 3 | 1 | 2 | 3 |
-<details><summary>View the top 1 failed tests by shortest run time</summary>
-
-</details>
 <details><summary>View the full list of 1 :snowflake: flaky tests</summary>
 
 > <pre>
 > testname
 > </pre>
-> **Flake rate in main:** 0.3333333333333333% (Passed 2 times, Failed 1 times)
+> **Flake rate in main:** 33.33333333333333% (Passed 2 times, Failed 1 times)
 > <details><summary>Stack Traces | 1s run time</summary>
 > 
-> >   <pre>hello world</pre>
+> > <pre>hello world</pre>
+> > [View](https://example.com/build_url) the CI Build
 > 
 > </details>
 
-</details>"""
+</details>
+
+To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})"""
     )
 
 
@@ -156,7 +183,7 @@ async def test_notify(mocker):
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.AsyncMock(),
     )
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
 
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.AsyncMock()
@@ -177,7 +204,7 @@ async def test_notify_fail_torngit_error(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.AsyncMock(),
     )
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.AsyncMock(return_value=False)
 
@@ -197,7 +224,7 @@ async def test_notify_fail_no_pull(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=None,
     )
-    tn = TestResultsNotifier(Commit(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
 
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.AsyncMock(return_value=False)
