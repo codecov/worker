@@ -67,6 +67,7 @@ def get_github_app_used(torngit: TorngitBaseAdapter | None) -> int | None:
 
 def bytes_readable(bytes: int) -> str:
     """Converts bytes into human-readable string (up to GB)"""
+    negative = bytes < 0
     value = abs(bytes)
     expoent_index = 0
 
@@ -76,7 +77,8 @@ def bytes_readable(bytes: int) -> str:
 
     expoent_str = [" bytes", "kB", "MB", "GB"][expoent_index]
     rounted_value = round(value, 2)
-    return f"{rounted_value}{expoent_str}"
+    prefix = "-" if negative else ""
+    return f"{prefix}{rounted_value}{expoent_str}"
 
 
 def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
@@ -92,9 +94,16 @@ def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
 
 
 def is_bundle_change_within_bundle_threshold(
-    comparison: BundleAnalysisComparison, threshold: BundleThreshold
+    comparison: BundleAnalysisComparison,
+    threshold: BundleThreshold,
+    compare_non_negative_numbers: bool = False,
 ) -> bool:
     if threshold.type == "absolute":
-        return abs(comparison.total_size_delta) <= threshold.threshold
+        total_size_delta = (
+            abs(comparison.total_size_delta)
+            if compare_non_negative_numbers
+            else comparison.total_size_delta
+        )
+        return total_size_delta <= threshold.threshold
     else:
         return comparison.percentage_delta <= threshold.threshold

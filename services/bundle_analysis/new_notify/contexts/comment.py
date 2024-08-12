@@ -44,6 +44,14 @@ class BundleAnalysisPRCommentNotificationContext(BaseBundleAnalysisNotificationC
 
 
 class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
+    fields_of_interest: tuple[str] = (
+        "commit_report",
+        "bundle_analysis_report",
+        "user_config",
+        "pull",
+        "bundle_analysis_comparison",
+    )
+
     def initialize(
         self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
     ) -> "BundleAnalysisPRCommentContextBuilder":
@@ -52,29 +60,6 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
             commit=commit,
             gh_app_installation_name=gh_app_installation_name,
         )
-        return self
-
-    def initialize_from_context(
-        self,
-        current_yaml: UserYaml,
-        context: BundleAnalysisPRCommentNotificationContext,
-    ) -> "BundleAnalysisPRCommentContextBuilder":
-        self.initialize(
-            commit=context.commit,
-            current_yaml=current_yaml,
-            gh_app_installation_name=context.gh_app_installation_name,
-        )
-        fields_of_interest = [
-            "commit_report",
-            "bundle_analysis_report",
-            "pull",
-            "bundle_analysis_comparison",
-        ]
-        for field_name in fields_of_interest:
-            if field_name in context.__dict__:
-                self._notification_context.__dict__[field_name] = context.__dict__[
-                    field_name
-                ]
         return self
 
     async def load_enriched_pull(self) -> "BundleAnalysisPRCommentContextBuilder":
@@ -111,7 +96,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
             return self
         pull = self._notification_context.pull
         try:
-            comparison = ComparisonLoader(pull).get_comparison()
+            comparison = ComparisonLoader.from_EnrichedPull(pull).get_comparison()
             self._notification_context.bundle_analysis_comparison = comparison
             return self
         except (
@@ -150,12 +135,16 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         should_continue = {
             False: True,
             True: not is_bundle_change_within_bundle_threshold(
-                comparison, required_changes_threshold
+                comparison,
+                required_changes_threshold,
+                compare_non_negative_numbers=True,
             ),
             "bundle_increase": (
                 comparison.total_size_delta > 0
                 and not is_bundle_change_within_bundle_threshold(
-                    comparison, required_changes_threshold
+                    comparison,
+                    required_changes_threshold,
+                    compare_non_negative_numbers=True,
                 )
             ),
         }.get(required_changes, True)
