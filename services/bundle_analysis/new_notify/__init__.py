@@ -112,7 +112,9 @@ class BundleAnalysisNotifyService:
             return None
         builder_class, message_strategy_class = notifier_strategy
         try:
-            builder = builder_class().initialize_from_context(base_context)
+            builder = builder_class().initialize_from_context(
+                self.current_yaml, base_context
+            )
             return NotificationFullContext(
                 builder.build_context().get_result(),
                 message_strategy_class(),

@@ -8,17 +8,23 @@ from database.tests.factories.core import CommitFactory
 from services.bundle_analysis.new_notify import (
     BundleAnalysisNotifyReturn,
     BundleAnalysisNotifyService,
-    NotificationFullContext,
     NotificationSuccess,
 )
 from services.bundle_analysis.new_notify.conftest import (
     get_commit_pair,
+    get_enriched_pull_setting_up_mocks,
     get_report_pair,
     save_mock_bundle_analysis_report,
 )
 from services.bundle_analysis.new_notify.contexts import (
     BaseBundleAnalysisNotificationContext,
     NotificationContextBuildError,
+)
+from services.bundle_analysis.new_notify.contexts.comment import (
+    BundleAnalysisPRCommentNotificationContext,
+)
+from services.bundle_analysis.new_notify.messages.comment import (
+    BundleAnalysisCommentMarkdownStrategy,
 )
 from services.bundle_analysis.new_notify.types import NotificationType
 from services.notification.notifiers.base import NotificationResult
@@ -68,19 +74,57 @@ class TestCreateContextForNotification:
         assert base_context.commit_report == head_commit_report
         assert base_context.bundle_analysis_report.session_count() == 19
 
-    def test_create_context_success(self, mock_base_context, mocker):
-        mock_comment_builder, mock_markdown_strategy = (
-            override_comment_builder_and_message_strategy(mocker)
-        )
+    def test_create_context_success(self, dbsession, mock_storage, mocker):
         current_yaml = UserYaml.from_dict({})
-        service = BundleAnalysisNotifyService(mock_base_context.commit, current_yaml)
-        mock_markdown_strategy.return_value = "D. Strategy"
-        result = service.create_context_for_notification(
-            mock_base_context, NotificationType.PR_COMMENT
+        head_commit, base_commit = get_commit_pair(dbsession)
+        head_commit_report, base_commit_report = get_report_pair(
+            dbsession, (head_commit, base_commit)
         )
-        assert result == NotificationFullContext("D. Context", "D. Strategy")
-        mock_comment_builder.return_value.build_context.assert_called()
-        mock_comment_builder.return_value.get_result.assert_called()
+        save_mock_bundle_analysis_report(
+            head_commit.repository,
+            head_commit_report,
+            mock_storage,
+            sample_report_number=1,
+        )
+        save_mock_bundle_analysis_report(
+            head_commit.repository,
+            base_commit_report,
+            mock_storage,
+            sample_report_number=2,
+        )
+        enriched_pull = get_enriched_pull_setting_up_mocks(
+            dbsession, mocker, (head_commit, base_commit)
+        )
+        mocker.patch(
+            "services.bundle_analysis.comparison.get_appropriate_storage_service",
+            return_value=mock_storage,
+        )
+        service = BundleAnalysisNotifyService(head_commit, current_yaml)
+        result = service.create_context_for_notification(
+            BaseBundleAnalysisNotificationContext(
+                head_commit, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+            ),
+            NotificationType.PR_COMMENT,
+        )
+        assert result is not None
+        assert isinstance(
+            result.notification_context, BundleAnalysisPRCommentNotificationContext
+        )
+        assert isinstance(
+            result.message_strategy, BundleAnalysisCommentMarkdownStrategy
+        )
+        context = result.notification_context
+        assert context.commit_report == head_commit_report
+        assert context.bundle_analysis_report.session_count() == 19
+        assert context.pull == enriched_pull
+        assert (
+            context.bundle_analysis_comparison.base_report_key
+            == base_commit_report.external_id
+        )
+        assert (
+            context.bundle_analysis_comparison.head_report_key
+            == head_commit_report.external_id
+        )
 
     @pytest.mark.parametrize(
         "unknown_notification",

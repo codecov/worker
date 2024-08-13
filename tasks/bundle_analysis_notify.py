@@ -114,7 +114,6 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
                 commit=commitid,
                 commit_yaml=commit_yaml,
                 parent_task=self.request.parent_id,
-                result=result,
             ),
         )
 
