@@ -45,7 +45,6 @@ def override_comment_builder_and_message_strategy(mocker):
 def mock_base_context():
     context_requirements = (
         CommitFactory(),
-        UserYaml.from_dict({}),
         GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     )
     context = BaseBundleAnalysisNotificationContext(*context_requirements)
@@ -73,9 +72,8 @@ class TestCreateContextForNotification:
         mock_comment_builder, mock_markdown_strategy = (
             override_comment_builder_and_message_strategy(mocker)
         )
-        service = BundleAnalysisNotifyService(
-            mock_base_context.commit, mock_base_context.current_yaml
-        )
+        current_yaml = UserYaml.from_dict({})
+        service = BundleAnalysisNotifyService(mock_base_context.commit, current_yaml)
         mock_markdown_strategy.return_value = "D. Strategy"
         result = service.create_context_for_notification(
             mock_base_context, NotificationType.PR_COMMENT
@@ -94,9 +92,8 @@ class TestCreateContextForNotification:
     def test_create_contexts_unknown_notification(
         self, mock_base_context, unknown_notification
     ):
-        service = BundleAnalysisNotifyService(
-            mock_base_context.commit, mock_base_context.current_yaml
-        )
+        current_yaml = UserYaml.from_dict({})
+        service = BundleAnalysisNotifyService(mock_base_context.commit, current_yaml)
         assert (
             service.create_context_for_notification(
                 mock_base_context, unknown_notification
@@ -112,13 +109,12 @@ class TestCreateContextForNotification:
         mock_comment_builder.build_context.side_effect = NotificationContextBuildError(
             "mock_failed_step"
         )
+        current_yaml = UserYaml.from_dict({})
         mock_comment_builder = mocker.patch(
             "services.bundle_analysis.new_notify.BundleAnalysisPRCommentContextBuilder",
             return_value=mock_comment_builder,
         )
-        service = BundleAnalysisNotifyService(
-            mock_base_context.commit, mock_base_context.current_yaml
-        )
+        service = BundleAnalysisNotifyService(mock_base_context.commit, current_yaml)
         assert (
             service.create_context_for_notification(
                 mock_base_context, NotificationType.PR_COMMENT

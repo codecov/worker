@@ -32,7 +32,7 @@ class TestBaseBundleAnalysisNotificationContextBuild:
             builder._notification_context.commit_report
         assert (
             str(exp.value)
-            == "The property you are trying to access is not loaded. Make sure to build the context before using it."
+            == "Property commit_report is not loaded. Make sure to build the context before using it."
         )
 
     @pytest.mark.parametrize(
@@ -220,6 +220,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
+        builder.load_user_config()
         mock_pull = MagicMock(
             name="fake_pull",
             database_pull=MagicMock(bundle_analysis_commentid=None, id=12),
@@ -275,6 +276,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
+        builder.load_user_config()
         mock_pull = MagicMock(
             name="fake_pull",
             database_pull=MagicMock(bundle_analysis_commentid=None, id=12),
@@ -300,6 +302,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
+        builder.load_user_config()
         mock_pull = MagicMock(
             name="fake_pull",
             database_pull=MagicMock(bundle_analysis_commentid=12345, id=12),
@@ -360,7 +363,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         context.pull = MagicMock(name="fake_pull")
 
         other_builder = BundleAnalysisPRCommentContextBuilder().initialize_from_context(
-            context
+            user_yaml, context
         )
         other_context = other_builder.get_result()
 
