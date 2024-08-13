@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+import sentry_sdk
 from celery._state import get_current_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.worker.request import Request
@@ -143,6 +144,7 @@ class BaseCodecovTask(celery_app.Task):
             return self.time_limit
         return self.app.conf.task_time_limit or 0
 
+    @sentry_sdk.trace
     def apply_async(self, args=None, kwargs=None, **options):
         db_session = get_db_session()
         user_plan = _get_user_plan_from_task(db_session, self.name, kwargs)
