@@ -1,5 +1,6 @@
 import copy
 
+import sentry_sdk
 from shared.utils.sessions import SessionType
 
 from database.models.reports import Upload
@@ -64,6 +65,7 @@ def get_parallel_session_ids(
     return get_parallel_session_ids
 
 
+@sentry_sdk.trace
 def save_incremental_report_results(
     report_service, commit, report, parallel_idx, report_code
 ):
@@ -96,6 +98,7 @@ def save_incremental_report_results(
 # Saves the result of the an entire serial processing flow to archive storage
 # so that it can be compared for parallel experiment. Not necessarily the final report
 # for the commit, if more uploads are still made.
+@sentry_sdk.trace
 def save_final_serial_report_results(
     report_service, commit, report, report_code, arguments_list
 ):

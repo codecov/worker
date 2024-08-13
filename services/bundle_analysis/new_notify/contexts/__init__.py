@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from functools import cached_property
-from typing import Generic, Self, TypeVar
+from typing import Generic, Literal, Self, TypeVar
 
 from shared.bundle_analysis import (
     BundleAnalysisReport,
@@ -13,7 +13,11 @@ from database.enums import ReportType
 from database.models.core import Commit, Repository
 from database.models.reports import CommitReport
 from services.archive import ArchiveService
-from services.bundle_analysis.new_notify.types import NotificationType
+from services.bundle_analysis.new_notify.helpers import to_BundleThreshold
+from services.bundle_analysis.new_notify.types import (
+    NotificationType,
+    NotificationUserConfig,
+)
 from services.repository import (
     get_repo_provider_service,
 )
@@ -37,9 +41,8 @@ class NotificationContextField(Generic[T]):
 
     def __get__(self, instance: "NotificationContextField", owner) -> T:
         if self._name not in instance.__dict__:
-            raise ContextNotLoadedError(
-                "The property you are trying to access is not loaded. Make sure to build the context before using it."
-            )
+            msg = f"Property {self._name} is not loaded. Make sure to build the context before using it."
+            raise ContextNotLoadedError(msg)
         return instance.__dict__[self._name]
 
     def __set__(self, instance: "NotificationContextField", value: T) -> None:
@@ -58,11 +61,8 @@ class BaseBundleAnalysisNotificationContext:
 
     notification_type: NotificationType
 
-    def __init__(
-        self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
-    ) -> None:
+    def __init__(self, commit: Commit, gh_app_installation_name: str) -> None:
         self.commit = commit
-        self.current_yaml = current_yaml
         self.gh_app_installation_name = gh_app_installation_name
 
     @cached_property
@@ -80,6 +80,9 @@ class BaseBundleAnalysisNotificationContext:
     bundle_analysis_report: BundleAnalysisReport = NotificationContextField[
         BundleAnalysisReport
     ]()
+    user_config: NotificationUserConfig = NotificationContextField[
+        NotificationUserConfig
+    ]()
 
 
 class NotificationContextBuildError(Exception):
@@ -96,12 +99,14 @@ class WrongContextBuilderError(Exception):
 class NotificationContextBuilder:
     """Creates the BaseBundleAnalysisNotificationContext one step at a time, in the correct order."""
 
+    current_yaml: UserYaml
+
     def initialize(
         self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
     ) -> "NotificationContextBuilder":
+        self.current_yaml = current_yaml
         self._notification_context = BaseBundleAnalysisNotificationContext(
             commit=commit,
-            current_yaml=current_yaml,
             gh_app_installation_name=gh_app_installation_name,
         )
         return self
@@ -151,11 +156,42 @@ class NotificationContextBuilder:
         self._notification_context.bundle_analysis_report = bundle_analysis_report
         return self
 
+    def load_user_config(self) -> "NotificationContextBuilder":
+        """Parses the configuration from the `current_yaml` related to bundle analysis notification
+        into a NotificationUserConfig object for the context.
+
+        This allows all notifiers to access configuration for any notifier and already have the defaults
+        """
+        required_changes: bool | Literal["bundle_increase"] = (
+            self.current_yaml.read_yaml_field(
+                "comment", "require_bundle_changes", _else=False
+            )
+        )
+        required_changes_threshold: int | float = self.current_yaml.read_yaml_field(
+            "comment", "bundle_change_threshold", _else=0
+        )
+        warning_threshold: int | float = self.current_yaml.read_yaml_field(
+            "bundle_analysis", "warning_threshold", _else=0
+        )
+        status_level: bool | Literal["informational"] = (
+            self.current_yaml.read_yaml_field(
+                "bundle_analysis", "status", _else="informational"
+            )
+        )
+        self._notification_context.user_config = NotificationUserConfig(
+            required_changes=required_changes,
+            warning_threshold=to_BundleThreshold(warning_threshold),
+            status_level=status_level,
+            required_changes_threshold=to_BundleThreshold(required_changes_threshold),
+        )
+        return self
+
     def build_context(self) -> "NotificationContextBuilder":
         """Calls all the steps necessary to fully load the NotificationContext
         Raises:
             NotificationContextBuildError: if any of the steps fail
         """
+        self.load_user_config()
         self.load_commit_report()
         self.load_bundle_analysis_report()
         return self

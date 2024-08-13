@@ -1,4 +1,8 @@
+from dataclasses import dataclass
 from enum import Enum
+from typing import Literal
+
+from shared.validation.types import BundleThreshold
 
 
 class NotificationType(Enum):
@@ -13,3 +17,11 @@ class NotificationSuccess(Enum):
     NOTHING_TO_NOTIFY = "nothing_to_notify"
     FULL_SUCCESS = "full_success"
     PARTIAL_SUCCESS = "partial_success"
+
+
+@dataclass
+class NotificationUserConfig:
+    warning_threshold: BundleThreshold
+    status_level: bool | Literal["informational"]
+    required_changes: bool | Literal["bundle_increase"]
+    required_changes_threshold: BundleThreshold
