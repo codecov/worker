@@ -1,3 +1,4 @@
+from typing import Optional
 from unittest.mock import ANY
 
 import pytest
@@ -32,7 +33,7 @@ class MockBundleAnalysisReport:
             MockBundleReport("BundleA", 1111),
         ]
 
-    def ingest(self, path):
+    def ingest(self, path, compare_sha: Optional[str] = None):
         return 123, "BundleA"
 
     def cleanup(self):
