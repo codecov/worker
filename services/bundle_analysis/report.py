@@ -154,7 +154,9 @@ class BundleAnalysisReportService(BaseReportService):
         return bundle_loader.load(parent_commit_report.external_id)
 
     @sentry_sdk.trace
-    def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
+    def process_upload(
+        self, commit: Commit, upload: Upload, compare_sha: Optional[str] = None
+    ) -> ProcessingResult:
         """
         Download and parse the data associated with the given upload and
         merge the results into a bundle report.
@@ -205,7 +207,7 @@ class BundleAnalysisReportService(BaseReportService):
                 )
 
             # load the downloaded data into the bundle report
-            session_id, bundle_name = bundle_report.ingest(local_path)
+            session_id, bundle_name = bundle_report.ingest(local_path, compare_sha)
 
             # Retrieve previous commit's BAR and associate past Assets
             prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
