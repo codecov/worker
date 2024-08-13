@@ -33,7 +33,7 @@ class MockBundleAnalysisReport:
         ]
 
     def ingest(self, path):
-        return 123
+        return 123, "BundleA"
 
     def cleanup(self):
         pass
@@ -80,7 +80,7 @@ def test_bundle_analysis_processor_task_success(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -100,6 +100,7 @@ def test_bundle_analysis_processor_task_success(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "bundle1",
             },
         ],
     }
@@ -164,6 +165,7 @@ def test_bundle_analysis_processor_task_error(
                 },
                 "session_id": None,
                 "upload_id": upload.id_,
+                "bundle_name": None,
             },
         ],
     }
@@ -293,6 +295,7 @@ def test_bundle_analysis_process_upload_general_error(
                 },
                 "session_id": None,
                 "upload_id": upload.id_,
+                "bundle_name": None,
             },
         ],
     }
@@ -417,6 +420,7 @@ def test_bundle_analysis_process_upload_rate_limit_error(
                 },
                 "session_id": None,
                 "upload_id": upload.id_,
+                "bundle_name": None,
             },
         ],
     }
@@ -461,7 +465,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_id(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -514,7 +518,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_object(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -571,7 +575,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_report_object(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -634,7 +638,7 @@ def test_bundle_analysis_process_associate_called(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -698,7 +702,7 @@ def test_bundle_analysis_process_associate_called_two(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     associate = mocker.patch(
         "shared.bundle_analysis.BundleAnalysisReport.associate_previous_assets"
@@ -795,6 +799,7 @@ def test_bundle_analysis_processor_task_cache_config_not_saved(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -873,6 +878,7 @@ def test_bundle_analysis_processor_task_cache_config_saved(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -940,7 +946,7 @@ def test_bundle_analysis_processor_not_caching_previous_report(
     saver_mock.return_value = None
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -960,6 +966,7 @@ def test_bundle_analysis_processor_not_caching_previous_report(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -1029,7 +1036,7 @@ def test_bundle_analysis_processor_not_caching_previous_report_two(
     saver_mock.return_value = None
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -1049,6 +1056,7 @@ def test_bundle_analysis_processor_not_caching_previous_report_two(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -1118,7 +1126,7 @@ def test_bundle_analysis_processor_caching_previous_report(
     saver_mock.return_value = None
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -1138,6 +1146,7 @@ def test_bundle_analysis_processor_caching_previous_report(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
