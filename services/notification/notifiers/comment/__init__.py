@@ -83,11 +83,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     ) -> NotificationResult:
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
-        if comparison.pull.state != "open":
+        if comparison.pull is not None and comparison.pull.state != "open":
             sentry_metrics.incr(
                 "notifiers.comment.pull_closed_notifying_anyways",
                 tags={
-                    "repo_using_integration": self._repository_service.data["repo"][
+                    "repo_using_integration": self.repository_service.data["repo"][
                         "using_integration"
                     ]
                 },

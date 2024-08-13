@@ -2782,6 +2782,9 @@ class TestCommentNotifier(object):
     async def test_notify_with_enough_builds(
         self, dbsession, sample_comparison, mocker, pull_state
     ):
+        mocker.patch(
+            "services.notification.notifiers.comment.get_repo_provider_service",
+        )
         build_message_mocker = mocker.patch.object(
             CommentNotifier,
             "build_message",
