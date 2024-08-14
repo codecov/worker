@@ -16,11 +16,12 @@ from database.models import (
 )
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
+from services.license import requires_license
 from services.report import BaseReportService
 from services.repository import (
     get_repo_provider_service,
 )
-from services.urls import get_test_analytics_url
+from services.urls import get_members_url, get_test_analytics_url
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -293,6 +294,54 @@ class TestResultsNotifier(BaseNotifier):
             return False, "no_pull"
 
         message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
+
+        sent_to_provider = await self.send_to_provider(pull, message)
+        if sent_to_provider == False:
+            return (False, "torngit_error")
+
+        return (True, "comment_posted")
+
+    async def upgrade_comment(self):
+        if self._repo_service is None:
+            self._repo_service = get_repo_provider_service(self.commit.repository)
+
+        pull = await self.get_pull()
+        if pull is None:
+            log.info(
+                "Not notifying since there is no pull request associated with this commit",
+                extra=dict(
+                    commitid=self.commit.commitid,
+                ),
+            )
+            return False, "no_pull"
+
+        db_pull = pull.database_pull
+        provider_pull = pull.provider_pull
+        if provider_pull is None:
+            return False, "missing_provider_pull"
+
+        link = get_members_url(db_pull)
+
+        author_username = provider_pull["author"].get("username")
+
+        if not requires_license():
+            message = "\n".join(
+                [
+                    f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
+                    f"Please [activate this user on Codecov]({link}) to display this PR comment.",
+                    "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+                    "Please don't hesitate to email us at support@codecov.io with any questions.",
+                ]
+            )
+        else:
+            message = "\n".join(
+                [
+                    f"The author of this PR, {author_username}, is not activated in your Codecov Self-Hosted installation.",
+                    f"Please [activate this user]({link}) to display this PR comment.",
+                    "Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
+                    "Please contact your Codecov On-Premises installation administrator with any questions.",
+                ]
+            )
 
         sent_to_provider = await self.send_to_provider(pull, message)
         if sent_to_provider == False:

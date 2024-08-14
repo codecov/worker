@@ -15,7 +15,13 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
+from services.activation import activate_user
 from services.lock_manager import LockManager, LockRetry, LockType
+from services.repository import (
+    fetch_and_update_pull_request_information_from_commit,
+    get_repo_provider_service,
+)
+from services.seats import ShouldActivateSeat, determine_seat_activation
 from services.test_results import (
     FlakeInfo,
     TestResultsNotificationFailure,
@@ -285,6 +291,55 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             "test_results.finisher",
             tags={"status": "success", "reason": "tests_failed"},
         )
+        repo_service = get_repo_provider_service(repo)
+        pull = async_to_sync(fetch_and_update_pull_request_information_from_commit)(
+            repo_service, commit, commit_yaml
+        )
+        if pull is not None:
+            activate_seat_info = determine_seat_activation(pull)
+
+            should_show_upgrade_message = True
+
+            match activate_seat_info.should_activate_seat:
+                case ShouldActivateSeat.AUTO_ACTIVATE:
+                    assert activate_seat_info.owner_id
+                    assert activate_seat_info.author_id
+                    successful_activation = activate_user(
+                        db_session=db_session,
+                        org_ownerid=activate_seat_info.owner_id,
+                        user_ownerid=activate_seat_info.author_id,
+                    )
+                    if successful_activation:
+                        self.schedule_new_user_activated_task(
+                            activate_seat_info.owner_id,
+                            activate_seat_info.author_id,
+                        )
+                        should_show_upgrade_message = False
+                case ShouldActivateSeat.MANUAL_ACTIVATE:
+                    pass
+                case ShouldActivateSeat.NO_ACTIVATE:
+                    should_show_upgrade_message = False
+
+            if should_show_upgrade_message:
+                notifier = TestResultsNotifier(commit, commit_yaml, pull)
+
+                success, reason = async_to_sync(notifier.upgrade_comment)()
+
+                metrics.incr(
+                    "test_results.finisher.test_result_notifier_upgrade_comment",
+                    tags={"status": success, "reason": reason},
+                )
+
+                self.extra_dict["success"] = success
+                self.extra_dict["reason"] = reason
+
+                log.info("Made upgrade comment", extra=self.extra_dict)
+
+                return {
+                    "notify_attempted": False,
+                    "notify_succeeded": False,
+                    QUEUE_NOTIFY_KEY: False,
+                }
 
         flaky_tests = self.get_flaky_tests(db_session, commit_yaml, repoid, failures)
 
