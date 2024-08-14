@@ -151,7 +151,7 @@ class Notifier:
             return False
 
         pullid = pull.database_pull.pullid
-        bundle_comparison = ComparisonLoader(pull).get_comparison()
+        bundle_comparison = ComparisonLoader.from_EnrichedPull(pull).get_comparison()
 
         if not self._has_required_changes(bundle_comparison, pull):
             # Skips the comment and returns successful notification

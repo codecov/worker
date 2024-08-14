@@ -92,9 +92,16 @@ def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
 
 
 def is_bundle_change_within_bundle_threshold(
-    comparison: BundleAnalysisComparison, threshold: BundleThreshold
+    comparison: BundleAnalysisComparison,
+    threshold: BundleThreshold,
+    compare_non_negative_numbers: bool = False,
 ) -> bool:
     if threshold.type == "absolute":
-        return abs(comparison.total_size_delta) <= threshold.threshold
+        total_size_delta = (
+            abs(comparison.total_size_delta)
+            if compare_non_negative_numbers
+            else comparison.total_size_delta
+        )
+        return total_size_delta <= threshold.threshold
     else:
         return comparison.percentage_delta <= threshold.threshold
