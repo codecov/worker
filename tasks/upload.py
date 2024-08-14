@@ -1,7 +1,8 @@
 import logging
 import re
+import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from json import loads
 from math import ceil
 from typing import Any, List, Mapping, Optional
@@ -196,6 +197,26 @@ class UploadContext:
         return arguments
 
 
+def _should_debounce_processing(upload_context: UploadContext) -> Optional[float]:
+    """
+    Queries the `UploadContext`s `last_upload_timestamp` and determines if
+    another upload should be debounced by some time.
+    """
+    upload_processing_delay = get_config("setup", "upload_processing_delay")
+    if upload_processing_delay is None:
+        return None
+
+    upload_processing_delay = float(upload_processing_delay)
+    last_upload_timestamp = upload_context.last_upload_timestamp()
+    if last_upload_timestamp is None:
+        return None
+
+    last_upload_delta = time.time() - float(last_upload_timestamp)
+    if last_upload_delta < upload_processing_delay:
+        return max(30, upload_processing_delay - last_upload_delta)
+    return None
+
+
 class UploadTask(BaseCodecovTask, name=upload_task_name):
     """The first of a series of tasks designed to process an `upload` made by the user
 
@@ -382,31 +403,18 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "tasks_were_scheduled": False,
             }
 
-        upload_processing_delay = get_config("setup", "upload_processing_delay")
-        if upload_processing_delay is not None:
-            upload_processing_delay = int(upload_processing_delay)
-            last_upload_timestamp = upload_context.last_upload_timestamp()
-            if last_upload_timestamp is not None:
-                last_upload = datetime.fromtimestamp(
-                    float(last_upload_timestamp), timezone.utc
-                )
-                if (
-                    datetime.now(timezone.utc)
-                    - timedelta(seconds=upload_processing_delay)
-                    < last_upload
-                ):
-                    retry_countdown = max(30, upload_processing_delay)
-                    log.info(
-                        "Retrying due to very recent uploads.",
-                        extra=dict(
-                            repoid=upload_context.repoid,
-                            commit=upload_context.commitid,
-                            report_type=upload_context.report_type.value,
-                            countdown=retry_countdown,
-                        ),
-                    )
-                    upload_context.prepare_kwargs_for_retry(kwargs)
-                    self.retry(countdown=retry_countdown, kwargs=kwargs)
+        if retry_countdown := _should_debounce_processing(upload_context):
+            log.info(
+                "Retrying due to very recent uploads.",
+                extra=dict(
+                    repoid=upload_context.repoid,
+                    commit=upload_context.commitid,
+                    report_type=upload_context.report_type.value,
+                    countdown=retry_countdown,
+                ),
+            )
+            upload_context.prepare_kwargs_for_retry(kwargs)
+            self.retry(countdown=retry_countdown, kwargs=kwargs)
 
         repoid = upload_context.repoid
         commitid = upload_context.commitid
