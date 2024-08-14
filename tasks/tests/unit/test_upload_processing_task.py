@@ -7,6 +7,7 @@ from redis.exceptions import LockError
 from shared.config import get_config
 from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitObjectNotFoundError
 
 from database.models import CommitReport, ReportDetails
@@ -36,16 +37,6 @@ def test_default_acks_late() -> None:
 
 
 class TestUploadProcessorTask(object):
-    def test_schedule_for_later_try(self, mocker):
-        mock_retry = mocker.patch.object(
-            UploadProcessorTask, "retry", side_effect=Retry()
-        )
-        task = UploadProcessorTask()
-        task.request.retries = 2
-        with pytest.raises(Retry):
-            task.schedule_for_later_try()
-        mock_retry.assert_called_with(countdown=180, max_retries=5)
-
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_task_call(
@@ -740,44 +731,22 @@ class TestUploadProcessorTask(object):
         assert upload.state == "error"
 
     def test_upload_task_process_individual_report_with_notfound_report_no_retries_yet(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        mock_repo_provider,
-        mock_storage,
-        mock_redis,
+        self, mocker
     ):
-        mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
-        mocked_1.return_value = None
-        mock_schedule_for_later_try = mocker.patch.object(
-            UploadProcessorTask,
-            "schedule_for_later_try",
-            side_effect=celery.exceptions.Retry,
+        # throw an error thats retryable:
+        mocker.patch.object(
+            ReportService,
+            "parse_raw_report_from_storage",
+            side_effect=FileNotInStorageError(),
         )
-        false_report = mocker.MagicMock(
-            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
-        )
-        # Mocking retry to also raise the exception so we can see how it is called
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
-        commit = CommitFactory.create(
-            message="", repository__yaml={"codecov": {"max_report_age": False}}
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-        upload = UploadFactory.create(report__commit=commit)
-        dbsession.add(upload)
         task = UploadProcessorTask()
-        task.request.retries = 0
-        with pytest.raises(celery.exceptions.Retry):
+        with pytest.raises(Retry):
             task.process_individual_report(
-                report_service=ReportService({"codecov": {"max_report_age": False}}),
-                commit=commit,
-                report=false_report,
-                upload=upload,
+                ReportService({}),
+                CommitFactory.create(),
+                Report(),
+                UploadFactory.create(),
             )
-        mock_schedule_for_later_try.assert_called_with()
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_empty_report(

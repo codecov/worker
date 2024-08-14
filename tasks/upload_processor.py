@@ -34,6 +34,7 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
+MAX_RETRIES = 5
 FIRST_RETRY_DELAY = 20
 
 
@@ -68,10 +69,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
     """
 
     acks_late = get_config("setup", "tasks", "upload", "acks_late", default=False)
-
-    def schedule_for_later_try(self, max_retries=5):
-        retry_in = FIRST_RETRY_DELAY * 3**self.request.retries
-        self.retry(max_retries=max_retries, countdown=retry_in)
 
     def run_impl(
         self,
@@ -167,7 +164,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     number_retries=self.request.retries,
                 ),
             )
-            self.retry(max_retries=5, countdown=retry_in)
+            self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
 
     @sentry_sdk.trace
     def process_impl_within_lock(
@@ -409,11 +406,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         if (
             processing_result.error is not None
             and processing_result.error.is_retryable
-            and self.request.retries == 0
+            and self.request.retries == 0  # the error is only retried on the first pass
         ):
             log.info(
-                "Scheduling a retry in %d due to retryable error",  # TODO: check if we have this in the logs
-                FIRST_RETRY_DELAY,
+                f"Scheduling a retry in {FIRST_RETRY_DELAY} due to retryable error",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
@@ -423,7 +419,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     parent_task=self.request.parent_id,
                 ),
             )
-            self.schedule_for_later_try()
+            self.retry(max_retries=MAX_RETRIES, countdown=FIRST_RETRY_DELAY)
 
         # for the parallel experiment, we don't want to modify anything in the
         # database, so we disable it here
