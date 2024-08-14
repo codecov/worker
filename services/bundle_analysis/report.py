@@ -47,12 +47,14 @@ class ProcessingResult:
     bundle_report: Optional[BundleAnalysisReport] = None
     previous_bundle_report: Optional[BundleAnalysisReport] = None
     session_id: Optional[int] = None
+    bundle_name: Optional[str] = None
     error: Optional[ProcessingError] = None
 
     def as_dict(self):
         return {
             "upload_id": self.upload.id_,
             "session_id": self.session_id,
+            "bundle_name": self.bundle_name,
             "error": self.error.as_dict() if self.error else None,
         }
 
@@ -152,7 +154,9 @@ class BundleAnalysisReportService(BaseReportService):
         return bundle_loader.load(parent_commit_report.external_id)
 
     @sentry_sdk.trace
-    def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
+    def process_upload(
+        self, commit: Commit, upload: Upload, compare_sha: Optional[str] = None
+    ) -> ProcessingResult:
         """
         Download and parse the data associated with the given upload and
         merge the results into a bundle report.
@@ -203,7 +207,7 @@ class BundleAnalysisReportService(BaseReportService):
                 )
 
             # load the downloaded data into the bundle report
-            session_id = bundle_report.ingest(local_path)
+            session_id, bundle_name = bundle_report.ingest(local_path, compare_sha)
 
             # Retrieve previous commit's BAR and associate past Assets
             prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
@@ -278,6 +282,7 @@ class BundleAnalysisReportService(BaseReportService):
             bundle_report=bundle_report,
             previous_bundle_report=prev_bar,
             session_id=session_id,
+            bundle_name=bundle_name,
         )
 
     def _save_to_timeseries(
