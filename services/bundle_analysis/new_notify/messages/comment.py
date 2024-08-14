@@ -69,7 +69,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
             log.error(
                 "Error creating/updating PR comment",
                 extra=dict(
-                    commitid=context.commit.commitid,
+                    commit=context.commit.commitid,
                     report_key=context.commit_report.external_id,
                     pullid=pull.pullid,
                 ),

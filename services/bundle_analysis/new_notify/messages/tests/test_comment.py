@@ -226,7 +226,7 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
                     "app_id": 12300,
                     "pem_path": "some_path",
                 },
-                id="no_app_used",
+                id="some_app_used",
             ),
         ],
     )
@@ -262,7 +262,7 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
                     "app_id": 12300,
                     "pem_path": "some_path",
                 },
-                id="no_app_used",
+                id="some_app_used",
             ),
         ],
     )
