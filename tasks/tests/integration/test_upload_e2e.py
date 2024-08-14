@@ -10,6 +10,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
 from database.tests.factories import CommitFactory, RepositoryFactory
+from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -38,8 +39,10 @@ def lines(lines: Iterable[tuple[int, ReportLine]]) -> list[tuple[int, int]]:
 
 @pytest.mark.integration
 @pytest.mark.django_db()
+@pytest.mark.parametrize("do_parallel_processing", [False, True])
 def test_full_upload(
     dbsession: Session,
+    do_parallel_processing: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -66,6 +69,12 @@ def test_full_upload(
                 },
             }
         }
+    )
+    # use parallel processing:
+    mocker.patch.object(
+        PARALLEL_UPLOAD_PROCESSING_BY_REPO,
+        "check_value",
+        return_value=do_parallel_processing,
     )
 
     repository = RepositoryFactory.create()
