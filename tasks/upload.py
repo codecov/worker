@@ -21,7 +21,7 @@ from shared.torngit.exceptions import (
     TorngitRepoNotFoundError,
 )
 from shared.yaml import UserYaml
-from shared.yaml.user_yaml import OwnerContext
+from shared.yaml.user_yaml import OwnerContext, RepoContext
 
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
@@ -464,16 +464,18 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit, repository_service
             )
         else:
-            context = OwnerContext(
+            owner_context = OwnerContext(
                 owner_onboarding_date=repository.owner.createstamp,
                 owner_plan=repository.owner.plan,
                 ownerid=repository.ownerid,
             )
+            repo_context = RepoContext(repo_creation_date=repository.created_at)
             commit_yaml = UserYaml.get_final_yaml(
                 owner_yaml=repository.owner.yaml,
                 repo_yaml=repository.yaml,
                 commit_yaml=None,
-                owner_context=context,
+                owner_context=owner_context,
+                repo_context=repo_context,
             )
 
         if report_type == ReportType.COVERAGE:
