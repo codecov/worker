@@ -13,7 +13,7 @@ SAMPLE_FOLDER_PATH = Path(__file__).resolve().parent / "tests" / "samples"
 
 
 def get_commit_pair(dbsession) -> tuple[Commit, Commit]:
-    base_commit = CommitFactory()
+    base_commit = CommitFactory(repository__owner__service="github")
     head_commit = CommitFactory(repository=base_commit.repository)
     dbsession.add_all([base_commit, head_commit])
     dbsession.commit()
@@ -47,10 +47,15 @@ def get_enriched_pull_setting_up_mocks(dbsession, mocker, commit_pair) -> Enrich
         database_pull=pull,
         provider_pull={},
     )
-    mocker.patch(
+    fake_pull_patches_to_apply = [
         "services.bundle_analysis.new_notify.contexts.comment.fetch_and_update_pull_request_information_from_commit",
-        return_value=enriched_pull,
-    )
+        "services.bundle_analysis.new_notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
+    ]
+    for patch_to_apply in fake_pull_patches_to_apply:
+        mocker.patch(
+            patch_to_apply,
+            return_value=enriched_pull,
+        )
     fake_repo_service = mocker.MagicMock(name="fake_repo_service")
     mocker.patch(
         "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",

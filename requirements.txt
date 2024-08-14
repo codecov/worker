@@ -17,7 +17,9 @@ anyio==3.6.1
     #   httpcore
     #   openai
 asgiref==3.7.2
-    # via django
+    # via
+    #   -r requirements.in
+    #   django
 backoff==1.6.0
     # via analytics-python
 billiard==4.2.0
@@ -95,12 +97,8 @@ django==4.2.15
     #   django-model-utils
     #   django-postgres-extra
     #   shared
-django-admin==2.0.2
-    # via -r requirements.in
 django-better-admin-arrayfield==1.4.2
     # via shared
-django-excel-response2==3.0.6
-    # via django-admin
 django-model-utils==4.3.1
     # via shared
 django-postgres-extra==2.0.8
@@ -109,14 +107,8 @@ django-postgres-extra==2.0.8
     #   shared
 django-prometheus==2.3.1
     # via shared
-django-six==1.0.5
-    # via
-    #   django-admin
-    #   django-excel-response2
 ecdsa==0.18.0
     # via tlslite-ng
-excel-base==1.0.4
-    # via django-excel-response2
 factory-boy==3.2.0
     # via -r requirements.in
 faker==8.8.2
@@ -194,8 +186,6 @@ importlib-metadata==6.8.0
     # via opentelemetry-api
 iniconfig==1.1.1
     # via pytest
-isoweek==1.3.3
-    # via timeconvert
 jinja2==3.1.4
     # via -r requirements.in
 jmespath==0.10.0
@@ -323,7 +313,6 @@ python-dateutil==2.9.0.post0
     #   faker
     #   freezegun
     #   time-machine
-    #   timeconvert
 python-json-logger==0.1.11
     # via -r requirements.in
 python-redis-lock==4.0.0
@@ -363,13 +352,11 @@ rsa==4.7.2
     # via google-auth
 s3transfer==0.10.1
     # via boto3
-screen==1.0.1
-    # via excel-base
 sentry-sdk==1.40.0
     # via
     #   -r requirements.in
     #   shared
-shared @ https://github.com/codecov/shared/archive/a9b4cf84c2026c68993f49c0976d3e16afd4cbfb.tar.gz
+shared @ https://github.com/codecov/shared/archive/355b4c38a6403307719a147b70d6dcf17c29bbaf.tar.gz
     # via -r requirements.in
 six==1.16.0
     # via
@@ -409,8 +396,6 @@ text-unidecode==1.3
     # via faker
 time-machine==2.14.1
     # via -r requirements.in
-timeconvert==3.0.13
-    # via excel-base
 timestring @ https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz
     # via -r requirements.in
 tlslite-ng==0.8.0b1
@@ -429,8 +414,6 @@ typing-extensions==4.6.3
     #   stripe
 tzdata==2024.1
     # via celery
-tzlocal==5.2
-    # via timeconvert
 urllib3==1.26.19
     # via
     #   -r requirements.in
@@ -456,8 +439,6 @@ wrapt==1.16.0
     #   deprecated
     #   opentelemetry-instrumentation
     #   vcrpy
-xlwt==1.3.0
-    # via excel-base
 yarl==1.9.4
     # via vcrpy
 zipp==3.19.2

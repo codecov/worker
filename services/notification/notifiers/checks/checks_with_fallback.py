@@ -60,6 +60,7 @@ class ChecksWithFallback(AbstractBaseNotifier):
                         repoid=comparison.head.commit.repoid,
                         notifier_title=self._checks_notifier.title,
                         commit=comparison.head.commit,
+                        explanation=res.explanation,
                     ),
                 )
                 res = await self._status_notifier.notify(comparison)

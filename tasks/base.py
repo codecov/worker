@@ -144,6 +144,7 @@ class BaseCodecovTask(celery_app.Task):
             return self.time_limit
         return self.app.conf.task_time_limit or 0
 
+    @sentry_sdk.trace
     def apply_async(self, args=None, kwargs=None, **options):
         db_session = get_db_session()
         user_plan = _get_user_plan_from_task(db_session, self.name, kwargs)
@@ -271,12 +272,8 @@ class BaseCodecovTask(celery_app.Task):
         self.task_run_counter.inc()
         self._emit_queue_metrics()
 
-        commit_sha = kwargs.get("commitid")
-        if commit_sha:
-            sentry_sdk.set_tag("commit_sha", commit_sha)
-
         metric_context = MetricContext(
-            commit_sha=commit_sha,
+            commit_sha=kwargs.get("commitid"),
             repo_id=kwargs.get("repoid"),
             owner_id=kwargs.get("ownerid"),
         )
