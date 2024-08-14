@@ -2,6 +2,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, List, Mapping
 
+from sentry_sdk import metrics as sentry_metrics
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
@@ -25,7 +27,6 @@ from services.notification.notifiers.comment.conditions import (
     NotifyCondition,
     PullHeadMatchesComparisonHead,
     PullRequestInProvider,
-    PullRequestOpen,
 )
 from services.notification.notifiers.mixins.message import MessageMixin
 from services.repository import get_repo_provider_service
@@ -38,7 +39,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     notify_conditions: List[NotifyCondition] = [
         ComparisonHasPull,
         PullRequestInProvider,
-        PullRequestOpen,
         PullHeadMatchesComparisonHead,
         HasEnoughBuilds,
         HasEnoughRequiredChanges,
@@ -51,7 +51,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     @property
     def repository_service(self):
         if not self._repository_service:
-            self._repository_service = get_repo_provider_service(
+            self._repository_service: TorngitBaseAdapter = get_repo_provider_service(
                 self.repository, installation_name_to_use=self.gh_installation_name
             )
         return self._repository_service
@@ -81,6 +81,18 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     async def notify(
         self, comparison: ComparisonProxy, **extra_data
     ) -> NotificationResult:
+        # TODO: remove this when we don't need it anymore
+        # this line is measuring how often we try to comment on a PR that is closed
+        if comparison.pull is not None and comparison.pull.state != "open":
+            sentry_metrics.incr(
+                "notifiers.comment.pull_closed_notifying_anyways",
+                tags={
+                    "repo_using_integration": self.repository_service.data["repo"][
+                        "using_integration"
+                    ]
+                },
+            )
+
         for condition in self.notify_conditions:
             condition_result = (
                 await condition.check_condition(notifier=self, comparison=comparison)

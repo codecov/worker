@@ -967,10 +967,9 @@ class ReportService(BaseReportService):
         build = upload.build_code
         job = upload.job_code
         name = upload.name
-        url = upload.storage_path
+        archive_url = upload.storage_path
         reportid = upload.external_id
 
-        archive_url = url
         session = Session(
             provider=service,
             build=build,
@@ -978,7 +977,7 @@ class ReportService(BaseReportService):
             name=name,
             time=int(time()),
             flags=flags,
-            archive=archive_url or url,
+            archive=archive_url,
             url=build_url,
         )
         try:
