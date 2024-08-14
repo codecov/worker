@@ -2,7 +2,7 @@ import logging
 from typing import TypedDict
 
 from django.template import loader
-from shared.helpers.cache import NO_VALUE, make_hash_sha256
+from shared.helpers.cache import make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError
 
 from helpers.cache import cache
@@ -34,8 +34,8 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
         # Prefix message is based on the commit status level
         prefix_message = {
             CommitStatusLevel.INFO: "",
-            CommitStatusLevel.WARNING: "Passed with Warnings -",
-            CommitStatusLevel.ERROR: "Failed -",
+            CommitStatusLevel.WARNING: "Passed with Warnings - ",
+            CommitStatusLevel.ERROR: "Failed - ",
         }.get(context.commit_status_level)
 
         warning_threshold = context.user_config.warning_threshold
@@ -71,58 +71,47 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
             )
         )
 
-    def _is_message_unchanged(
-        self, context: CommitStatusNotificationContext, message: str | bytes
-    ) -> bool:
-        """Checks if the message we are about to change was already sent."""
-        last_payload = cache.get_backend().get(self._cache_key(context))
-        print("CACHE", cache)
-        print("LAST PAYLOAD", self._cache_key(context), last_payload)
-        if last_payload is NO_VALUE or last_payload != message:
-            return False
-        return True
-
     async def send_message(
         self, context: CommitStatusNotificationContext, message: str | bytes
     ) -> NotificationResult:
         repository_service = context.repository_service
-        if not self._is_message_unchanged(context, message):
-            try:
-                await repository_service.set_commit_status(
-                    commit=context.commit.commitid,
-                    status=context.commit_status_level.to_str(),
-                    context="codecov/bundles",
-                    description=message,
-                    url=context.commit_status_url,
-                )
-                # Update the recently-sent messages cache
-                print("SETTING CACHE TO", self._cache_key(context), message)
-                cache.get_backend().set(
-                    self._cache_key(context),
-                    context.cache_ttl,
-                    message,
-                )
-                return NotificationResult(
-                    notification_attempted=True,
-                    notification_successful=True,
-                    github_app_used=get_github_app_used(repository_service),
-                )
-            except TorngitClientError:
-                log.error(
-                    "Failed to set commit status",
-                    extra=dict(
-                        commit=context.commit.commitid,
-                        report_key=context.commit_report.external_id,
-                    ),
-                )
-                return NotificationResult(
-                    notification_attempted=True,
-                    notification_successful=False,
-                    explanation="TorngitClientError",
-                )
-        else:
+        cache_key = self._cache_key(context)
+        last_payload = cache.get_backend().get(cache_key)
+        if message == last_payload:
             return NotificationResult(
                 notification_attempted=False,
                 notification_successful=False,
                 explanation="payload_unchanged",
+            )
+        try:
+            await repository_service.set_commit_status(
+                commit=context.commit.commitid,
+                status=context.commit_status_level.to_str(),
+                context="codecov/bundles",
+                description=message,
+                url=context.commit_status_url,
+            )
+            # Update the recently-sent messages cache
+            cache.get_backend().set(
+                cache_key,
+                context.cache_ttl,
+                message,
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=True,
+                github_app_used=get_github_app_used(repository_service),
+            )
+        except TorngitClientError:
+            log.error(
+                "Failed to set commit status",
+                extra=dict(
+                    commit=context.commit.commitid,
+                    report_key=context.commit_report.external_id,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation="TorngitClientError",
             )

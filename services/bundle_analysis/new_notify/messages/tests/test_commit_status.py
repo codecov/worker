@@ -55,16 +55,16 @@ class TestCommitStatusMessage:
         "user_config, expected",
         [
             pytest.param(
-                {}, " Bundle change: -48.89% (Threshold: 5.0%)", id="default_config"
+                {}, "Bundle change: -48.89% (Threshold: 5.0%)", id="default_config"
             ),
             pytest.param(
                 {"bundle_analysis": {"warning_threshold": 500000}},
-                " Bundle change: -372.56kB (Threshold: 500.0kB)",
+                "Bundle change: -372.56kB (Threshold: 500.0kB)",
                 id="success_absolute_threshold",
             ),
             pytest.param(
                 {"bundle_analysis": {"warning_threshold": 300000}},
-                " Bundle change: -372.56kB (Threshold: 300.0kB)",
+                "Bundle change: -372.56kB (Threshold: 300.0kB)",
                 id="warning_absolute_threshold",
             ),
         ],
@@ -108,7 +108,7 @@ class TestCommitStatusMessage:
             ),
             pytest.param(
                 {"bundle_analysis": {"warning_threshold": 500000}},
-                " Bundle change: 372.56kB (Threshold: 500.0kB)",
+                "Bundle change: 372.56kB (Threshold: 500.0kB)",
                 id="success_absolute_threshold",
             ),
             pytest.param(
@@ -228,7 +228,7 @@ class TestCommitStatusMessage:
             github_app_used=expected_app,
         )
         # Side effect of sending message is updating the cache
-        assert strategy._is_message_unchanged(context, message) is True
+        assert mock_cache.get_backend().get(strategy._cache_key(context)) == message
 
     def test_send_message_fail(self, dbsession, mocker, mock_storage):
         fake_repo_provider, context, message = self._setup_send_message_tests(
@@ -257,4 +257,10 @@ class TestCommitStatusMessage:
             explanation="payload_unchanged",
         )
         # Side effect of sending message is updating the cache
-        assert strategy._is_message_unchanged(context, message) is True
+        assert async_to_sync(strategy.send_message)(
+            context, message
+        ) == NotificationResult(
+            notification_attempted=False,
+            notification_successful=False,
+            explanation="payload_unchanged",
+        )

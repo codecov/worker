@@ -175,11 +175,12 @@ class CommitStatusNotificationContextBuilder(NotificationContextBuilder):
     def build_context(self) -> "CommitStatusNotificationContextBuilder":
         super().build_context()
         async_to_sync(self.load_optional_enriched_pull)()
-        self.load_bundle_comparison()
-        self.load_commit_status_level()
-        self.load_commit_status_url()
-        self.load_cache_ttl()
-        return self
+        return (
+            self.load_bundle_comparison()
+            .load_commit_status_level()
+            .load_commit_status_url()
+            .load_cache_ttl()
+        )
 
     def get_result(self) -> CommitStatusNotificationContext:
         return self._notification_context
