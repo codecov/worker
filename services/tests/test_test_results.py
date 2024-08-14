@@ -18,56 +18,56 @@ from services.urls import services_short_dict
 
 @pytest.mark.asyncio
 async def test_send_to_provider():
-    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
-    tn.pull = mock.AsyncMock()
-    tn.pull.database_pull.commentid = None
-    tn.repo_service = mock.AsyncMock()
+    tn = TestResultsNotifier(CommitFactory(), None)
+    tn._pull = mock.AsyncMock()
+    tn._pull.database_pull.commentid = None
+    tn._repo_service = mock.AsyncMock()
     m = dict(id=1)
-    tn.repo_service.post_comment.return_value = m
+    tn._repo_service.post_comment.return_value = m
 
-    res = await tn.send_to_provider("hello world")
+    res = await tn.send_to_provider(tn._pull, "hello world")
 
     assert res == True
 
-    tn.repo_service.post_comment.assert_called_with(
-        tn.pull.database_pull.pullid, "hello world"
+    tn._repo_service.post_comment.assert_called_with(
+        tn._pull.database_pull.pullid, "hello world"
     )
-    assert tn.pull.database_pull.commentid == 1
+    assert tn._pull.database_pull.commentid == 1
 
 
 @pytest.mark.asyncio
 async def test_send_to_provider_edit():
-    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
-    tn.pull = mock.AsyncMock()
-    tn.pull.database_pull.commentid = 1
-    tn.repo_service = mock.AsyncMock()
+    tn = TestResultsNotifier(CommitFactory(), None)
+    tn._pull = mock.AsyncMock()
+    tn._pull.database_pull.commentid = 1
+    tn._repo_service = mock.AsyncMock()
     m = dict(id=1)
-    tn.repo_service.edit_comment.return_value = m
+    tn._repo_service.edit_comment.return_value = m
 
-    res = await tn.send_to_provider("hello world")
+    res = await tn.send_to_provider(tn._pull, "hello world")
 
     assert res == True
-    tn.repo_service.edit_comment.assert_called_with(
-        tn.pull.database_pull.pullid, 1, "hello world"
+    tn._repo_service.edit_comment.assert_called_with(
+        tn._pull.database_pull.pullid, 1, "hello world"
     )
 
 
 @pytest.mark.asyncio
 async def test_send_to_provider_fail():
-    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
-    tn.pull = mock.AsyncMock()
-    tn.pull.database_pull.commentid = 1
-    tn.repo_service = mock.AsyncMock()
+    tn = TestResultsNotifier(CommitFactory(), None)
+    tn._pull = mock.AsyncMock()
+    tn._pull.database_pull.commentid = 1
+    tn._repo_service = mock.AsyncMock()
     m = dict(id=1)
-    tn.repo_service.edit_comment.side_effect = TorngitClientError
+    tn._repo_service.edit_comment.side_effect = TorngitClientError
 
-    res = await tn.send_to_provider("hello world")
+    res = await tn.send_to_provider(tn._pull, "hello world")
 
     assert res == False
 
 
 def test_generate_failure_info():
-    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None)
     flags_hash = generate_flags_hash([])
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
@@ -102,7 +102,7 @@ def test_build_message():
     )
     payload = TestResultsNotificationPayload(1, 2, 3, [fail], dict())
     commit = CommitFactory()
-    tn = TestResultsNotifier(commit, None, payload)  # type:ignore
+    tn = TestResultsNotifier(commit, None, None, None, payload)
     res = tn.build_message()
 
     assert (
@@ -146,7 +146,7 @@ def test_build_message_with_flake():
         1, 2, 3, [fail], {test_id: FlakeInfo(1, 3)}
     )
     commit = CommitFactory(branch="test_branch")
-    tn = TestResultsNotifier(commit, None, payload)  # type:ignore
+    tn = TestResultsNotifier(commit, None, None, None, payload)
     res = tn.build_message()
 
     assert (
@@ -183,7 +183,7 @@ async def test_notify(mocker):
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.AsyncMock(),
     )
-    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None)
 
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.AsyncMock()
@@ -204,7 +204,7 @@ async def test_notify_fail_torngit_error(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.AsyncMock(),
     )
-    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None)
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.AsyncMock(return_value=False)
 
@@ -224,7 +224,7 @@ async def test_notify_fail_no_pull(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=None,
     )
-    tn = TestResultsNotifier(CommitFactory(), None, None)  # type:ignore
+    tn = TestResultsNotifier(CommitFactory(), None)
 
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.AsyncMock(return_value=False)

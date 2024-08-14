@@ -220,7 +220,7 @@ def messagify_flake(
 
 @dataclass
 class TestResultsNotifier(BaseNotifier):
-    payload: TestResultsNotificationPayload | None
+    payload: TestResultsNotificationPayload | None = None
 
     def build_message(self) -> str:
         if self.payload is None:
@@ -280,10 +280,10 @@ class TestResultsNotifier(BaseNotifier):
         return "\n".join(message)
 
     async def error_comment(self):
-        self.repo_service = get_repo_provider_service(self.commit.repository)
+        self._repo_service = get_repo_provider_service(self.commit.repository)
 
-        await self.get_pull()
-        if self.pull is None:
+        pull = await self.get_pull()
+        if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
                 extra=dict(
@@ -294,7 +294,7 @@ class TestResultsNotifier(BaseNotifier):
 
         message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
 
-        sent_to_provider = await self.send_to_provider(message)
+        sent_to_provider = await self.send_to_provider(pull, message)
         if sent_to_provider == False:
             return (False, "torngit_error")
 

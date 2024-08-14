@@ -298,7 +298,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             flaky_tests,
         )
 
-        notifier = TestResultsNotifier(commit, commit_yaml, payload)
+        notifier = TestResultsNotifier(commit, commit_yaml, payload=payload)
 
         with metrics.timing("test_results.finisher.notification"):
             checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)

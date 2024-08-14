@@ -18,8 +18,8 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class ErrorNotifier(BaseNotifier):
-    failed_upload: int
-    total_upload: int
+    failed_upload: int = 0
+    total_upload: int = 0
 
     def build_message(
         self,
@@ -82,7 +82,10 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
         )
 
         error_notifier = ErrorNotifier(
-            commit, commit_yaml, num_failed_upload, num_total_upload
+            commit,
+            commit_yaml,
+            failed_upload=num_failed_upload,
+            total_upload=num_total_upload,
         )
         notification_result: NotifierResult = async_to_sync(error_notifier.notify)()
         match notification_result:
