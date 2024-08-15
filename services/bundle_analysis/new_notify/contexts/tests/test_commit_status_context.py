@@ -107,6 +107,12 @@ class TestBundleAnalysisPRCommentNotificationContext:
             "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
             return_value=mocker.MagicMock(name="fake_repo_service"),
         )
+
+        mock_check_compare_sha = mocker.patch(
+            "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
+        )
+        mock_check_compare_sha.return_value = None
+
         save_mock_bundle_analysis_report(
             repository, head_report, mock_storage, sample_report_number=2
         )

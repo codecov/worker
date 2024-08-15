@@ -148,10 +148,10 @@ async def test_bundle_analysis_notify(
         provider_pull={},
     )
 
-    head_report = mocker.patch(
+    mock_check_compare_sha = mocker.patch(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
     )
-    head_report.return_value = None
+    mock_check_compare_sha.return_value = None
 
     url = get_bundle_analysis_pull_url(pull=pull)
     expected_message_increase = f"""## [Bundle]({url}) Report
@@ -299,10 +299,10 @@ async def test_bundle_analysis_notify_size_decrease(
         provider_pull={},
     )
 
-    head_report = mocker.patch(
+    mock_check_compare_sha = mocker.patch(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
     )
-    head_report.return_value = None
+    mock_check_compare_sha.return_value = None
 
     url = get_bundle_analysis_pull_url(pull=pull)
     expected_message_decrease = f"""## [Bundle]({url}) Report
@@ -396,10 +396,10 @@ async def test_bundle_analysis_notify_size_unchanged(
         provider_pull={},
     )
 
-    head_report = mocker.patch(
+    mock_check_compare_sha = mocker.patch(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
     )
-    head_report.return_value = None
+    mock_check_compare_sha.return_value = None
 
     url = get_bundle_analysis_pull_url(pull=pull)
     expected_message_unchanged = f"""## [Bundle]({url}) Report
@@ -486,10 +486,10 @@ async def test_bundle_analysis_no_notification_size_unchanged(
         provider_pull={},
     )
 
-    head_report = mocker.patch(
+    mock_check_compare_sha = mocker.patch(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
     )
-    head_report.return_value = None
+    mock_check_compare_sha.return_value = None
 
     success = await notifier.notify()
     assert success == True
