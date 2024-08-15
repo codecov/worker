@@ -174,6 +174,9 @@ class TestUploadTestProcessorTask(object):
             == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         )
         assert test_instances[0].test.id == tests[0].id
+        assert test_instances[0].commitid == commit.commitid
+        assert test_instances[0].branch == commit.branch
+        assert test_instances[0].repoid == commit.repoid
         assert expected_result == result
         assert commit.message == "hello world"
 

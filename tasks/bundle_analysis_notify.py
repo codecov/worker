@@ -1,14 +1,14 @@
 import logging
 from typing import Any, Dict
 
-from asgiref.sync import async_to_sync
 from shared.yaml import UserYaml
 
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from services.bundle_analysis import Notifier
+from services.bundle_analysis.new_notify import BundleAnalysisNotifyService
+from services.bundle_analysis.new_notify.types import NotificationSuccess
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
 
@@ -89,25 +89,24 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         )
         assert commit, "commit not found"
 
-        notify = True
-
         # these are the task results from prior processor tasks in the chain
         # (they get accumulated as we execute each task in succession)
         processing_results = previous_result.get("results", [])
 
         if all((result["error"] is not None for result in processing_results)):
             # every processor errored, nothing to notify on
-            notify = False
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": NotificationSuccess.ALL_ERRORED,
+            }
 
-        success = None
-        if notify:
-            installation_name_to_use = get_installation_name_for_owner_for_task(
-                db_session, self.name, commit.repository.owner
-            )
-            notifier = Notifier(
-                commit, commit_yaml, gh_app_installation_name=installation_name_to_use
-            )
-            success = async_to_sync(notifier.notify)()
+        installation_name_to_use = get_installation_name_for_owner_for_task(
+            db_session, self.name, commit.repository.owner
+        )
+        notifier = BundleAnalysisNotifyService(
+            commit, commit_yaml, gh_app_installation_name=installation_name_to_use
+        )
+        result = notifier.notify()
 
         log.info(
             "Finished bundle analysis notify",
@@ -116,10 +115,14 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
                 commit=commitid,
                 commit_yaml=commit_yaml,
                 parent_task=self.request.parent_id,
+                result=result,
             ),
         )
 
-        return {"notify_attempted": notify, "notify_succeeded": success}
+        return {
+            "notify_attempted": True,
+            "notify_succeeded": result.to_NotificationSuccess(),
+        }
 
 
 RegisteredBundleAnalysisNotifyTask = celery_app.register_task(

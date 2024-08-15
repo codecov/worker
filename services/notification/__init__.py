@@ -251,10 +251,11 @@ class NotificationService(object):
                 repoid=comparison.head.commit.repoid,
             ),
         )
-        notification_instances = []
-        for notifier in self.get_notifiers_instances():
-            if notifier.is_enabled():
-                notification_instances.append(notifier)
+        notification_instances = [
+            notifier
+            for notifier in self.get_notifiers_instances()
+            if notifier.is_enabled()
+        ]
         results = []
         chunk_size = 3
         for i in range(0, len(notification_instances), chunk_size):

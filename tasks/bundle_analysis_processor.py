@@ -10,7 +10,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit, Upload
-from services.bundle_analysis import BundleAnalysisReportService, ProcessingResult
+from services.bundle_analysis.report import (
+    BundleAnalysisReportService,
+    ProcessingResult,
+)
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_save_measurements import (
@@ -110,6 +113,9 @@ class BundleAnalysisProcessorTask(
         upload = db_session.query(Upload).filter_by(id_=upload_pk).first()
         assert upload is not None
 
+        # Override base commit of comparisons with a custom commit SHA if applicable
+        compare_sha = params.get("bundle_analysis_compare_sha")
+
         # these are the task results from prior processor tasks in the chain
         # (they get accumulated as we execute each task in succession)
         processing_results = previous_result.get("results", [])
@@ -124,12 +130,15 @@ class BundleAnalysisProcessorTask(
                     params=params,
                     upload_id=upload.id_,
                     parent_task=self.request.parent_id,
+                    compare_sha=compare_sha,
                 ),
             )
             assert params.get("commit") == commit.commitid
 
             report_service = BundleAnalysisReportService(commit_yaml)
-            result: ProcessingResult = report_service.process_upload(commit, upload)
+            result: ProcessingResult = report_service.process_upload(
+                commit, upload, compare_sha
+            )
             if result.error and result.error.is_retryable and self.request.retries == 0:
                 # retryable error and no retry has already be scheduled
                 self.retry(max_retries=5, countdown=20)
@@ -156,6 +165,8 @@ class BundleAnalysisProcessorTask(
         finally:
             if result.bundle_report:
                 result.bundle_report.cleanup()
+            if result.previous_bundle_report:
+                result.previous_bundle_report.cleanup()
 
         # Create task to save bundle measurements
         self.app.tasks[bundle_analysis_save_measurements_task_name].apply_async(

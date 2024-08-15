@@ -27,21 +27,19 @@ class SlackNotifier(RequestsYamlBasedNotifier):
         message = self.generate_message(comparison)
         compare_dict = self.generate_compare_dict(comparison)
         color = "good" if compare_dict["notation"] in ("", "+") else "bad"
-        attachments = []
-        if self.notifier_yaml_settings.get("attachments"):
-            for attachment_type in self.notifier_yaml_settings["attachments"]:
-                if attachment_type == "sunburst":
-                    attachments.append(
-                        {
-                            "fallback": "Commit sunburst attachment",
-                            "color": color,
-                            "title": "Commit Sunburst",
-                            "title_link": get_commit_url(comparison.head.commit),
-                            "image_url": get_graph_url(
-                                comparison.head.commit, "sunburst.svg", size=100
-                            ),
-                        }
-                    )
+        attachments = [
+            {
+                "fallback": "Commit sunburst attachment",
+                "color": color,
+                "title": "Commit Sunburst",
+                "title_link": get_commit_url(comparison.head.commit),
+                "image_url": get_graph_url(
+                    comparison.head.commit, "sunburst.svg", size=100
+                ),
+            }
+            for attachment_type in self.notifier_yaml_settings.get("attachments", [])
+            if attachment_type == "sunburst"
+        ]
         return {
             "text": message,
             "author_name": "Codecov",

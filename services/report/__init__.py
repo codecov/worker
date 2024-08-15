@@ -55,6 +55,11 @@ from services.redis import (
 )
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
+from services.report.parser.version_one import VersionOneReportParser
+from services.report.prometheus_metrics import (
+    RAW_UPLOAD_RAW_REPORT_COUNT,
+    RAW_UPLOAD_SIZE,
+)
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
@@ -88,6 +93,8 @@ class ProcessingResult(object):
                 "error": self.error.as_dict(),
                 "report": self.report,
                 "should_retry": False,
+                "raw_report": self.raw_report,
+                "upload_obj": self.upload_obj,
             }
         return {
             "successful": True,
@@ -805,11 +812,11 @@ class ReportService(BaseReportService):
                     ),
                 )
                 return Report()
-            flags_to_carryforward = []
-            report_flags = parent_report.get_flag_names()
-            for flag_name in report_flags:
-                if self.current_yaml.flag_has_carryfoward(flag_name):
-                    flags_to_carryforward.append(flag_name)
+            flags_to_carryforward = [
+                flag_name
+                for flag_name in parent_report.get_flag_names()
+                if self.current_yaml.flag_has_carryfoward(flag_name)
+            ]
             if not flags_to_carryforward:
                 return Report()
             paths_to_carryforward = get_paths_from_flags(
@@ -912,7 +919,29 @@ class ReportService(BaseReportService):
 
         parser = get_proper_parser(upload)
 
+        upload_version = (
+            "v1" if isinstance(parser, VersionOneReportParser) else "legacy"
+        )
+        RAW_UPLOAD_SIZE.labels(version=upload_version).observe(len(archive_file))
+
         raw_uploaded_report = parser.parse_raw_report_from_bytes(archive_file)
+
+        raw_report_count = len(raw_uploaded_report.get_uploaded_files())
+        if raw_report_count < 1:
+            log.warning(
+                "Raw upload contains no uploaded files",
+                extra=dict(
+                    commit=upload.report.commit_id,
+                    repoid=repo.repoid,
+                    raw_report_count=raw_report_count,
+                    upload_version=upload_version,
+                    archive_url=archive_url,
+                ),
+            )
+        RAW_UPLOAD_RAW_REPORT_COUNT.labels(version=upload_version).observe(
+            raw_report_count
+        )
+
         return raw_uploaded_report
 
     @sentry_sdk.trace
@@ -938,10 +967,9 @@ class ReportService(BaseReportService):
         build = upload.build_code
         job = upload.job_code
         name = upload.name
-        url = upload.storage_path
+        archive_url = upload.storage_path
         reportid = upload.external_id
 
-        archive_url = url
         session = Session(
             provider=service,
             build=build,
@@ -949,7 +977,7 @@ class ReportService(BaseReportService):
             name=name,
             time=int(time()),
             flags=flags,
-            archive=archive_url or url,
+            archive=archive_url,
             url=build_url,
         )
         try:
@@ -1104,6 +1132,7 @@ class ReportService(BaseReportService):
             db_session.add(error_obj)
             db_session.flush()
 
+    @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):
         rounding: str = read_yaml_field(
             self.current_yaml, ("coverage", "round"), "nearest"
@@ -1182,6 +1211,7 @@ class ReportService(BaseReportService):
         )
         return {"url": url}
 
+    @sentry_sdk.trace
     def save_full_report(self, commit: Commit, report: Report, report_code=None):
         """
             Saves the report (into database and storage) AND takes care of backfilling its sessions
@@ -1233,6 +1263,7 @@ class ReportService(BaseReportService):
                 )
         return res
 
+    @sentry_sdk.trace
     async def save_parallel_report_to_archive(
         self, commit: Commit, report: Report, report_code=None
     ):

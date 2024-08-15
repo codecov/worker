@@ -3,6 +3,7 @@ import os
 import sentry_sdk
 from celery.exceptions import SoftTimeLimitExceeded
 from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -38,6 +39,7 @@ def initialize_sentry() -> None:
         ),
         integrations=[
             CeleryIntegration(monitor_beat_tasks=True),
+            DjangoIntegration(signals_spans=False),
             SqlalchemyIntegration(),
             RedisIntegration(),
             HttpxIntegration(),

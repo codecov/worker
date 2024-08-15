@@ -112,7 +112,7 @@ def sample_comparison_bunch_empty_flags(request, dbsession, mocker):
     )
     base_report.append(file_2)
     mocker.patch(
-        "services.bots.github_apps.get_github_integration_token",
+        "shared.bots.github_apps.get_github_integration_token",
         return_value="github-integration-token",
     )
     return generate_sample_comparison(
@@ -799,7 +799,9 @@ class TestCommentNotifier(object):
         mocked_search_files_for_critical_changes.assert_called_with(
             {"file_2.py", "file_1.go"}
         )
-        assert mocked_search_files_for_critical_changes.call_count == 2
+        assert (
+            mocked_search_files_for_critical_changes.call_count == 3
+        )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
     @pytest.mark.asyncio
     async def test_create_message_with_github_app_comment(
@@ -847,6 +849,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -972,6 +978,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -1265,6 +1275,10 @@ class TestCommentNotifier(object):
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
             "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
             "```diff",
@@ -1339,6 +1353,10 @@ class TestCommentNotifier(object):
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
             "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
+            "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
             "```diff",
@@ -1409,6 +1427,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             "> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -1482,6 +1504,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -1749,6 +1775,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -2124,6 +2154,10 @@ class TestCommentNotifier(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -2698,28 +2732,6 @@ class TestCommentNotifier(object):
         assert sample_comparison.pull.commentid is None
 
     @pytest.mark.asyncio
-    async def test_notify_closed_pull_request(self, dbsession, sample_comparison):
-        notifier = CommentNotifier(
-            repository=sample_comparison.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        sample_comparison.pull.state = "closed"
-        dbsession.flush()
-        dbsession.refresh(sample_comparison.pull)
-        result = await notifier.notify(sample_comparison)
-        assert not result.notification_attempted
-        assert result.notification_successful is False
-        assert result.explanation == "pull_request_closed"
-        assert result.data_sent is None
-        assert result.data_received is None
-
-    @pytest.mark.asyncio
     async def test_notify_unable_to_fetch_info(
         self, dbsession, mocker, sample_comparison
     ):
@@ -2766,9 +2778,13 @@ class TestCommentNotifier(object):
         assert result.data_received is None
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("pull_state", ["open", "closed"])
     async def test_notify_with_enough_builds(
-        self, dbsession, sample_comparison, mocker
+        self, dbsession, sample_comparison, mocker, pull_state
     ):
+        mocker.patch(
+            "services.notification.notifiers.comment.get_repo_provider_service",
+        )
         build_message_mocker = mocker.patch.object(
             CommentNotifier,
             "build_message",
@@ -2795,6 +2811,9 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
+        sample_comparison.pull.state = pull_state
+        dbsession.flush()
+        dbsession.refresh(sample_comparison.pull)
         result = await notifier.notify(sample_comparison)
         assert result.notification_attempted
         assert result.notification_successful
@@ -2868,7 +2887,7 @@ class TestCommentNotifier(object):
         assert res.data_received is None
 
     @pytest.mark.asyncio
-    async def test_notify_exact_same_report_diff_unrelated_report_deleting_comment(
+    async def test_notify_exact_same_report_diff_unrelated_report_update_comment(
         self, sample_comparison_no_change, mock_repo_provider
     ):
         compare_result = {
@@ -2910,6 +2929,7 @@ class TestCommentNotifier(object):
         }
         mock_repo_provider.get_compare.return_value = compare_result
         sample_comparison_no_change.pull.commentid = 12
+        mock_repo_provider.edit_comment.return_value = {"id": 12}
         notifier = CommentNotifier(
             repository=sample_comparison_no_change.head.commit.repository,
             title="title",
@@ -2923,76 +2943,9 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         res = await notifier.notify(sample_comparison_no_change)
-        assert res.notification_attempted is False
-        assert res.notification_successful is False
-        assert res.explanation == "changes_required"
-        assert res.data_sent is None
-        assert res.data_received == {"deleted_comment": True}
-
-    @pytest.mark.asyncio
-    async def test_notify_exact_same_report_diff_unrelated_report_deleting_comment_cant_delete(
-        self, sample_comparison_no_change, mock_repo_provider
-    ):
-        compare_result = {
-            "diff": {
-                "files": {
-                    "README.md": {
-                        "type": "modified",
-                        "before": None,
-                        "segments": [
-                            {
-                                "header": ["5", "8", "5", "9"],
-                                "lines": [
-                                    " Overview",
-                                    " --------",
-                                    " ",
-                                    "-Main website: `Codecov <https://codecov.io/>`_.",
-                                    "-Main website: `Codecov <https://codecov.io/>`_.",
-                                    "+",
-                                    "+website: `Codecov <https://codecov.io/>`_.",
-                                    "+website: `Codecov <https://codecov.io/>`_.",
-                                    " ",
-                                    " .. code-block:: shell-session",
-                                    " ",
-                                ],
-                            },
-                            {
-                                "header": ["46", "12", "47", "19"],
-                                "lines": [
-                                    " ",
-                                    " You may need to configure a ``.coveragerc`` file. Learn more `here <http://coverage.readthedocs.org/en/latest/config.html>`_. Start with this `generic .coveragerc <https://gist.github.com/codecov-io/bf15bde2c7db1a011b6e>`_ for example.",
-                                    " -",
-                                ],
-                            },
-                        ],
-                        "stats": {"added": 11, "removed": 4},
-                    }
-                }
-            }
-        }
-        mock_repo_provider.get_compare.return_value = compare_result
-        mock_repo_provider.delete_comment.side_effect = TorngitClientError(
-            "code", "response", "message"
-        )
-        sample_comparison_no_change.pull.commentid = 12
-        notifier = CommentNotifier(
-            repository=sample_comparison_no_change.head.commit.repository,
-            title="title",
-            notifier_yaml_settings={
-                "layout": "reach, diff, flags, files, footer",
-                "behavior": "default",
-                "after_n_builds": 1,
-                "require_changes": [CoverageCommentRequiredChanges.any_change.value],
-            },
-            notifier_site_settings=True,
-            current_yaml={},
-        )
-        res = await notifier.notify(sample_comparison_no_change)
-        assert res.notification_attempted is False
-        assert res.notification_successful is False
-        assert res.explanation == "changes_required"
-        assert res.data_sent is None
-        assert res.data_received == {"deleted_comment": False}
+        assert res.notification_attempted is True
+        assert res.notification_successful is True
+        mock_repo_provider.edit_comment.assert_called()
 
     @pytest.mark.asyncio
     async def test_message_hide_details_github(
@@ -4204,7 +4157,9 @@ class TestCommentNotifierInNewLayout(object):
         mocked_search_files_for_critical_changes.assert_called_with(
             {"file_2.py", "file_1.go"}
         )
-        assert mocked_search_files_for_critical_changes.call_count == 2
+        assert (
+            mocked_search_files_for_critical_changes.call_count == 3
+        )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
     @pytest.mark.asyncio
     async def test_build_message_no_base_commit_new_layout(
@@ -4233,6 +4188,10 @@ class TestCommentNotifierInNewLayout(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             "> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@cdf9aa4`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             f"[![Impacted file tree graph](test.example.br/gh/{repository.slug}/pull/{pull.pullid}/graphs/tree.svg?width=650&height=150&src=pr&token={repository.image_token})](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree)",
             "",
@@ -4299,6 +4258,10 @@ class TestCommentNotifierInNewLayout(object):
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
             f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`master@{comparison.project_coverage_base.commit.commitid[:7]}`). [Learn more](https://docs.codecov.io/docs/error-reference#section-missing-base-commit) about missing BASE report.",
+            "",
+            f"| [Files](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree) |",
             "",
             "<details><summary>Additional details and impacted files</summary>\n",
             "",
@@ -4380,6 +4343,53 @@ class TestCommentNotifierInNewLayout(object):
         for exp, res in zip(expected_result, result):
             assert exp == res
         assert result == expected_result
+
+    @pytest.mark.asyncio
+    async def test_build_message_no_project_coverage_files(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.repository_service.service = "github"
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "layout": "newheader, files, newfooter",
+                "hide_project_coverage": True,
+            },
+            notifier_site_settings=True,
+            current_yaml={},
+        )
+        repository = comparison.head.commit.repository
+        result = await notifier.build_message(comparison)
+        pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
+        expected_result = [
+            f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            "",
+            f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Patch % | Lines |",
+            "|---|---|---|",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.67% | [1 Missing :warning: ]({pull_url}?src=pr&el=tree) |",
+            "",
+            f"| [Files]({pull_url}?dropdown=coverage&src=pr&el=tree) | Coverage Δ | Complexity Δ | |",
+            "|---|---|---|---|",
+            f"| [file\\_1.go]({pull_url}?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | `62.50% <66.67%> (+12.50%)` | `10.00 <0.00> (-1.00)` | :arrow_up: |",
+            "",
+            f"... and [1 file with indirect coverage changes]({pull_url}/indirect-changes?src=pr&el=tree-more)",
+            "",
+            "",
+            ":loudspeaker: Thoughts on this report? [Let us know!](https://about.codecov.io/pull-request-comment-report/)",
+            "",
+        ]
+        assert result == expected_result
+        for exp, res in zip(expected_result, result):
+            assert exp == res
 
     @pytest.mark.asyncio
     async def test_build_message_no_project_coverage_condensed_yaml_configs(

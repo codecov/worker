@@ -1,6 +1,7 @@
 import pytest
 from shared.bundle_analysis.comparison import BundleChange
 from shared.bundle_analysis.models import AssetType
+from shared.bundle_analysis.storage import get_bucket_name
 from shared.yaml import UserYaml
 
 from database.enums import ReportType
@@ -8,11 +9,10 @@ from database.models import CommitReport, MeasurementName
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from database.tests.factories.timeseries import DatasetFactory, Measurement
 from services.archive import ArchiveService
-from services.bundle_analysis import (
+from services.bundle_analysis.notify import Notifier
+from services.bundle_analysis.report import (
     BundleAnalysisReportService,
-    Notifier,
     ProcessingResult,
-    get_bucket_name,
 )
 from services.repository import EnrichedPull
 from services.urls import get_bundle_analysis_pull_url
@@ -113,12 +113,12 @@ async def test_bundle_analysis_notify(
     )
 
     mocker.patch(
-        "services.bundle_analysis.get_appropriate_storage_service",
+        "services.bundle_analysis.comparison.get_appropriate_storage_service",
         return_value=mock_storage,
     )
     mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
     mocker.patch(
-        "services.bundle_analysis.get_repo_provider_service",
+        "services.bundle_analysis.notify.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -141,7 +141,7 @@ async def test_bundle_analysis_notify(
     bundle_report.return_value = MockBundleReport()
 
     fetch_pr = mocker.patch(
-        "services.bundle_analysis.fetch_and_update_pull_request_information_from_commit"
+        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
     )
     fetch_pr.return_value = EnrichedPull(
         database_pull=pull,
@@ -264,12 +264,12 @@ async def test_bundle_analysis_notify_size_decrease(
     )
 
     mocker.patch(
-        "services.bundle_analysis.get_appropriate_storage_service",
+        "services.bundle_analysis.comparison.get_appropriate_storage_service",
         return_value=mock_storage,
     )
     mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
     mocker.patch(
-        "services.bundle_analysis.get_repo_provider_service",
+        "services.bundle_analysis.notify.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -286,7 +286,7 @@ async def test_bundle_analysis_notify_size_decrease(
     bundle_report.return_value = MockBundleReport()
 
     fetch_pr = mocker.patch(
-        "services.bundle_analysis.fetch_and_update_pull_request_information_from_commit"
+        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
     )
     fetch_pr.return_value = EnrichedPull(
         database_pull=pull,
@@ -356,12 +356,12 @@ async def test_bundle_analysis_notify_size_unchanged(
     )
 
     mocker.patch(
-        "services.bundle_analysis.get_appropriate_storage_service",
+        "services.bundle_analysis.comparison.get_appropriate_storage_service",
         return_value=mock_storage,
     )
     mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
     mocker.patch(
-        "services.bundle_analysis.get_repo_provider_service",
+        "services.bundle_analysis.notify.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -378,7 +378,7 @@ async def test_bundle_analysis_notify_size_unchanged(
     bundle_report.return_value = MockBundleReport()
 
     fetch_pr = mocker.patch(
-        "services.bundle_analysis.fetch_and_update_pull_request_information_from_commit"
+        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
     )
     fetch_pr.return_value = EnrichedPull(
         database_pull=pull,
@@ -440,12 +440,12 @@ async def test_bundle_analysis_no_notification_size_unchanged(
     )
 
     mocker.patch(
-        "services.bundle_analysis.get_appropriate_storage_service",
+        "services.bundle_analysis.comparison.get_appropriate_storage_service",
         return_value=mock_storage,
     )
     mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
     mocker.patch(
-        "services.bundle_analysis.get_repo_provider_service",
+        "services.bundle_analysis.notify.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -462,7 +462,7 @@ async def test_bundle_analysis_no_notification_size_unchanged(
     bundle_report.return_value = MockBundleReport()
 
     fetch_pr = mocker.patch(
-        "services.bundle_analysis.fetch_and_update_pull_request_information_from_commit"
+        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
     )
     fetch_pr.return_value = EnrichedPull(
         database_pull=pull,
@@ -570,12 +570,12 @@ async def test_bundle_analysis_notify_missing_pull(
     )
 
     mocker.patch(
-        "services.bundle_analysis.get_appropriate_storage_service",
+        "services.bundle_analysis.comparison.get_appropriate_storage_service",
         return_value=mock_storage,
     )
     mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
     mocker.patch(
-        "services.bundle_analysis.get_repo_provider_service",
+        "services.bundle_analysis.notify.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -592,7 +592,7 @@ async def test_bundle_analysis_notify_missing_pull(
     bundle_report.return_value = MockBundleReport()
 
     fetch_pr = mocker.patch(
-        "services.bundle_analysis.fetch_and_update_pull_request_information_from_commit"
+        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
     )
     fetch_pr.return_value = None
 

@@ -21,7 +21,7 @@ class TestPullSyncTask(object):
     @pytest.mark.parametrize("flake_detection", [False, True])
     def test_update_pull_commits_merged(self, dbsession, mocker, flake_detection):
         if flake_detection:
-            mock_feature = mocker.patch("tasks.sync_pull.FLAKY_TEST_DETECTION")
+            mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
             mock_feature.check_value.return_value = True
 
         repository = RepositoryFactory.create()
@@ -93,10 +93,7 @@ class TestPullSyncTask(object):
             apply_async.assert_called_once_with(
                 kwargs=dict(
                     repo_id=repository.repoid,
-                    commit_id_list=[
-                        first_commit.commitid,
-                        third_commit.commitid,
-                    ],
+                    commit_id_list=[head_commit.commitid],
                     branch="thing",
                 )
             )
@@ -483,18 +480,29 @@ class TestPullSyncTask(object):
         task.trigger_ai_pr_review(enriched_pull, current_yaml)
         assert not apply_async.called
 
-    @pytest.mark.parametrize("flake_detection", [False, True])
+    @pytest.mark.parametrize(
+        "flake_detection", [None, "FLAKY_TEST_DETECTION", "FLAKY_SHADOW_MODE"]
+    )
     def test_trigger_process_flakes(self, dbsession, mocker, flake_detection):
+        current_yaml = UserYaml.from_dict(dict())
         if flake_detection:
-            mock_feature = mocker.patch("tasks.sync_pull.FLAKY_TEST_DETECTION")
+            mock_feature = mocker.patch(f"services.test_results.{flake_detection}")
             mock_feature.check_value.return_value = True
+
+            if flake_detection == "FLAKY_TEST_DETECTION":
+                current_yaml = UserYaml.from_dict(
+                    {
+                        "test_analytics": {
+                            "flake_detection": flake_detection,
+                        }
+                    }
+                )
 
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
-        commits = [CommitFactory.create(repository=repository) for i in range(3)]
-        for commit in commits:
-            dbsession.add(commit)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
         dbsession.flush()
 
         dbsession.flush()
@@ -504,25 +512,17 @@ class TestPullSyncTask(object):
             task.app.tasks["app.tasks.flakes.ProcessFlakesTask"], "apply_async"
         )
 
-        current_yaml = UserYaml.from_dict(
-            {
-                "test_analytics": {
-                    "flake_detection": flake_detection,
-                }
-            }
-        )
-        commit_id_list = [commit.commitid for commit in commits]
         task.trigger_process_flakes(
             repository.repoid,
-            commit_id_list,
-            dict(head=dict(branch="main")),
+            commit.commitid,
+            "main",
             current_yaml,
         )
         if flake_detection:
             apply_async.assert_called_once_with(
                 kwargs=dict(
                     repo_id=repository.repoid,
-                    commit_id_list=commit_id_list,
+                    commit_id_list=[commit.commitid],
                     branch="main",
                 )
             )

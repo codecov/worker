@@ -1,0 +1,1 @@
+{{prefix_message}}Bundle change: {{change_readable}} (Threshold: {{warning_threshold_readable}})

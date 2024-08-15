@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from asgiref.sync import async_to_sync
 from shared.celery_config import compute_comparison_task_name
@@ -97,12 +96,12 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
     def create_or_update_flag_comparisons(
         self,
         db_session,
-        head_report_flags: List[Flag],
+        head_report_flags: dict[str, Flag],
         comparison: CompareCommit,
         comparison_proxy: ComparisonProxy,
     ):
         repository_id = comparison.compare_commit.repository.repoid
-        for flag_name, _ in head_report_flags.items():
+        for flag_name in head_report_flags.keys():
             totals = self.get_flag_comparison_totals(flag_name, comparison_proxy)
             repositoryflag = (
                 db_session.query(RepositoryFlag)

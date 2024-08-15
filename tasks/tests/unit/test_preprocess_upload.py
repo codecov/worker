@@ -8,7 +8,7 @@ from database.tests.factories.core import (
     ReportFactory,
     RepositoryFactory,
 )
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.exceptions import OwnerWithoutValidBotError, RepositoryWithoutValidBotError
 from services.report import ReportService
 from tasks.preprocess_upload import PreProcessUpload
 
@@ -48,11 +48,11 @@ class TestPreProcessUpload(object):
             }
         }
         mocker.patch(
-            "tasks.preprocess_upload.fetch_commit_yaml_from_provider",
+            "services.repository.fetch_commit_yaml_from_provider",
             return_value=commit_yaml,
         )
         mock_save_commit = mocker.patch(
-            "tasks.preprocess_upload.save_repo_yaml_to_database_if_needed"
+            "services.repository.save_repo_yaml_to_database_if_needed"
         )
         mocker.patch.object(PreProcessUpload, "_is_running", return_value=False)
 
@@ -153,7 +153,7 @@ class TestPreProcessUpload(object):
                 "diff_totals": None,
             },
         ]
-        for sess_id, session in sample_report.sessions.items():
+        for sess_id in sample_report.sessions.keys():
             upload = (
                 dbsession.query(Upload)
                 .filter_by(report_id=commit.report.id_, order_number=sess_id)
@@ -215,6 +215,29 @@ class TestPreProcessUpload(object):
             "preprocessed_upload": False,
             "reason": "unable_to_acquire_lock",
         }
+
+    def test_get_repo_service_repo_and_owner_lack_bot(self, dbsession, mocker):
+        def mock_owner(foo):
+            print("in mock owner", foo)
+            raise OwnerWithoutValidBotError()
+
+        mock_owner_bot = mocker.patch(
+            "shared.bots.repo_bots.get_owner_or_appropriate_bot"
+        )
+        mock_owner_bot.side_effect = OwnerWithoutValidBotError()
+
+        mock_github_installations = mocker.patch(
+            "shared.bots.github_apps.get_github_app_info_for_owner"
+        )
+        mock_github_installations.return_value = []
+
+        mock_save_error = mocker.patch("tasks.preprocess_upload.save_commit_error")
+
+        commit = CommitFactory.create(repository__private=True, repository__bot=None)
+        repo_service = PreProcessUpload().get_repo_service(commit, None)
+
+        assert repo_service is None
+        mock_save_error.assert_called()
 
     def test_get_repo_provider_service_no_bot(self, dbsession, mocker):
         mocker.patch("tasks.preprocess_upload.save_commit_error")

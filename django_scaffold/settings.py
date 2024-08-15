@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "shared.django_apps.rollouts",
     "shared.django_apps.user_measurements",
     "shared.django_apps.codecov_metrics",
+    "shared.django_apps.bundle_analysis",
     "psqlextra",
     # Needed to install legacy migrations
     "django.contrib.admin",
@@ -45,10 +46,13 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
+BUNDLE_ANALYSIS_NOTIFY_MESSAGE_TEMPLATES = (
+    BASE_DIR / "services" / "bundle_analysis" / "new_notify" / "messages" / "templates"
+)
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BUNDLE_ANALYSIS_NOTIFY_MESSAGE_TEMPLATES],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

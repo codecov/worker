@@ -7,6 +7,7 @@ from redis.exceptions import LockError
 from shared.config import get_config
 from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitObjectNotFoundError
 
 from database.models import CommitReport, ReportDetails
@@ -26,7 +27,7 @@ from tasks.upload_processor import UploadProcessorTask
 here = Path(__file__)
 
 
-def test_default_acks_late():
+def test_default_acks_late() -> None:
     task = UploadProcessorTask()
     # task.acks_late is defined at import time, so it's difficult to test
     # This test ensures that, in the absence of config the default is False
@@ -36,16 +37,6 @@ def test_default_acks_late():
 
 
 class TestUploadProcessorTask(object):
-    def test_schedule_for_later_try(self, mocker):
-        mock_retry = mocker.patch.object(
-            UploadProcessorTask, "retry", side_effect=Retry()
-        )
-        task = UploadProcessorTask()
-        task.request.retries = 2
-        with pytest.raises(Retry):
-            task.schedule_for_later_try()
-        mock_retry.assert_called_with(countdown=180, max_retries=5)
-
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_task_call(
@@ -303,7 +294,7 @@ class TestUploadProcessorTask(object):
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_call_with_upload_obj(
-        self, mocker, mock_configuration, dbsession, mock_storage, mock_redis
+        self, mocker, mock_configuration, dbsession, mock_storage
     ):
         mocker.patch.object(
             USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
@@ -346,7 +337,6 @@ class TestUploadProcessorTask(object):
         mocked_3.send_task.return_value = True
         result = UploadProcessorTask().process_impl_within_lock(
             db_session=dbsession,
-            redis_connection=mock_redis,
             previous_results={},
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -510,9 +500,7 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(
-            UploadProcessorTask, "do_process_individual_report"
-        )
+        mocked_2 = mocker.patch.object(ReportService, "build_report_from_raw_content")
         mocked_2.side_effect = Exception("first", "aruba", "digimon")
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
@@ -548,9 +536,7 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         assert exc.value.args == ("first", "aruba", "digimon")
-        mocked_2.assert_called_with(
-            mocker.ANY, mocker.ANY, upload=upload, parallel_idx=mocker.ANY
-        )
+        mocked_2.assert_called_with(mocker.ANY, upload=upload, parallel_idx=mocker.ANY)
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
@@ -727,7 +713,7 @@ class TestUploadProcessorTask(object):
             report_service=ReportService({"codecov": {"max_report_age": False}}),
             commit=commit,
             report=false_report,
-            upload_obj=upload,
+            upload=upload,
         )
         expected_result = {
             "error": {
@@ -737,50 +723,30 @@ class TestUploadProcessorTask(object):
             "report": None,
             "should_retry": False,
             "successful": False,
+            "raw_report": None,
+            "upload_obj": upload,
         }
         assert expected_result == result
         assert commit.state == "complete"
         assert upload.state == "error"
 
     def test_upload_task_process_individual_report_with_notfound_report_no_retries_yet(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        mock_repo_provider,
-        mock_storage,
-        mock_redis,
+        self, mocker
     ):
-        mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
-        mocked_1.return_value = None
-        mock_schedule_for_later_try = mocker.patch.object(
-            UploadProcessorTask,
-            "schedule_for_later_try",
-            side_effect=celery.exceptions.Retry,
+        # throw an error thats retryable:
+        mocker.patch.object(
+            ReportService,
+            "parse_raw_report_from_storage",
+            side_effect=FileNotInStorageError(),
         )
-        false_report = mocker.MagicMock(
-            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
-        )
-        # Mocking retry to also raise the exception so we can see how it is called
-        mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_4.send_task.return_value = True
-        commit = CommitFactory.create(
-            message="", repository__yaml={"codecov": {"max_report_age": False}}
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-        upload = UploadFactory.create(report__commit=commit)
-        dbsession.add(upload)
         task = UploadProcessorTask()
-        task.request.retries = 0
-        with pytest.raises(celery.exceptions.Retry):
+        with pytest.raises(Retry):
             task.process_individual_report(
-                report_service=ReportService({"codecov": {"max_report_age": False}}),
-                commit=commit,
-                report=false_report,
-                upload_obj=upload,
+                ReportService({}),
+                CommitFactory.create(),
+                Report(),
+                UploadFactory.create(),
             )
-        mock_schedule_for_later_try.assert_called_with()
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_empty_report(

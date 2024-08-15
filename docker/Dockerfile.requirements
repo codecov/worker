@@ -1,13 +1,7 @@
 # syntax=docker/dockerfile:1.4
-ARG PYTHON_IMAGE=python:3.12.2-slim-bookworm
+ARG PYTHON_IMAGE=python:3.12.4-slim-bookworm
 # BUILD STAGE
 FROM $PYTHON_IMAGE as build
-
-# Pinning a specific nightly version so that builds don't suddenly break if a
-# "this feature is now stabilized" warning is promoted to an error or something.
-# We would like to keep up with nightly if we can.
-ARG RUST_VERSION=nightly-2023-02-22
-ENV RUST_VERSION=${RUST_VERSION}
 
 RUN apt-get update
 RUN apt-get install -y \
@@ -19,8 +13,11 @@ RUN apt-get install -y \
     curl
 
 # Install Rust
+ARG RUST_VERSION=stable
+ENV RUST_VERSION=${RUST_VERSION}
+
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | bash -s -- -y --default-toolchain $RUST_VERSION
+    | bash -s -- -y --profile minimal --default-toolchain $RUST_VERSION
 ENV PATH="/root/.cargo/bin:$PATH"
 
 COPY requirements.txt /

@@ -1,20 +1,27 @@
 import logging
-from collections import defaultdict
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import List, Mapping, Sequence, Tuple
+from typing import List, Mapping, Sequence
 
-from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
-from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from database.models import (
+    Commit,
+    CommitReport,
+    RepositoryFlag,
+    TestInstance,
+    Upload,
+)
+from helpers.notifier import BaseNotifier
+from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.report import BaseReportService
 from services.repository import (
-    fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
+from services.urls import get_test_analytics_url
+from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -117,6 +124,14 @@ class TestResultsNotificationFailure:
     testname: str
     envs: List[str]
     test_id: str
+    duration_seconds: float
+    build_url: str | None = None
+
+
+@dataclass
+class FlakeInfo:
+    failed: int
+    count: int
 
 
 @dataclass
@@ -125,156 +140,144 @@ class TestResultsNotificationPayload:
     passed: int
     skipped: int
     failures: List[TestResultsNotificationFailure]
-    flaky_tests: set[str] | None = None
+    flaky_tests: dict[str, FlakeInfo]
 
 
-class TestResultsNotifier:
-    def __init__(
-        self,
-        commit: Commit,
-        commit_yaml,
-    ):
-        self.commit = commit
-        self.commit_yaml = commit_yaml
+def wrap_in_details(summary: str, content: str):
+    result = f"<details><summary>{summary}</summary>\n{content}\n</details>"
+    return result
 
-    async def get_pull(self):
-        self.pull = await fetch_and_update_pull_request_information_from_commit(
-            self.repo_service, self.commit, self.commit_yaml
-        )
 
-    async def send_to_provider(self, message):
-        pullid = self.pull.database_pull.pullid
-        try:
-            comment_id = self.pull.database_pull.commentid
-            if comment_id:
-                await self.repo_service.edit_comment(pullid, comment_id, message)
-            else:
-                res = await self.repo_service.post_comment(pullid, message)
-                self.pull.database_pull.commentid = res["id"]
-            return True
-        except TorngitClientError:
-            log.error(
-                "Error creating/updating PR comment",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                    pullid=pullid,
-                ),
-            )
-            return False
+def make_quoted(content: str) -> str:
+    lines = content.splitlines()
 
-    def generate_test_description(
-        self,
-        fail: TestResultsNotificationFailure,
-    ):
-        has_class_name = "\x1f" in fail.testname
-        if has_class_name:
-            class_name, test_name = fail.testname.split("\x1f")
-            test_description = (
-                f"- **Class name:** {class_name}<br>**Test name:** {test_name}"
-            )
-        else:
-            test_description = f"- **Test name:** {fail.testname}"
+    result = ["> " + line for line in lines]
 
-        if fail.envs:
-            envs = [f"  - {env}" for env in fail.envs]
-            env_section = "<br>".join(envs)
-            test_description = f"{test_description}\n**Flags:**\n{env_section}"
+    result = "\n".join(result)
+    return f"\n{result}\n"
 
-        return f"{test_description}<br><br>"
 
-    def generate_failure_info(
-        self,
-        fail: TestResultsNotificationFailure,
-    ):
-        if fail.failure_message is not None:
-            failure_message = fail.failure_message
-        else:
-            failure_message = "No failure message available"
+def wrap_in_code(content: str) -> str:
+    return f"<pre>\n{content}\n</pre>"
 
-        return f"  <pre>{failure_message}</pre>"
 
-    def build_message(self, payload: TestResultsNotificationPayload) -> str:
+def display_duration(f: float) -> str:
+    before_dot, after_dot = str(f).split(".")
+    if len(before_dot) > 3:
+        return before_dot
+    else:
+        return f"{f:.3g}"
+
+
+def generate_failure_info(
+    fail: TestResultsNotificationFailure,
+):
+    if fail.failure_message is not None:
+        failure_message = fail.failure_message
+    else:
+        failure_message = "No failure message available"
+
+    if fail.build_url:
+        return f"<pre>{failure_message}</pre>\n[View]({fail.build_url}) the CI Build"
+    else:
+        return f"<pre>{failure_message}</pre>"
+
+
+def generate_view_test_analytics_line(commit: Commit) -> str:
+    repo = commit.repository
+    test_analytics_url = get_test_analytics_url(repo, commit)
+    return f"\nTo view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard]({test_analytics_url})"
+
+
+def messagify_failure(
+    failure: TestResultsNotificationFailure,
+) -> str:
+    test_name = wrap_in_code(failure.testname)
+    formatted_duration = display_duration(failure.duration_seconds)
+    stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
+    stack_trace = wrap_in_details(
+        stack_trace_summary,
+        make_quoted(generate_failure_info(failure)),
+    )
+    return make_quoted(f"{test_name}\n{stack_trace}")
+
+
+def messagify_flake(
+    flaky_failure: TestResultsNotificationFailure,
+    flake_info: FlakeInfo,
+) -> str:
+    test_name = wrap_in_code(flaky_failure.testname)
+    formatted_duration = display_duration(flaky_failure.duration_seconds)
+    flake_rate = flake_info.failed / flake_info.count * 100
+    flake_rate_section = f"**Flake rate in main:** {flake_rate}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
+    stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
+    stack_trace = wrap_in_details(
+        stack_trace_summary,
+        make_quoted(generate_failure_info(flaky_failure)),
+    )
+    return make_quoted(f"{test_name}\n{flake_rate_section}\n{stack_trace}")
+
+
+@dataclass
+class TestResultsNotifier(BaseNotifier):
+    payload: TestResultsNotificationPayload | None
+
+    def build_message(self) -> str:
+        if self.payload is None:
+            raise ValueError("Payload passed to notifier is None, cannot build message")
+
         message = []
 
+        message.append(f"### :x: {self.payload.failed} Tests Failed:")
+
+        completed = self.payload.failed + self.payload.passed
+
         message += [
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.",
-            "",
-            "### :x: Failed Test Results: ",
+            "| Tests completed | Failed | Passed | Skipped |",
+            "|---|---|---|---|",
+            f"| {completed} | {self.payload.failed} | {self.payload.passed} | {self.payload.skipped} |",
         ]
 
-        completed = payload.failed + payload.passed + payload.skipped
-        if payload.flaky_tests:
-            num = len(payload.flaky_tests)
-            flake_section = f"({num} known flakes hit)" if (num) else ""
+        failures = sorted(
+            filter(
+                lambda x: x.test_id not in self.payload.flaky_tests,
+                self.payload.failures,
+            ),
+            key=lambda x: (x.duration_seconds, x.testname),
+        )
 
-            results = [
-                f"Completed {completed} tests with **`{payload.failed} failed`**{flake_section}, {payload.passed} passed and {payload.skipped} skipped.",
-            ]
-            message += results
-        else:
-            results = f"Completed {completed} tests with **`{payload.failed} failed`**, {payload.passed} passed and {payload.skipped} skipped."
-            message.append(results)
+        if failures:
+            failure_content = [f"{messagify_failure(failure)}" for failure in failures]
 
-        fail_dict = defaultdict(list)
-        flake_dict = defaultdict(list)
-        for fail in payload.failures:
-            flake = None
-            if payload.flaky_tests is not None and fail.test_id in payload.flaky_tests:
-                flake_dict[fail.testsuite].append(fail)
-            else:
-                fail_dict[fail.testsuite].append(fail)
-
-        if fail_dict:
-            message += [
-                "<details><summary>View the full list of failed tests</summary>",
-                "",
-            ]
-
-            self.process_dict(fail_dict, message)
-            message.append("</details>")
-
-        if flake_dict:
-            message += [
-                "<details><summary>View the full list of flaky tests</summary>",
-                "",
-            ]
-
-            self.process_dict(flake_dict, message)
-            message.append("</details>")
-
-        return "\n".join(message)
-
-    async def notify(self, payload: TestResultsNotificationPayload) -> Tuple[bool, str]:
-        self.repo_service = get_repo_provider_service(self.commit.repository)
-
-        await self.get_pull()
-        if self.pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                ),
+            top_3_failed_section = wrap_in_details(
+                f"View the top {min(3, len(failures))} failed tests by shortest run time",
+                "\n".join(failure_content),
             )
-            return False, "no_pull"
 
-        message = self.build_message(payload)
+            message.append(top_3_failed_section)
 
-        sent_to_provider = await self.send_to_provider(message)
-        if sent_to_provider == False:
-            return (False, "torngit_error")
+        flaky_failures = list(
+            filter(
+                lambda x: x.test_id in self.payload.flaky_tests,
+                self.payload.failures,
+            ),
+        )
 
-        return (True, "comment_posted")
+        flake_content = [
+            f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id])}"
+            for flaky_failure in flaky_failures
+        ]
 
-    def insert_breaks(self, table_value):
-        line_size = 70
-        lines = table_value.split("<br>")
-        for i, line in enumerate(lines):
-            line_with_breaks = [
-                line[i : i + line_size] for i in range(0, len(line), line_size)
-            ]
-            lines[i] = "<br>".join(line_with_breaks)
+        if flake_content:
+            flaky_section = wrap_in_details(
+                f"View the full list of {len(flaky_failures)} :snowflake: flaky tests",
+                "\n".join(flake_content),
+            )
 
-        return "<br>".join(lines)
+            message.append(flaky_section)
+
+        message.append(generate_view_test_analytics_line(self.commit))
+        return "\n".join(message)
 
     async def error_comment(self):
         self.repo_service = get_repo_provider_service(self.commit.repository)
@@ -296,15 +299,6 @@ class TestResultsNotifier:
             return (False, "torngit_error")
 
         return (True, "comment_posted")
-
-    def process_dict(self, d, message):
-        for testsuite, fail_list in d.items():
-            message.append(f"## {testsuite}")
-            for fail in fail_list:
-                test_description = self.generate_test_description(fail)
-                message.append(test_description)
-                failure_information = self.generate_failure_info(fail)
-                message.append(failure_information)
 
 
 def latest_test_instances_for_a_given_commit(db_session, commit_id):
@@ -333,3 +327,17 @@ def latest_test_instances_for_a_given_commit(db_session, commit_id):
         .distinct(TestInstance.test_id)
         .all()
     )
+
+
+def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
+    return (
+        FLAKY_TEST_DETECTION.check_value(identifier=repoid, default=False)
+        and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
+        or FLAKY_SHADOW_MODE.check_value(identifier=repoid, default=False)
+    )
+
+
+def should_read_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
+    return FLAKY_TEST_DETECTION.check_value(
+        identifier=repoid, default=False
+    ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)

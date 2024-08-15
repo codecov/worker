@@ -86,8 +86,12 @@ class FakeRedis(object):
         return res
 
     def lpop(self, key):
-        res = self.lists.get(key).pop(0)
-        if self.lists.get(key) == []:
+        list = self.lists.get(key)
+        if not list:
+            return None
+
+        res = list.pop(0)
+        if list == []:
             del self.lists[key]
         return res
 
@@ -161,23 +165,21 @@ class TestUploadTaskIntegration(object):
             .filter_by(report_id=commit.report.id, build_code="some_random_build")
             .first()
         )
-        t1 = upload_processor_task.signature(
-            args=({},),
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {
-                        "url": url,
-                        "build": "some_random_build",
-                        "upload_pk": first_session.id,
-                    }
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=True,
-            ),
+        t1 = upload_processor_task.s(
+            {},
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {
+                    "url": url,
+                    "build": "some_random_build",
+                    "upload_pk": first_session.id,
+                }
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=True,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -188,7 +190,7 @@ class TestUploadTaskIntegration(object):
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t2 = upload_finisher_task.signature(kwargs=kwargs)
-        mocked_1.assert_called_with(t1, t2)
+        mocked_1.assert_called_with([t1, t2])
 
         calls = [
             mock.call(
@@ -253,27 +255,23 @@ class TestUploadTaskIntegration(object):
         uploads = commit_report.uploads
         assert len(uploads) == 1
         upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
-        processor_sig = bundle_analysis_processor_task.signature(
-            args=({},),
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                params={
-                    "url": storage_path,
-                    "build_code": "some_random_build",
-                    "upload_pk": upload.id,
-                },
-            ),
+        processor_sig = bundle_analysis_processor_task.s(
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            params={
+                "url": storage_path,
+                "build_code": "some_random_build",
+                "upload_pk": upload.id,
+            },
         )
-        notify_sig = bundle_analysis_notify_task.signature(
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            ),
+        notify_sig = bundle_analysis_notify_task.s(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
         )
-        chain.assert_called_with(processor_sig, notify_sig)
+        chain.assert_called_with([processor_sig, notify_sig])
 
     def test_upload_task_call_test_results(
         self,
@@ -322,20 +320,18 @@ class TestUploadTaskIntegration(object):
         uploads = commit_report.uploads
         assert len(uploads) == 1
         upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
-        processor_sig = test_results_processor_task.signature(
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {
-                        "url": storage_path,
-                        "build_code": "some_random_build",
-                        "upload_pk": upload.id,
-                    }
-                ],
-                report_code=None,
-            ),
+        processor_sig = test_results_processor_task.s(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {
+                    "url": storage_path,
+                    "build_code": "some_random_build",
+                    "upload_pk": upload.id,
+                }
+            ],
+            report_code=None,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -397,7 +393,6 @@ class TestUploadTaskIntegration(object):
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
         redis_queue = [
@@ -421,7 +416,7 @@ class TestUploadTaskIntegration(object):
             jsonified_redis_queue
         )
         mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
-            datetime.utcnow() - timedelta(seconds=10)
+            datetime.now() - timedelta(seconds=10)
         ).timestamp()
         with pytest.raises(Retry):
             UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
@@ -444,7 +439,6 @@ class TestUploadTaskIntegration(object):
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         commit = CommitFactory.create(
             parent_commit_id=None,
             message="",
@@ -455,12 +449,11 @@ class TestUploadTaskIntegration(object):
             repository__name="example-python",
         )
         mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
-            datetime.utcnow() - timedelta(seconds=1200)
+            datetime.now() - timedelta(seconds=1200)
         ).timestamp()
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
         redis_queue = [
             {"build": "part1", "url": "someurl1"},
@@ -476,7 +469,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
-        mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
+        mocked_chain.assert_called_with([mocker.ANY, mocker.ANY])
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_upload_processing_delay_upload_is_none(
@@ -494,7 +487,6 @@ class TestUploadTaskIntegration(object):
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocker.patch.object(UploadTask, "fetch_commit_yaml_and_possibly_store")
         mocked_chain = mocker.patch("tasks.upload.chain")
         redis_queue = [
             {"build": "part1", "url": "someurl1"},
@@ -519,7 +511,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
-        mocked_chain.assert_called_with(mocker.ANY, mocker.ANY)
+        mocked_chain.assert_called_with([mocker.ANY, mocker.ANY])
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_multiple_processors(
@@ -565,52 +557,44 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id is None
-        t1 = upload_processor_task.signature(
-            args=({},),
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {"build": "part1", "url": "someurl1", "upload_pk": mocker.ANY},
-                    {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
-                    {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=False,
-            ),
+        t1 = upload_processor_task.s(
+            {},
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {"build": "part1", "url": "someurl1", "upload_pk": mocker.ANY},
+                {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
+                {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=False,
         )
-        t2 = upload_processor_task.signature(
-            args=(),
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {"build": "part4", "url": "someurl4", "upload_pk": mocker.ANY},
-                    {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
-                    {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=False,
-            ),
+        t2 = upload_processor_task.s(
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {"build": "part4", "url": "someurl4", "upload_pk": mocker.ANY},
+                {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
+                {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=False,
         )
-        t3 = upload_processor_task.signature(
-            args=(),
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid="abf6d4df662c47e32460020ab14abf9303581429",
-                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments_list=[
-                    {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
-                    {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
-                ],
-                report_code=None,
-                in_parallel=False,
-                is_final=False,
-            ),
+        t3 = upload_processor_task.s(
+            repoid=commit.repoid,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
+                {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
+            ],
+            report_code=None,
+            in_parallel=False,
+            is_final=True,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -621,7 +605,7 @@ class TestUploadTaskIntegration(object):
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t_final = upload_finisher_task.signature(kwargs=kwargs)
-        mocked_1.assert_called_with(t1, t2, t3, t_final)
+        mocked_1.assert_called_with([t1, t2, t3, t_final])
         mock_redis.lock.assert_any_call(
             f"upload_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
@@ -710,8 +694,8 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocked_fetch_yaml = mocker.patch.object(
-            UploadTask, "fetch_commit_yaml_and_possibly_store"
+        mocked_fetch_yaml = mocker.patch(
+            "services.repository.fetch_commit_yaml_and_possibly_store"
         )
         redis_queue = [
             {"build": "part1", "url": "url1"},
@@ -765,8 +749,8 @@ class TestUploadTaskIntegration(object):
     ):
         mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
-        mocked_fetch_yaml = mocker.patch.object(
-            UploadTask, "fetch_commit_yaml_and_possibly_store"
+        mocked_fetch_yaml = mocker.patch(
+            "services.repository.fetch_commit_yaml_and_possibly_store"
         )
         redis_queue = [
             {"build": "part1", "url": "url1"},
@@ -983,7 +967,6 @@ class TestUploadTaskIntegration(object):
 
 class TestUploadTaskUnit(object):
     def test_list_of_arguments(self, mock_redis):
-        task = UploadTask()
         upload_args = UploadContext(
             repoid=542,
             commitid="commitid",
@@ -1116,17 +1099,15 @@ class TestUploadTaskUnit(object):
             commit, commit_yaml, argument_list, ReportFactory.create(), None, dbsession
         )
         assert result == mocked_chain.return_value.apply_async.return_value
-        t1 = upload_processor_task.signature(
-            args=({},),
-            kwargs=dict(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml.to_dict(),
-                arguments_list=argument_list,
-                report_code=None,
-                in_parallel=False,
-                is_final=True,
-            ),
+        t1 = upload_processor_task.s(
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml=commit_yaml.to_dict(),
+            arguments_list=argument_list,
+            report_code=None,
+            in_parallel=False,
+            is_final=True,
         )
         t2 = upload_finisher_task.signature(
             kwargs={
@@ -1138,7 +1119,7 @@ class TestUploadTaskUnit(object):
                 _kwargs_key(UploadFlow): mocker.ANY,
             }
         )
-        mocked_chain.assert_called_with(t1, t2)
+        mocked_chain.assert_called_with([t1, t2])
 
     def test_run_impl_unobtainable_lock_no_pending_jobs(
         self, dbsession, mocker, mock_redis
@@ -1236,183 +1217,6 @@ class TestUploadTaskUnit(object):
         task.request.retries = 0
         with pytest.raises(Retry):
             task.run_impl(dbsession, commit.repoid, commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_only_commit_yaml(
-        self, dbsession, mocker, mock_configuration
-    ):
-        commit = CommitFactory.create()
-        get_source_result = {
-            "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-            {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
-            {"name": "README.rst", "path": "README.rst", "type": "file"},
-            {"name": "awesome", "path": "awesome", "type": "folder"},
-            {"name": "codecov", "path": "codecov", "type": "file"},
-            {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
-            {"name": "tests", "path": "tests", "type": "folder"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {"codecov": {"notify": {}, "require_ci_to_pass": True}}
-        assert result.to_dict() == expected_result
-        repository_service.get_source.assert_called_with(
-            "codecov.yaml", commit.commitid
-        )
-        repository_service.list_top_level_files.assert_called_with(commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_base_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
-        commit = CommitFactory.create()
-        get_source_result = {
-            "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
-            {"name": "awesome", "path": "awesome", "type": "folder"},
-            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "coverage": {"precision": 14},
-        }
-        assert result.to_dict() == expected_result
-        repository_service.get_source.assert_called_with(
-            ".codecov.yaml", commit.commitid
-        )
-        repository_service.list_top_level_files.assert_called_with(commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_repo_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
-        commit = CommitFactory.create(
-            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
-            repository__branch="supeduperbranch",
-            branch="supeduperbranch",
-        )
-        get_source_result = {
-            "content": "\n".join(
-                ["codecov:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-            {"name": "tests", "path": "tests", "type": "folder"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "coverage": {"precision": 14},
-        }
-        assert result.to_dict() == expected_result
-        assert commit.repository.yaml == {
-            "codecov": {"notify": {}, "require_ci_to_pass": True}
-        }
-        repository_service.get_source.assert_called_with(
-            ".codecov.yaml", commit.commitid
-        )
-        repository_service.list_top_level_files.assert_called_with(commit.commitid)
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_no_commit_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"coverage": {"round": "up"}}})
-        commit = CommitFactory.create(
-            repository__owner__yaml={"coverage": {"precision": 2}},
-            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
-            repository__branch="supeduperbranch",
-            branch="supeduperbranch",
-        )
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                side_effect=TorngitClientError(404, "fake_response", "message")
-            )
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "coverage": {"precision": 2, "round": "up"},
-            "codecov": {"max_report_age": "1y ago"},
-        }
-        assert result.to_dict() == expected_result
-        assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
-
-    def test_fetch_commit_yaml_and_possibly_store_commit_yaml_invalid_commit_yaml(
-        self, dbsession, mock_configuration, mocker
-    ):
-        mock_configuration.set_params({"site": {"comment": {"behavior": "new"}}})
-        commit = CommitFactory.create(
-            repository__owner__yaml={"coverage": {"precision": 2}},
-            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
-            repository__branch="supeduperbranch",
-            branch="supeduperbranch",
-        )
-        dbsession.add(commit)
-        get_source_result = {
-            "content": "\n".join(
-                ["bad_key:", "  notify:", "    require_ci_to_pass: yes"]
-            )
-        }
-        list_top_level_files_result = [
-            {"name": ".gitignore", "path": ".gitignore", "type": "file"},
-            {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
-            {"name": "tests", "path": "tests", "type": "folder"},
-        ]
-        repository_service = mocker.MagicMock(
-            list_top_level_files=mock.AsyncMock(
-                return_value=list_top_level_files_result
-            ),
-            get_source=mock.AsyncMock(return_value=get_source_result),
-        )
-
-        result = UploadTask().fetch_commit_yaml_and_possibly_store(
-            commit, repository_service
-        )
-        expected_result = {
-            "coverage": {"precision": 2},
-            "codecov": {"max_report_age": "1y ago"},
-            "comment": {"behavior": "new"},
-        }
-        assert result.to_dict() == expected_result
-        assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
 
     def test_possibly_setup_webhooks_public_repo(
         self, mocker, mock_configuration, mock_repo_provider
@@ -1635,6 +1439,35 @@ class TestUploadTaskUnit(object):
 
         assert repository.webhook_secret is None
         gitlab_provider.edit_webhook.assert_not_called()
+
+    def test_needs_webhook_secret_backfill_error(
+        self, dbsession, mocker, mock_configuration
+    ):
+        mock_configuration.set_params(
+            {"gitlab_enterprise": {"bot": {"key": "somekey"}}}
+        )
+        repository = RepositoryFactory.create(
+            repoid="5678", hookid="1234", webhook_secret=None
+        )
+        dbsession.add(repository)
+        commit = CommitFactory.create(repository=repository)
+        dbsession.add(commit)
+        gitlab_e_provider = mocker.MagicMock(
+            GitlabEnterprise, get_commit_diff=mock.AsyncMock(return_value={})
+        )
+        mock_repo_provider = mocker.patch(
+            "services.repository._get_repo_provider_service_instance"
+        )
+        mock_repo_provider.return_value = gitlab_e_provider
+        gitlab_e_provider.data = mocker.MagicMock()
+        gitlab_e_provider.service = "gitlab"
+        gitlab_e_provider.edit_webhook.side_effect = TorngitClientError
+        task = UploadTask()
+
+        res = task.possibly_setup_webhooks(commit, gitlab_e_provider)
+        assert res is False
+        assert repository.webhook_secret is None
+        gitlab_e_provider.edit_webhook.assert_called_once()
 
     def test_upload_not_ready_to_build_report(
         self, dbsession, mocker, mock_configuration, mock_repo_provider, mock_redis

@@ -3,6 +3,7 @@ import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
@@ -13,18 +14,20 @@ from shared.celery_config import (
     timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
+from shared.metrics import Histogram
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
 from shared.yaml import UserYaml
 
 from app import celery_app
+from celery_config import notify_error_task_name
 from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.metrics import metrics
+from helpers.metrics import KiB, MiB, metrics
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
-from services.archive import MinioEndpoints
+from services.archive import ArchiveService, MinioEndpoints
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -37,7 +40,42 @@ from tasks.upload_clean_labels_index import task_name as clean_labels_index_task
 log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]")
-merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
+
+PYREPORT_REPORT_JSON_SIZE = Histogram(
+    "worker_tasks_upload_finisher_report_json_size",
+    "Size (in bytes) of a report's report_json measured in `UploadFinisherTask`. Be aware: if we get more uploads for the same commit after `UploadFinisherTask` finishes, we will emit this metric again without deleting the first value. As a result, aggregate metrics will be biased towards smaller sizes.",
+    buckets=[
+        10 * KiB,
+        100 * KiB,
+        500 * KiB,
+        1 * MiB,
+        10 * MiB,
+        100 * MiB,
+        500 * MiB,
+        1000 * MiB,
+    ],
+)
+
+PYREPORT_CHUNKS_FILE_SIZE = Histogram(
+    "worker_tasks_upload_finisher_chunks_file_size",
+    "Size (in bytes) of a report's chunks file measured in `UploadFinisherTask`. Be aware: if we get more uploads for the same commit after `UploadFinisherTask` finishes, we will emit this metric again without deleting the first value. As a result, aggregate metrics will be biased towards smaller sizes.",
+    buckets=[
+        100 * KiB,
+        500 * KiB,
+        1 * MiB,
+        10 * MiB,
+        100 * MiB,
+        500 * MiB,
+        1000 * MiB,
+        1500 * MiB,
+    ],
+)
+
+
+class ShouldCallNotifyResult(Enum):
+    DO_NOT_NOTIFY = "do_not_notify"
+    NOTIFY_ERROR = "notify_error"
+    NOTIFY = "notify"
 
 
 class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
@@ -82,13 +120,12 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             ),
         )
         repoid = int(repoid)
-        lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
-        commits = db_session.query(Commit).filter(
-            Commit.repoid == repoid, Commit.commitid == commitid
+        commit = (
+            db_session.query(Commit)
+            .filter(Commit.repoid == repoid, Commit.commitid == commitid)
+            .first()
         )
-        commit = commits.first()
         assert commit, "Commit not found in database."
-
         repository = commit.repository
 
         if (
@@ -118,10 +155,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 commit_yaml,
                 repository,
                 commit,
-                report_code,
                 report_service,
                 processing_results,
-                db_session,
             )
 
             log.info(
@@ -145,8 +180,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             # The verification task that will compare the results of the serial flow and
             # the parallel flow, and log the result to determine if parallel flow is
             # working properly.
-            task = parallel_verification_task.signature(
-                args=(),
+            parallel_verification_task.apply_async(
                 kwargs=dict(
                     repoid=repoid,
                     commitid=commitid,
@@ -156,14 +190,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     processing_results=processing_results,
                 ),
             )
-            task.apply_async()
 
             return
+
+        lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
                 commit_yaml = UserYaml(commit_yaml)
-                db_session.commit()
                 commit.notified = False
                 db_session.commit()
                 result = self.finish_reports_processing(
@@ -199,10 +233,34 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
+    def _emit_report_size_metrics(self, commit: Commit, report_code: str):
+        # This is only used to emit chunks/report_json size metrics. We have to
+        # do it here instead of in UploadProcessorTask where the report is
+        # normally saved because that task saves after every upload and can't
+        # tell when the report is final.
+        try:
+            if commit.report_json:
+                report_json_size = len(json.dumps(commit.report_json))
+                archive_service = ArchiveService(commit.repository)
+                chunks_size = len(
+                    archive_service.read_chunks(commit.commitid, report_code)
+                )
+
+                PYREPORT_REPORT_JSON_SIZE.observe(report_json_size)
+                PYREPORT_CHUNKS_FILE_SIZE.observe(chunks_size)
+        except Exception as e:
+            log.exception(
+                "Failed to emit report size metrics",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                ),
+            )
+
     def finish_reports_processing(
         self,
         db_session,
-        commit,
+        commit: Commit,
         commit_yaml: UserYaml,
         processing_results,
         report_code,
@@ -212,73 +270,87 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         commitid = commit.commitid
         repoid = commit.repoid
 
+        self._emit_report_size_metrics(commit, report_code)
+
         # always notify, let the notify handle if it should submit
         notifications_called = False
         if not regexp_ci_skip.search(commit.message or ""):
-            if self.should_call_notifications(
+            match self.should_call_notifications(
                 commit, commit_yaml, processing_results, report_code
             ):
-                notifications_called = True
-                task = self.app.tasks[notify_task_name].apply_async(
-                    kwargs={
-                        "repoid": repoid,
-                        "commitid": commitid,
-                        "current_yaml": commit_yaml.to_dict(),
-                        _kwargs_key(UploadFlow): checkpoints.data,
-                    },
-                )
-                log.info(
-                    "Scheduling notify task",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        commit_yaml=commit_yaml.to_dict(),
-                        processing_results=processing_results,
-                        notify_task_id=task.id,
-                        parent_task=self.request.parent_id,
-                    ),
-                )
-                if commit.pullid:
-                    pull = (
-                        db_session.query(Pull)
-                        .filter_by(repoid=commit.repoid, pullid=commit.pullid)
-                        .first()
+                case ShouldCallNotifyResult.NOTIFY:
+                    notifications_called = True
+                    task = self.app.tasks[notify_task_name].apply_async(
+                        kwargs={
+                            "repoid": repoid,
+                            "commitid": commitid,
+                            "current_yaml": commit_yaml.to_dict(),
+                            _kwargs_key(UploadFlow): checkpoints.data,
+                        },
                     )
-                    if pull:
-                        head = pull.get_head_commit()
-                        if head is None or head.timestamp <= commit.timestamp:
-                            pull.head = commit.commitid
-                        if pull.head == commit.commitid:
-                            db_session.commit()
-                            self.app.tasks[pulls_task_name].apply_async(
-                                kwargs=dict(
-                                    repoid=repoid,
-                                    pullid=pull.pullid,
-                                    should_send_notifications=False,
-                                )
-                            )
-                            compared_to = pull.get_comparedto_commit()
-                            if compared_to:
-                                comparison = get_or_create_comparison(
-                                    db_session, compared_to, commit
-                                )
+                    log.info(
+                        "Scheduling notify task",
+                        extra=dict(
+                            repoid=repoid,
+                            commit=commitid,
+                            commit_yaml=commit_yaml.to_dict(),
+                            processing_results=processing_results,
+                            notify_task_id=task.id,
+                            parent_task=self.request.parent_id,
+                        ),
+                    )
+                    if commit.pullid:
+                        pull = (
+                            db_session.query(Pull)
+                            .filter_by(repoid=commit.repoid, pullid=commit.pullid)
+                            .first()
+                        )
+                        if pull:
+                            head = pull.get_head_commit()
+                            if head is None or head.timestamp <= commit.timestamp:
+                                pull.head = commit.commitid
+                            if pull.head == commit.commitid:
                                 db_session.commit()
-                                self.app.tasks[
-                                    compute_comparison_task_name
-                                ].apply_async(kwargs=dict(comparison_id=comparison.id))
-
-            else:
-                notifications_called = False
-                log.info(
-                    "Skipping notify task",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        commit_yaml=commit_yaml.to_dict(),
-                        processing_results=processing_results,
-                        parent_task=self.request.parent_id,
-                    ),
-                )
+                                self.app.tasks[pulls_task_name].apply_async(
+                                    kwargs=dict(
+                                        repoid=repoid,
+                                        pullid=pull.pullid,
+                                        should_send_notifications=False,
+                                    )
+                                )
+                                compared_to = pull.get_comparedto_commit()
+                                if compared_to:
+                                    comparison = get_or_create_comparison(
+                                        db_session, compared_to, commit
+                                    )
+                                    db_session.commit()
+                                    self.app.tasks[
+                                        compute_comparison_task_name
+                                    ].apply_async(
+                                        kwargs=dict(comparison_id=comparison.id)
+                                    )
+                case ShouldCallNotifyResult.DO_NOT_NOTIFY:
+                    notifications_called = False
+                    log.info(
+                        "Skipping notify task",
+                        extra=dict(
+                            repoid=repoid,
+                            commit=commitid,
+                            commit_yaml=commit_yaml.to_dict(),
+                            processing_results=processing_results,
+                            parent_task=self.request.parent_id,
+                        ),
+                    )
+                case ShouldCallNotifyResult.NOTIFY_ERROR:
+                    notifications_called = False
+                    task = self.app.tasks[notify_error_task_name].apply_async(
+                        kwargs={
+                            "repoid": repoid,
+                            "commitid": commitid,
+                            "current_yaml": commit_yaml.to_dict(),
+                            _kwargs_key(UploadFlow): checkpoints.data,
+                        },
+                    )
         else:
             commit.state = "skipped"
 
@@ -326,51 +398,33 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         return any(map(should_clean_for_processing_result, actual_processing_results))
 
     def should_call_notifications(
-        self, commit, commit_yaml, processing_results, report_code
-    ):
+        self, commit: Commit, commit_yaml: UserYaml, processing_results, report_code
+    ) -> ShouldCallNotifyResult:
+        extra_dict = {
+            "repoid": commit.repoid,
+            "commitid": commit.commitid,
+            "commit_yaml": commit_yaml,
+            "processing_results": processing_results,
+            "report_code": report_code,
+            "parent_task": self.request.parent_id,
+        }
+
         manual_trigger = read_yaml_field(
             commit_yaml, ("codecov", "notify", "manual_trigger")
         )
         if manual_trigger:
             log.info(
                 "Not scheduling notify because manual trigger is used",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    processing_results=processing_results,
-                ),
+                extra=extra_dict,
             )
-            return False
+            return ShouldCallNotifyResult.DO_NOT_NOTIFY
         # Notifications should be off in case of local uploads, and report code wouldn't be null in that case
         if report_code is not None:
             log.info(
                 "Not scheduling notify because it's a local upload",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    processing_results=processing_results,
-                    report_code=report_code,
-                    parent_task=self.request.parent_id,
-                ),
+                extra=extra_dict,
             )
-            return False
-        if not any(
-            x["successful"] for x in processing_results.get("processings_so_far", [])
-        ):
-            log.info(
-                "Not scheduling notify because there are no successful processing results",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    processing_results=processing_results,
-                    report_code=report_code,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            return False
+            return ShouldCallNotifyResult.DO_NOT_NOTIFY
 
         after_n_builds = (
             read_yaml_field(commit_yaml, ("codecov", "notify", "after_n_builds")) or 0
@@ -383,18 +437,31 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     "Not scheduling notify because `after_n_builds` is %s and we only found %s builds",
                     after_n_builds,
                     number_sessions,
-                    extra=dict(
-                        repoid=commit.repoid,
-                        commit=commit.commitid,
-                        commit_yaml=commit_yaml,
-                        processing_results=processing_results,
-                        parent_task=self.request.parent_id,
-                    ),
+                    extra=extra_dict,
                 )
-                return False
-            else:
-                return True
-        return True
+                return ShouldCallNotifyResult.DO_NOT_NOTIFY
+
+        processing_successses = [
+            x["successful"] for x in processing_results.get("processings_so_far", [])
+        ]
+
+        if read_yaml_field(
+            commit_yaml,
+            ("codecov", "notify", "notify_error"),
+            _else=False,
+        ):
+            if len(processing_successses) == 0 or not all(processing_successses):
+                log.info(
+                    "Not scheduling notify because there is a non-successful processing result",
+                    extra=extra_dict,
+                )
+
+                return ShouldCallNotifyResult.NOTIFY_ERROR
+        else:
+            if not any(processing_successses):
+                return ShouldCallNotifyResult.DO_NOT_NOTIFY
+
+        return ShouldCallNotifyResult.NOTIFY
 
     def invalidate_caches(self, redis_connection, commit: Commit):
         redis_connection.delete("cache/{}/tree/{}".format(commit.repoid, commit.branch))
@@ -410,13 +477,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
     def merge_incremental_reports(
         self,
-        commit_yaml,
+        commit_yaml: dict,
         repository,
-        commit,
-        report_code,
-        report_service,
+        commit: Commit,
+        report_service: ReportService,
         processing_results,
-        db_session,
     ):
         archive_service = report_service.get_archive_service(repository)
         repoid = repository.repoid
@@ -506,11 +571,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
             session.id = session_id
 
-            session_manipulation_result = _adjust_sessions(
+            _adjust_sessions(
                 cumulative_report, incremental_report, session, UserYaml(commit_yaml)
             )
             # ReportService.update_upload_with_processing_result should use this result
-            # to update the state of Upload. Once the experiement is finished, Upload.state should
+            # to update the state of Upload. Once the experiment is finished, Upload.state should
             # be set to: parallel_processed (instead of processed)
 
             cumulative_report.merge(incremental_report)

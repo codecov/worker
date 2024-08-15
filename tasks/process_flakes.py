@@ -15,7 +15,7 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-FlakeDict = dict[str, Flake]
+FlakeDict = dict[tuple[str, int], Flake]
 
 FLAKE_EXPIRY_COUNT = 30
 
@@ -51,19 +51,28 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                 )
                 for test_instance in test_instances:
                     if test_instance.outcome == TestInstance.Outcome.PASS.value:
-                        flake = flake_dict.get(test_instance.test_id)
+                        flake = flake_dict.get(
+                            (test_instance.test_id, test_instance.reduced_error_id)
+                        )
                         if flake is not None:
                             update_passed_flakes(flake)
                     elif test_instance.outcome in (
                         TestInstance.Outcome.FAILURE.value,
                         TestInstance.Outcome.ERROR.value,
                     ):
-                        flake = flake_dict.get(test_instance.test_id)
+                        flake = flake_dict.get(
+                            (test_instance.test_id, test_instance.reduced_error_id)
+                        )
                         upserted_flake = upsert_failed_flake(
                             test_instance, repo_id, flake
                         )
                         if flake is None:
-                            flake_dict[upserted_flake.test_id] = upserted_flake
+                            flake_dict[
+                                (
+                                    upserted_flake.test_id,
+                                    upserted_flake.reduced_error_id,
+                                )
+                            ] = upserted_flake
 
         log.info(
             "Successfully processed flakes",
@@ -105,7 +114,7 @@ def generate_flake_dict(repo_id: int) -> FlakeDict:
     flakes = Flake.objects.filter(repository_id=repo_id, end_date__isnull=True).all()
     flake_dict = dict()
     for flake in flakes:
-        flake_dict[flake.test_id] = flake
+        flake_dict[(flake.test_id, flake.reduced_error_id)] = flake
     return flake_dict
 
 
@@ -124,7 +133,7 @@ def upsert_failed_flake(
         flake = Flake(
             repository_id=repo_id,
             test=test_instance.test,
-            reduced_error=None,
+            reduced_error=test_instance.reduced_error_id,
             count=1,
             fail_count=1,
             start_date=dt.datetime.now(dt.UTC),
