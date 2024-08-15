@@ -108,19 +108,16 @@ class TestUploadProcessorTask(object):
                 "awesome/__init__.py": [
                     0,
                     [0, 14, 10, 4, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 14, 10, 4, 0, "71.42857"]},
                     [0, 4, 4, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
                 ],
                 "tests/__init__.py": [
                     1,
                     [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 3, 2, 1, 0, "66.66667"]},
                     None,
                 ],
                 "tests/test_sample.py": [
                     2,
                     [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 7, 7, 0, 0, "100"]},
                     None,
                 ],
             },
@@ -240,19 +237,16 @@ class TestUploadProcessorTask(object):
                 "awesome/__init__.py": [
                     0,
                     [0, 14, 10, 4, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 14, 10, 4, 0, "71.42857"]},
                     None,
                 ],
                 "tests/__init__.py": [
                     1,
                     [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 3, 2, 1, 0, "66.66667"]},
                     None,
                 ],
                 "tests/test_sample.py": [
                     2,
                     [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 7, 7, 0, 0, "100"]},
                     None,
                 ],
             },
@@ -360,19 +354,16 @@ class TestUploadProcessorTask(object):
                 "awesome/__init__.py": [
                     0,
                     [0, 14, 10, 4, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 14, 10, 4, 0, "71.42857"]},
                     None,
                 ],
                 "tests/__init__.py": [
                     1,
                     [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 3, 2, 1, 0, "66.66667"]},
                     None,
                 ],
                 "tests/test_sample.py": [
                     2,
                     [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 7, 7, 0, 0, "100"]},
                     None,
                 ],
             },

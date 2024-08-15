@@ -1,6 +1,6 @@
 import pytest
 from redis.exceptions import LockError
-from shared.reports.types import ReportTotals, SessionTotalsArray
+from shared.reports.types import ReportTotals
 
 from database.models.reports import Upload
 from database.tests.factories.core import (
@@ -92,25 +92,6 @@ class TestPreProcessUpload(object):
                     complexity_total=2,
                     diff=0,
                 ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        ReportTotals(
-                            files=0,
-                            lines=8,
-                            hits=5,
-                            misses=3,
-                            partials=0,
-                            coverage="62.50000",
-                            branches=0,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=10,
-                            complexity_total=2,
-                            diff=0,
-                        )
-                    ]
-                ),
                 "diff_totals": None,
             },
             {
@@ -130,25 +111,6 @@ class TestPreProcessUpload(object):
                     complexity=0,
                     complexity_total=0,
                     diff=0,
-                ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        ReportTotals(
-                            files=0,
-                            lines=2,
-                            hits=1,
-                            misses=0,
-                            partials=1,
-                            coverage="50.00000",
-                            branches=1,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=0,
-                            complexity_total=0,
-                            diff=0,
-                        )
-                    ]
                 ),
                 "diff_totals": None,
             },
