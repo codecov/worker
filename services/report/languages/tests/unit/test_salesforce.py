@@ -37,7 +37,6 @@ class TestSalesforce(BaseTestCase):
                     "file.py": [
                         0,
                         [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 1, 1, 0, 0, "100"], "meta": {"session_count": 1}},
                         None,
                     ]
                 },

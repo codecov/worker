@@ -3,7 +3,7 @@ import uuid
 from decimal import Decimal
 from functools import cached_property
 
-from shared.reports.types import ReportTotals, SessionTotalsArray
+from shared.reports.types import ReportTotals
 from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
@@ -154,9 +154,6 @@ class ReportDetails(CodecovBaseModel, MixinBaseClass):
             {
                 **v,
                 "file_totals": ReportTotals(*(v.get("file_totals", []))),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    v.get("session_totals")
-                ),
                 "diff_totals": (
                     ReportTotals(*v["diff_totals"]) if v["diff_totals"] else None
                 ),

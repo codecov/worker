@@ -35,6 +35,7 @@ from services.repository import (
     fetch_and_update_pull_request_information,
     fetch_and_update_pull_request_information_from_commit,
     fetch_appropriate_parent_for_commit,
+    fetch_commit_yaml_and_possibly_store,
     get_or_create_author,
     get_repo_provider_service,
     get_repo_provider_service_by_id,
@@ -1937,3 +1938,153 @@ class TestPullRequestFetcher(object):
             "abcqwertabcqwertabcqwertabcqwertabcqwert",
             "e9868516aafd365aeab2957d3745353b532d3a37",
         )
+
+
+def test_fetch_commit_yaml_and_possibly_store_only_commit_yaml(
+    dbsession, mocker, mock_configuration
+):
+    commit = CommitFactory.create()
+    get_source_result = {
+        "content": "\n".join(["codecov:", "  notify:", "    require_ci_to_pass: yes"])
+    }
+    list_top_level_files_result = [
+        {"name": ".gitignore", "path": ".gitignore", "type": "file"},
+        {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
+        {"name": "README.rst", "path": "README.rst", "type": "file"},
+        {"name": "awesome", "path": "awesome", "type": "folder"},
+        {"name": "codecov", "path": "codecov", "type": "file"},
+        {"name": "codecov.yaml", "path": "codecov.yaml", "type": "file"},
+        {"name": "tests", "path": "tests", "type": "folder"},
+    ]
+    repository_service = mocker.MagicMock(
+        list_top_level_files=mock.AsyncMock(return_value=list_top_level_files_result),
+        get_source=mock.AsyncMock(return_value=get_source_result),
+    )
+
+    result = fetch_commit_yaml_and_possibly_store(commit, repository_service)
+    expected_result = {"codecov": {"notify": {}, "require_ci_to_pass": True}}
+    assert result.to_dict() == expected_result
+    repository_service.get_source.assert_called_with("codecov.yaml", commit.commitid)
+    repository_service.list_top_level_files.assert_called_with(commit.commitid)
+
+
+def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_base_yaml(
+    dbsession, mock_configuration, mocker
+):
+    mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
+    commit = CommitFactory.create()
+    get_source_result = {
+        "content": "\n".join(["codecov:", "  notify:", "    require_ci_to_pass: yes"])
+    }
+    list_top_level_files_result = [
+        {"name": ".travis.yml", "path": ".travis.yml", "type": "file"},
+        {"name": "awesome", "path": "awesome", "type": "folder"},
+        {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
+    ]
+    repository_service = mocker.MagicMock(
+        list_top_level_files=mock.AsyncMock(return_value=list_top_level_files_result),
+        get_source=mock.AsyncMock(return_value=get_source_result),
+    )
+
+    result = fetch_commit_yaml_and_possibly_store(commit, repository_service)
+    expected_result = {
+        "codecov": {"notify": {}, "require_ci_to_pass": True},
+        "coverage": {"precision": 14},
+    }
+    assert result.to_dict() == expected_result
+    repository_service.get_source.assert_called_with(".codecov.yaml", commit.commitid)
+    repository_service.list_top_level_files.assert_called_with(commit.commitid)
+
+
+def test_fetch_commit_yaml_and_possibly_store_commit_yaml_and_repo_yaml(
+    dbsession, mock_configuration, mocker
+):
+    mock_configuration.set_params({"site": {"coverage": {"precision": 14}}})
+    commit = CommitFactory.create(
+        repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+        repository__branch="supeduperbranch",
+        branch="supeduperbranch",
+    )
+    get_source_result = {
+        "content": "\n".join(["codecov:", "  notify:", "    require_ci_to_pass: yes"])
+    }
+    list_top_level_files_result = [
+        {"name": ".gitignore", "path": ".gitignore", "type": "file"},
+        {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
+        {"name": "tests", "path": "tests", "type": "folder"},
+    ]
+    repository_service = mocker.MagicMock(
+        list_top_level_files=mock.AsyncMock(return_value=list_top_level_files_result),
+        get_source=mock.AsyncMock(return_value=get_source_result),
+    )
+
+    result = fetch_commit_yaml_and_possibly_store(commit, repository_service)
+    expected_result = {
+        "codecov": {"notify": {}, "require_ci_to_pass": True},
+        "coverage": {"precision": 14},
+    }
+    assert result.to_dict() == expected_result
+    assert commit.repository.yaml == {
+        "codecov": {"notify": {}, "require_ci_to_pass": True}
+    }
+    repository_service.get_source.assert_called_with(".codecov.yaml", commit.commitid)
+    repository_service.list_top_level_files.assert_called_with(commit.commitid)
+
+
+def test_fetch_commit_yaml_and_possibly_store_commit_yaml_no_commit_yaml(
+    dbsession, mock_configuration, mocker
+):
+    mock_configuration.set_params({"site": {"coverage": {"round": "up"}}})
+    commit = CommitFactory.create(
+        repository__owner__yaml={"coverage": {"precision": 2}},
+        repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+        repository__branch="supeduperbranch",
+        branch="supeduperbranch",
+    )
+    repository_service = mocker.MagicMock(
+        list_top_level_files=mock.AsyncMock(
+            side_effect=TorngitClientError(404, "fake_response", "message")
+        )
+    )
+
+    result = fetch_commit_yaml_and_possibly_store(commit, repository_service)
+    expected_result = {
+        "coverage": {"precision": 2, "round": "up"},
+        "codecov": {"max_report_age": "1y ago"},
+    }
+    assert result.to_dict() == expected_result
+    assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}
+
+
+def test_fetch_commit_yaml_and_possibly_store_commit_yaml_invalid_commit_yaml(
+    dbsession, mock_configuration, mocker
+):
+    mock_configuration.set_params({"site": {"comment": {"behavior": "new"}}})
+    commit = CommitFactory.create(
+        repository__owner__yaml={"coverage": {"precision": 2}},
+        repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+        repository__branch="supeduperbranch",
+        branch="supeduperbranch",
+    )
+    dbsession.add(commit)
+    get_source_result = {
+        "content": "\n".join(["bad_key:", "  notify:", "    require_ci_to_pass: yes"])
+    }
+    list_top_level_files_result = [
+        {"name": ".gitignore", "path": ".gitignore", "type": "file"},
+        {"name": ".codecov.yaml", "path": ".codecov.yaml", "type": "file"},
+        {"name": "tests", "path": "tests", "type": "folder"},
+    ]
+    repository_service = mocker.MagicMock(
+        list_top_level_files=mock.AsyncMock(return_value=list_top_level_files_result),
+        get_source=mock.AsyncMock(return_value=get_source_result),
+    )
+
+    result = fetch_commit_yaml_and_possibly_store(commit, repository_service)
+    expected_result = {
+        "coverage": {"precision": 2},
+        "codecov": {"max_report_age": "1y ago"},
+        "comment": {"behavior": "new"},
+    }
+    assert result.to_dict() == expected_result
+    assert commit.repository.yaml == {"codecov": {"max_report_age": "1y ago"}}

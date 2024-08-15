@@ -4,6 +4,7 @@ import pytest
 from django.template import loader
 from shared.torngit.exceptions import TorngitClientError
 from shared.typings.torngit import TorngitInstanceData
+from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
@@ -23,6 +24,7 @@ from services.bundle_analysis.new_notify.messages.comment import (
     BundleCommentTemplateContext,
     BundleRow,
 )
+from services.bundle_analysis.new_notify.types import NotificationUserConfig
 from services.notification.notifiers.base import NotificationResult
 
 
@@ -190,9 +192,8 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
             return_value=fake_repo_provider,
         )
         head_commit, _ = get_commit_pair(dbsession)
-        user_yaml = UserYaml.from_dict({})
         context = BundleAnalysisPRCommentNotificationContext(
-            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+            head_commit, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
         mock_pull = MagicMock(
             name="fake_pull",
@@ -203,6 +204,12 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
             ),
         )
         context.__dict__["pull"] = mock_pull
+        context.__dict__["user_config"] = NotificationUserConfig(
+            warning_threshold=BundleThreshold("absolute", 0),
+            required_changes_threshold=BundleThreshold("absolute", 0),
+            required_changes=False,
+            status_level="informational",
+        )
         mock_comparison = MagicMock(name="fake_bundle_analysis_comparison")
         context.__dict__["bundle_analysis_comparison"] = mock_comparison
         message = "carefully crafted message"
@@ -219,7 +226,7 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
                     "app_id": 12300,
                     "pem_path": "some_path",
                 },
-                id="no_app_used",
+                id="some_app_used",
             ),
         ],
     )
@@ -255,7 +262,7 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
                     "app_id": 12300,
                     "pem_path": "some_path",
                 },
-                id="no_app_used",
+                id="some_app_used",
             ),
         ],
     )

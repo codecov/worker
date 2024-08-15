@@ -2,7 +2,7 @@ import json
 from unittest.mock import PropertyMock, call
 
 from mock import MagicMock, patch
-from shared.reports.types import ReportTotals, SessionTotalsArray
+from shared.reports.types import ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
 from sqlalchemy.orm import Session
@@ -142,12 +142,6 @@ class TestReportDetailsModel(object):
             "file_totals": ReportTotals(
                 *[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]
             ),
-            "session_totals": SessionTotalsArray.build_from_encoded_data(
-                {
-                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                    "meta": {"session_count": 1},
-                }
-            ),
             "diff_totals": None,
         },
         {
@@ -155,12 +149,6 @@ class TestReportDetailsModel(object):
             "file_index": 1,
             "file_totals": ReportTotals(
                 *[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]
-            ),
-            "session_totals": SessionTotalsArray.build_from_encoded_data(
-                {
-                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
-                    "meta": {"session_count": 1},
-                }
             ),
             "diff_totals": None,
         },
@@ -172,20 +160,12 @@ class TestReportDetailsModel(object):
                 "filename": "file_1.go",
                 "file_index": 0,
                 "file_totals": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                "session_totals": {
-                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
             {
                 "filename": "file_2.py",
                 "file_index": 1,
                 "file_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                "session_totals": {
-                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
         ]
@@ -196,10 +176,6 @@ class TestReportDetailsModel(object):
                 "file_totals": ReportTotals(
                     *[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]
                 ),
-                "session_totals": {
-                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
             {
@@ -208,10 +184,6 @@ class TestReportDetailsModel(object):
                 "file_totals": ReportTotals(
                     *[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]
                 ),
-                "session_totals": {
-                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
         ]
