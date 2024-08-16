@@ -148,6 +148,9 @@ def route_task(name, args, kwargs, options, task=None, **kw):
     """Function to dynamically route tasks to the proper queue.
     Docs: https://docs.celeryq.dev/en/stable/userguide/routing.html#routers
     """
-    db_session = get_db_session()
-    user_plan = _get_user_plan_from_task(db_session, name, kwargs)
+
+    user_plan = options.get("user_plan")
+    if user_plan is None:
+        db_session = get_db_session()
+        user_plan = _get_user_plan_from_task(db_session, name, kwargs)
     return route_tasks_based_on_user_plan(name, user_plan)

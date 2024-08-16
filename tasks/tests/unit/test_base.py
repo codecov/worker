@@ -532,6 +532,7 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=400,
             soft_time_limit=200,
+            user_plan=mock_celery_task_router(),
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
@@ -610,6 +611,7 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             soft_time_limit=None,
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=None,
+            user_plan="users-pr-inappm",
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
@@ -654,6 +656,7 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             soft_time_limit=500,
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=600,
+            user_plan="users-enterprisey",
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
@@ -698,4 +701,5 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             soft_time_limit=400,
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=450,
+            user_plan="users-enterprisey",
         )
