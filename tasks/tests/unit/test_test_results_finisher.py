@@ -70,9 +70,9 @@ def test_results_setup(mocker, dbsession):
         message="hello world",
         commitid="cd76b0821854a780b60012aed85af0a8263004ad",
         repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-        repository__owner__username="joseph-sentry",
+        repository__owner__username="test-username",
         repository__owner__service="github",
-        repository__name="codecov-demo",
+        repository__name="test-repo-name",
     )
     commit.branch = "main"
     dbsession.add(commit)
@@ -176,14 +176,14 @@ def test_results_setup(mocker, dbsession):
         TestInstance(
             test_id=test_id2,
             outcome=str(Outcome.Failure),
-            failure_message="Shared failure message",
+            failure_message="Shared \n\n\n\n <pre> ````````\n \r\n\r\n | test | test | test </pre>failure message",
             duration_seconds=2.0,
             upload_id=uploads[1].id,
         ),
         TestInstance(
             test_id=test_id3,
             outcome=str(Outcome.Failure),
-            failure_message="Shared failure message",
+            failure_message="Shared \n\n\n\n <pre> \n  ````````  \n \r\n\r\n | test | test | test </pre>failure message",
             duration_seconds=3.0,
             upload_id=uploads[2].id,
         ),
@@ -351,7 +351,78 @@ class TestUploadTestFinisherTask(object):
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "### :x: 4 Tests Failed:\n| Tests completed | Failed | Passed | Skipped |\n|---|---|---|---|\n| 4 | 4 | 0 | 0 |\n<details><summary>View the top 3 failed tests by shortest run time</summary>\n\n> <pre>\n> test_name1\n> </pre>\n> <details><summary>Stack Traces | 2s run time</summary>\n> \n> > <pre>Shared failure message</pre>\n> > [View](https://example.com/build_url_1) the CI Build\n> \n> </details>\n\n\n> <pre>\n> Other Class Name\x1ftest_name2\n> </pre>\n> <details><summary>Stack Traces | 3s run time</summary>\n> \n> > <pre>Shared failure message</pre>\n> > [View](https://example.com/build_url_2) the CI Build\n> \n> </details>\n\n\n> <pre>\n> Class Name\x1ftest_name0\n> </pre>\n> <details><summary>Stack Traces | 4s run time</summary>\n> \n> > <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n> > [View](https://example.com/build_url_3) the CI Build\n> \n> </details>\n\n</details>\n\nTo view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/joseph-sentry/codecov-demo/tests/main)",
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 3 failed tests by shortest run time</summary>
+
+> 
+> ```
+> test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> Other Class Name test_name2
+> ```
+> 
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+
+To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
         mock_metrics.incr.assert_has_calls(
@@ -551,7 +622,78 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
-            "### :x: 4 Tests Failed:\n| Tests completed | Failed | Passed | Skipped |\n|---|---|---|---|\n| 4 | 4 | 0 | 0 |\n<details><summary>View the top 3 failed tests by shortest run time</summary>\n\n> <pre>\n> test_name1\n> </pre>\n> <details><summary>Stack Traces | 2s run time</summary>\n> \n> > <pre>Shared failure message</pre>\n> > [View](https://example.com/build_url_1) the CI Build\n> \n> </details>\n\n\n> <pre>\n> Other Class Name\x1ftest_name2\n> </pre>\n> <details><summary>Stack Traces | 3s run time</summary>\n> \n> > <pre>Shared failure message</pre>\n> > [View](https://example.com/build_url_2) the CI Build\n> \n> </details>\n\n\n> <pre>\n> Class Name\x1ftest_name0\n> </pre>\n> <details><summary>Stack Traces | 4s run time</summary>\n> \n> > <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n> > [View](https://example.com/build_url_3) the CI Build\n> \n> </details>\n\n</details>\n\nTo view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/joseph-sentry/codecov-demo/tests/main)",
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 3 failed tests by shortest run time</summary>
+
+> 
+> ```
+> test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> Other Class Name test_name2
+> ```
+> 
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+
+To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
         assert expected_result == result
@@ -677,7 +819,81 @@ class TestUploadTestFinisherTask(object):
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            "### :x: 4 Tests Failed:\n| Tests completed | Failed | Passed | Skipped |\n|---|---|---|---|\n| 4 | 4 | 0 | 0 |\n<details><summary>View the top 2 failed tests by shortest run time</summary>\n\n> <pre>\n> test_name1\n> </pre>\n> <details><summary>Stack Traces | 2s run time</summary>\n> \n> > <pre>Shared failure message</pre>\n> > [View](https://example.com/build_url_1) the CI Build\n> \n> </details>\n\n\n> <pre>\n> Class Name\x1ftest_name0\n> </pre>\n> <details><summary>Stack Traces | 4s run time</summary>\n> \n> > <pre>&lt;pre&gt;Fourth <br><br>&lt;/pre&gt; | test  | instance |</pre>\n> > [View](https://example.com/build_url_3) the CI Build\n> \n> </details>\n\n</details>\n<details><summary>View the full list of 1 :snowflake: flaky tests</summary>\n\n> <pre>\n> Other Class Name\x1ftest_name2\n> </pre>\n> **Flake rate in main:** 40.0% (Passed 3 times, Failed 2 times)\n> <details><summary>Stack Traces | 3s run time</summary>\n> \n> > <pre>Shared failure message</pre>\n> > [View](https://example.com/build_url_2) the CI Build\n> \n> </details>\n\n</details>\n\nTo view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/joseph-sentry/codecov-demo/tests/main)",
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 2 failed tests by shortest run time</summary>
+
+> 
+> ```
+> test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+<details><summary>View the full list of 1 :snowflake: flaky tests</summary>
+
+> 
+> ```
+> Other Class Name test_name2
+> ```
+> 
+> **Flake rate in main:** 40.0% (Passed 3 times, Failed 2 times)
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+</details>
+
+To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
         mock_metrics.incr.assert_has_calls(

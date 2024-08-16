@@ -84,7 +84,12 @@ def test_generate_failure_info():
 
     assert (
         res
-        == "<pre>hello world</pre>\n[View](https://example.com/build_url) the CI Build"
+        == """
+```
+hello world
+```
+
+[View](https://example.com/build_url) the CI Build"""
     )
 
 
@@ -113,12 +118,18 @@ def test_build_message():
 | 3 | 1 | 2 | 3 |
 <details><summary>View the top 1 failed tests by shortest run time</summary>
 
-> <pre>
+> 
+> ```
 > testname
-> </pre>
+> ```
+> 
 > <details><summary>Stack Traces | 1s run time</summary>
 > 
-> > <pre>hello world</pre>
+> > 
+> > ```
+> > hello world
+> > ```
+> > 
 > > [View](https://example.com/build_url) the CI Build
 > 
 > </details>
@@ -157,13 +168,19 @@ def test_build_message_with_flake():
 | 3 | 1 | 2 | 3 |
 <details><summary>View the full list of 1 :snowflake: flaky tests</summary>
 
-> <pre>
+> 
+> ```
 > testname
-> </pre>
+> ```
+> 
 > **Flake rate in main:** 33.33333333333333% (Passed 2 times, Failed 1 times)
 > <details><summary>Stack Traces | 1s run time</summary>
 > 
-> > <pre>hello world</pre>
+> > 
+> > ```
+> > hello world
+> > ```
+> > 
 > > [View](https://example.com/build_url) the CI Build
 > 
 > </details>
