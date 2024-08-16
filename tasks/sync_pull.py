@@ -405,16 +405,12 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             "Sync Pull using merge commit sha experiment running",
             extra=dict(repoid=repoid, pullid=pullid, merge_commit_sha=merge_commit_sha),
         )
-        if merge_commit_sha is not None:
-            merge_commit = repository_service.get_commit(
-                pull_dict.get("merge_commit_sha")
-            )
-            if len(merge_commit["parents"]) > 1:
-                return False
-            else:
-                return True
-        else:
+
+        if merge_commit_sha is None:
             return None
+
+        merge_commit = repository_service.get_commit(merge_commit_sha)
+        return len(merge_commit["parents"] <= 1)
 
     def was_squash_via_ancestor_tree(self, commits_on_pr, base_ancestors_tree):
         """
