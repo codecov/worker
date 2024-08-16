@@ -871,7 +871,7 @@ def test_bundle_analysis_processor_task_cache_config_not_saved(
         commit_yaml={},
         params={
             "upload_pk": upload.id_,
-            "commit": commit.commitid,g
+            "commit": commit.commitid,
         },
     )
     assert result == {
