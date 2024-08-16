@@ -34,13 +34,7 @@ log = logging.getLogger(__name__)
 test_results_finisher_task_name = "app.tasks.test_results.TestResultsFinisherTask"
 
 ESCAPE_FAILURE_MESSAGE_DEFN = [
-    Replacement(['"'], "&quot;", EscapeEnum.REPLACE),
-    Replacement(["'"], "&apos;", EscapeEnum.REPLACE),
-    Replacement(["<"], "&lt;", EscapeEnum.REPLACE),
-    Replacement([">"], "&gt;", EscapeEnum.REPLACE),
-    Replacement(["?"], "&amp;", EscapeEnum.REPLACE),
     Replacement(["\r"], "", EscapeEnum.REPLACE),
-    Replacement(["\n"], "<br>", EscapeEnum.REPLACE),
 ]
 QUEUE_NOTIFY_KEY = "queue_notify"
 
