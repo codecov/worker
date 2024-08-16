@@ -291,7 +291,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             report_type=ReportType(report_type),
             report_code=report_code,
         )
-        lock_name = upload_context.lock_name("upload")
+
+        if not upload_context.has_pending_jobs():
+            log.info("No pending jobs. Upload task is done.")
+            return {
+                "was_setup": False,
+                "was_updated": False,
+                "tasks_were_scheduled": False,
+            }
 
         if upload_context.is_currently_processing() and self.request.retries == 0:
             log.info(
@@ -300,18 +307,40 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     repoid=repoid,
                     commit=commitid,
                     report_type=report_type,
-                    has_pending_jobs=upload_context.has_pending_jobs(),
                 ),
             )
             upload_context.prepare_kwargs_for_retry(kwargs)
             self.retry(countdown=60, kwargs=kwargs)
 
+        if retry_countdown := _should_debounce_processing(upload_context):
+            log.info(
+                "Retrying due to very recent uploads.",
+                extra=dict(
+                    repoid=upload_context.repoid,
+                    commit=upload_context.commitid,
+                    report_type=upload_context.report_type.value,
+                    countdown=retry_countdown,
+                ),
+            )
+            upload_context.prepare_kwargs_for_retry(kwargs)
+            self.retry(countdown=retry_countdown, kwargs=kwargs)
+
+        lock_name = upload_context.lock_name("upload")
         try:
             with upload_context.redis_connection.lock(
                 lock_name,
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
+                # Check whether a different `Upload` task has "stolen" our uploads
+                if not upload_context.has_pending_jobs():
+                    log.info("No pending jobs. Upload task is done.")
+                    return {
+                        "was_setup": False,
+                        "was_updated": False,
+                        "tasks_were_scheduled": False,
+                    }
+
                 return self.run_impl_within_lock(
                     db_session,
                     upload_context,
@@ -379,27 +408,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 report_code=upload_context.report_code,
             ),
         )
-        if not upload_context.has_pending_jobs():
-            log.info("No pending jobs. Upload task is done.")
-            return {
-                "was_setup": False,
-                "was_updated": False,
-                "tasks_were_scheduled": False,
-            }
-
-        if retry_countdown := _should_debounce_processing(upload_context):
-            log.info(
-                "Retrying due to very recent uploads.",
-                extra=dict(
-                    repoid=upload_context.repoid,
-                    commit=upload_context.commitid,
-                    report_type=upload_context.report_type.value,
-                    countdown=retry_countdown,
-                ),
-            )
-            upload_context.prepare_kwargs_for_retry(kwargs)
-            self.retry(countdown=retry_countdown, kwargs=kwargs)
-
         repoid = upload_context.repoid
         commitid = upload_context.commitid
         report_type = upload_context.report_type
@@ -529,6 +537,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
             normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
+
         if argument_list:
             db_session.commit()
             self.schedule_task(

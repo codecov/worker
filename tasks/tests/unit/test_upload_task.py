@@ -1163,6 +1163,7 @@ class TestUploadTaskUnit(object):
         mocked_run_impl_within_lock = mocker.patch.object(
             UploadTask, "run_impl_within_lock", return_value=True
         )
+        mock_redis.keys[f"uploads/{commit.repoid}/{commit.commitid}"] = ["something"]
         task = UploadTask()
         task.request.retries = 0
         with pytest.raises(Retry):
@@ -1182,6 +1183,7 @@ class TestUploadTaskUnit(object):
         mocked_run_impl_within_lock = mocker.patch.object(
             UploadTask, "run_impl_within_lock", return_value={"some": "value"}
         )
+        mock_redis.keys[f"uploads/{commit.repoid}/{commit.commitid}"] = ["something"]
         task = UploadTask()
         task.request.retries = 1
         result = task.run_impl(dbsession, commit.repoid, commit.commitid)
