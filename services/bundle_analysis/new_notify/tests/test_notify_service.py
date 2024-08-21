@@ -177,15 +177,12 @@ class TestBundleAnalysisNotifyService:
             UserYaml.from_dict({"comment": {"require_bundle_changes": False}}),
         )
         result = service.notify()
-        error_logs = [
-            record for record in caplog.records if record.levelname == "ERROR"
-        ]
         warning_logs = [
             record for record in caplog.records if record.levelname == "WARNING"
         ]
         assert any(
-            error.message == "Failed to build NotificationContext"
-            for error in error_logs
+            warning.message == "Failed to build NotificationContext"
+            for warning in warning_logs
         )
         assert any(
             warning.message
