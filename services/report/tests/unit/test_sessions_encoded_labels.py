@@ -525,10 +525,7 @@ class TestAdjustSession(BaseTestCase):
                     "first_file.py": [
                         0,
                         [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 7, 7, 0, 0, "100"],
-                        },
+                        None,
                         None,
                     ]
                 },
@@ -923,7 +920,7 @@ class TestAdjustSession(BaseTestCase):
                     "first_file.py": [
                         0,
                         [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"meta": {"session_count": 4}, "3": [0, 7, 7, 0, 0, "100"]},
+                        None,
                         None,
                     ]
                 },

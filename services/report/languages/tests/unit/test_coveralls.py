@@ -53,10 +53,7 @@ class TestCoveralls(BaseTestCase):
                     "file": [
                         0,
                         [0, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "0": [0, 2, 1, 1, 0, "50.00000"],
-                            "meta": {"session_count": 1},
-                        },
+                        None,
                         None,
                     ]
                 },
