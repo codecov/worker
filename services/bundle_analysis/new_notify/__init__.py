@@ -76,7 +76,7 @@ class BundleAnalysisNotifyService:
                 .get_result()
             )
         except NotificationContextBuildError as exp:
-            log.error(
+            log.warning(
                 "Failed to build NotificationContext",
                 extra=dict(
                     notification_type="base_context", failed_step=exp.failed_step
@@ -120,7 +120,7 @@ class BundleAnalysisNotifyService:
                 message_strategy_class(),
             )
         except NotificationContextBuildError as exp:
-            log.error(
+            log.warning(
                 "Failed to build NotificationContext",
                 extra=dict(
                     notification_type=notification_type, failed_step=exp.failed_step

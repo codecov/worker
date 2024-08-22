@@ -53,20 +53,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        3413,
-                        1203,
-                        1886,
-                        324,
-                        "35.24758",
-                        1262
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/jquery-ui.1.12.1.min.js": [
@@ -86,20 +73,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        8,
-                        0,
-                        2,
-                        6,
-                        "0",
-                        8
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/eventbooking-theme/jquery-ui.js": [
@@ -119,20 +93,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        15,
-                        5,
-                        10,
-                        0,
-                        "33.33333",
-                        2
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-da.js": [
@@ -152,20 +113,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-de.js": [
@@ -185,20 +133,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-et.js": [
@@ -218,20 +153,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-en-GB.js": [
@@ -251,20 +173,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-fi.js": [
@@ -284,20 +193,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-fr.js": [
@@ -317,20 +213,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-gl.js": [
@@ -350,20 +233,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-nl.js": [
@@ -383,20 +253,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-nb.js": [
@@ -416,20 +273,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/external/jqueryui.1.12.1/js/i18n/datepicker-sv.js": [
@@ -449,20 +293,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        7,
-                        6,
-                        1,
-                        0,
-                        "85.71429",
-                        1
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/vendor/js/bootstrap.js": [
@@ -482,20 +313,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        1095,
-                        259,
-                        821,
-                        15,
-                        "23.65297",
-                        301
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/js/onlinebooking.js": [
@@ -515,20 +333,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        127,
-                        24,
-                        102,
-                        1,
-                        "18.89764",
-                        15
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/vendor/js/qunit/qunit.js": [
@@ -548,20 +353,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        1893,
-                        596,
-                        1158,
-                        139,
-                        "31.48442",
-                        499
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/vendor/js/sinon/sinon.js": [
@@ -581,20 +373,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        3032,
-                        653,
-                        2182,
-                        197,
-                        "21.53694",
-                        847
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ],
             "/tests/onlinebooking.js": [
@@ -614,19 +393,7 @@
                     0,
                     0
                 ],
-                {
-                    "0": [
-                        0,
-                        48,
-                        48,
-                        0,
-                        0,
-                        "100"
-                    ],
-                    "meta": {
-                        "session_count": 1
-                    }
-                },
+                null,
                 null
             ]
         },

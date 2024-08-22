@@ -128,16 +128,13 @@ class TestCloverProcessor(BaseTestCase):
                     "file.php": [
                         1,
                         [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 1, 1, 0, 0, "100"], "meta": {"session_count": 1}},
+                        None,
                         None,
                     ],
                     "source.php": [
                         0,
                         [0, 11, 4, 5, 2, "36.36364", 4, 2, 0, 0, 9, 0, 0],
-                        {
-                            "0": [0, 11, 4, 5, 2, "36.36364", 4, 2, 0, 0, 9],
-                            "meta": {"session_count": 1},
-                        },
+                        None,
                         None,
                     ],
                 },
