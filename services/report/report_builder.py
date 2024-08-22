@@ -1,13 +1,14 @@
 import dataclasses
 import logging
 from enum import Enum
-from typing import Callable, List, Union
+from typing import List, Union
 
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
 from shared.yaml.user_yaml import UserYaml
 
 from helpers.labels import SpecialLabelsEnum
+from services.path_fixer import PathFixer
 
 log = logging.getLogger(__name__)
 
@@ -240,7 +241,7 @@ class ReportBuilder(object):
         current_yaml: UserYaml,
         sessionid: int,
         ignored_lines,
-        path_fixer: Callable,
+        path_fixer: PathFixer,
         should_use_label_index: bool = False,
     ):
         self.current_yaml = current_yaml

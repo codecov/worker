@@ -1,6 +1,31 @@
 import collections
 import operator
 from difflib import SequenceMatcher
+from os.path import relpath
+
+
+def _clean_path(path):
+    path = relpath(
+        path.strip()
+        .replace("**/", "")
+        .replace("\r", "")
+        .replace("\\ ", " ")
+        .replace("\\", "/")
+    )
+    return path
+
+
+def _check_ancestors(path, match, ancestors):
+    """
+    Require N ancestors to be in common with original path and matched path
+    """
+    pl = path.lower()
+    ml = match.lower()
+    if pl == ml:
+        return True
+    if len(ml.split("/")) < len(pl.split("/")) and pl.endswith(ml):
+        return True
+    return ml.endswith("/".join(pl.split("/")[(ancestors + 1) * -1 :]))
 
 
 class Tree:
@@ -12,6 +37,21 @@ class Tree:
 
         # Original value indicator
         self._ORIG = "\\*__orig__*//"
+
+    def resolve_path(self, path: str, ancestors=None):
+        path = _clean_path(path)
+
+        new_path = self.lookup(path, ancestors)
+
+        if new_path:
+            if ancestors and not _check_ancestors(path, new_path, ancestors):
+                # path ancestor count is not valud
+                return None
+
+            return new_path
+
+        # path was not resolved
+        return None
 
     def _list_to_nested_dict(self, lis):
         """

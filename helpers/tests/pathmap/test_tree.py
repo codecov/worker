@@ -1,4 +1,4 @@
-from helpers.pathmap.tree import Tree
+from helpers.pathmap import Tree
 
 
 class TestTree(object):

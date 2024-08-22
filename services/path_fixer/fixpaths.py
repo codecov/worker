@@ -5,7 +5,7 @@ from typing import Optional, Sequence
 
 log = logging.getLogger(__name__)
 
-_remove_known_bad_paths = re.compile(
+remove_known_bad_paths = re.compile(
     r"^(\.*\/)*(%s)?"
     % "|".join(
         (
@@ -131,7 +131,7 @@ def first_not_null_index(_list) -> Optional[int]:
 _star_to_glob = re.compile(r"(?<!\.)\*").sub
 
 
-def _fixpaths_regs(fix: str) -> str:
+def fixpaths_regs(fix: str) -> str:
     key = tuple(fix.split("::"))[0]
     # [DEPRECIATING] because handled by validators, but some data is cached in db
     # a/**/b => a/.*/b
