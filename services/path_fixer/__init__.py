@@ -76,8 +76,7 @@ class PathFixer(object):
         self.path_matcher = UserPathIncludes(self.path_patterns)
 
         if self.toc and not should_disable_default_pathfixes:
-            self.tree = Tree()
-            self.tree.construct_tree(self.toc)
+            self.tree = Tree(self.toc)
         else:
             self.tree = None
 
