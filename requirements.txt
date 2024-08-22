@@ -356,7 +356,7 @@ sentry-sdk==1.40.0
     # via
     #   -r requirements.in
     #   shared
-shared @ https://github.com/codecov/shared/archive/c2dc0c175fcd0d0040083a85c4b7d4a3b796e7cd.tar.gz
+shared @ https://github.com/codecov/shared/archive/e944f586104a274032c7f547400f1cbcae3d4c7d.tar.gz
     # via -r requirements.in
 six==1.16.0
     # via
