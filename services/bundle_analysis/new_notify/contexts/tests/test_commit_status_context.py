@@ -109,9 +109,9 @@ class TestBundleAnalysisPRCommentNotificationContext:
         )
 
         mock_check_compare_sha = mocker.patch(
-            "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
+            "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha",
+            return_value=None,
         )
-        mock_check_compare_sha.return_value = None
 
         save_mock_bundle_analysis_report(
             repository, head_report, mock_storage, sample_report_number=2
