@@ -14,12 +14,18 @@ from services.bundle_analysis.new_notify.contexts import (
 from services.bundle_analysis.new_notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
 )
+from services.bundle_analysis.new_notify.contexts.commit_status import (
+    CommitStatusNotificationContextBuilder,
+)
 from services.bundle_analysis.new_notify.helpers import (
     get_notification_types_configured,
 )
 from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
 from services.bundle_analysis.new_notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
+)
+from services.bundle_analysis.new_notify.messages.commit_status import (
+    CommitStatusMessageStrategy,
 )
 from services.bundle_analysis.new_notify.types import (
     NotificationSuccess,
@@ -102,12 +108,22 @@ class BundleAnalysisNotifyService:
             NotificationType.PR_COMMENT: (
                 BundleAnalysisPRCommentContextBuilder,
                 BundleAnalysisCommentMarkdownStrategy,
-            )
+            ),
+            NotificationType.COMMIT_STATUS: (
+                CommitStatusNotificationContextBuilder,
+                CommitStatusMessageStrategy,
+            ),
+            # The commit-check API is more powerful than COMMIT_STATUS
+            # but we currently don't differentiate between them
+            NotificationType.GITHUB_COMMIT_CHECK: (
+                CommitStatusNotificationContextBuilder,
+                CommitStatusMessageStrategy,
+            ),
         }
         notifier_strategy = notifier_lookup.get(notification_type)
 
         if notifier_strategy is None:
-            msg = f"No context builder for {notification_type.name}. Skipping"
+            msg = f"No context builder for {notification_type}. Skipping"
             log.error(msg)
             return None
         builder_class, message_strategy_class = notifier_strategy
