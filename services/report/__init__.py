@@ -396,10 +396,6 @@ class ReportService(BaseReportService):
             file["filename"]: ReportFileSummary(
                 file_index=file["file_index"],
                 file_totals=ReportTotals(*file["file_totals"]),
-                session_totals=[
-                    ReportTotals(*session) if session else None
-                    for session in file["session_totals"]
-                ],
                 diff_totals=file["diff_totals"],
             )
             for file in report_details.files_array
@@ -967,10 +963,9 @@ class ReportService(BaseReportService):
         build = upload.build_code
         job = upload.job_code
         name = upload.name
-        url = upload.storage_path
+        archive_url = upload.storage_path
         reportid = upload.external_id
 
-        archive_url = url
         session = Session(
             provider=service,
             build=build,
@@ -978,7 +973,7 @@ class ReportService(BaseReportService):
             name=name,
             time=int(time()),
             flags=flags,
-            archive=archive_url or url,
+            archive=archive_url,
             url=build_url,
         )
         try:
@@ -1173,7 +1168,6 @@ class ReportService(BaseReportService):
                 "filename": k,
                 "file_index": v.file_index,
                 "file_totals": v.file_totals,
-                "session_totals": v.session_totals,
                 "diff_totals": v.diff_totals,
             }
             for k, v in report._files.items()

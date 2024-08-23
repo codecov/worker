@@ -9,7 +9,7 @@ from shared.bundle_analysis import (
     BundleAnalysisReport,
     BundleAnalysisReportLoader,
 )
-from shared.bundle_analysis.models import AssetType
+from shared.bundle_analysis.models import AssetType, MetadataKey
 from shared.bundle_analysis.storage import get_bucket_name
 from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.django_apps.bundle_analysis.service.bundle_analysis import (
@@ -47,12 +47,14 @@ class ProcessingResult:
     bundle_report: Optional[BundleAnalysisReport] = None
     previous_bundle_report: Optional[BundleAnalysisReport] = None
     session_id: Optional[int] = None
+    bundle_name: Optional[str] = None
     error: Optional[ProcessingError] = None
 
     def as_dict(self):
         return {
             "upload_id": self.upload.id_,
             "session_id": self.session_id,
+            "bundle_name": self.bundle_name,
             "error": self.error.as_dict() if self.error else None,
         }
 
@@ -116,24 +118,47 @@ class BundleAnalysisReportService(BaseReportService):
             db_session.flush()
         return commit_report
 
+    def _get_parent_commit(
+        self,
+        db_session: Session,
+        head_commit: Commit,
+        head_bundle_report: Optional[BundleAnalysisReport],
+    ) -> Optional[Commit]:
+        """
+        There's two ways to retrieve parent commit of the head commit (in order of priority):
+        1. Get the commitSha from head commit bundle report (stored in Metadata during ingestion)
+        2. Get the head commit.parent from the DB
+        """
+        commitid = (
+            head_bundle_report
+            and head_bundle_report.metadata().get(MetadataKey.COMPARE_SHA)
+        ) or head_commit.parent_commit_id
+
+        return (
+            db_session.query(Commit)
+            .filter_by(
+                commitid=commitid,
+                repository=head_commit.repository,
+            )
+            .first()
+        )
+
     def _previous_bundle_analysis_report(
-        self, bundle_loader: BundleAnalysisReportLoader, commit: Commit
+        self,
+        bundle_loader: BundleAnalysisReportLoader,
+        commit: Commit,
+        head_bundle_report: BundleAnalysisReport,
     ) -> Optional[BundleAnalysisReport]:
         """
         Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
         Assets to the current one being parsed.
         """
-        if commit.parent_commit_id is None:
-            return None
-
         db_session = commit.get_db_session()
-        parent_commit = (
-            db_session.query(Commit)
-            .filter_by(
-                commitid=commit.parent_commit_id,
-                repository=commit.repository,
-            )
-            .first()
+
+        parent_commit = self._get_parent_commit(
+            db_session=db_session,
+            head_commit=commit,
+            head_bundle_report=head_bundle_report,
         )
         if parent_commit is None:
             return None
@@ -152,7 +177,9 @@ class BundleAnalysisReportService(BaseReportService):
         return bundle_loader.load(parent_commit_report.external_id)
 
     @sentry_sdk.trace
-    def process_upload(self, commit: Commit, upload: Upload) -> ProcessingResult:
+    def process_upload(
+        self, commit: Commit, upload: Upload, compare_sha: Optional[str] = None
+    ) -> ProcessingResult:
         """
         Download and parse the data associated with the given upload and
         merge the results into a bundle report.
@@ -168,7 +195,9 @@ class BundleAnalysisReportService(BaseReportService):
         # attempt to carry over parent bundle analysis report if commit doesn't have a report
         if bundle_report is None:
             # load a new copy of the previous bundle report into temp file
-            bundle_report = self._previous_bundle_analysis_report(bundle_loader, commit)
+            bundle_report = self._previous_bundle_analysis_report(
+                bundle_loader, commit, head_bundle_report=bundle_report
+            )
             if bundle_report:
                 # query which bundle names has caching turned on
                 qs = CacheConfig.objects.filter(
@@ -203,10 +232,12 @@ class BundleAnalysisReportService(BaseReportService):
                 )
 
             # load the downloaded data into the bundle report
-            session_id = bundle_report.ingest(local_path)
+            session_id, bundle_name = bundle_report.ingest(local_path, compare_sha)
 
             # Retrieve previous commit's BAR and associate past Assets
-            prev_bar = self._previous_bundle_analysis_report(bundle_loader, commit)
+            prev_bar = self._previous_bundle_analysis_report(
+                bundle_loader, commit, head_bundle_report=bundle_report
+            )
             if prev_bar:
                 bundle_report.associate_previous_assets(prev_bar)
 
@@ -278,6 +309,7 @@ class BundleAnalysisReportService(BaseReportService):
             bundle_report=bundle_report,
             previous_bundle_report=prev_bar,
             session_id=session_id,
+            bundle_name=bundle_name,
         )
 
     def _save_to_timeseries(

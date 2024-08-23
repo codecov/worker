@@ -113,6 +113,9 @@ class BundleAnalysisProcessorTask(
         upload = db_session.query(Upload).filter_by(id_=upload_pk).first()
         assert upload is not None
 
+        # Override base commit of comparisons with a custom commit SHA if applicable
+        compare_sha = params.get("bundle_analysis_compare_sha")
+
         # these are the task results from prior processor tasks in the chain
         # (they get accumulated as we execute each task in succession)
         processing_results = previous_result.get("results", [])
@@ -127,12 +130,15 @@ class BundleAnalysisProcessorTask(
                     params=params,
                     upload_id=upload.id_,
                     parent_task=self.request.parent_id,
+                    compare_sha=compare_sha,
                 ),
             )
             assert params.get("commit") == commit.commitid
 
             report_service = BundleAnalysisReportService(commit_yaml)
-            result: ProcessingResult = report_service.process_upload(commit, upload)
+            result: ProcessingResult = report_service.process_upload(
+                commit, upload, compare_sha
+            )
             if result.error and result.error.is_retryable and self.request.retries == 0:
                 # retryable error and no retry has already be scheduled
                 self.retry(max_retries=5, countdown=20)

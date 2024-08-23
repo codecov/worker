@@ -1,3 +1,4 @@
+from typing import Optional
 from unittest.mock import ANY
 
 import pytest
@@ -32,8 +33,8 @@ class MockBundleAnalysisReport:
             MockBundleReport("BundleA", 1111),
         ]
 
-    def ingest(self, path):
-        return 123
+    def ingest(self, path, compare_sha: Optional[str] = None):
+        return 123, "BundleA"
 
     def cleanup(self):
         pass
@@ -46,6 +47,9 @@ class MockBundleAnalysisReport:
 
     def associate_previous_assets(self, prev_bar):
         pass
+
+    def metadata(self):
+        return {}
 
 
 @pytest.mark.django_db(databases={"default", "timeseries"})
@@ -80,7 +84,7 @@ def test_bundle_analysis_processor_task_success(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -100,6 +104,7 @@ def test_bundle_analysis_processor_task_success(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "bundle1",
             },
         ],
     }
@@ -164,6 +169,7 @@ def test_bundle_analysis_processor_task_error(
                 },
                 "session_id": None,
                 "upload_id": upload.id_,
+                "bundle_name": None,
             },
         ],
     }
@@ -293,6 +299,7 @@ def test_bundle_analysis_process_upload_general_error(
                 },
                 "session_id": None,
                 "upload_id": upload.id_,
+                "bundle_name": None,
             },
         ],
     }
@@ -417,6 +424,7 @@ def test_bundle_analysis_process_upload_rate_limit_error(
                 },
                 "session_id": None,
                 "upload_id": upload.id_,
+                "bundle_name": None,
             },
         ],
     }
@@ -461,7 +469,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_id(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -514,7 +522,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_object(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -571,7 +579,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_report_object(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -634,7 +642,7 @@ def test_bundle_analysis_process_associate_called(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -698,7 +706,7 @@ def test_bundle_analysis_process_associate_called_two(
     dbsession.flush()
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     associate = mocker.patch(
         "shared.bundle_analysis.BundleAnalysisReport.associate_previous_assets"
@@ -725,6 +733,84 @@ def test_bundle_analysis_process_associate_called_two(
     assert commit.state == "complete"
     assert upload.state == "processed"
     associate.assert_called_once()
+
+
+@pytest.mark.django_db(databases={"default", "timeseries"})
+def test_bundle_analysis_processor_associate_custom_compare_sha(
+    mocker,
+    dbsession,
+    mock_storage,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
+
+    parent_commit = CommitFactory.create(state="completed")
+    dbsession.add(parent_commit)
+    dbsession.flush()
+
+    parent_commit_report = CommitReport(
+        commit_id=parent_commit.id_, report_type="bundle_analysis"
+    )
+    dbsession.add(parent_commit_report)
+    dbsession.flush()
+
+    commit = CommitFactory.create(
+        state="pending",
+        parent_commit_id=parent_commit.commitid,
+        repository=parent_commit.repository,
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(commit_id=commit.id_)
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(storage_path=storage_path, report=commit_report)
+    dbsession.add(upload)
+    dbsession.flush()
+
+    ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
+    ingest.return_value = (123, "bundle1")  # session_id
+
+    _get_parent_commit = mocker.patch(
+        "services.bundle_analysis.report.BundleAnalysisReportService._get_parent_commit"
+    )
+    _get_parent_commit.side_effect = [None, None]
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": upload.id_,
+            "commit": commit.commitid,
+        },
+    )
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+
+    assert _get_parent_commit.call_count == 2
+    args = _get_parent_commit.call_args_list
+
+    assert args[0][1]["head_commit"] == commit
+    assert args[1][1]["head_commit"] == commit
+
+    assert args[0][1]["head_bundle_report"] is None
+    assert args[1][1]["head_bundle_report"] is not None
 
 
 def test_bundle_analysis_processor_task_cache_config_not_saved(
@@ -795,6 +881,7 @@ def test_bundle_analysis_processor_task_cache_config_not_saved(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -873,6 +960,7 @@ def test_bundle_analysis_processor_task_cache_config_saved(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -940,7 +1028,7 @@ def test_bundle_analysis_processor_not_caching_previous_report(
     saver_mock.return_value = None
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -960,6 +1048,7 @@ def test_bundle_analysis_processor_not_caching_previous_report(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -1029,7 +1118,7 @@ def test_bundle_analysis_processor_not_caching_previous_report_two(
     saver_mock.return_value = None
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -1049,6 +1138,7 @@ def test_bundle_analysis_processor_not_caching_previous_report_two(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }
@@ -1118,7 +1208,7 @@ def test_bundle_analysis_processor_caching_previous_report(
     saver_mock.return_value = None
 
     ingest = mocker.patch("shared.bundle_analysis.BundleAnalysisReport.ingest")
-    ingest.return_value = 123  # session_id
+    ingest.return_value = (123, "bundle1")  # session_id
 
     result = BundleAnalysisProcessorTask().run_impl(
         dbsession,
@@ -1138,6 +1228,7 @@ def test_bundle_analysis_processor_caching_previous_report(
                 "error": None,
                 "session_id": 123,
                 "upload_id": upload.id_,
+                "bundle_name": "BundleA",
             },
         ],
     }

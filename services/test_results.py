@@ -1,5 +1,4 @@
 import logging
-from collections import defaultdict
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import List, Mapping, Sequence
@@ -8,13 +7,20 @@ from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
-from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from database.models import (
+    Commit,
+    CommitReport,
+    RepositoryFlag,
+    TestInstance,
+    Upload,
+)
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.report import BaseReportService
 from services.repository import (
     get_repo_provider_service,
 )
+from services.urls import get_test_analytics_url
 from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
@@ -118,6 +124,14 @@ class TestResultsNotificationFailure:
     testname: str
     envs: List[str]
     test_id: str
+    duration_seconds: float
+    build_url: str | None = None
+
+
+@dataclass
+class FlakeInfo:
+    failed: int
+    count: int
 
 
 @dataclass
@@ -126,43 +140,108 @@ class TestResultsNotificationPayload:
     passed: int
     skipped: int
     failures: List[TestResultsNotificationFailure]
-    flaky_tests: set[str] | None = None
+    flaky_tests: dict[str, FlakeInfo]
+
+
+def wrap_in_details(summary: str, content: str):
+    result = f"<details><summary>{summary}</summary>\n{content}\n</details>"
+    return result
+
+
+def make_quoted(content: str) -> str:
+    lines = content.splitlines()
+
+    result = ["> " + line for line in lines]
+
+    result = "\n".join(result)
+    return f"\n{result}\n"
+
+
+def properly_backtick(content: str) -> str:
+    max_backtick_count = 0
+    curr_backtick_count = 0
+    prev_char = None
+    for char in content:
+        if char == "`":
+            curr_backtick_count += 1
+        else:
+            curr_backtick_count = 0
+
+        if curr_backtick_count > max_backtick_count:
+            max_backtick_count = curr_backtick_count
+
+    backticks = "`" * (max_backtick_count + 1)
+    return f"{backticks}\n{content}\n{backticks}"
+
+
+def wrap_in_code(content: str) -> str:
+    if "```" in content:
+        return properly_backtick(content)
+    else:
+        return f"\n```\n{content}\n```\n"
+
+
+def display_duration(f: float) -> str:
+    before_dot, after_dot = str(f).split(".")
+    if len(before_dot) > 3:
+        return before_dot
+    else:
+        return f"{f:.3g}"
+
+
+def generate_failure_info(
+    fail: TestResultsNotificationFailure,
+):
+    if fail.failure_message is not None:
+        failure_message = fail.failure_message
+    else:
+        failure_message = "No failure message available"
+
+    failure_message = wrap_in_code(failure_message)
+    if fail.build_url:
+        return f"{failure_message}\n[View]({fail.build_url}) the CI Build"
+    else:
+        return failure_message
+
+
+def generate_view_test_analytics_line(commit: Commit) -> str:
+    repo = commit.repository
+    test_analytics_url = get_test_analytics_url(repo, commit)
+    return f"\nTo view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard]({test_analytics_url})"
+
+
+def messagify_failure(
+    failure: TestResultsNotificationFailure,
+) -> str:
+    test_name = wrap_in_code(failure.testname.replace("\x1f", " "))
+    formatted_duration = display_duration(failure.duration_seconds)
+    stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
+    stack_trace = wrap_in_details(
+        stack_trace_summary,
+        make_quoted(generate_failure_info(failure)),
+    )
+    return make_quoted(f"{test_name}\n{stack_trace}")
+
+
+def messagify_flake(
+    flaky_failure: TestResultsNotificationFailure,
+    flake_info: FlakeInfo,
+) -> str:
+    test_name = wrap_in_code(flaky_failure.testname.replace("\x1f", " "))
+    formatted_duration = display_duration(flaky_failure.duration_seconds)
+    flake_rate = flake_info.failed / flake_info.count * 100
+    flake_rate_section = f"**Flake rate in main:** {flake_rate}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
+    stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
+    stack_trace = wrap_in_details(
+        stack_trace_summary,
+        make_quoted(generate_failure_info(flaky_failure)),
+    )
+    return make_quoted(f"{test_name}\n{flake_rate_section}\n{stack_trace}")
 
 
 @dataclass
 class TestResultsNotifier(BaseNotifier):
     payload: TestResultsNotificationPayload | None
-
-    def generate_test_description(
-        self,
-        fail: TestResultsNotificationFailure,
-    ):
-        has_class_name = "\x1f" in fail.testname
-        if has_class_name:
-            class_name, test_name = fail.testname.split("\x1f")
-            test_description = (
-                f"- **Class name:** {class_name}<br>**Test name:** {test_name}"
-            )
-        else:
-            test_description = f"- **Test name:** {fail.testname}"
-
-        if fail.envs:
-            envs = [f"  - {env}" for env in fail.envs]
-            env_section = "<br>".join(envs)
-            test_description = f"{test_description}\n**Flags:**\n{env_section}"
-
-        return f"{test_description}<br><br>"
-
-    def generate_failure_info(
-        self,
-        fail: TestResultsNotificationFailure,
-    ):
-        if fail.failure_message is not None:
-            failure_message = fail.failure_message
-        else:
-            failure_message = "No failure message available"
-
-        return f"  <pre>{failure_message}</pre>"
 
     def build_message(self) -> str:
         if self.payload is None:
@@ -170,55 +249,55 @@ class TestResultsNotifier(BaseNotifier):
 
         message = []
 
+        message.append(f"### :x: {self.payload.failed} Tests Failed:")
+
+        completed = self.payload.failed + self.payload.passed
+
         message += [
-            "**Test Failures Detected**: Due to failing tests, we cannot provide coverage reports at this time.",
-            "",
-            "### :x: Failed Test Results: ",
+            "| Tests completed | Failed | Passed | Skipped |",
+            "|---|---|---|---|",
+            f"| {completed} | {self.payload.failed} | {self.payload.passed} | {self.payload.skipped} |",
         ]
 
-        completed = self.payload.failed + self.payload.passed + self.payload.skipped
-        if self.payload.flaky_tests:
-            num = len(self.payload.flaky_tests)
-            flake_section = f"({num} known flakes hit)" if (num) else ""
+        failures = sorted(
+            filter(
+                lambda x: x.test_id not in self.payload.flaky_tests,
+                self.payload.failures,
+            ),
+            key=lambda x: (x.duration_seconds, x.testname),
+        )
 
-            results = [
-                f"Completed {completed} tests with **`{self.payload.failed} failed`**{flake_section}, {self.payload.passed} passed and {self.payload.skipped} skipped.",
-            ]
-            message += results
-        else:
-            results = f"Completed {completed} tests with **`{self.payload.failed} failed`**, {self.payload.passed} passed and {self.payload.skipped} skipped."
-            message.append(results)
+        if failures:
+            failure_content = [f"{messagify_failure(failure)}" for failure in failures]
 
-        fail_dict = defaultdict(list)
-        flake_dict = defaultdict(list)
-        for fail in self.payload.failures:
-            flake = None
-            if (
-                self.payload.flaky_tests is not None
-                and fail.test_id in self.payload.flaky_tests
-            ):
-                flake_dict[fail.testsuite].append(fail)
-            else:
-                fail_dict[fail.testsuite].append(fail)
+            top_3_failed_section = wrap_in_details(
+                f"View the top {min(3, len(failures))} failed tests by shortest run time",
+                "\n".join(failure_content),
+            )
 
-        if fail_dict:
-            message += [
-                "<details><summary>View the full list of failed tests</summary>",
-                "",
-            ]
+            message.append(top_3_failed_section)
 
-            self.process_dict(fail_dict, message)
-            message.append("</details>")
+        flaky_failures = list(
+            filter(
+                lambda x: x.test_id in self.payload.flaky_tests,
+                self.payload.failures,
+            ),
+        )
 
-        if flake_dict:
-            message += [
-                "<details><summary>View the full list of flaky tests</summary>",
-                "",
-            ]
+        flake_content = [
+            f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id])}"
+            for flaky_failure in flaky_failures
+        ]
 
-            self.process_dict(flake_dict, message)
-            message.append("</details>")
+        if flake_content:
+            flaky_section = wrap_in_details(
+                f"View the full list of {len(flaky_failures)} :snowflake: flaky tests",
+                "\n".join(flake_content),
+            )
 
+            message.append(flaky_section)
+
+        message.append(generate_view_test_analytics_line(self.commit))
         return "\n".join(message)
 
     async def error_comment(self):
@@ -241,15 +320,6 @@ class TestResultsNotifier(BaseNotifier):
             return (False, "torngit_error")
 
         return (True, "comment_posted")
-
-    def process_dict(self, d, message):
-        for testsuite, fail_list in d.items():
-            message.append(f"## {testsuite}")
-            for fail in fail_list:
-                test_description = self.generate_test_description(fail)
-                message.append(test_description)
-                failure_information = self.generate_failure_info(fail)
-                message.append(failure_information)
 
 
 def latest_test_instances_for_a_given_commit(db_session, commit_id):

@@ -14,6 +14,7 @@ class NotificationType(Enum):
 
 
 class NotificationSuccess(Enum):
+    ALL_ERRORED = "all_processing_results_errored"
     NOTHING_TO_NOTIFY = "nothing_to_notify"
     FULL_SUCCESS = "full_success"
     PARTIAL_SUCCESS = "partial_success"

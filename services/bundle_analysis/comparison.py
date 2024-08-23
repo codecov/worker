@@ -20,23 +20,31 @@ from services.repository import EnrichedPull
 
 
 class ComparisonLoader:
-    def __init__(self, pull: EnrichedPull):
-        self.pull = pull
+    def __init__(self, base_commit: Commit | None, head_commit: Commit | None):
+        self._base_commit: Commit | None = base_commit
+        self._head_commit: Commit | None = head_commit
+
+    @classmethod
+    def from_EnrichedPull(cls, pull: EnrichedPull) -> "ComparisonLoader":
+        return cls(
+            base_commit=pull.database_pull.get_comparedto_commit(),
+            head_commit=pull.database_pull.get_head_commit(),
+        )
 
     @cached_property
     def repository(self) -> Repository:
-        return self.pull.database_pull.repository
+        return self.head_commit.repository
 
     @cached_property
     def base_commit(self) -> Commit:
-        commit = self.pull.database_pull.get_comparedto_commit()
+        commit = self._base_commit
         if commit is None:
             raise MissingBaseCommit()
         return commit
 
     @cached_property
     def head_commit(self) -> Commit:
-        commit = self.pull.database_pull.get_head_commit()
+        commit = self._head_commit
         if commit is None:
             raise MissingHeadCommit()
         return commit
@@ -69,4 +77,5 @@ class ComparisonLoader:
             loader=loader,
             base_report_key=self.base_commit_report.external_id,
             head_report_key=self.head_commit_report.external_id,
+            repository=self.repository.repoid,
         )

@@ -21,11 +21,13 @@ concurrency:
 jobs:
   lint:
     name: Run Lint
+
     uses: codecov/gha-workflows/.github/workflows/lint.yml@v1.2.23
 
   build:
     name: Build Worker
     uses: codecov/gha-workflows/.github/workflows/build-app.yml@v1.2.23
+
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
@@ -34,12 +36,14 @@ jobs:
     name: Codecov Startup
     needs: build
     uses: codecov/gha-workflows/.github/workflows/codecov-startup.yml@v1.2.23
+
     secrets: inherit
 
   test:
     name: Test
     needs: [build]
     uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.23
+
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
@@ -47,6 +51,7 @@ jobs:
   build-self-hosted:
     name: Build Self Hosted Worker
     needs: [build, test]
+
     uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.23
     secrets: inherit
     with:

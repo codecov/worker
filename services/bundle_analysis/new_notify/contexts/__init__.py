@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from functools import cached_property
 from typing import Generic, Literal, Self, TypeVar
 
@@ -7,6 +6,7 @@ from shared.bundle_analysis import (
     BundleAnalysisReportLoader,
 )
 from shared.torngit.base import TorngitBaseAdapter
+from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
 from database.enums import ReportType
@@ -87,7 +87,7 @@ class BaseBundleAnalysisNotificationContext:
 
 class NotificationContextBuildError(Exception):
     def __init__(self, failed_step: str, detail: str | None = None) -> None:
-        super()
+        super().__init__(failed_step, detail)
         self.failed_step = failed_step
         self.detail = detail
 
@@ -100,6 +100,12 @@ class NotificationContextBuilder:
     """Creates the BaseBundleAnalysisNotificationContext one step at a time, in the correct order."""
 
     current_yaml: UserYaml
+    """ Used with `initialize_from_context` method. Declare the fields the class wants to copy over when initializing from another context."""
+    fields_of_interest: tuple[str] = (
+        "commit_report",
+        "bundle_analysis_report",
+        "user_config",
+    )
 
     def initialize(
         self, commit: Commit, current_yaml: UserYaml, gh_app_installation_name: str
@@ -111,11 +117,21 @@ class NotificationContextBuilder:
         )
         return self
 
-    @abstractmethod
     def initialize_from_context(
-        self, context: BaseBundleAnalysisNotificationContext
+        self, current_yaml: UserYaml, context: BaseBundleAnalysisNotificationContext
     ) -> Self:
-        pass
+        self.initialize(
+            commit=context.commit,
+            current_yaml=current_yaml,
+            gh_app_installation_name=context.gh_app_installation_name,
+        )
+
+        for field_name in self.fields_of_interest:
+            if field_name in context.__dict__:
+                self._notification_context.__dict__[field_name] = context.__dict__[
+                    field_name
+                ]
+        return self
 
     def is_field_loaded(self, field_name: str):
         return field_name in self._notification_context.__dict__
@@ -168,10 +184,14 @@ class NotificationContextBuilder:
             )
         )
         required_changes_threshold: int | float = self.current_yaml.read_yaml_field(
-            "comment", "bundle_change_threshold", _else=0
+            "comment",
+            "bundle_change_threshold",
+            _else=BundleThreshold("absolute", 0),
         )
         warning_threshold: int | float = self.current_yaml.read_yaml_field(
-            "bundle_analysis", "warning_threshold", _else=0
+            "bundle_analysis",
+            "warning_threshold",
+            _else=BundleThreshold("percentage", 5.0),
         )
         status_level: bool | Literal["informational"] = (
             self.current_yaml.read_yaml_field(

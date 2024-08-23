@@ -101,10 +101,7 @@ class TestCSharp(BaseTestCase):
                     "source": [
                         0,
                         [0, 7, 3, 3, 1, "42.85714", 2, 0, 0, 0, 0, 0, 0],
-                        {
-                            "0": [0, 7, 3, 3, 1, "42.85714", 2],
-                            "meta": {"session_count": 1},
-                        },
+                        None,
                         None,
                     ]
                 },

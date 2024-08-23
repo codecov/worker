@@ -36,6 +36,7 @@ class SiteUrls(Enum):
     members_url = "{dashboard_base_url}/members/{service_short}/{username}"
     members_url_self_hosted = "{dashboard_base_url}/account/{service_short}/{username}"
     plan_url = "{dashboard_base_url}/plan/{service_short}/{username}"
+    test_analytics_url = "{dashboard_base_url}/{service_short}/{username}/{project_name}/tests/{branch_name}"
 
     def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
@@ -181,6 +182,16 @@ def get_plan_url(pull: Pull) -> str:
         dashboard_base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
         username=repository.owner.username,
+    )
+
+
+def get_test_analytics_url(repo: Repository, commit: Commit) -> str:
+    return SiteUrls.test_analytics_url.get_url(
+        dashboard_base_url=get_dashboard_base_url(),
+        service_short=services_short_dict.get(repo.service),
+        username=repo.owner.username,
+        project_name=repo.name,
+        branch_name=commit.branch,
     )
 
 

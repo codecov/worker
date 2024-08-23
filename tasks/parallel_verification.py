@@ -32,16 +32,15 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
             report_code=report_code,
             parallel_paths=parallel_paths,
         )
-        commits = db_session.query(Commit).filter(
-            Commit.repoid == repoid, Commit.commitid == commitid
+        commit = (
+            db_session.query(Commit)
+            .filter(Commit.repoid == repoid, Commit.commitid == commitid)
+            .first()
         )
-        commit = commits.first()
         assert commit, "Commit not found in database."
 
-        repository = commit.repository
-
         report_service = ReportService(commit_yaml)
-        archive_service = report_service.get_archive_service(repository)
+        archive_service = report_service.get_archive_service(commit.repository)
 
         log.info(
             "Starting parallel upload processing verification task",
