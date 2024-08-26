@@ -118,7 +118,7 @@ class TeamPlanWriter:
             changed_files_with_missing_lines = [f for f in changed_files if f[3] > 0]
             if changed_files_with_missing_lines:
                 lines.append(
-                    "| [Files]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
+                    "| [Files with reduced coverage]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
                         links["pull"], table_header
                     )
                 )
