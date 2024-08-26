@@ -133,5 +133,9 @@ background_app/.report.json
 # Pycharm/Intellij
 .idea/
 
+# VCS
 .sl
 .git
+
+# MacOS
+.DS_Store
