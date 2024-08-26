@@ -133,7 +133,7 @@ _star_to_glob = re.compile(r"(?<!\.)\*").sub
 
 def fixpaths_regs(fix: str) -> str:
     key = tuple(fix.split("::"))[0]
-    # [DEPRECIATING] because handled by validators, but some data is cached in db
+    # [DEPRECATED] because handled by validators, but some data is cached in db
     # a/**/b => a/.*/b
     key = key.replace("**", r".*")
     # a/*/b => a/[^\/\n]+/b

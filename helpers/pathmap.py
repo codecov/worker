@@ -38,14 +38,14 @@ class Tree:
         # Original value indicator
         self._ORIG = "\\*__orig__*//"
 
-    def resolve_path(self, path: str, ancestors=None):
+    def resolve_path(self, path: str, ancestors: int | None = None) -> str | None:
         path = _clean_path(path)
 
         new_path = self.lookup(path, ancestors)
 
         if new_path:
             if ancestors and not _check_ancestors(path, new_path, ancestors):
-                # path ancestor count is not valud
+                # path ancestor count is not valid
                 return None
 
             return new_path
