@@ -42,6 +42,7 @@ class NotificationFullContext(NamedTuple):
 
 class BundleAnalysisNotifyReturn(NamedTuple):
     notifications_configured: tuple[NotificationType]
+    notifications_attempted: tuple[NotificationType]
     notifications_successful: tuple[NotificationType]
 
     def to_NotificationSuccess(self) -> NotificationSuccess:
@@ -162,6 +163,7 @@ class BundleAnalysisNotifyService:
             log.warning("Skipping ALL notifications because there's no base context")
             return BundleAnalysisNotifyReturn(
                 notifications_configured=notification_types,
+                notifications_attempted=tuple(),
                 notifications_successful=tuple(),
             )
 
@@ -173,12 +175,16 @@ class BundleAnalysisNotifyService:
             ),
         )
         notifications_sent = []
+        notifications_successful = []
         for notification_context, message_strategy in notification_full_contexts:
             message = message_strategy.build_message(notification_context)
             result = async_to_sync(message_strategy.send_message)(
                 notification_context, message
             )
-            notifications_sent.append(notification_context.notification_type)
+            if result.notification_attempted:
+                notifications_sent.append(notification_context.notification_type)
+            if result.notification_successful:
+                notifications_successful.append(notification_context.notification_type)
             log.info(
                 "Notification done",
                 extra=dict(
@@ -189,5 +195,6 @@ class BundleAnalysisNotifyService:
 
         return BundleAnalysisNotifyReturn(
             notifications_configured=notification_types,
-            notifications_successful=tuple(notifications_sent),
+            notifications_attempted=tuple(notifications_sent),
+            notifications_successful=tuple(notifications_successful),
         )

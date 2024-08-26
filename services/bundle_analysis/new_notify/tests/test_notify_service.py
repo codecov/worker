@@ -222,6 +222,7 @@ class TestBundleAnalysisNotifyService:
                 NotificationType.COMMIT_STATUS,
                 NotificationType.PR_COMMENT,
             ),
+            notifications_attempted=tuple(),
             notifications_successful=tuple(),
         )
 
@@ -282,15 +283,21 @@ class TestBundleAnalysisNotifyService:
     @pytest.mark.parametrize(
         "result, success_value",
         [
-            (BundleAnalysisNotifyReturn([], []), NotificationSuccess.NOTHING_TO_NOTIFY),
+            (
+                BundleAnalysisNotifyReturn([], [], []),
+                NotificationSuccess.NOTHING_TO_NOTIFY,
+            ),
             (
                 BundleAnalysisNotifyReturn(
-                    [NotificationType.COMMIT_STATUS], [NotificationType.COMMIT_STATUS]
+                    [NotificationType.COMMIT_STATUS],
+                    [NotificationType.COMMIT_STATUS],
+                    [NotificationType.COMMIT_STATUS],
                 ),
                 NotificationSuccess.FULL_SUCCESS,
             ),
             (
                 BundleAnalysisNotifyReturn(
+                    [NotificationType.COMMIT_STATUS, NotificationType.PR_COMMENT],
                     [NotificationType.COMMIT_STATUS, NotificationType.PR_COMMENT],
                     [NotificationType.COMMIT_STATUS],
                 ),
