@@ -24,7 +24,7 @@ def test_run_empty_config(mock_prometheus, mock_storage, mock_configuration):
     assert not mock_storage.root_storage_created
     res = setup_worker()
     assert res is None
-    assert mock_storage.root_storage_created
+    assert not mock_storage.root_storage_created
     assert mock_storage.config == {}
 
 
