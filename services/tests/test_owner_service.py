@@ -1,3 +1,5 @@
+from shared.rate_limits import gh_app_key_name, owner_key_name
+
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     GithubAppInstallation,
@@ -28,7 +30,11 @@ class TestOwnerServiceTestCase(object):
         }
         assert res.service == "github"
         assert res.data == expected_data
-        assert res.token == {"key": "bcaa0dc0c66b4a8c8c65ac919a1a91aa", "secret": None}
+        assert res.token == {
+            "key": "bcaa0dc0c66b4a8c8c65ac919a1a91aa",
+            "secret": None,
+            "entity_name": owner_key_name(owner.ownerid),
+        }
 
     def test_get_owner_provider_service_with_installation(self, dbsession, mocker):
         mocker.patch(
@@ -67,7 +73,12 @@ class TestOwnerServiceTestCase(object):
         }
         assert res.service == "github"
         assert res.data == expected_data
-        assert res.token == {"key": "integration_token"}
+        assert res.token == {
+            "key": "integration_token",
+            "entity_name": gh_app_key_name(
+                installation_id=installation.installation_id, app_id=None
+            ),
+        }
 
     def test_get_owner_provider_service_other_service(self, dbsession):
         owner = OwnerFactory.create(
@@ -88,7 +99,11 @@ class TestOwnerServiceTestCase(object):
         }
         assert res.service == "gitlab"
         assert res.data == expected_data
-        assert res.token == {"key": "testenll80qbqhofao65", "secret": None}
+        assert res.token == {
+            "key": "testenll80qbqhofao65",
+            "secret": None,
+            "entity_name": owner_key_name(owner.ownerid),
+        }
 
     def test_get_owner_provider_service_different_bot(self, dbsession):
         bot_token = "bcaa0dc0c66b4a8c8c65ac919a1a91aa"
@@ -111,4 +126,8 @@ class TestOwnerServiceTestCase(object):
         }
         assert res.data["repo"] == expected_data["repo"]
         assert res.data == expected_data
-        assert res.token == {"key": bot_token, "secret": None}
+        assert res.token == {
+            "key": bot_token,
+            "secret": None,
+            "entity_name": owner_key_name(owner.bot.ownerid),
+        }
