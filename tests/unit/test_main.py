@@ -32,7 +32,6 @@ def test_run_empty_config(
     mock_license_logging.assert_called_once()
 
 
-
 @mock.patch("main.startup_license_logging")
 @mock.patch("main.start_prometheus")
 def test_sys_path_append_on_enterprise(
