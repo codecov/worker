@@ -422,7 +422,7 @@ class NewFilesSectionWriter(BaseSectionWriter):
             changed_files_with_missing_lines = [f for f in changed_files if f[3] > 0]
             if changed_files_with_missing_lines:
                 yield (
-                    "| [Files with reduced coverage]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
+                    "| [Files with missing lines]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
                         links["pull"], table_header
                     )
                 )
@@ -496,7 +496,7 @@ class FileSectionWriter(BaseSectionWriter):
                     )
 
             yield (
-                "| [Files with reduced coverage]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
+                "| [Files with missing lines]({0}?dropdown=coverage&src=pr&el=tree) {1}".format(
                     links["pull"], table_header
                 )
             )
