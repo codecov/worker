@@ -14,12 +14,6 @@ from tasks.preprocess_upload import PreProcessUpload
 
 
 class TestPreProcessUpload(object):
-    def test_is_running(self, mock_redis):
-        mock_redis.get = lambda lock_name: "value" if lock_name == "lock_1" else None
-        task = PreProcessUpload()
-        assert task._is_running(mock_redis, "lock_1") == True
-        assert task._is_running(mock_redis, "lock_2") == False
-
     @pytest.mark.django_db(databases={"default"})
     def test_preprocess_task(
         self,
@@ -54,7 +48,6 @@ class TestPreProcessUpload(object):
         mock_save_commit = mocker.patch(
             "services.repository.save_repo_yaml_to_database_if_needed"
         )
-        mocker.patch.object(PreProcessUpload, "_is_running", return_value=False)
 
         def fake_possibly_shift(report, base, head):
             return report
@@ -66,7 +59,7 @@ class TestPreProcessUpload(object):
         )
         commit, report = self.create_commit_and_report(dbsession)
 
-        result = PreProcessUpload().run_impl(
+        result = PreProcessUpload().process_impl_within_lock(
             dbsession,
             repoid=commit.repository.repoid,
             commitid=commit.commitid,
@@ -148,8 +141,8 @@ class TestPreProcessUpload(object):
         dbsession.flush()
         return commit, report
 
-    def test_run_impl_already_running(self, dbsession, mocker, mock_redis):
-        mocker.patch.object(PreProcessUpload, "_is_running", return_value=True)
+    def test_run_impl_already_running(self, dbsession, mock_redis):
+        mock_redis.get = lambda _name: True
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -161,8 +154,8 @@ class TestPreProcessUpload(object):
         )
         assert result == {"preprocessed_upload": False, "reason": "already_running"}
 
-    def test_run_impl_unobtainable_lock(self, dbsession, mocker, mock_redis):
-        mocker.patch.object(PreProcessUpload, "_is_running", return_value=False)
+    def test_run_impl_unobtainable_lock(self, dbsession, mock_redis):
+        mock_redis.get = lambda _name: False
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
@@ -179,10 +172,6 @@ class TestPreProcessUpload(object):
         }
 
     def test_get_repo_service_repo_and_owner_lack_bot(self, dbsession, mocker):
-        def mock_owner(foo):
-            print("in mock owner", foo)
-            raise OwnerWithoutValidBotError()
-
         mock_owner_bot = mocker.patch(
             "shared.bots.repo_bots.get_owner_or_appropriate_bot"
         )

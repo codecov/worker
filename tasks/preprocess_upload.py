@@ -47,7 +47,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
         redis_connection = get_redis_connection()
         # This task only needs to run once per commit (per report_code)
         # To generate the report. So if one is already running we don't need another
-        if self._is_running(redis_connection, lock_name):
+        if redis_connection.get(lock_name):
             log.info(
                 "PreProcess task is already running",
                 extra=dict(commit=commitid, repoid=repoid),
@@ -64,7 +64,6 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                     repoid=repoid,
                     commitid=commitid,
                     report_code=report_code,
-                    **kwargs,
                 )
         except LockError:
             log.warning(
@@ -78,24 +77,18 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             )
             return {"preprocessed_upload": False, "reason": "unable_to_acquire_lock"}
 
-    def _is_running(self, redis_connection, lock_name):
-        if redis_connection.get(lock_name):
-            return True
-        return False
-
     def process_impl_within_lock(
         self,
-        *,
         db_session,
         repoid,
         commitid,
         report_code,
-        **kwargs,
     ):
-        commits = db_session.query(Commit).filter(
-            Commit.repoid == repoid, Commit.commitid == commitid
+        commit = (
+            db_session.query(Commit)
+            .filter(Commit.repoid == repoid, Commit.commitid == commitid)
+            .first()
         )
-        commit = commits.first()
         assert commit, "Commit not found in database."
         installation_name_to_use = get_installation_name_for_owner_for_task(
             db_session, self.name, commit.repository.owner
