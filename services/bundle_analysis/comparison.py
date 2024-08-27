@@ -77,4 +77,5 @@ class ComparisonLoader:
             loader=loader,
             base_report_key=self.base_commit_report.external_id,
             head_report_key=self.head_commit_report.external_id,
+            repository=self.repository.repoid,
         )

@@ -396,10 +396,6 @@ class ReportService(BaseReportService):
             file["filename"]: ReportFileSummary(
                 file_index=file["file_index"],
                 file_totals=ReportTotals(*file["file_totals"]),
-                session_totals=[
-                    ReportTotals(*session) if session else None
-                    for session in file["session_totals"]
-                ],
                 diff_totals=file["diff_totals"],
             )
             for file in report_details.files_array
@@ -917,8 +913,7 @@ class ReportService(BaseReportService):
         else:
             archive_file = archive_service.read_file(archive_url)
 
-        parser = get_proper_parser(upload)
-
+        parser = get_proper_parser(upload, archive_file)
         upload_version = (
             "v1" if isinstance(parser, VersionOneReportParser) else "legacy"
         )
@@ -1172,7 +1167,6 @@ class ReportService(BaseReportService):
                 "filename": k,
                 "file_index": v.file_index,
                 "file_totals": v.file_totals,
-                "session_totals": v.session_totals,
                 "diff_totals": v.diff_totals,
             }
             for k, v in report._files.items()

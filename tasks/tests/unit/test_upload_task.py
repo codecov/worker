@@ -724,6 +724,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         mocked_1.assert_called_with(
+            mocker.ANY,
             commit,
             UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
@@ -731,7 +732,6 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
             commit.report,
-            mocker.ANY,
             mocker.ANY,
             mocker.ANY,
         )
@@ -780,6 +780,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         mocked_1.assert_called_with(
+            mocker.ANY,
             commit,
             UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
@@ -787,7 +788,6 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
             ],
             commit.report,
-            mocker.ANY,
             mocker.ANY,
             mocker.ANY,
         )
@@ -835,9 +835,9 @@ class TestUploadTaskIntegration(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
+        mock_checkpoints = MagicMock(name="checkpoints")
         result = UploadTask().run_impl_within_lock(
-            dbsession,
-            upload_args,
+            dbsession, upload_args, checkpoints=mock_checkpoints, kwargs={}
         )
         assert {"was_setup": False, "was_updated": False} == result
         assert commit.message == ""
@@ -857,6 +857,7 @@ class TestUploadTaskIntegration(object):
             .first()
         )
         mocked_schedule_task.assert_called_with(
+            mocker.ANY,
             commit,
             UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
@@ -864,7 +865,6 @@ class TestUploadTaskIntegration(object):
                 {"build": "part2", "url": "url2", "upload_pk": second_session.id},
             ],
             commit.report,
-            mocker.ANY,
             mocker.ANY,
             mocker.ANY,
         )
@@ -938,9 +938,9 @@ class TestUploadTaskIntegration(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
+        mock_checkpoints = MagicMock(name="checkpoints")
         result = UploadTask().run_impl_within_lock(
-            dbsession,
-            upload_args,
+            dbsession, upload_args, checkpoints=mock_checkpoints, kwargs={}
         )
         assert {"was_setup": True, "was_updated": True} == result
         assert commit.message == ""
@@ -948,6 +948,7 @@ class TestUploadTaskIntegration(object):
         assert commit.report is not None
         assert commit.report.details is not None
         mocked_schedule_task.assert_called_with(
+            mocker.ANY,
             commit,
             UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
@@ -959,7 +960,6 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report,
-            mocker.ANY,
             mocker.ANY,
             mocker.ANY,
         )
@@ -1067,26 +1067,6 @@ class TestUploadTaskUnit(object):
         assert b"Some weird value" == content
 
     @pytest.mark.django_db(databases={"default"})
-    def test_schedule_task_with_no_tasks(self, dbsession, mocker):
-        commit = CommitFactory.create()
-        commit_yaml = UserYaml({})
-        argument_list = []
-        dbsession.add(commit)
-        dbsession.flush()
-        mock_checkpoints = MagicMock(name="checkpoints")
-        result = UploadTask().schedule_task(
-            commit,
-            commit_yaml,
-            argument_list,
-            ReportFactory.create(),
-            None,
-            dbsession,
-            checkpoints=mock_checkpoints,
-        )
-        assert result is None
-        mock_checkpoints.log.assert_called_with(UploadFlow.NO_REPORTS_FOUND)
-
-    @pytest.mark.django_db(databases={"default"})
     def test_schedule_task_with_one_task(self, dbsession, mocker):
         mocked_chain = mocker.patch("tasks.upload.chain")
         commit = CommitFactory.create()
@@ -1095,8 +1075,20 @@ class TestUploadTaskUnit(object):
         argument_list = [argument_dict]
         dbsession.add(commit)
         dbsession.flush()
+        upload_args = UploadContext(
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            redis_connection=mock_redis,
+        )
+        mock_checkpoints = MagicMock(name="checkpoints")
         result = UploadTask().schedule_task(
-            commit, commit_yaml, argument_list, ReportFactory.create(), None, dbsession
+            dbsession,
+            commit,
+            commit_yaml,
+            argument_list,
+            ReportFactory.create(),
+            upload_args,
+            checkpoints=mock_checkpoints,
         )
         assert result == mocked_chain.return_value.apply_async.return_value
         t1 = upload_processor_task.s(
@@ -1163,6 +1155,7 @@ class TestUploadTaskUnit(object):
         mocked_run_impl_within_lock = mocker.patch.object(
             UploadTask, "run_impl_within_lock", return_value=True
         )
+        mock_redis.keys[f"uploads/{commit.repoid}/{commit.commitid}"] = ["something"]
         task = UploadTask()
         task.request.retries = 0
         with pytest.raises(Retry):
@@ -1182,6 +1175,7 @@ class TestUploadTaskUnit(object):
         mocked_run_impl_within_lock = mocker.patch.object(
             UploadTask, "run_impl_within_lock", return_value={"some": "value"}
         )
+        mock_redis.keys[f"uploads/{commit.repoid}/{commit.commitid}"] = ["something"]
         task = UploadTask()
         task.request.retries = 1
         result = task.run_impl(dbsession, commit.repoid, commit.commitid)
@@ -1490,5 +1484,8 @@ class TestUploadTaskUnit(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
+        mock_checkpoints = MagicMock(name="checkpoints")
         with pytest.raises(Retry):
-            task.run_impl_within_lock(dbsession, upload_args)
+            task.run_impl_within_lock(
+                dbsession, upload_args, checkpoints=mock_checkpoints, kwargs={}
+            )

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping, Optional, Tuple
 
+import sentry_sdk
 import shared.torngit as torngit
 from asgiref.sync import async_to_sync
 from shared.bots import (
@@ -93,6 +94,7 @@ def get_repo_provider_service_for_specific_commit(
     return _get_repo_provider_service_instance(repository.service, **adapter_params)
 
 
+@sentry_sdk.trace
 def get_repo_provider_service(
     repository: Repository,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -235,6 +237,7 @@ async def possibly_update_commit_from_provider_info(commit, repository_service):
     return False
 
 
+@sentry_sdk.trace
 async def update_commit_from_provider_info(repository_service, commit):
     """
     Takes the result from the torngit commit details, and updates the commit
@@ -598,6 +601,7 @@ async def fetch_and_update_pull_request_information(
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)
 
 
+@sentry_sdk.trace
 def fetch_commit_yaml_and_possibly_store(
     commit: Commit, repository_service: TorngitBaseAdapter
 ) -> UserYaml:

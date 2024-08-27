@@ -23,6 +23,7 @@ def test_bundle_analysis_notify_task(
         "services.bundle_analysis.new_notify.BundleAnalysisNotifyService.notify",
         return_value=BundleAnalysisNotifyReturn(
             notifications_configured=(NotificationType.PR_COMMENT,),
+            notifications_attempted=(NotificationType.PR_COMMENT,),
             notifications_successful=(NotificationType.PR_COMMENT,),
         ),
     )

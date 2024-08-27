@@ -90,19 +90,19 @@ expected_result = {
             "calc/CalcCore.cpp": [
                 0,
                 [0, 10, 7, 2, 1, "70.00000", 6, 4, 0, 0, 0, 0, 0],
-                {"meta": {"session_count": 1}, "0": [0, 10, 7, 2, 1, "70.00000", 6, 4]},
+                None,
                 None,
             ],
             "calc/CalcCore.h": [
                 1,
                 [0, 1, 1, 0, 0, "100", 0, 1, 0, 0, 0, 0, 0],
-                {"meta": {"session_count": 1}, "0": [0, 1, 1, 0, 0, "100", 0, 1]},
+                None,
                 None,
             ],
             "calc/Calculator.cpp": [
                 2,
                 [0, 4, 3, 1, 0, "75.00000", 1, 1, 0, 0, 0, 0, 0],
-                {"0": [0, 4, 3, 1, 0, "75.00000", 1, 1], "meta": {"session_count": 1}},
+                None,
                 None,
             ],
         },

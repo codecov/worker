@@ -420,28 +420,25 @@ class TestPyCoverageProcessor(BaseTestCase):
                     "another.py": [
                         0,
                         [0, 4, 4, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 4, 4, 0, 0, "100"], "meta": {"session_count": 1}},
+                        None,
                         None,
                     ],
                     "source.py": [
                         1,
                         [0, 7, 5, 2, 0, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "0": [0, 7, 5, 2, 0, "71.42857"],
-                            "meta": {"session_count": 1},
-                        },
+                        None,
                         None,
                     ],
                     "test_another.py": [
                         2,
                         [0, 6, 6, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 6, 6, 0, 0, "100"], "meta": {"session_count": 1}},
+                        None,
                         None,
                     ],
                     "test_source.py": [
                         3,
                         [0, 3, 3, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 3, 3, 0, 0, "100"], "meta": {"session_count": 1}},
+                        None,
                         None,
                     ],
                 },
@@ -582,16 +579,13 @@ class TestPyCoverageProcessor(BaseTestCase):
                     "awesome.py": [
                         0,
                         [0, 5, 4, 1, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "0": [0, 5, 4, 1, 0, "80.00000"],
-                            "meta": {"session_count": 1},
-                        },
+                        None,
                         None,
                     ],
                     "__init__.py": [
                         1,
                         [0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 4, 0, 4], "meta": {"session_count": 1}},
+                        None,
                         None,
                     ],
                 },

@@ -1,7 +1,7 @@
 import re
 from typing import Sequence
 
-from services.path_fixer.fixpaths import _fixpaths_regs, first_not_null_index
+from services.path_fixer.fixpaths import first_not_null_index, fixpaths_regs
 
 
 class UserPathFixes(object):
@@ -37,7 +37,7 @@ class UserPathFixes(object):
                 map(lambda fix: tuple(fix.split("::"))[1], custom_fixes)
             )
             self.sub_regex = re.compile(
-                r"^(%s)" % ")|(".join(map(_fixpaths_regs, custom_fixes))
+                r"^(%s)" % ")|(".join(map(fixpaths_regs, custom_fixes))
             )
         else:
             self.sub_regex = None

@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict
 
+import sentry_sdk
 from shared.yaml import UserYaml
 
 from app import celery_app
@@ -64,6 +65,7 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
+    @sentry_sdk.trace
     def process_impl_within_lock(
         self,
         *,

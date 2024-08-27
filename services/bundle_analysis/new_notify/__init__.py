@@ -2,6 +2,7 @@ import logging
 from functools import partial
 from typing import NamedTuple
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.yaml import UserYaml
 
@@ -14,12 +15,18 @@ from services.bundle_analysis.new_notify.contexts import (
 from services.bundle_analysis.new_notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
 )
+from services.bundle_analysis.new_notify.contexts.commit_status import (
+    CommitStatusNotificationContextBuilder,
+)
 from services.bundle_analysis.new_notify.helpers import (
     get_notification_types_configured,
 )
 from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
 from services.bundle_analysis.new_notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
+)
+from services.bundle_analysis.new_notify.messages.commit_status import (
+    CommitStatusMessageStrategy,
 )
 from services.bundle_analysis.new_notify.types import (
     NotificationSuccess,
@@ -36,6 +43,7 @@ class NotificationFullContext(NamedTuple):
 
 class BundleAnalysisNotifyReturn(NamedTuple):
     notifications_configured: tuple[NotificationType]
+    notifications_attempted: tuple[NotificationType]
     notifications_successful: tuple[NotificationType]
 
     def to_NotificationSuccess(self) -> NotificationSuccess:
@@ -65,6 +73,7 @@ class BundleAnalysisNotifyService:
     def owner(self) -> Owner:
         return self.commit.repository.owner
 
+    @sentry_sdk.trace
     def build_base_context(self) -> BaseBundleAnalysisNotificationContext | None:
         try:
             return (
@@ -76,7 +85,7 @@ class BundleAnalysisNotifyService:
                 .get_result()
             )
         except NotificationContextBuildError as exp:
-            log.error(
+            log.warning(
                 "Failed to build NotificationContext",
                 extra=dict(
                     notification_type="base_context", failed_step=exp.failed_step
@@ -102,12 +111,22 @@ class BundleAnalysisNotifyService:
             NotificationType.PR_COMMENT: (
                 BundleAnalysisPRCommentContextBuilder,
                 BundleAnalysisCommentMarkdownStrategy,
-            )
+            ),
+            NotificationType.COMMIT_STATUS: (
+                CommitStatusNotificationContextBuilder,
+                CommitStatusMessageStrategy,
+            ),
+            # The commit-check API is more powerful than COMMIT_STATUS
+            # but we currently don't differentiate between them
+            NotificationType.GITHUB_COMMIT_CHECK: (
+                CommitStatusNotificationContextBuilder,
+                CommitStatusMessageStrategy,
+            ),
         }
         notifier_strategy = notifier_lookup.get(notification_type)
 
         if notifier_strategy is None:
-            msg = f"No context builder for {notification_type.name}. Skipping"
+            msg = f"No context builder for {notification_type}. Skipping"
             log.error(msg)
             return None
         builder_class, message_strategy_class = notifier_strategy
@@ -120,7 +139,7 @@ class BundleAnalysisNotifyService:
                 message_strategy_class(),
             )
         except NotificationContextBuildError as exp:
-            log.error(
+            log.warning(
                 "Failed to build NotificationContext",
                 extra=dict(
                     notification_type=notification_type, failed_step=exp.failed_step
@@ -146,6 +165,7 @@ class BundleAnalysisNotifyService:
             log.warning("Skipping ALL notifications because there's no base context")
             return BundleAnalysisNotifyReturn(
                 notifications_configured=notification_types,
+                notifications_attempted=tuple(),
                 notifications_successful=tuple(),
             )
 
@@ -157,12 +177,16 @@ class BundleAnalysisNotifyService:
             ),
         )
         notifications_sent = []
+        notifications_successful = []
         for notification_context, message_strategy in notification_full_contexts:
             message = message_strategy.build_message(notification_context)
             result = async_to_sync(message_strategy.send_message)(
                 notification_context, message
             )
-            notifications_sent.append(notification_context.notification_type)
+            if result.notification_attempted:
+                notifications_sent.append(notification_context.notification_type)
+            if result.notification_successful:
+                notifications_successful.append(notification_context.notification_type)
             log.info(
                 "Notification done",
                 extra=dict(
@@ -173,5 +197,6 @@ class BundleAnalysisNotifyService:
 
         return BundleAnalysisNotifyReturn(
             notifications_configured=notification_types,
-            notifications_successful=tuple(notifications_sent),
+            notifications_attempted=tuple(notifications_sent),
+            notifications_successful=tuple(notifications_successful),
         )

@@ -44,7 +44,44 @@ def override_comment_builder_and_message_strategy(mocker):
         "services.bundle_analysis.new_notify.BundleAnalysisCommentMarkdownStrategy",
         return_value=mock_markdown_strategy,
     )
+    mock_comment_builder.return_value.get_result.return_value = MagicMock(
+        name="fake_context", notification_type=NotificationType.PR_COMMENT
+    )
+    mock_markdown_strategy.build_message.return_value = "D. Message"
+    mock_markdown_strategy.send_message.return_value = NotificationResult(
+        notification_attempted=True,
+        notification_successful=True,
+        github_app_used=None,
+    )
     return (mock_comment_builder, mock_markdown_strategy)
+
+
+def override_commit_status_builder_and_message_strategy(mocker):
+    mock_commit_status_builder = MagicMock(name="fake_commit_status_builder")
+    mock_commit_status_builder.get_result.return_value = "D. Context"
+    mock_commit_status_builder.build_context.return_value = mock_commit_status_builder
+    mock_commit_status_builder.initialize_from_context.return_value = (
+        mock_commit_status_builder
+    )
+    mock_commit_status_builder = mocker.patch(
+        "services.bundle_analysis.new_notify.CommitStatusNotificationContextBuilder",
+        return_value=mock_commit_status_builder,
+    )
+    commit_status_message_strategy = AsyncMock(name="fake_markdown_strategy")
+    commit_status_message_strategy = mocker.patch(
+        "services.bundle_analysis.new_notify.CommitStatusMessageStrategy",
+        return_value=commit_status_message_strategy,
+    )
+    mock_commit_status_builder.return_value.get_result.return_value = MagicMock(
+        name="fake_context", notification_type=NotificationType.COMMIT_STATUS
+    )
+    commit_status_message_strategy.build_message.return_value = "D. Message"
+    commit_status_message_strategy.send_message.return_value = NotificationResult(
+        notification_attempted=True,
+        notification_successful=True,
+        github_app_used=None,
+    )
+    return (mock_commit_status_builder, commit_status_message_strategy)
 
 
 @pytest.fixture
@@ -126,21 +163,12 @@ class TestCreateContextForNotification:
             == head_commit_report.external_id
         )
 
-    @pytest.mark.parametrize(
-        "unknown_notification",
-        [
-            NotificationType.COMMIT_STATUS,
-            NotificationType.GITHUB_COMMIT_CHECK,
-        ],
-    )
-    def test_create_contexts_unknown_notification(
-        self, mock_base_context, unknown_notification
-    ):
+    def test_create_contexts_unknown_notification(self, mock_base_context):
         current_yaml = UserYaml.from_dict({})
         service = BundleAnalysisNotifyService(mock_base_context.commit, current_yaml)
         assert (
             service.create_context_for_notification(
-                mock_base_context, unknown_notification
+                mock_base_context, "unknown_notification_type"
             )
             is None
         )
@@ -177,15 +205,12 @@ class TestBundleAnalysisNotifyService:
             UserYaml.from_dict({"comment": {"require_bundle_changes": False}}),
         )
         result = service.notify()
-        error_logs = [
-            record for record in caplog.records if record.levelname == "ERROR"
-        ]
         warning_logs = [
             record for record in caplog.records if record.levelname == "WARNING"
         ]
         assert any(
-            error.message == "Failed to build NotificationContext"
-            for error in error_logs
+            warning.message == "Failed to build NotificationContext"
+            for warning in warning_logs
         )
         assert any(
             warning.message
@@ -197,6 +222,7 @@ class TestBundleAnalysisNotifyService:
                 NotificationType.COMMIT_STATUS,
                 NotificationType.PR_COMMENT,
             ),
+            notifications_attempted=tuple(),
             notifications_successful=tuple(),
         )
 
@@ -204,11 +230,31 @@ class TestBundleAnalysisNotifyService:
         "current_yaml, expected_configured_count, expected_success_count",
         [
             pytest.param(
-                {"comment": {"require_bundle_changes": False}},
+                {
+                    "comment": {"require_bundle_changes": False},
+                    "bundle_analysis": {"status": "informational"},
+                },
                 2,
+                2,
+                id="comment_and_status",
+            ),
+            pytest.param(
+                {
+                    "comment": {"require_bundle_changes": False},
+                    "bundle_analysis": {"status": False},
+                },
+                1,
                 1,
                 id="only_comment_sent",
-            )
+            ),
+            pytest.param(
+                {
+                    "comment": False,
+                },
+                1,
+                1,
+                id="only_commit_status",
+            ),
         ],
     )
     def test_notify(
@@ -219,18 +265,9 @@ class TestBundleAnalysisNotifyService:
         mocker,
         mock_base_context,
     ):
-        mock_comment_builder, mock_markdown_strategy = (
-            override_comment_builder_and_message_strategy(mocker)
-        )
-        mock_comment_builder.return_value.get_result.return_value = MagicMock(
-            name="fake_context", notification_type=NotificationType.PR_COMMENT
-        )
-        mock_markdown_strategy.build_message.return_value = "D. Message"
-        mock_markdown_strategy.send_message.return_value = NotificationResult(
-            notification_attempted=True,
-            notification_successful=True,
-            github_app_used=None,
-        )
+        override_comment_builder_and_message_strategy(mocker)
+        override_commit_status_builder_and_message_strategy(mocker)
+
         mocker.patch.object(
             BundleAnalysisNotifyService,
             "build_base_context",
@@ -240,28 +277,27 @@ class TestBundleAnalysisNotifyService:
         mock_base_context.current_yaml = current_yaml
         service = BundleAnalysisNotifyService(mock_base_context.commit, current_yaml)
         result = service.notify()
-        assert result == BundleAnalysisNotifyReturn(
-            notifications_configured=(
-                NotificationType.COMMIT_STATUS,
-                NotificationType.PR_COMMENT,
-            ),
-            notifications_successful=(NotificationType.PR_COMMENT,),
-        )
         assert len(result.notifications_configured) == expected_configured_count
         assert len(result.notifications_successful) == expected_success_count
 
     @pytest.mark.parametrize(
         "result, success_value",
         [
-            (BundleAnalysisNotifyReturn([], []), NotificationSuccess.NOTHING_TO_NOTIFY),
+            (
+                BundleAnalysisNotifyReturn([], [], []),
+                NotificationSuccess.NOTHING_TO_NOTIFY,
+            ),
             (
                 BundleAnalysisNotifyReturn(
-                    [NotificationType.COMMIT_STATUS], [NotificationType.COMMIT_STATUS]
+                    [NotificationType.COMMIT_STATUS],
+                    [NotificationType.COMMIT_STATUS],
+                    [NotificationType.COMMIT_STATUS],
                 ),
                 NotificationSuccess.FULL_SUCCESS,
             ),
             (
                 BundleAnalysisNotifyReturn(
+                    [NotificationType.COMMIT_STATUS, NotificationType.PR_COMMENT],
                     [NotificationType.COMMIT_STATUS, NotificationType.PR_COMMENT],
                     [NotificationType.COMMIT_STATUS],
                 ),

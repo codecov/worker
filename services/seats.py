@@ -77,7 +77,7 @@ def determine_seat_activation(pull: EnrichedPull) -> SeatActivationInfo:
         db_session.query(Owner)
         .filter(
             Owner.service == org.service,
-            Owner.service_id == provider_pull["author"]["id"],
+            Owner.service_id == provider_pull.get("author", {}).get("id"),
         )
         .first()
     )
@@ -87,8 +87,8 @@ def determine_seat_activation(pull: EnrichedPull) -> SeatActivationInfo:
             "PR author not found in database",
             extra=dict(
                 author_service=org.service,
-                author_service_id=provider_pull["author"]["id"],
-                author_username=provider_pull["author"]["username"],
+                author_service_id=provider_pull.get("author", {}).get("id"),
+                author_username=provider_pull.get("author", {}).get("username"),
             ),
         )
         return SeatActivationInfo(reason="no_pr_author")

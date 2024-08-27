@@ -158,8 +158,28 @@ def make_quoted(content: str) -> str:
     return f"\n{result}\n"
 
 
+def properly_backtick(content: str) -> str:
+    max_backtick_count = 0
+    curr_backtick_count = 0
+    prev_char = None
+    for char in content:
+        if char == "`":
+            curr_backtick_count += 1
+        else:
+            curr_backtick_count = 0
+
+        if curr_backtick_count > max_backtick_count:
+            max_backtick_count = curr_backtick_count
+
+    backticks = "`" * (max_backtick_count + 1)
+    return f"{backticks}\n{content}\n{backticks}"
+
+
 def wrap_in_code(content: str) -> str:
-    return f"<pre>\n{content}\n</pre>"
+    if "```" in content:
+        return properly_backtick(content)
+    else:
+        return f"\n```\n{content}\n```\n"
 
 
 def display_duration(f: float) -> str:
@@ -178,10 +198,11 @@ def generate_failure_info(
     else:
         failure_message = "No failure message available"
 
+    failure_message = wrap_in_code(failure_message)
     if fail.build_url:
-        return f"<pre>{failure_message}</pre>\n[View]({fail.build_url}) the CI Build"
+        return f"{failure_message}\n[View]({fail.build_url}) the CI Build"
     else:
-        return f"<pre>{failure_message}</pre>"
+        return failure_message
 
 
 def generate_view_test_analytics_line(commit: Commit) -> str:
@@ -193,7 +214,7 @@ def generate_view_test_analytics_line(commit: Commit) -> str:
 def messagify_failure(
     failure: TestResultsNotificationFailure,
 ) -> str:
-    test_name = wrap_in_code(failure.testname)
+    test_name = wrap_in_code(failure.testname.replace("\x1f", " "))
     formatted_duration = display_duration(failure.duration_seconds)
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
     stack_trace = wrap_in_details(
@@ -207,7 +228,7 @@ def messagify_flake(
     flaky_failure: TestResultsNotificationFailure,
     flake_info: FlakeInfo,
 ) -> str:
-    test_name = wrap_in_code(flaky_failure.testname)
+    test_name = wrap_in_code(flaky_failure.testname.replace("\x1f", " "))
     formatted_duration = display_duration(flaky_failure.duration_seconds)
     flake_rate = flake_info.failed / flake_info.count * 100
     flake_rate_section = f"**Flake rate in main:** {flake_rate}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
