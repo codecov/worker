@@ -1,6 +1,7 @@
 import logging
 from typing import TypedDict
 
+import sentry_sdk
 from django.template import loader
 from shared.bundle_analysis import (
     BundleAnalysisComparison,
@@ -37,6 +38,7 @@ class BundleCommentTemplateContext(TypedDict):
 
 
 class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
+    @sentry_sdk.trace
     def build_message(self, context: BundleAnalysisPRCommentNotificationContext) -> str:
         template = loader.get_template("bundle_analysis_notify/bundle_comment.md")
         total_size_delta = context.bundle_analysis_comparison.total_size_delta
@@ -48,6 +50,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         )
         return template.render(context)
 
+    @sentry_sdk.trace
     async def send_message(
         self, context: BundleAnalysisPRCommentNotificationContext, message: str
     ) -> NotificationResult:
