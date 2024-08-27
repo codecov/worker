@@ -6,6 +6,7 @@ import mock
 import pytest
 from freezegun import freeze_time
 from shared.encryption.oauth import get_encryptor_from_configuration
+from shared.rate_limits import gh_app_key_name, owner_key_name
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -77,6 +78,7 @@ class TestRepositoryServiceTestCase(object):
             "username": repo.owner.username,
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
             "secret": None,
+            "entity_name": owner_key_name(repo.owner.ownerid),
         }
 
     def test_get_repo_provider_service_github_with_installations(
@@ -142,6 +144,10 @@ class TestRepositoryServiceTestCase(object):
         assert res._on_token_refresh is None
         assert res.token == {
             "key": "installation_token",
+            "entity_name": gh_app_key_name(
+                installation_id=installation_1.installation_id,
+                app_id=installation_1.app_id,
+            ),
         }
 
     def test_get_repo_provider_service_bitbucket(self, dbsession):
@@ -175,6 +181,7 @@ class TestRepositoryServiceTestCase(object):
             "username": repo.owner.username,
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
             "secret": None,
+            "entity_name": owner_key_name(repo.owner.ownerid),
         }
 
     def test_get_repo_provider_service_with_token_refresh_callback(self, dbsession):
@@ -208,6 +215,7 @@ class TestRepositoryServiceTestCase(object):
             "username": repo.owner.username,
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
             "secret": None,
+            "entity_name": owner_key_name(repo.owner.ownerid),
         }
 
     def test_get_repo_provider_service_repo_bot(self, dbsession, mock_configuration):
@@ -240,6 +248,7 @@ class TestRepositoryServiceTestCase(object):
             "username": repo.owner.username,
             "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
             "secret": None,
+            "entity_name": owner_key_name(repo.owner.ownerid),
         }
         assert res._on_token_refresh is not None
 
@@ -294,6 +303,7 @@ class TestRepositoryServiceTestCase(object):
             "username": repo.bot.username,
             "key": bot_token,
             "secret": None,
+            "entity_name": owner_key_name(repo.bot.ownerid),
         }
 
     def test_get_repo_provider_service_no_bot(self, dbsession):
@@ -329,6 +339,7 @@ class TestRepositoryServiceTestCase(object):
             "username": repo.owner.bot.username,
             "key": bot_token,
             "secret": None,
+            "entity_name": owner_key_name(repo.owner.bot.ownerid),
         }
 
     @pytest.mark.asyncio
@@ -1070,6 +1081,7 @@ class TestRepositoryServiceTestCase(object):
             "username": "1nf1n1t3l00p",
             "key": "bcaa0dc0c66b4a8c8c65ac919a1a91aa",
             "secret": None,
+            "entity_name": owner_key_name(repo.owner.ownerid),
         }
 
 
