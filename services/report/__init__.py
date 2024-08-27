@@ -913,8 +913,7 @@ class ReportService(BaseReportService):
         else:
             archive_file = archive_service.read_file(archive_url)
 
-        parser = get_proper_parser(upload)
-
+        parser = get_proper_parser(upload, archive_file)
         upload_version = (
             "v1" if isinstance(parser, VersionOneReportParser) else "legacy"
         )

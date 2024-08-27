@@ -5,9 +5,10 @@ from collections import defaultdict
 from pathlib import PurePath
 from typing import Optional, Sequence
 
-from helpers.pathmap import _resolve_path
-from helpers.pathmap.tree import Tree
-from services.path_fixer.fixpaths import _remove_known_bad_paths
+import sentry_sdk
+
+from helpers.pathmap import Tree
+from services.path_fixer.fixpaths import remove_known_bad_paths
 from services.path_fixer.user_path_fixes import UserPathFixes
 from services.path_fixer.user_path_includes import UserPathIncludes
 from services.yaml import read_yaml_field
@@ -29,6 +30,7 @@ class PathFixer(object):
     """
 
     @classmethod
+    @sentry_sdk.trace
     def init_from_user_yaml(
         cls, commit_yaml: dict, toc: Sequence[str], flags: Sequence, extra_fixes=None
     ):
@@ -63,18 +65,21 @@ class PathFixer(object):
     def __init__(
         self, yaml_fixes, path_patterns, toc, should_disable_default_pathfixes=False
     ) -> None:
+        self.calculated_paths = defaultdict(set)
+        self.toc = toc or []
+
         self.yaml_fixes = yaml_fixes or []
         self.path_patterns = set(path_patterns) or set([])
-        self.toc = toc or []
         self.should_disable_default_pathfixes = should_disable_default_pathfixes
-        self.initialize()
 
-    def initialize(self) -> None:
         self.custom_fixes = UserPathFixes(self.yaml_fixes)
         self.path_matcher = UserPathIncludes(self.path_patterns)
-        self.tree = Tree()
-        self.tree.construct_tree(self.toc)
-        self.calculated_paths = defaultdict(set)
+
+        if self.toc and not should_disable_default_pathfixes:
+            self.tree = Tree()
+            self.tree.construct_tree(self.toc)
+        else:
+            self.tree = None
 
     def clean_path(self, path: str) -> Optional[str]:
         if not path:
@@ -83,12 +88,12 @@ class PathFixer(object):
         if self.yaml_fixes:
             # applies pre
             path = self.custom_fixes(path, False)
-        if self.toc and not self.should_disable_default_pathfixes:
-            path = self.resolver(path, ancestors=1)
+        if self.tree:
+            path = self.tree.resolve_path(path, ancestors=1)
             if not path:
                 return None
         elif not self.toc:
-            path = _remove_known_bad_paths("", path)
+            path = remove_known_bad_paths("", path)
         if self.yaml_fixes:
             # applied pre and post
             path = self.custom_fixes(path, True)
@@ -96,9 +101,6 @@ class PathFixer(object):
             # don't include the file if yaml specified paths to include/ignore and it's not in the list to include
             return None
         return path
-
-    def resolver(self, path: str, ancestors=None):
-        return _resolve_path(self.tree, path, ancestors)
 
     def __call__(self, path: str, bases_to_try=None) -> str:
         res = self.clean_path(path)

@@ -2,6 +2,7 @@ import logging
 from functools import partial
 from typing import NamedTuple
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.yaml import UserYaml
 
@@ -72,6 +73,7 @@ class BundleAnalysisNotifyService:
     def owner(self) -> Owner:
         return self.commit.repository.owner
 
+    @sentry_sdk.trace
     def build_base_context(self) -> BaseBundleAnalysisNotificationContext | None:
         try:
             return (
