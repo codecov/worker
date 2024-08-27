@@ -273,6 +273,71 @@ class TestUploadTaskIntegration(object):
         )
         chain.assert_called_with([processor_sig, notify_sig])
 
+    def test_upload_task_call_bundle_analysis_no_upload(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        chain = mocker.patch("tasks.upload.chain")
+        mocker.patch(
+            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
+        )
+        storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocker.patch.object(UploadTask, "app", celery_app)
+
+        commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__oauth_token="GHTZB+Mi+kbl/ubudnSKTJYb/fgN4hRJVJYSIErtidEsCLDJBb8DZzkbXqLujHAnv28aKShXddE/OffwRuwKug==",
+            repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+
+        repository = commit.repository
+        repository.bundle_analysis_enabled = True
+        dbsession.add(repository)
+        dbsession.flush()
+        dbsession.refresh(repository)
+
+        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}/test_results"] = (
+            jsonified_redis_queue
+        )
+
+        UploadTask().run_impl(
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            report_type="test_results",
+        )
+
+        commit_report = commit.commit_report(report_type=ReportType.BUNDLE_ANALYSIS)
+        assert commit_report is None
+
+        processor_sig = bundle_analysis_processor_task.s(
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            params={
+                "url": storage_path,
+                "build_code": "some_random_build",
+                "upload_pk": None,
+            },
+        )
+        chain.assert_called_with([processor_sig])
+
     def test_upload_task_call_test_results(
         self,
         mocker,
