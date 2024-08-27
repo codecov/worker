@@ -1,6 +1,7 @@
 from enum import Enum, auto
 from typing import Literal
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.bundle_analysis import (
     BundleAnalysisComparison,
@@ -83,6 +84,7 @@ class CommitStatusNotificationContextBuilder(NotificationContextBuilder):
         )
         return self
 
+    @sentry_sdk.trace
     async def load_optional_enriched_pull(
         self,
     ) -> "CommitStatusNotificationContextBuilder":
@@ -102,6 +104,7 @@ class CommitStatusNotificationContextBuilder(NotificationContextBuilder):
         self._notification_context.pull = optional_pull
         return self
 
+    @sentry_sdk.trace
     def load_bundle_comparison(
         self,
     ) -> "CommitStatusNotificationContextBuilder":

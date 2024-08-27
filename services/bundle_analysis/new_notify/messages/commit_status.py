@@ -1,6 +1,7 @@
 import logging
 from typing import TypedDict
 
+import sentry_sdk
 from django.template import loader
 from shared.helpers.cache import make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError
@@ -27,6 +28,7 @@ class BundleCommentTemplateContext(TypedDict):
 
 
 class CommitStatusMessageStrategy(MessageStrategyInterface):
+    @sentry_sdk.trace
     def build_message(self, context: CommitStatusNotificationContext) -> str | bytes:
         template = loader.get_template(
             "bundle_analysis_notify/commit_status_summary.md"
@@ -71,6 +73,7 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
             )
         )
 
+    @sentry_sdk.trace
     async def send_message(
         self, context: CommitStatusNotificationContext, message: str | bytes
     ) -> NotificationResult:

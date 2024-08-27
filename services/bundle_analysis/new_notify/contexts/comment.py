@@ -1,5 +1,6 @@
 import logging
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.bundle_analysis import (
     BundleAnalysisComparison,
@@ -62,6 +63,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         )
         return self
 
+    @sentry_sdk.trace
     async def load_enriched_pull(self) -> "BundleAnalysisPRCommentContextBuilder":
         """Loads the EnrichedPull into the NotificationContext.
         EnrichedPull includes updated info from the git provider and info saved in the database.
@@ -84,6 +86,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         self._notification_context.pull = pull
         return self
 
+    @sentry_sdk.trace
     def load_bundle_comparison(self) -> "BundleAnalysisPRCommentContextBuilder":
         """Loads the BundleAnalysisComparison into the NotificationContext.
         BundleAnalysisComparison is the diff between 2 BundleAnalysisReports,
