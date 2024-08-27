@@ -9,6 +9,7 @@ from celery.signals import worker_process_shutdown
 from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
 from shared.celery_config import BaseCeleryConfig
 from shared.config import get_config
+from shared.license import startup_license_logging
 from shared.metrics import start_prometheus
 from shared.storage.exceptions import BucketAlreadyExistsError
 
@@ -77,6 +78,8 @@ def setup_worker():
         log.info("Initializing bucket %s", bucket_name)
     except BucketAlreadyExistsError:
         pass
+
+    startup_license_logging()
 
 
 @cli.command()
