@@ -71,7 +71,9 @@ def setup_worker():
     storage_client = get_storage_client()
     minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")
-    auto_create_bucket = get_config("services", "minio", "auto_create_bucket", default=False)
+    auto_create_bucket = get_config(
+        "services", "minio", "auto_create_bucket", default=False
+    )
     region = minio_config.get("region", "us-east-1")
     try:
         # note that this is a departure from the old default behavior.
