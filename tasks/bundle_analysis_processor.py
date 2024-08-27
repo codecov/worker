@@ -2,6 +2,7 @@ import logging
 from copy import deepcopy
 from typing import Any, Dict
 
+from asgiref.sync import async_to_sync
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.reports.enums import UploadState
 from shared.yaml import UserYaml
@@ -106,19 +107,28 @@ class BundleAnalysisProcessorTask(
         )
         assert commit, "commit not found"
 
+        report_service = BundleAnalysisReportService(commit_yaml)
+
+        # these are the task results from prior processor tasks in the chain
+        # (they get accumulated as we execute each task in succession)
+        processing_results = previous_result.get("results", [])
+
         # these are populated in the upload task
+        # unless when this task is called on a non-BA upload then we have to create an empty upload
         upload_pk = params["upload_pk"]
-        assert upload_pk is not None
+        if upload_pk is None:
+            commit_report = async_to_sync(report_service.initialize_and_save_report)(
+                commit
+            )
+            upload_pk = report_service.create_report_upload(
+                {"url": ""}, commit_report
+            ).id_
 
         upload = db_session.query(Upload).filter_by(id_=upload_pk).first()
         assert upload is not None
 
         # Override base commit of comparisons with a custom commit SHA if applicable
         compare_sha = params.get("bundle_analysis_compare_sha")
-
-        # these are the task results from prior processor tasks in the chain
-        # (they get accumulated as we execute each task in succession)
-        processing_results = previous_result.get("results", [])
 
         try:
             log.info(
@@ -135,7 +145,6 @@ class BundleAnalysisProcessorTask(
             )
             assert params.get("commit") == commit.commitid
 
-            report_service = BundleAnalysisReportService(commit_yaml)
             result: ProcessingResult = report_service.process_upload(
                 commit, upload, compare_sha
             )

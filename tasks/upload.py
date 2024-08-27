@@ -2,6 +2,7 @@ import itertools
 import logging
 import time
 import uuid
+from copy import deepcopy
 from datetime import datetime
 from json import loads
 from typing import Any, Optional
@@ -555,6 +556,27 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     ):
         commit_yaml = commit_yaml.to_dict()
 
+        # Carryforward the parent BA report for the current commit's BA report when handling uploads
+        # that's not bundle analysis type.
+        if (
+            commit_report.report_type != ReportType.BUNDLE_ANALYSIS.value
+            and commit.repository.bundle_analysis_enabled
+        ):
+            # Override upload_pk from other upload types and create the BA uploads in the
+            # BA processor task
+            ba_argument_list = []
+            for arg in argument_list:
+                ba_arg = deepcopy(arg)
+                ba_arg["upload_pk"] = None
+                ba_argument_list.append(ba_arg)
+
+            self._schedule_bundle_analysis_processing_task(
+                commit,
+                commit_yaml,
+                ba_argument_list,
+                do_notify=False,
+            )
+
         if upload_context.report_type == ReportType.COVERAGE:
             assert (
                 commit_report.report_type is None
@@ -718,6 +740,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit: Commit,
         commit_yaml: dict,
         argument_list: list[dict],
+        do_notify: Optional[bool] = True,
     ):
         task_signatures = [
             bundle_analysis_processor_task.s(
@@ -732,13 +755,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         # it might make sense to eventually have a "finisher" task that
         # does whatever extra stuff + enqueues a notify
-        task_signatures.append(
-            bundle_analysis_notify_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml,
+        if do_notify:
+            task_signatures.append(
+                bundle_analysis_notify_task.s(
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                    commit_yaml=commit_yaml,
+                )
             )
-        )
 
         return chain(task_signatures).apply_async()
 
