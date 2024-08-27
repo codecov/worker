@@ -72,10 +72,16 @@ def setup_worker():
     storage_client = get_storage_client()
     minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")
+    auto_create_bucket = get_config(
+        "services", "minio", "auto_create_bucket", default=False
+    )
     region = minio_config.get("region", "us-east-1")
     try:
-        storage_client.create_root_storage(bucket_name, region)
-        log.info("Initializing bucket %s", bucket_name)
+        # note that this is a departure from the old default behavior.
+        # This is intended as the bucket will exist in most cases where IAC or manual setup is used
+        if auto_create_bucket:
+            storage_client.create_root_storage(bucket_name, region)
+            log.info("Initializing bucket %s", bucket_name)
     except BucketAlreadyExistsError:
         pass
 

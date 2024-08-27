@@ -27,9 +27,10 @@ def test_run_empty_config(
     assert not mock_storage.root_storage_created
     res = setup_worker()
     assert res is None
-    assert mock_storage.root_storage_created
+    assert not mock_storage.root_storage_created
     assert mock_storage.config == {}
     mock_license_logging.assert_called_once()
+
 
 
 @mock.patch("main.startup_license_logging")
