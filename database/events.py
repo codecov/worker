@@ -29,7 +29,14 @@ def _sync_repo(repository: Repository):
             publisher = _get_pubsub_publisher()
             topic_path = publisher.topic_path(pubsub_project_id, pubsub_topic_id)
             publisher.publish(
-                topic_path, json.dumps({"sync": repository.repoid}).encode("utf-8")
+                topic_path,
+                json.dumps(
+                    {
+                        "type": "repo",
+                        "sync": "one",
+                        "id": repository.repoid,
+                    }
+                ).encode("utf-8"),
             )
         log.info(f"Message published for repository {repository.repoid}")
     except Exception as e:
