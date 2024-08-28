@@ -3,8 +3,9 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+import sentry_sdk
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
-from shared.reports.types import Change
+from shared.reports.types import Change, ReportTotals
 from shared.torngit.exceptions import (
     TorngitClientGeneralError,
 )
@@ -201,6 +202,16 @@ class ComparisonProxy(object):
                             ),
                         )
             return self._changes
+
+    @sentry_sdk.trace
+    async def get_patch_totals(self) -> ReportTotals | None:
+        """Returns the patch coverage for the comparison.
+
+        Patch coverage refers to looking at the coverage in HEAD report filtered by the git diff HEAD..BASE.
+        """
+        diff = await self.get_diff(use_original_base=True)
+        totals = self.head.report.apply_diff(diff)
+        return totals
 
     async def get_behind_by(self):
         async with self._behind_by_lock:

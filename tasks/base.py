@@ -153,6 +153,7 @@ class BaseCodecovTask(celery_app.Task):
         celery_compatible_config = {
             "time_limit": extra_config.get("hard_timelimit", None),
             "soft_time_limit": extra_config.get("soft_timelimit", None),
+            "user_plan": user_plan,
         }
         options = {**options, **celery_compatible_config}
 
