@@ -9,6 +9,7 @@ from celery.signals import worker_process_shutdown
 from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
 from shared.celery_config import BaseCeleryConfig
 from shared.config import get_config
+from shared.license import startup_license_logging
 from shared.metrics import start_prometheus
 from shared.storage.exceptions import BucketAlreadyExistsError
 
@@ -71,12 +72,20 @@ def setup_worker():
     storage_client = get_storage_client()
     minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")
+    auto_create_bucket = get_config(
+        "services", "minio", "auto_create_bucket", default=False
+    )
     region = minio_config.get("region", "us-east-1")
     try:
-        storage_client.create_root_storage(bucket_name, region)
-        log.info("Initializing bucket %s", bucket_name)
+        # note that this is a departure from the old default behavior.
+        # This is intended as the bucket will exist in most cases where IAC or manual setup is used
+        if auto_create_bucket:
+            storage_client.create_root_storage(bucket_name, region)
+            log.info("Initializing bucket %s", bucket_name)
     except BucketAlreadyExistsError:
         pass
+
+    startup_license_logging()
 
 
 @cli.command()
