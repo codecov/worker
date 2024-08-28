@@ -2,6 +2,7 @@ import json
 
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report
+from shared.reports.types import ReportTotals
 from shared.torngit.exceptions import TorngitRateLimitError
 from shared.yaml import UserYaml
 
@@ -311,20 +312,44 @@ class TestComputeComparisonTask(object):
         assert compare_flag_records[0].repositoryflag_id == repositoryflag.id_
         assert compare_flag_records[0].patch_totals is not None
 
-    def test_set_state_to_error_missing_base_report(self, dbsession, mocker):
+    def test_set_state_to_error_missing_base_report(
+        self, dbsession, mocker, sample_report
+    ):
         comparison = CompareCommitFactory.create()
+        # We need a head report, but no base report
+        head_commit = comparison.compare_commit
+        mocker.patch.object(
+            ReportService,
+            "get_existing_report_for_commit",
+            side_effect=lambda commit,
+            *args,
+            **kwargs: ReadOnlyReport.create_from_report(sample_report)
+            if commit == head_commit
+            else None,
+        )
+        patch_totals = ReportTotals(
+            files=3, lines=200, hits=100, misses=100, coverage="50%"
+        )
+        mocker.patch(
+            "tasks.compute_comparison.ComparisonProxy.get_patch_totals",
+            return_value=patch_totals,
+        )
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
         mocker.patch.object(
             ReadOnlyReport, "should_load_rust_version", return_value=True
         )
-        mocker.patch.object(
-            ReportService, "get_existing_report_for_commit", return_value=None
-        )
-        task.run_impl(dbsession, comparison.id)
+        result = task.run_impl(dbsession, comparison.id)
         dbsession.flush()
+        assert result == {"successful": False, "error": "missing_base_report"}
         assert comparison.state == CompareCommitState.error.value
+        assert comparison.patch_totals == {
+            "hits": 100,
+            "misses": 100,
+            "partials": 0,
+            "coverage": "50%",
+        }
         assert comparison.error == CompareCommitError.missing_base_report.value
 
     def test_set_state_to_error_missing_head_report(
@@ -351,6 +376,13 @@ class TestComputeComparisonTask(object):
         comparison = CompareCommitFactory.create()
         dbsession.add(comparison)
         dbsession.flush()
+        patch_totals = ReportTotals(
+            files=3, lines=200, hits=100, misses=100, coverage="50%"
+        )
+        mocker.patch(
+            "tasks.compute_comparison.ComparisonProxy.get_patch_totals",
+            return_value=patch_totals,
+        )
         mocker.patch.object(
             ComputeComparisonTask,
             "serialize_impacted_files",
@@ -363,9 +395,15 @@ class TestComputeComparisonTask(object):
             return_value=ReadOnlyReport.create_from_report(sample_report),
         )
         res = task.run_impl(dbsession, comparison.id)
-        assert res == {"successful": False}
+        assert res == {"successful": False, "error": "torngit_rate_limit"}
         dbsession.flush()
-        assert comparison.state == CompareCommitState.pending.value
+        assert comparison.state == CompareCommitState.error.value
+        assert comparison.patch_totals == {
+            "hits": 100,
+            "misses": 100,
+            "partials": 0,
+            "coverage": "50%",
+        }
         assert comparison.error is None
 
     def test_compute_component_comparisons(

@@ -1,10 +1,13 @@
 import logging
+from typing import Literal, TypedDict
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.celery_config import compute_comparison_task_name
 from shared.components import Component
 from shared.helpers.flag import Flag
 from shared.reports.readonly import ReadOnlyReport
+from shared.reports.types import ReportTotals
 from shared.torngit.exceptions import TorngitRateLimitError
 from shared.yaml import UserYaml
 
@@ -13,7 +16,6 @@ from database.enums import CompareCommitError, CompareCommitState
 from database.models import CompareCommit, CompareComponent, CompareFlag
 from database.models.reports import ReportLevelTotals, RepositoryFlag
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.comparison import ComparisonContext, ComparisonProxy, FilteredComparison
 from services.comparison.types import Comparison, FullCommit
@@ -24,35 +26,62 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
+ComputeComparisonTaskErrors = (
+    Literal["missing_head_report"]
+    | Literal["missing_base_report"]
+    | Literal["torngit_rate_limit"]
+)
+
+
+class ComputeComparisonTaskReturn(TypedDict):
+    success: bool
+    error: ComputeComparisonTaskErrors | None
+
+
 class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
-    def run_impl(self, db_session, comparison_id, *args, **kwargs):
-        comparison = db_session.query(CompareCommit).get(comparison_id)
+    def run_impl(
+        self, db_session, comparison_id, *args, **kwargs
+    ) -> ComputeComparisonTaskReturn:
+        comparison: CompareCommit = db_session.query(CompareCommit).get(comparison_id)
         repo = comparison.compare_commit.repository
-        log_extra = dict(comparison_id=comparison_id, repoid=repo.repoid)
+        log_extra = dict(
+            comparison_id=comparison_id,
+            repoid=repo.repoid,
+            commit=comparison.compare_commit.commitid,
+        )
         log.info("Computing comparison", extra=log_extra)
-        current_yaml = self.get_yaml_commit(comparison.compare_commit)
+        current_yaml = get_repo_yaml(repo)
         installation_name_to_use = get_installation_name_for_owner_for_task(
             db_session, self.name, repo.owner
         )
 
-        with metrics.timer(f"{self.metrics_prefix}.get_comparison_proxy"):
-            comparison_proxy = self.get_comparison_proxy(
-                comparison, current_yaml, installation_name_to_use
-            )
+        comparison_proxy = self.get_comparison_proxy(
+            comparison, current_yaml, installation_name_to_use
+        )
+        if not comparison_proxy.has_head_report():
+            comparison.error = CompareCommitError.missing_head_report.value
+            comparison.state = CompareCommitState.error.value
+            log.warning("Comparison doesn't have HEAD report", extra=log_extra)
+            return {"successful": False, "error": "missing_head_report"}
+
+        # At this point we can calculate the patch coverage
+        # Because we have a HEAD report and a base commit to get the diff from
+        patch_totals = async_to_sync(comparison_proxy.get_patch_totals)()
+        comparison.patch_totals = self.minimal_totals(patch_totals)
+
         if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
-        elif not comparison_proxy.has_head_report():
-            comparison.error = CompareCommitError.missing_head_report.value
+            log.warning(
+                "Comparison doesn't have BASE report",
+                extra={"base_commit": comparison.base_commit.commitid, **log_extra},
+            )
+            comparison.state = CompareCommitState.error.value
+            return {"successful": False, "error": "missing_base_report"}
         else:
             comparison.error = None
 
-        if comparison.error:
-            comparison.state = CompareCommitState.error.value
-            log.warn("Compute comparison failed, %s", comparison.error, extra=log_extra)
-            return {"successful": False}
         try:
-            with metrics.timer(f"{self.metrics_prefix}.serialize_impacted_files") as tm:
-                impacted_files = self.serialize_impacted_files(comparison_proxy)
+            impacted_files = self.serialize_impacted_files(comparison_proxy)
         except TorngitRateLimitError:
             log.warning(
                 "Unable to compute comparison due to rate limit error",
@@ -60,15 +89,26 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
                     comparison_id=comparison_id, repoid=comparison.compare_commit.repoid
                 ),
             )
-            return {"successful": False}
-        log.info("Files impact calculated", extra=dict(timing_ms=tm.ms, **log_extra))
-        with metrics.timer(f"{self.metrics_prefix}.store_results"):
-            path = self.store_results(comparison, impacted_files)
+            comparison.state = CompareCommitState.error.value
+            return {"successful": False, "error": "torngit_rate_limit"}
+
+        log.info("Files impact calculated", extra=log_extra)
+        path = self.store_results(comparison, impacted_files)
 
         comparison.report_storage_path = path
-        comparison.patch_totals = impacted_files.get("changes_summary").get(
+        calculated_patch_totals = impacted_files.get("changes_summary").get(
             "patch_totals"
         )
+        if calculated_patch_totals != comparison.patch_totals:
+            log.warning(
+                "Calculated patch totals differ!",
+                extra={
+                    **log_extra,
+                    "calculated_patch_totals": calculated_patch_totals,
+                    "patch_totals": comparison.patch_totals,
+                },
+            )
+
         comparison.state = CompareCommitState.processed.value
         log.info("Computing comparison successful", extra=log_extra)
         db_session.commit()
@@ -78,6 +118,21 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         self.compute_component_comparisons(db_session, comparison, comparison_proxy)
         db_session.commit()
         return {"successful": True}
+
+    def minimal_totals(self, totals: ReportTotals | None) -> dict:
+        if totals is None:
+            return {
+                "hits": 0,
+                "misses": 0,
+                "partials": 0,
+                "coverage": None,
+            }
+        return {
+            "hits": totals.hits,
+            "misses": totals.misses,
+            "partials": totals.partials,
+            "coverage": totals.coverage,
+        }
 
     def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
         log_extra = dict(comparison_id=comparison.id)
@@ -93,6 +148,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             comparison_proxy,
         )
 
+    @sentry_sdk.trace
     def create_or_update_flag_comparisons(
         self,
         db_session,
@@ -193,6 +249,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         db_session.add(flag_comparison)
         db_session.flush()
 
+    @sentry_sdk.trace
     def compute_component_comparisons(
         self, db_session, comparison: CompareCommit, comparison_proxy: ComparisonProxy
     ):
@@ -255,9 +312,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         db_session.add(component_comparison)
         db_session.flush()
 
-    def get_yaml_commit(self, commit):
-        return get_repo_yaml(commit.repository)
-
+    @sentry_sdk.trace
     def get_comparison_proxy(
         self, comparison, current_yaml, installation_name_to_use: str | None = None
     ):
@@ -289,9 +344,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             ),
         )
 
+    @sentry_sdk.trace
     def serialize_impacted_files(self, comparison_proxy):
         return async_to_sync(comparison_proxy.get_impacted_files)()
 
+    @sentry_sdk.trace
     def store_results(self, comparison, impacted_files):
         repository = comparison.compare_commit.repository
         storage_service = ArchiveService(repository)

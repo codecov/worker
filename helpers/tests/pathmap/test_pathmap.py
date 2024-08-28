@@ -13,16 +13,13 @@ def test_clean_path():
 
 
 def test_resolve_path():
-    expected_path = "src/components/login.js"
-    tree = Tree()
-    tree.construct_tree([expected_path])
+    tree = Tree(["src/components/login.js"])
 
-    assert tree.resolve_path("Src/components/login.js") == expected_path
+    assert tree.resolve_path("Src/components/login.js") == "src/components/login.js"
 
 
 def test_resolve_case():
-    tree = Tree()
-    tree.construct_tree(["Aa/Bb/cc", "Aa/Bb/Cc"])
+    tree = Tree(["Aa/Bb/cc", "Aa/Bb/Cc"])
     assert tree.resolve_path("aa/bb/cc") == "Aa/Bb/cc"
     assert tree.resolve_path("aa/bb/Cc") == "Aa/Bb/Cc"
 
@@ -44,24 +41,19 @@ def test_resolve_paths():
         "a/Path With Space",
     ]
 
-    tree = Tree()
-    tree.construct_tree([path for path in after if path])
+    tree = Tree([path for path in after if path])
     for path, expected in zip(before, after):
         assert tree.resolve_path(path) == expected
 
 
 def test_resolve_path_when_to_short():
-    toc = ["a/b/c"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["a/b/c"])
     assert tree.resolve_path("b/c", 0) == "a/b/c"
     assert tree.resolve_path("b/c", 1) == "a/b/c"
 
 
 def test_resolve_path_when_to_long():
-    toc = ["a/b/c"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["a/b/c"])
     assert tree.resolve_path("z/y/b/c", 1) == "a/b/c"
 
 
@@ -80,9 +72,7 @@ def test_check_ancestors():
 
 
 def test_resolve_paths_with_ancestors():
-    toc = ["x/y/z"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["x/y/z"])
 
     # default, no ancestors ============================
     paths = ["z", "R/z", "R/y/z", "x/y/z", "w/x/y/z"]
@@ -104,71 +94,51 @@ def test_resolve_paths_with_ancestors():
 
 
 def test_resolving():
-    toc = ["a/b/c", "a/r/c", "c"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["a/b/c", "a/r/c", "c"])
     assert tree.resolve_path("r/c", 1) == "a/r/c"
     assert tree.resolve_path("r/c") == "a/r/c"
 
-    toc = ["a/b", "a/b/c/d", "x/y"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["a/b", "a/b/c/d", "x/y"])
     assert tree.resolve_path("c/d", 1) == "a/b/c/d"
 
 
 def test_with_plus():
-    toc = ["b+c"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["b+c"])
     assert tree.resolve_path("b+c") == "b+c"
 
-    toc = ["a/b+c"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["a/b+c"])
     assert tree.resolve_path("b+c") == "a/b+c"
 
 
 def test_case_sensitive_ancestors():
-    toc = ["src/HeapDump/GCHeapDump.cs"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["src/HeapDump/GCHeapDump.cs"])
     path = "C:/projects/perfview/src/heapDump/GCHeapDump.cs"
     new_path = tree.resolve_path(path, 1)
     assert new_path == "src/HeapDump/GCHeapDump.cs"
 
 
 def test_path_should_not_resolve():
-    toc = ["four/six/three.py"]
-    path = "four/six/seven.py"
-    tree = Tree()
-    tree.construct_tree(toc)
-    path = tree.resolve_path(path)
-    assert path is None
+    tree = Tree(["four/six/three.py"])
+    assert tree.resolve_path("four/six/seven.py") is None
 
 
 def test_path_should_not_resolve_case_insensative():
-    toc = ["a/b/C"]
-    path = "a/B/c"
-    tree = Tree()
-    tree.construct_tree(toc)
-    path = tree.resolve_path(path)
-    assert path == "a/b/C"
+    tree = Tree(["a/b/C"])
+    assert tree.resolve_path("a/B/c") == "a/b/C"
 
 
 def test_ancestors_original_missing():
-    toc = ["shorter.h"]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(["shorter.h"])
     assert tree.resolve_path("a/long/path/shorter.h", 1) == "shorter.h"
 
 
 def test_ancestors_absolute_path():
-    toc = [
-        "examples/ChurchNumerals.scala",
-        "tests/src/test/scala/at/logic/gapt/examples/ChurchNumerals.scala",
-    ]
-    tree = Tree()
-    tree.construct_tree(toc)
+    tree = Tree(
+        [
+            "examples/ChurchNumerals.scala",
+            "tests/src/test/scala/at/logic/gapt/examples/ChurchNumerals.scala",
+        ]
+    )
     path = "/home/travis/build/gapt/gapt/examples/ChurchNumerals.scala"
 
     assert tree.resolve_path(path, 1) == "examples/ChurchNumerals.scala"
