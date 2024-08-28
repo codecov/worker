@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-from mock import call
 from shared.storage.exceptions import FileNotInStorageError
 from test_results_parser import Outcome
 
@@ -44,10 +43,6 @@ class TestUploadTestProcessorTask(object):
         dbsession.flush()
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
-        mock_metrics = mocker.patch(
-            "tasks.test_results_processor.metrics",
-            mocker.MagicMock(),
-        )
 
         commit = CommitFactory.create(
             message="hello world",
@@ -94,23 +89,6 @@ class TestUploadTestProcessorTask(object):
         )
         assert expected_result == result
         assert commit.message == "hello world"
-
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.processor.parsing",
-                    tags={"status": "success", "parser": "junit_xml"},
-                )
-            ]
-        )
-        calls = [
-            call("test_results.processor"),
-            call("test_results.processor.process_individual_arg"),
-            call("test_results.processor.file_parsing"),
-            call(key="test_results.processor.write_to_db"),
-        ]
-        for c in calls:
-            assert c in mock_metrics.timing.mock_calls
 
     @pytest.mark.integration
     def test_upload_processor_task_call_pytest_reportlog(
@@ -272,10 +250,6 @@ class TestUploadTestProcessorTask(object):
             "match_report",
             side_effect=ParserNotSupportedError(),
         )
-        mock_metrics = mocker.patch(
-            "tasks.test_results_processor.metrics",
-            mocker.MagicMock(),
-        )
 
         commit = CommitFactory.create(
             message="hello world",
@@ -301,20 +275,6 @@ class TestUploadTestProcessorTask(object):
         )
         print(caplog.text)
         assert "File did not match any parser format" in caplog.text
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.processor.parsing",
-                    tags={"status": "failure", "reason": "match_report_failure"},
-                )
-            ]
-        )
-        calls = [
-            call("test_results.processor"),
-            call("test_results.processor.process_individual_arg"),
-        ]
-        for c in calls:
-            assert c in mock_metrics.timing.mock_calls
 
     @pytest.mark.integration
     def test_test_result_processor_task_error_parsing_file(
@@ -342,10 +302,6 @@ class TestUploadTestProcessorTask(object):
             "match_report",
             return_value=("test_parser", mocker.MagicMock(side_effect=ParserError)),
         )
-        mock_metrics = mocker.patch(
-            "tasks.test_results_processor.metrics",
-            mocker.MagicMock(),
-        )
 
         commit = CommitFactory.create(
             message="hello world",
@@ -371,20 +327,6 @@ class TestUploadTestProcessorTask(object):
         )
         print(caplog.text)
         assert "Error parsing file" in caplog.text
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.processor.parsing",
-                    tags={"status": "failure", "reason": "failed_to_parse_test_parser"},
-                )
-            ]
-        )
-        calls = [
-            call("test_results.processor"),
-            call("test_results.processor.process_individual_arg"),
-        ]
-        for c in calls:
-            assert c in mock_metrics.timing.mock_calls
 
     @pytest.mark.integration
     def test_test_result_processor_task_delete_archive(

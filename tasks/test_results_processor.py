@@ -6,7 +6,7 @@ from io import BytesIO
 from sys import getsizeof
 from typing import List
 
-from sentry_sdk import metrics
+import sentry_sdk
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
@@ -67,7 +67,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_list = []
 
         # process each report session's test information
-        with metrics.timing("test_results.processor"):
+        with sentry_sdk.metrics.timing("test_results.processor"):
             for args in arguments_list:
                 upload_obj: Upload = (
                     db_session.query(Upload)
@@ -107,7 +107,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         flags_hash: str,
     ):
         memory_used = getsizeof(parsed_testruns) // 1024
-        with metrics.timing(key="test_results.processor.write_to_db"):
+        with sentry_sdk.metrics.timing(key="test_results.processor.write_to_db"):
             test_data = []
             test_instance_data = []
             for testrun in parsed_testruns:
@@ -161,7 +161,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         # And these aux memory structures take the bulk of extra memory we need
         memory_used += getsizeof(test_data) // 1024
         memory_used += getsizeof(test_instance_data) // 1024
-        metrics.gauge(
+        sentry_sdk.metrics.gauge(
             key="test_results.processor.write_to_db.aux_memory_used",
             value=memory_used,
             unit="kilobytes",
@@ -171,7 +171,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         self, db_session, repoid, commitid, upload_obj: Upload
     ):
         upload_id = upload_obj.id
-        with metrics.timing("test_results.processor.process_individual_arg"):
+        with sentry_sdk.metrics.timing("test_results.processor.process_individual_arg"):
             parsed_testruns: List[Testrun] = self.process_individual_arg(
                 upload_obj, upload_obj.report.commit.repository
             )
@@ -233,10 +233,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         file_bytes: BytesIO,
     ):
         try:
-            with metrics.timing("test_results.processor.parser_matching"):
+            with sentry_sdk.metrics.timing("test_results.processor.parser_matching"):
                 parser, parsing_function = self.match_report(filename, file_bytes)
         except ParserNotSupportedError as e:
-            metrics.incr(
+            sentry_sdk.metrics.incr(
                 "test_results.processor.parsing",
                 tags={"status": "failure", "reason": "match_report_failure"},
             )
@@ -247,13 +247,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         try:
             file_content = file_bytes.read()
-            with metrics.timing("test_results.processor.file_parsing"):
+            with sentry_sdk.metrics.timing("test_results.processor.file_parsing"):
                 res = parsing_function(file_content)
         except ParserError as e:
             # aware of cardinality issues with using a variable here in the reason field but
             # parser is defined by us and limited to the amount of different parsers we will
             # write, so I don't expect this to be a problem for us
-            metrics.incr(
+            sentry_sdk.metrics.incr(
                 "test_results.processor.parsing",
                 tags={"status": "failure", "reason": f"failed_to_parse_{parser}"},
             )
@@ -263,7 +263,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 parser=parser,
                 parser_err_msg=str(e),
             ) from e
-        metrics.incr(
+        sentry_sdk.metrics.incr(
             "test_results.processor.parsing",
             tags={"status": "success", "parser": parser},
         )
