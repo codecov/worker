@@ -627,7 +627,7 @@ To view individual test run time comparison to the main branch, go to the [Test 
         repo.private = True
         dbsession.flush()
 
-        pr_author = OwnerFactory(service_id=100)
+        pr_author = OwnerFactory(service="github", service_id=100)
         dbsession.add(pr_author)
         dbsession.flush()
 
