@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from logging import getLogger
 from sys import getsizeof
 
-from sentry_sdk import metrics, trace
+import sentry_sdk
 from test_results_parser import Outcome
 
 from database.enums import FlakeSymptomType
@@ -169,7 +169,7 @@ class FlakeDetectionEngine:
         self.repoid = repoid
         self.symptom_detectors = symptom_detectors
 
-    @trace
+    @sentry_sdk.trace
     def populate(self):
         """
         Populate test_instances_ordered_by_test with:
@@ -201,13 +201,13 @@ class FlakeDetectionEngine:
             .all()
         )
         memory_used_kb = getsizeof(self.test_instances_ordered_by_test) // 1024
-        metrics.gauge(
+        sentry_sdk.metrics.gauge(
             key="flake_detection.populate.aux_memory_used",
             value=memory_used_kb,
             unit="kilobytes",
         )
 
-    @trace
+    @sentry_sdk.trace
     def detect_flakes(self) -> FlakeDetectionResult:
         """
         Detect flaky tests on a given repo based on the test instances
@@ -232,13 +232,15 @@ class FlakeDetectionEngine:
         """
         self.populate()
 
-        metrics.distribution(
+        sentry_sdk.metrics.distribution(
             "flake_detection.detect_flakes.number_of_test_instances",
             len(self.test_instances_ordered_by_test),
             unit="test_instance",
         )
-        with metrics.timing("flake_detection.detect_flakes.total_time_taken"):
-            with metrics.timing(
+        with sentry_sdk.metrics.timing(
+            "flake_detection.detect_flakes.total_time_taken"
+        ):
+            with sentry_sdk.metrics.timing(
                 "flake_detection.detect_flakes.ingestion",
             ):
                 for instance in self.test_instances_ordered_by_test:
@@ -247,7 +249,7 @@ class FlakeDetectionEngine:
 
             results = defaultdict(set)
 
-            with metrics.timing(
+            with sentry_sdk.metrics.timing(
                 "flake_detection.detect_flakes.detection",
             ):
                 for symptom_detector in self.symptom_detectors:

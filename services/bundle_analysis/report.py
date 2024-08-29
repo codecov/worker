@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import sentry_sdk
-from sentry_sdk import metrics as sentry_metrics
 from shared.bundle_analysis import (
     BundleAnalysisReport,
     BundleAnalysisReportLoader,
@@ -88,7 +87,7 @@ class ProcessingResult:
             self.upload.upload_type = SessionType.carriedforward.value
             self.upload_type_id = UploadType.CARRIEDFORWARD.db_id
 
-        sentry_metrics.incr(
+        sentry_sdk.metrics.incr(
             "bundle_analysis_upload",
             tags={
                 "result": "upload_error" if self.error else "processed",
@@ -269,7 +268,7 @@ class BundleAnalysisReportService(BaseReportService):
             )
         except PutRequestRateLimitError as e:
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_metrics.incr(
+            sentry_sdk.metrics.incr(
                 "bundle_analysis_upload",
                 tags={
                     "result": "rate_limit_error",
@@ -288,7 +287,7 @@ class BundleAnalysisReportService(BaseReportService):
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_metrics.incr(
+            sentry_sdk.metrics.incr(
                 "bundle_analysis_upload",
                 tags={
                     "result": "parser_error",
@@ -422,7 +421,7 @@ class BundleAnalysisReportService(BaseReportService):
                 commit=commit,
             )
         except Exception:
-            sentry_metrics.incr(
+            sentry_sdk.metrics.incr(
                 "bundle_analysis_upload",
                 tags={
                     "result": "parser_error",

@@ -5,8 +5,8 @@ import numbers
 from json import load
 from typing import Any, Dict, List, Optional, Tuple
 
+import sentry_sdk
 from lxml import etree
-from sentry_sdk import metrics as sentry_metrics
 from shared.metrics import Counter, Histogram
 from shared.reports.resources import Report
 
@@ -183,7 +183,7 @@ def process_report(
     processors = get_possible_processors_list(report_type) if report_type else []
     for processor in processors:
         if processor.matches_content(parsed_report, first_line, name):
-            sentry_metrics.incr(
+            sentry_sdk.metrics.incr(
                 "services.report.report_processor.parser",
                 tags={"type": type(processor).__name__},
             )

@@ -1,3 +1,4 @@
+from textwrap import dedent
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,6 +9,7 @@ from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from database.tests.factories.core import PullFactory
 from services.bundle_analysis.new_notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
@@ -300,3 +302,63 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
             notification_successful=False,
             explanation="TorngitClientError",
         )
+
+
+class TestUpgradeMessage:
+    def test_build_upgrade_message_cloud(self, dbsession, mocker):
+        head_commit, _ = get_commit_pair(dbsession)
+        context = BundleAnalysisPRCommentNotificationContext(
+            head_commit, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        context.should_use_upgrade_comment = True
+        context.pull = MagicMock(
+            name="fake_pull",
+            database_pull=PullFactory(),
+            provider_pull={"author": {"username": "PR_author_username"}},
+        )
+        mocker.patch(
+            "services.bundle_analysis.new_notify.messages.comment.requires_license",
+            return_value=False,
+        )
+        mocker.patch(
+            "services.bundle_analysis.new_notify.messages.comment.get_members_url",
+            return_value="http://members_url",
+        )
+        strategy = BundleAnalysisCommentMarkdownStrategy()
+        result = strategy.build_message(context)
+        assert result == dedent("""\
+            The author of this PR, PR_author_username, is not an activated member of this organization on Codecov.
+            Please [activate this user](http://members_url) to display this PR comment.
+            Bundle data is still being uploaded to Codecov for purposes of overall calculations.
+
+            Please don't hesitate to email us at support@codecov.io with any questions.
+            """)
+
+    def test_build_upgrade_message_self_hosted(self, dbsession, mocker):
+        head_commit, _ = get_commit_pair(dbsession)
+        context = BundleAnalysisPRCommentNotificationContext(
+            head_commit, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        context.should_use_upgrade_comment = True
+        context.pull = MagicMock(
+            name="fake_pull",
+            database_pull=PullFactory(),
+            provider_pull={"author": {"username": "PR_author_username"}},
+        )
+        mocker.patch(
+            "services.bundle_analysis.new_notify.messages.comment.requires_license",
+            return_value=True,
+        )
+        mocker.patch(
+            "services.bundle_analysis.new_notify.messages.comment.get_members_url",
+            return_value="http://members_url",
+        )
+        strategy = BundleAnalysisCommentMarkdownStrategy()
+        result = strategy.build_message(context)
+        assert result == dedent("""\
+            The author of this PR, PR_author_username, is not activated in your Codecov Self-Hosted installation.
+            Please [activate this user](http://members_url) to display this PR comment.
+            Bundle data is still being uploaded to your instance of Codecov for purposes of overall calculations.
+
+            Please contact your Codecov On-Premises installation administrator with any questions.
+            """)

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
-from mock import AsyncMock, call
+from mock import AsyncMock
 from shared.torngit.exceptions import TorngitClientError
 from test_results_parser import Outcome
 
@@ -11,25 +11,24 @@ from database.models import (
     CommitReport,
     Flake,
     ReducedError,
+    Repository,
     RepositoryFlag,
     Test,
     TestInstance,
 )
-from database.tests.factories import CommitFactory, PullFactory, UploadFactory
+from database.tests.factories import (
+    CommitFactory,
+    OwnerFactory,
+    PullFactory,
+    UploadFactory,
+)
+from services.billing import BillingPlan
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
+from services.urls import get_members_url
 from tasks.test_results_finisher import QUEUE_NOTIFY_KEY, TestResultsFinisherTask
 
 here = Path(__file__)
-
-
-@pytest.fixture
-def mock_metrics(mocker):
-    mocked_metrics = mocker.patch(
-        "tasks.test_results_finisher.metrics",
-        mocker.MagicMock(),
-    )
-    return mocked_metrics
 
 
 @pytest.fixture
@@ -57,6 +56,10 @@ def mock_repo_provider_comments(mocker):
     )
     _ = mocker.patch(
         "services.test_results.get_repo_provider_service",
+        return_value=m,
+    )
+    _ = mocker.patch(
+        "tasks.test_results_finisher.get_repo_provider_service",
         return_value=m,
     )
     return m
@@ -90,13 +93,22 @@ def test_results_setup(mocker, dbsession):
     dbsession.flush()
 
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+    dbsession.add(pull)
+    dbsession.flush()
+
+    enriched_pull = EnrichedPull(
+        database_pull=pull,
+        provider_pull={},
+    )
 
     _ = mocker.patch(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
-        return_value=EnrichedPull(
-            database_pull=pull,
-            provider_pull={},
-        ),
+        return_value=enriched_pull,
+    )
+
+    _ = mocker.patch(
+        "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+        return_value=enriched_pull,
     )
 
     uploads = [UploadFactory.create() for _ in range(4)]
@@ -322,7 +334,6 @@ class TestUploadTestFinisherTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
@@ -425,25 +436,6 @@ class TestUploadTestFinisherTask(object):
 To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.finisher",
-                    tags={"status": "success", "reason": "tests_failed"},
-                ),
-                call(
-                    "test_results.finisher.test_result_notifier",
-                    tags={"status": True, "reason": "comment_posted"},
-                ),
-            ]
-        )
-        calls = [
-            call("test_results.finisher.fetch_latest_test_instances"),
-            call("test_results.finisher.notification"),
-        ]
-        for c in calls:
-            assert c in mock_metrics.timing.mock_calls
-
     @pytest.mark.integration
     def test_upload_finisher_task_call_no_failures(
         self,
@@ -454,7 +446,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
         mock_storage,
         mock_redis,
         celery_app,
-        mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
@@ -496,23 +487,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         assert expected_result == result
 
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.finisher",
-                    tags={
-                        "status": "normal_notify_called",
-                        "reason": "all_tests_passed",
-                    },
-                ),
-            ]
-        )
-        calls = [
-            call("test_results.finisher.fetch_latest_test_instances"),
-        ]
-        for c in calls:
-            assert c in mock_metrics.timing.mock_calls
-
     @pytest.mark.integration
     def test_upload_finisher_task_call_no_success(
         self,
@@ -523,7 +497,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
         mock_storage,
         mock_redis,
         celery_app,
-        mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup_no_instances,
@@ -551,19 +524,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         assert expected_result == result
 
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.finisher",
-                    tags={"status": "failure", "reason": "no_successful_processing"},
-                ),
-            ]
-        )
-        assert (
-            call("test_results.finisher.fetch_latest_test_instances")
-            in mock_metrics.timing.mock_calls
-        )
-
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
             ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
@@ -581,6 +541,73 @@ To view individual test run time comparison to the main branch, go to the [Test 
         )
 
     @pytest.mark.integration
+    def test_upload_finisher_task_call_upgrade_comment(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
+        repoid, commit, pull, _ = test_results_setup
+
+        repo = dbsession.query(Repository).filter(Repository.repoid == repoid).first()
+        repo.owner.plan_activated_users = []
+        repo.owner.plan = BillingPlan.pr_monthly.value
+        repo.private = True
+        dbsession.flush()
+
+        pr_author = OwnerFactory(service="github", service_id=100)
+        dbsession.add(pr_author)
+        dbsession.flush()
+
+        enriched_pull = EnrichedPull(
+            database_pull=pull,
+            provider_pull={"author": {"id": "100", "username": "test_username"}},
+        )
+        _ = mocker.patch(
+            "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
+            return_value=enriched_pull,
+        )
+        _ = mocker.patch(
+            "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+            return_value=enriched_pull,
+        )
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            [
+                [{"successful": True}],
+            ],
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            QUEUE_NOTIFY_KEY: False,
+        }
+
+        assert expected_result == result
+
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            f"The author of this PR, test_username, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov]({get_members_url(pull)}) to display this PR comment.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
+        )
+
+        test_results_mock_app.tasks["app.tasks.notify.Notify"].assert_not_called()
+
+    @pytest.mark.integration
     def test_upload_finisher_task_call_existing_comment(
         self,
         mocker,
@@ -590,7 +617,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
         mock_storage,
         mock_redis,
         celery_app,
-        mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
@@ -708,7 +734,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
         mock_storage,
         mock_redis,
         celery_app,
-        mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
@@ -738,25 +763,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         assert expected_result == result
 
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.finisher",
-                    tags={"status": "success", "reason": "tests_failed"},
-                ),
-                call(
-                    "test_results.finisher.test_result_notifier",
-                    tags={"status": False, "reason": "torngit_error"},
-                ),
-            ]
-        )
-        calls = [
-            call("test_results.finisher.fetch_latest_test_instances"),
-            call("test_results.finisher.notification"),
-        ]
-        for c in calls:
-            assert c in mock_metrics.timing.mock_calls
-
     @pytest.mark.integration
     def test_upload_finisher_task_call_with_flaky(
         self,
@@ -767,7 +773,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
         mock_storage,
         mock_redis,
         celery_app,
-        mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
@@ -896,25 +901,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
 To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
-        mock_metrics.incr.assert_has_calls(
-            [
-                call(
-                    "test_results.finisher",
-                    tags={"status": "success", "reason": "tests_failed"},
-                ),
-                call(
-                    "test_results.finisher.test_result_notifier",
-                    tags={"status": True, "reason": "comment_posted"},
-                ),
-            ]
-        )
-        calls = [
-            call("test_results.finisher.fetch_latest_test_instances"),
-            call("test_results.finisher.notification"),
-        ]
-        for c in calls:
-            assert c in mock_metrics.timing.mock_calls
-
     @pytest.mark.integration
     @pytest.mark.parametrize(
         "flake_detection", ["FLAKY_TEST_DETECTION", "FLAKY_SHADOW_MODE"]
@@ -928,7 +914,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
         mock_storage,
         mock_redis,
         celery_app,
-        mock_metrics,
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,

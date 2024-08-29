@@ -2,10 +2,12 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import Commit
 from services.repository import (
+    EnrichedPull,
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
@@ -23,22 +25,38 @@ class NotifierResult(Enum):
 @dataclass
 class BaseNotifier:
     commit: Commit
-    commit_yaml: UserYaml
+    commit_yaml: UserYaml | None
+    _pull: EnrichedPull | None = None
+    _repo_service: TorngitBaseAdapter | None = None
 
     async def get_pull(self):
-        self.pull = await fetch_and_update_pull_request_information_from_commit(
-            self.repo_service, self.commit, self.commit_yaml
-        )
+        repo_service = self.get_repo_service()
 
-    async def send_to_provider(self, message):
-        pullid = self.pull.database_pull.pullid
+        if self._pull is None:
+            self._pull = await fetch_and_update_pull_request_information_from_commit(
+                repo_service, self.commit, self.commit_yaml
+            )
+
+        return self._pull
+
+    def get_repo_service(self):
+        if self._repo_service is None:
+            self._repo_service = get_repo_provider_service(self.commit.repository)
+
+        return self._repo_service
+
+    async def send_to_provider(self, pull, message):
+        repo_service = self.get_repo_service()
+        assert repo_service
+
+        pullid = pull.database_pull.pullid
         try:
-            comment_id = self.pull.database_pull.commentid
+            comment_id = pull.database_pull.commentid
             if comment_id:
-                await self.repo_service.edit_comment(pullid, comment_id, message)
+                await repo_service.edit_comment(pullid, comment_id, message)
             else:
-                res = await self.repo_service.post_comment(pullid, message)
-                self.pull.database_pull.commentid = res["id"]
+                res = await repo_service.post_comment(pullid, message)
+                pull.database_pull.commentid = res["id"]
             return True
         except TorngitClientError:
             log.error(
@@ -56,10 +74,8 @@ class BaseNotifier:
     async def notify(
         self,
     ) -> NotifierResult:
-        self.repo_service = get_repo_provider_service(self.commit.repository)
-
-        await self.get_pull()
-        if self.pull is None:
+        pull = await self.get_pull()
+        if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
                 extra=dict(
@@ -70,7 +86,7 @@ class BaseNotifier:
 
         message = self.build_message()
 
-        sent_to_provider = await self.send_to_provider(message)
+        sent_to_provider = await self.send_to_provider(pull, message)
         if sent_to_provider == False:
             return NotifierResult.TORNGIT_ERROR
 
