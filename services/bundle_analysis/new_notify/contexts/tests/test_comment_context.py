@@ -19,6 +19,7 @@ from services.bundle_analysis.new_notify.contexts import (
 from services.bundle_analysis.new_notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
 )
+from services.seats import SeatActivationInfo, ShouldActivateSeat
 
 
 class TestBundleAnalysisPRCommentNotificationContext:
@@ -221,6 +222,49 @@ class TestBundleAnalysisPRCommentNotificationContext:
         builder._notification_context.bundle_analysis_comparison = mock_comparison
         result = builder.evaluate_has_enough_changes()
         assert result == builder
+
+    @pytest.mark.parametrize(
+        "activation_result, auto_activate_succeeds, expected",
+        [
+            (ShouldActivateSeat.AUTO_ACTIVATE, True, False),
+            (ShouldActivateSeat.AUTO_ACTIVATE, False, True),
+            (ShouldActivateSeat.MANUAL_ACTIVATE, False, True),
+            (ShouldActivateSeat.NO_ACTIVATE, False, False),
+        ],
+    )
+    def test_evaluate_should_use_upgrade_message(
+        self, activation_result, dbsession, auto_activate_succeeds, expected, mocker
+    ):
+        activation_result = SeatActivationInfo(
+            should_activate_seat=activation_result,
+            owner_id=1,
+            author_id=10,
+            reason="mocked",
+        )
+        mocker.patch(
+            "services.bundle_analysis.new_notify.contexts.comment.determine_seat_activation",
+            return_value=activation_result,
+        )
+        mocker.patch(
+            "services.bundle_analysis.new_notify.contexts.comment.activate_user",
+            return_value=auto_activate_succeeds,
+        )
+        mocker.patch(
+            "services.bundle_analysis.new_notify.contexts.comment.schedule_new_user_activated_task",
+            return_value=auto_activate_succeeds,
+        )
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict({})
+        builder = BundleAnalysisPRCommentContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        mock_pull = MagicMock(
+            name="fake_pull",
+            database_pull=MagicMock(bundle_analysis_commentid=12345, id=12),
+        )
+        builder._notification_context.pull = mock_pull
+        builder.evaluate_should_use_upgrade_message()
+        assert builder._notification_context.should_use_upgrade_comment == expected
 
     def test_build_context(self, dbsession, mocker, mock_storage):
         head_commit, base_commit = get_commit_pair(dbsession)

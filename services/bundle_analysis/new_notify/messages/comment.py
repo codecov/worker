@@ -1,5 +1,5 @@
 import logging
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import sentry_sdk
 from django.template import loader
@@ -17,8 +17,9 @@ from services.bundle_analysis.new_notify.helpers import (
     get_github_app_used,
 )
 from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
+from services.license import requires_license
 from services.notification.notifiers.base import NotificationResult
-from services.urls import get_bundle_analysis_pull_url
+from services.urls import get_bundle_analysis_pull_url, get_members_url
 
 log = logging.getLogger(__name__)
 
@@ -37,9 +38,26 @@ class BundleCommentTemplateContext(TypedDict):
     bundle_rows: list[BundleRow]
 
 
+class UpgradeCommentTemplateContext(TypedDict):
+    author_username: str
+    codecov_instance: Literal["cloud"] | Literal["self_hosted"]
+    codecov_name: Literal["Codecov"] | Literal["your instance of Codecov"]
+    activation_link: str
+
+
 class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
+    def build_message(
+        self, context: BundleAnalysisPRCommentNotificationContext
+    ) -> str | bytes:
+        if context.should_use_upgrade_comment:
+            return self.build_upgrade_message(context)
+        else:
+            return self.build_default_message(context)
+
     @sentry_sdk.trace
-    def build_message(self, context: BundleAnalysisPRCommentNotificationContext) -> str:
+    def build_default_message(
+        self, context: BundleAnalysisPRCommentNotificationContext
+    ) -> str:
         template = loader.get_template("bundle_analysis_notify/bundle_comment.md")
         total_size_delta = context.bundle_analysis_comparison.total_size_delta
         context = BundleCommentTemplateContext(
@@ -47,6 +65,21 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
             pull_url=get_bundle_analysis_pull_url(pull=context.pull.database_pull),
             total_size_delta=total_size_delta,
             total_size_readable=bytes_readable(total_size_delta),
+        )
+        return template.render(context)
+
+    @sentry_sdk.trace
+    def build_upgrade_message(
+        self, context: BundleAnalysisPRCommentNotificationContext
+    ) -> str:
+        template = loader.get_template("bundle_analysis_notify/upgrade_comment.md")
+        context = UpgradeCommentTemplateContext(
+            activation_link=get_members_url(context.pull.database_pull),
+            codecov_instance="self_hosted" if requires_license() else "cloud",
+            codecov_name="your instance of Codecov"
+            if requires_license()
+            else "Codecov",
+            author_username=context.pull.provider_pull["author"].get("username"),
         )
         return template.render(context)
 

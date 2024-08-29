@@ -1,4 +1,5 @@
 import logging
+from typing import Self
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -8,6 +9,7 @@ from shared.bundle_analysis import (
 from shared.yaml import UserYaml
 
 from database.models.core import Commit
+from services.activation import activate_user, schedule_new_user_activated_task
 from services.bundle_analysis.comparison import ComparisonLoader
 from services.bundle_analysis.exceptions import (
     MissingBaseCommit,
@@ -29,6 +31,7 @@ from services.repository import (
     EnrichedPull,
     fetch_and_update_pull_request_information_from_commit,
 )
+from services.seats import ShouldActivateSeat, determine_seat_activation
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +45,7 @@ class BundleAnalysisPRCommentNotificationContext(BaseBundleAnalysisNotificationC
     bundle_analysis_comparison: BundleAnalysisComparison = NotificationContextField[
         BundleAnalysisComparison
     ]()
+    should_use_upgrade_comment: bool
 
 
 class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
@@ -64,7 +68,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         return self
 
     @sentry_sdk.trace
-    async def load_enriched_pull(self) -> "BundleAnalysisPRCommentContextBuilder":
+    async def load_enriched_pull(self) -> Self:
         """Loads the EnrichedPull into the NotificationContext.
         EnrichedPull includes updated info from the git provider and info saved in the database.
         Raises:
@@ -87,7 +91,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         return self
 
     @sentry_sdk.trace
-    def load_bundle_comparison(self) -> "BundleAnalysisPRCommentContextBuilder":
+    def load_bundle_comparison(self) -> Self:
         """Loads the BundleAnalysisComparison into the NotificationContext.
         BundleAnalysisComparison is the diff between 2 BundleAnalysisReports,
         respectively the one for the pull's base and one for the pull's head.
@@ -112,7 +116,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
                 "load_bundle_comparison", detail=exp.__class__.__name__
             )
 
-    def evaluate_has_enough_changes(self) -> "BundleAnalysisPRCommentContextBuilder":
+    def evaluate_has_enough_changes(self) -> Self:
         """Evaluates if the NotificationContext includes enough changes to send the notification.
         Configuration is done via UserYaml.
         If a comment was previously made for this PR the required changes are bypassed so that we
@@ -155,12 +159,38 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
             raise NotificationContextBuildError("evaluate_has_enough_changes")
         return self
 
-    def build_context(self) -> "BundleAnalysisPRCommentContextBuilder":
+    @sentry_sdk.trace
+    def evaluate_should_use_upgrade_message(self) -> Self:
+        activate_seat_info = determine_seat_activation(self._notification_context.pull)
+        match activate_seat_info.should_activate_seat:
+            case ShouldActivateSeat.AUTO_ACTIVATE:
+                successful_activation = activate_user(
+                    db_session=self._notification_context.commit.get_db_session(),
+                    org_ownerid=activate_seat_info.owner_id,
+                    user_ownerid=activate_seat_info.author_id,
+                )
+                if successful_activation:
+                    schedule_new_user_activated_task(
+                        activate_seat_info.owner_id,
+                        activate_seat_info.author_id,
+                    )
+                    self._notification_context.should_use_upgrade_comment = False
+                else:
+                    self._notification_context.should_use_upgrade_comment = True
+            case ShouldActivateSeat.MANUAL_ACTIVATE:
+                self._notification_context.should_use_upgrade_comment = True
+            case ShouldActivateSeat.NO_ACTIVATE:
+                self._notification_context.should_use_upgrade_comment = False
+        return self
+
+    def build_context(self) -> Self:
         super().build_context()
         async_to_sync(self.load_enriched_pull)()
-        self.load_bundle_comparison()
-        self.evaluate_has_enough_changes()
-        return self
+        return (
+            self.load_bundle_comparison()
+            .evaluate_has_enough_changes()
+            .evaluate_should_use_upgrade_message()
+        )
 
     def get_result(self) -> BundleAnalysisPRCommentNotificationContext:
         return self._notification_context
