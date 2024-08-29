@@ -143,10 +143,20 @@ def test_get_github_app_used(torngit, expected):
         (100, BundleThreshold("absolute", 100)),
         (0, BundleThreshold("absolute", 0)),
         (14.5, BundleThreshold("percentage", 14.5)),
+        (["percentage", 14.5], BundleThreshold("percentage", 14.5)),
+        (["absolute", 1000], BundleThreshold("absolute", 1000)),
+        (BundleThreshold("absolute", 1000), BundleThreshold("absolute", 1000)),
+        (("absolute", 1000), BundleThreshold("absolute", 1000)),
     ],
 )
 def test_to_BundleThreshold(value, expected):
     assert to_BundleThreshold(value) == expected
+
+
+@pytest.mark.parametrize("value", ["value", [1, 2, 3], None])
+def test_to_BundleThreshold_raises(value):
+    with pytest.raises(TypeError):
+        to_BundleThreshold(value)
 
 
 @pytest.mark.parametrize(

@@ -11,7 +11,7 @@ def get_proper_parser(upload: Upload, contents: bytes):
         if contents.startswith(b"{") and contents.endswith(b"}"):
             return VersionOneReportParser()
         else:
-            with sentry_sdk.configure_scope() as scope:
+            with sentry_sdk.new_scope() as scope:
                 scope.set_extra("upload_extras", upload.upload_extras)
                 scope.set_extra("contents", contents[:64])
                 sentry_sdk.capture_message("Upload `format_version` lied to us")
