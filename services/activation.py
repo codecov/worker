@@ -1,8 +1,13 @@
 import logging
 
+from shared.celery_config import (
+    activate_account_user_task_name,
+    new_user_activated_task_name,
+)
 from sqlalchemy import func
 from sqlalchemy.sql import text
 
+from app import celery_app
 from services.license import (
     calculate_reason_for_not_being_valid,
     get_current_license,
@@ -97,3 +102,20 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
         ),
     )
     return activation_success
+
+
+def schedule_new_user_activated_task(self, org_ownerid, user_ownerid):
+    celery_app.send_task(
+        new_user_activated_task_name,
+        args=None,
+        kwargs=dict(org_ownerid=org_ownerid, user_ownerid=user_ownerid),
+    )
+    # Activate the account user if it exists.
+    celery_app.send_task(
+        activate_account_user_task_name,
+        args=None,
+        kwargs=dict(
+            user_ownerid=user_ownerid,
+            org_ownerid=org_ownerid,
+        ),
+    )
