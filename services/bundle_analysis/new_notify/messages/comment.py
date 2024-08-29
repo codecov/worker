@@ -1,5 +1,5 @@
 import logging
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 import sentry_sdk
 from django.template import loader
@@ -40,8 +40,7 @@ class BundleCommentTemplateContext(TypedDict):
 
 class UpgradeCommentTemplateContext(TypedDict):
     author_username: str
-    codecov_instance: Literal["cloud"] | Literal["self_hosted"]
-    codecov_name: Literal["Codecov"] | Literal["your instance of Codecov"]
+    is_saas: bool
     activation_link: str
 
 
@@ -75,10 +74,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         template = loader.get_template("bundle_analysis_notify/upgrade_comment.md")
         context = UpgradeCommentTemplateContext(
             activation_link=get_members_url(context.pull.database_pull),
-            codecov_instance="self_hosted" if requires_license() else "cloud",
-            codecov_name="your instance of Codecov"
-            if requires_license()
-            else "Codecov",
+            is_saas=not requires_license(),
             author_username=context.pull.provider_pull["author"].get("username"),
         )
         return template.render(context)
