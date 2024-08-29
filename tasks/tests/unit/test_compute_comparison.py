@@ -328,7 +328,7 @@ class TestComputeComparisonTask(object):
             else None,
         )
         patch_totals = ReportTotals(
-            files=3, lines=200, hits=100, misses=100, coverage="50.0"
+            files=3, lines=200, hits=100, misses=100, coverage="10.5"
         )
         mocker.patch(
             "tasks.compute_comparison.ComparisonProxy.get_patch_totals",
@@ -348,7 +348,7 @@ class TestComputeComparisonTask(object):
             "hits": 100,
             "misses": 100,
             "partials": 0,
-            "coverage": 50.0,
+            "coverage": 0.105,
         }
         assert comparison.error == CompareCommitError.missing_base_report.value
 
@@ -402,7 +402,7 @@ class TestComputeComparisonTask(object):
             "hits": 100,
             "misses": 100,
             "partials": 0,
-            "coverage": 50.0,
+            "coverage": 0.5,
         }
         assert comparison.error is None
 
