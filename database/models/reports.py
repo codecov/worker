@@ -9,7 +9,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import backref, relationship
 
-from database.base import CodecovBaseModel, MixinBaseClass
+from database.base import CodecovBaseModel, MixinBaseClass, MixinBaseClassNoExternalID
 from database.models.core import Commit, CompareCommit, Repository
 from database.utils import ArchiveField
 from helpers.clock import get_utc_now
@@ -332,7 +332,7 @@ class ReducedError(CodecovBaseModel, MixinBaseClass):
     message = Column(types.Text)
 
 
-class Flake(CodecovBaseModel, MixinBaseClass):
+class Flake(CodecovBaseModel, MixinBaseClassNoExternalID):
     __tablename__ = "reports_flake"
     repoid = Column(types.Integer, ForeignKey("repos.repoid"))
     repository = relationship("Repository", backref=backref("flakes"))
