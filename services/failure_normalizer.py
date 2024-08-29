@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 import regex
-from sentry_sdk import metrics, trace
+import sentry_sdk
 
 predefined_dict_of_regexes_to_match = {
     "UUID": [
@@ -98,9 +98,9 @@ class FailureNormalizer:
                 for regex_string in list_of_regex_string
             ]
 
-    @trace
+    @sentry_sdk.trace
     def normalize_failure_message(self, failure_message: str):
-        with metrics.timing("failure_normalizer.normalize_failure_message"):
+        with sentry_sdk.metrics.timing("failure_normalizer.normalize_failure_message"):
             key_ordering = self.key_analysis_order or self.dict_of_regex.keys()
             for key in key_ordering:
                 list_of_compiled_regex = self.dict_of_regex[key]
