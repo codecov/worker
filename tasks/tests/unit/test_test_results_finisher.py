@@ -878,7 +878,7 @@ To view individual test run time comparison to the main branch, go to the [Test 
 > Other Class Name test_name2
 > ```
 > 
-> **Flake rate in main:** 40.0% (Passed 3 times, Failed 2 times)
+> **Flake rate in main:** 40.00% (Passed 3 times, Failed 2 times)
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
 > > `````````

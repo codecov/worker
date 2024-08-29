@@ -173,7 +173,7 @@ def test_build_message_with_flake():
 > testname
 > ```
 > 
-> **Flake rate in main:** 33.33333333333333% (Passed 2 times, Failed 1 times)
+> **Flake rate in main:** 33.33% (Passed 2 times, Failed 1 times)
 > <details><summary>Stack Traces | 1s run time</summary>
 > 
 > > 
