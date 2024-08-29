@@ -10,6 +10,7 @@ from time import time
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 import sentry_sdk
+from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.config import get_config
 from shared.django_apps.reports.models import ReportType
@@ -20,6 +21,7 @@ from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
 from shared.reports.types import ReportFileSummary, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitError
 from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
@@ -125,7 +127,7 @@ class BaseReportService:
             current_yaml = UserYaml(current_yaml)
         self.current_yaml = current_yaml
 
-    async def initialize_and_save_report(
+    def initialize_and_save_report(
         self, commit: Commit, report_code: str = None
     ) -> CommitReport:
         raise NotImplementedError()
@@ -217,7 +219,8 @@ class ReportService(BaseReportService):
             or commit._report_json_storage_path is not None
         )
 
-    async def initialize_and_save_report(
+    @sentry_sdk.trace
+    def initialize_and_save_report(
         self, commit: Commit, report_code: str = None
     ) -> CommitReport:
         """
@@ -293,7 +296,7 @@ class ReportService(BaseReportService):
             db_session.add(report_details)
             db_session.flush()
         if not self.has_initialized_report(commit):
-            report = await self.create_new_report_for_commit(commit)
+            report = self.create_new_report_for_commit(commit)
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
@@ -301,12 +304,10 @@ class ReportService(BaseReportService):
                 # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
                 # finisher can build off of it later. Makes the assumption that the CFFs occupy the first
                 # j to i session ids where i is the max id of the CFFs and j is some integer less than i.
-                if await PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value_async(
+                if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
                     identifier=commit.repository.repoid
                 ):
-                    await self.save_parallel_report_to_archive(
-                        commit, report, report_code
-                    )
+                    self.save_parallel_report_to_archive(commit, report, report_code)
                     highest_session_id = max(
                         report.sessions.keys()
                     )  # the largest id among the CFFs
@@ -512,8 +513,11 @@ class ReportService(BaseReportService):
     def get_archive_service(self, repository: Repository) -> ArchiveService:
         return ArchiveService(repository)
 
-    async def build_report_from_commit(self, commit) -> Report:
-        return await self._do_build_report_from_commit(commit)
+    def build_report_from_commit(self, commit) -> Report:
+        report = self.get_existing_report_for_commit(commit)
+        if report is not None:
+            return report
+        return self.create_new_report_for_commit(commit)
 
     def get_existing_report_for_commit_from_legacy_data(
         self, commit: Commit, report_class=None, *, report_code=None
@@ -634,12 +638,6 @@ class ReportService(BaseReportService):
 
         return report
 
-    async def _do_build_report_from_commit(self, commit) -> Report:
-        report = self.get_existing_report_for_commit(commit)
-        if report is not None:
-            return report
-        return await self.create_new_report_for_commit(commit)
-
     @metrics.timer(
         "services.report.ReportService.get_appropriate_commit_to_carryforward_from"
     )
@@ -705,19 +703,19 @@ class ReportService(BaseReportService):
             return None
         return parent_commit
 
-    async def _possibly_shift_carryforward_report(
+    def _possibly_shift_carryforward_report(
         self, carryforward_report: Report, base_commit: Commit, head_commit: Commit
     ) -> Report:
         with metrics.timer(
             "services.report.ReportService.possibly_shift_carryforward_report"
         ):
             try:
-                provider_service = get_repo_provider_service(
+                provider_service: TorngitBaseAdapter = get_repo_provider_service(
                     repository=head_commit.repository,
                     installation_name_to_use=self.gh_app_installation_name,
                 )
                 diff = (
-                    await provider_service.get_compare(
+                    async_to_sync(provider_service.get_compare)(
                         base=base_commit.commitid, head=head_commit.commitid
                     )
                 )["diff"]
@@ -754,7 +752,7 @@ class ReportService(BaseReportService):
                 )
             return carryforward_report
 
-    async def create_new_report_for_commit(self, commit: Commit) -> Report:
+    def create_new_report_for_commit(self, commit: Commit) -> Report:
         with metrics.timer(
             "services.report.ReportService.create_new_report_for_commit"
         ):
@@ -780,7 +778,7 @@ class ReportService(BaseReportService):
             # a knob to turn for support requests about carryforward flags, and
             # maybe we'll revisit a general rollout at a later time.
             max_parenthood_deepness = (
-                await CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value_async(
+                CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value(
                     identifier=repo.ownerid, default=10
                 )
             )
@@ -793,7 +791,7 @@ class ReportService(BaseReportService):
                     "Could not find parent for possible carryforward",
                     extra=dict(commit=commit.commitid, repoid=commit.repoid),
                 )
-                await metric_context.log_simple_metric_async(
+                metric_context.log_simple_metric(
                     "worker_service_report_carryforward_base_not_found", 1
                 )
                 return Report()
@@ -846,10 +844,10 @@ class ReportService(BaseReportService):
             # parent_commit and commit should belong to the same repository
             carryforward_report.header = copy.deepcopy(parent_report.header)
 
-            await self._possibly_shift_carryforward_report(
+            self._possibly_shift_carryforward_report(
                 carryforward_report, parent_commit, commit
             )
-            await metric_context.log_simple_metric_async(
+            metric_context.log_simple_metric(
                 "worker_service_report_carryforward_success", 1
             )
             return carryforward_report
@@ -1263,7 +1261,7 @@ class ReportService(BaseReportService):
         return res
 
     @sentry_sdk.trace
-    async def save_parallel_report_to_archive(
+    def save_parallel_report_to_archive(
         self, commit: Commit, report: Report, report_code=None
     ):
         commitid = commit.commitid
@@ -1272,11 +1270,12 @@ class ReportService(BaseReportService):
 
         # Attempt to calculate diff of report (which uses commit info from the git provider), but it it fails to do so, it just moves on without such diff
         try:
-            repository_service = get_repo_provider_service(
+            repository_service: TorngitBaseAdapter = get_repo_provider_service(
                 repository,
                 installation_name_to_use=self.gh_app_installation_name,
             )
-            report.apply_diff(await repository_service.get_commit_diff(commitid))
+            diff = async_to_sync(repository_service.get_commit_diff)(commitid)
+            report.apply_diff(diff)
         except TorngitError:
             # When this happens, we have that commit.totals["diff"] is not available.
             # Since there is no way to calculate such diff without the git commit,
