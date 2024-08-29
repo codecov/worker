@@ -1292,3 +1292,4 @@ def test_bundle_analysis_processor_task_no_upload(
 
     assert commit.state == "complete"
     assert upload.state == "processed"
+    assert upload.upload_type == "carriedforward"

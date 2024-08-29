@@ -15,8 +15,9 @@ from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.django_apps.bundle_analysis.service.bundle_analysis import (
     BundleAnalysisCacheConfigService,
 )
-from shared.reports.enums import UploadState
+from shared.reports.enums import UploadState, UploadType
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
+from shared.utils.sessions import SessionType
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
@@ -58,7 +59,7 @@ class ProcessingResult:
             "error": self.error.as_dict() if self.error else None,
         }
 
-    def update_upload(self):
+    def update_upload(self, carriedforward: Optional[bool] = False) -> None:
         """
         Updates this result's `Upload` record with information from
         this result.
@@ -82,6 +83,10 @@ class ProcessingResult:
             self.upload.state = "processed"
             self.upload.state_id = UploadState.PROCESSED.db_id
             self.upload.order_number = self.session_id
+
+        if carriedforward:
+            self.upload.upload_type = SessionType.carriedforward.value
+            self.upload_type_id = UploadType.CARRIEDFORWARD.db_id
 
         sentry_metrics.incr(
             "bundle_analysis_upload",

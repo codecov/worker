@@ -115,7 +115,7 @@ class BundleAnalysisProcessorTask(
 
         # these are populated in the upload task
         # unless when this task is called on a non-BA upload then we have to create an empty upload
-        upload_pk = params["upload_pk"]
+        upload_pk, carriedforward = params["upload_pk"], False
         if upload_pk is None:
             commit_report = async_to_sync(report_service.initialize_and_save_report)(
                 commit
@@ -123,6 +123,7 @@ class BundleAnalysisProcessorTask(
             upload_pk = report_service.create_report_upload(
                 {"url": ""}, commit_report
             ).id_
+            carriedforward = True
 
         upload = db_session.query(Upload).filter_by(id_=upload_pk).first()
         assert upload is not None
@@ -151,7 +152,7 @@ class BundleAnalysisProcessorTask(
             if result.error and result.error.is_retryable and self.request.retries == 0:
                 # retryable error and no retry has already be scheduled
                 self.retry(max_retries=5, countdown=20)
-            result.update_upload()
+            result.update_upload(carriedforward=carriedforward)
 
             processing_results.append(result.as_dict())
         except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
