@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, List, Mapping
 
-from sentry_sdk import metrics as sentry_metrics
+import sentry_sdk
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -84,7 +84,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
         if comparison.pull is not None and comparison.pull.state != "open":
-            sentry_metrics.incr(
+            sentry_sdk.metrics.incr(
                 "notifiers.comment.pull_closed_notifying_anyways",
                 tags={
                     "repo_using_integration": self.repository_service.data["repo"][

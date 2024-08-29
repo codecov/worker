@@ -7,6 +7,7 @@ from shared.utils.ReportEncoder import ReportEncoder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+import database.events  # noqa: F401
 from database.models.timeseries import TimeseriesBaseModel
 from helpers.timeseries import timeseries_enabled
 

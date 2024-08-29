@@ -1,5 +1,5 @@
 import numbers
-from typing import Literal
+from typing import Iterable, Literal
 
 from shared.bundle_analysis import (
     BundleAnalysisComparison,
@@ -80,15 +80,13 @@ def bytes_readable(bytes: int) -> str:
 
 
 def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
-    # Currently the yaml validator returns the raw values, not the BundleThreshold object
-    # Because the changes are not forwards compatible.
-    # https://github.com/codecov/engineering-team/issues/2087 is to fix that
-    # and then this function can be removed too
-    if isinstance(value, BundleThreshold):
-        return value
+    if isinstance(value, Iterable) and value[0] in ["absolute", "percentage"]:
+        return BundleThreshold(*value)
     if isinstance(value, numbers.Integral):
         return BundleThreshold("absolute", value)
-    return BundleThreshold("percentage", value)
+    elif isinstance(value, numbers.Number):
+        return BundleThreshold("percentage", value)
+    raise TypeError(f"Can't parse {value} into BundleThreshold")
 
 
 def is_bundle_change_within_bundle_threshold(

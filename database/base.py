@@ -30,3 +30,15 @@ class MixinBaseClass(object):
     @property
     def id(self):
         return self.id_
+
+
+class MixinBaseClassNoExternalID(object):
+    id_ = Column("id", types.BigInteger, primary_key=True)
+    created_at = Column(types.DateTime(timezone=True), default=get_utc_now)
+    updated_at = Column(
+        types.DateTime(timezone=True), onupdate=get_utc_now, default=get_utc_now
+    )
+
+    @property
+    def id(self):
+        return self.id_

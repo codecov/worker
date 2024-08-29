@@ -1129,20 +1129,17 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):
-        rounding: str = read_yaml_field(
-            self.current_yaml, ("coverage", "round"), "nearest"
-        )
-        precision: int = read_yaml_field(
-            self.current_yaml, ("coverage", "precision"), 2
-        )
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
             report.repack()
         archive_service = self.get_archive_service(commit.repository)
-        db_session = commit.get_db_session()
-        totals, network_json_str = report.to_database()
-        network = loads(network_json_str)
+
+        totals, report_json = report.to_database()
+
         archive_data = report.to_archive().encode()
-        url = archive_service.write_chunks(commit.commitid, archive_data, report_code)
+        chunks_url = archive_service.write_chunks(
+            commit.commitid, archive_data, report_code
+        )
+
         commit.state = "complete" if report else "error"
         commit.totals = totals
         if (
@@ -1152,26 +1149,32 @@ class ReportService(BaseReportService):
         ):
             # temporary measure until we ensure the API and frontend don't expect not-null coverages
             commit.totals["c"] = 0
+
         log.info(
             "Calling update to Commit.Report",
             extra=dict(
-                size=sys.getsizeof(network),
+                size=len(report_json),
                 ownerid=commit.repository.ownerid,
                 repoid=commit.repoid,
                 commitid=commit.commitid,
             ),
         )
-        commit.report_json = network
-        files_array = [
-            {
-                "filename": k,
-                "file_index": v.file_index,
-                "file_totals": v.file_totals,
-                "diff_totals": v.diff_totals,
-            }
-            for k, v in report._files.items()
-        ]
-        if commit.report:
+        # `report_json` is an `ArchiveField`, so this will trigger an upload
+        # FIXME: we do an unnecessary `loads` roundtrip because of this abstraction,
+        # and we should just save the `report_json` to archive storage directly instead.
+        commit.report_json = loads(report_json)
+
+        # `report` is an accessor which implicitly queries `CommitReport`
+        if commit_report := commit.report:
+            files_array = [
+                {
+                    "filename": k,
+                    "file_index": v.file_index,
+                    "file_totals": v.file_totals,
+                    "diff_totals": v.diff_totals,
+                }
+                for k, v in report._files.items()
+            ]
             log.info(
                 "Calling update to reports_reportdetails.files_array",
                 extra=dict(
@@ -1181,12 +1184,21 @@ class ReportService(BaseReportService):
                     commitid=commit.commitid,
                 ),
             )
-            commit.report.details.files_array = files_array
-            report_totals = commit.report.totals
+            db_session = commit.get_db_session()
+
+            # `files_array` is an `ArchiveField`, so this will trigger an upload
+            commit_report.details.files_array = files_array
+            report_totals = commit_report.totals
             if report_totals is None:
-                report_totals = ReportLevelTotals(report_id=commit.report.id)
+                report_totals = ReportLevelTotals(report_id=commit_report.id)
                 db_session.add(report_totals)
 
+            rounding: str = read_yaml_field(
+                self.current_yaml, ("coverage", "round"), "nearest"
+            )
+            precision: int = read_yaml_field(
+                self.current_yaml, ("coverage", "precision"), 2
+            )
             report_totals.update_from_totals(
                 report.totals, precision=precision, rounding=rounding
             )
@@ -1196,27 +1208,20 @@ class ReportService(BaseReportService):
             extra=dict(
                 repoid=commit.repoid,
                 commit=commit.commitid,
-                url=url,
-                number_sessions=len(network.get("sessions")),
-                new_report_sessions=dict(
-                    itertools.islice(network.get("sessions").items(), 20)
-                ),
+                url=chunks_url,
+                number_sessions=len(report.sessions),
+                new_report_sessions=dict(itertools.islice(report.sessions.items(), 20)),
             ),
         )
-        return {"url": url}
+        return {"url": chunks_url}
 
     @sentry_sdk.trace
-    def save_full_report(self, commit: Commit, report: Report, report_code=None):
+    def save_full_report(
+        self, commit: Commit, report: Report, report_code=None
+    ) -> dict:
         """
-            Saves the report (into database and storage) AND takes care of backfilling its sessions
-                like they were never in the database (useful for backfilling and carryforward cases)
-
-        Args:
-            commit (Commit): The commit we want to save the report to
-            report (Report): The current report
-
-        Returns:
-            TYPE: Description
+        Saves the report (into database and storage) AND takes care of backfilling its sessions
+        like they were never in the database (useful for backfilling and carryforward cases)
         """
         rounding: str = read_yaml_field(
             self.current_yaml, ("coverage", "round"), "nearest"

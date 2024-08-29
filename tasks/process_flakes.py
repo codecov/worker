@@ -1,8 +1,8 @@
 import datetime as dt
 import logging
 
+import sentry_sdk
 from django.db.models import Q
-from sentry_sdk import metrics
 from shared.celery_config import process_flakes_task_name
 from shared.django_apps.reports.models import (
     Flake,
@@ -40,7 +40,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
             extra=dict(repoid=repo_id, commit=commit_id_list),
         )
 
-        with metrics.timing("process_flakes", tags={"repo_id": repo_id}):
+        with sentry_sdk.metrics.timing("process_flakes", tags={"repo_id": repo_id}):
             flake_dict = generate_flake_dict(repo_id)
 
             flaky_tests = list(flake_dict.keys())

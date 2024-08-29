@@ -1,7 +1,7 @@
-import copy
 import json
 import logging
 
+import sentry_sdk
 from shared.celery_config import parallel_verification_task_name
 
 from app import celery_app
@@ -96,9 +96,7 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         # top level totals comparison (ignoring session total, index 9)
         parallel_tlt = list(parallel_report.totals.astuple())
         serial_tlt = list(serial_report.totals.astuple())
-        parallel_tlt[9] = (
-            0  # 9th index is session total for shared.reports.types.ReportTotals
-        )
+        parallel_tlt[9] = 0
         serial_tlt[9] = 0
         if parallel_tlt != serial_tlt:
             top_level_totals_match = False
@@ -147,6 +145,22 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
             extra=logging_context,
         )
 
+        is_success = top_level_totals_match and file_level_totals_match
+        sentry_sdk.metrics.incr(
+            "parallel_verification.comparisons",
+            tags={"result": "success" if is_success else "failure"},
+        )
+        if not is_success:
+            with sentry_sdk.new_scope() as scope:
+                if file_level_mismatched_files:
+                    scope.set_extra("mismatched_files", file_level_mismatched_files)
+                if not top_level_totals_match:
+                    scope.set_extra("parallel_totals", parallel_report.totals.astuple())
+                    scope.set_extra("serial_totals", serial_report.totals.astuple())
+                sentry_sdk.capture_message(
+                    "Parallel upload processing verification failed"
+                )
+
 
 def parallel_path_to_serial_path(parallel_path, last_upload_pk):
     parallel_paths = parallel_path.split("/")
@@ -158,28 +172,6 @@ def parallel_path_to_serial_path(parallel_path, last_upload_pk):
         + f"/serial/{cur_file}<latest_upload_pk:{str(last_upload_pk)}>.txt"
     )
     return serial_path
-
-
-# To filter out values not relevant for verifying report content correctness. We
-# don't want these values to be the reason why there exists a diff, since it's
-# not actually related to coverage report contents
-def sort_and_stringify_report_json(data):
-    data = copy.deepcopy(data)
-    for session_id in data["sessions"].keys():
-        data["sessions"][session_id].pop("d", None)  # remove timestamp
-        data["sessions"][session_id].pop("e", None)  # remove env
-        data["sessions"][session_id].pop("p", None)  # remove state
-        data["sessions"][session_id].pop("se", None)  # remove session extras
-        if data["sessions"][session_id]["f"] is None:  # flags formatting
-            data["sessions"][session_id]["f"] = []
-
-        # round the coverage precentage to 2 decimals (because we're inconsistent somewhere)
-        if "t" in data["sessions"][session_id]:
-            data["sessions"][session_id]["t"][5] = str(
-                round(float(data["sessions"][session_id]["t"][5]), 2)
-            )
-
-    return json.dumps(data, sort_keys=True)
 
 
 RegisteredParallelVerificationTask = celery_app.register_task(
