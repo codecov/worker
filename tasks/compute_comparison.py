@@ -131,7 +131,8 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             "hits": totals.hits,
             "misses": totals.misses,
             "partials": totals.partials,
-            "coverage": totals.coverage,
+            # ReportTotals has coverage as a string, we want float in the DB
+            "coverage": float(totals.coverage) if totals.coverage is not None else None,
         }
 
     def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
