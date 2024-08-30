@@ -17,16 +17,16 @@ from services.bundle_analysis.exceptions import (
     MissingHeadCommit,
     MissingHeadReport,
 )
-from services.bundle_analysis.new_notify.contexts import (
+from services.bundle_analysis.notify.contexts import (
     BaseBundleAnalysisNotificationContext,
     NotificationContextBuilder,
     NotificationContextBuildError,
     NotificationContextField,
 )
-from services.bundle_analysis.new_notify.helpers import (
+from services.bundle_analysis.notify.helpers import (
     is_bundle_change_within_bundle_threshold,
 )
-from services.bundle_analysis.new_notify.types import NotificationType
+from services.bundle_analysis.notify.types import NotificationType
 from services.repository import (
     EnrichedPull,
     fetch_and_update_pull_request_information_from_commit,

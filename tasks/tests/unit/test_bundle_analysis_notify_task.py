@@ -1,6 +1,6 @@
 from database.tests.factories import CommitFactory
-from services.bundle_analysis.new_notify import BundleAnalysisNotifyReturn
-from services.bundle_analysis.new_notify.types import (
+from services.bundle_analysis.notify import BundleAnalysisNotifyReturn
+from services.bundle_analysis.notify.types import (
     NotificationSuccess,
     NotificationType,
 )
@@ -20,7 +20,7 @@ def test_bundle_analysis_notify_task(
     dbsession.flush()
 
     mocker.patch(
-        "services.bundle_analysis.new_notify.BundleAnalysisNotifyService.notify",
+        "services.bundle_analysis.notify.BundleAnalysisNotifyService.notify",
         return_value=BundleAnalysisNotifyReturn(
             notifications_configured=(NotificationType.PR_COMMENT,),
             notifications_attempted=(NotificationType.PR_COMMENT,),

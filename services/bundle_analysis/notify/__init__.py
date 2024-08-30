@@ -7,28 +7,28 @@ from asgiref.sync import async_to_sync
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Commit, Owner
-from services.bundle_analysis.new_notify.contexts import (
+from services.bundle_analysis.notify.contexts import (
     BaseBundleAnalysisNotificationContext,
     NotificationContextBuilder,
     NotificationContextBuildError,
 )
-from services.bundle_analysis.new_notify.contexts.comment import (
+from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
 )
-from services.bundle_analysis.new_notify.contexts.commit_status import (
+from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusNotificationContextBuilder,
 )
-from services.bundle_analysis.new_notify.helpers import (
+from services.bundle_analysis.notify.helpers import (
     get_notification_types_configured,
 )
-from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
-from services.bundle_analysis.new_notify.messages.comment import (
+from services.bundle_analysis.notify.messages import MessageStrategyInterface
+from services.bundle_analysis.notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
 )
-from services.bundle_analysis.new_notify.messages.commit_status import (
+from services.bundle_analysis.notify.messages.commit_status import (
     CommitStatusMessageStrategy,
 )
-from services.bundle_analysis.new_notify.types import (
+from services.bundle_analysis.notify.types import (
     NotificationSuccess,
     NotificationType,
 )
