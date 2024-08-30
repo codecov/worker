@@ -32,7 +32,7 @@ class TestResultsReportService(BaseReportService):
         super().__init__(current_yaml)
         self.flag_dict = None
 
-    async def initialize_and_save_report(
+    def initialize_and_save_report(
         self, commit: Commit, report_code: str = None
     ) -> CommitReport:
         db_session = commit.get_db_session()
