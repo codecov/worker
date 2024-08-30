@@ -1,6 +1,6 @@
-import typing
 from xml.etree.ElementTree import Element
 
+import sentry_sdk
 from shared.reports.resources import Report
 from timestring import Date
 
@@ -18,17 +18,17 @@ class BullseyeProcessor(BaseLanguageProcessor):
     def matches_content(self, content: Element, first_line: str, name: str) -> bool:
         return "BullseyeCoverage" in content.tag
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
         return from_xml(content, report_builder.create_report_builder_session(name))
 
 
-def from_xml(xml, report_builder_session: ReportBuilderSession):
-    path_fixer, ignored_lines, sessionid, yaml = (
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
+    path_fixer, ignored_lines, yaml = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
         report_builder_session.current_yaml,
     )
     if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):

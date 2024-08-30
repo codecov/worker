@@ -1,5 +1,6 @@
-import typing
+from xml.etree.ElementTree import Element
 
+import sentry_sdk
 from shared.reports.resources import Report
 from timestring import Date
 
@@ -14,11 +15,12 @@ from services.yaml import read_yaml_field
 
 
 class CloverProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content.tag == "coverage" and content.attrib.get("generated"))
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return content.tag == "coverage" and bool(content.attrib.get("generated"))
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_xml(content, report_builder_session)
@@ -38,11 +40,10 @@ def get_end_of_file(filename, xmlfile):
                 pass
 
 
-def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid, yaml = (
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, yaml = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
         report_builder_session.current_yaml,
     )
 

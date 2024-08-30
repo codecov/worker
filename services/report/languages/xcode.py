@@ -1,6 +1,6 @@
-import typing
 from io import BytesIO
 
+import sentry_sdk
 from shared.helpers.numeric import maxint
 from shared.reports.resources import Report
 from shared.reports.types import ReportLine
@@ -19,7 +19,7 @@ NAME_COLOR = "\033\x1b[0;36m"
 
 
 class XCodeProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
         return name.endswith(
             ("app.coverage.txt", "framework.coverage.txt", "xctest.coverage.txt")
         ) or first_line.endswith(
@@ -38,9 +38,8 @@ class XCodeProcessor(BaseLanguageProcessor):
             )
         )
 
-    def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
+    @sentry_sdk.trace
+    def process(self, name: str, content: str, report_builder: ReportBuilder) -> Report:
         return from_txt(content, report_builder.create_report_builder_session(name))
 
 
@@ -72,7 +71,7 @@ def get_partials_in_line(line):
         return partials
 
 
-def from_txt(content, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Report:
     path_fixer, ignored_lines, sessionid = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,

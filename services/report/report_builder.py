@@ -28,7 +28,10 @@ class CoverageType(Enum):
 
 class ReportBuilderSession(object):
     def __init__(
-        self, report_builder, report_filepath, should_use_label_index: bool = False
+        self,
+        report_builder: "ReportBuilder",
+        report_filepath: str,
+        should_use_label_index: bool = False,
     ):
         self._report_builder = report_builder
         self._report_filepath = report_filepath
@@ -240,7 +243,7 @@ class ReportBuilder(object):
         self,
         current_yaml: UserYaml,
         sessionid: int,
-        ignored_lines,
+        ignored_lines: dict,
         path_fixer: PathFixer,
         should_use_label_index: bool = False,
     ):

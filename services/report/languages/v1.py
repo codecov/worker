@@ -1,5 +1,4 @@
-import typing
-
+import sentry_sdk
 from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
@@ -12,11 +11,12 @@ from services.report.report_builder import (
 
 
 class VOneProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
         return "coverage" in content or "RSpec" in content or "MiniTest" in content
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
         if "RSpec" in content:
             content = content["RSpec"]
@@ -52,7 +52,7 @@ def _list_to_dict(lines):
         return lines or {}
 
 
-def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(json: str, report_builder_session: ReportBuilderSession) -> Report:
     if isinstance(json["coverage"], dict):
         # messages = json.get('messages', {})
         for fn, lns in json["coverage"].items():

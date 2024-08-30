@@ -1,4 +1,3 @@
-import typing
 from typing import Any
 
 from shared.reports.resources import Report
@@ -7,10 +6,6 @@ from services.report.report_builder import ReportBuilder
 
 
 class BaseLanguageProcessor(object):
-    @property
-    def name(self):
-        return self.get_processor_name()
-
     def __init__(self, *args, **kwargs) -> None:
         pass
 
@@ -37,9 +32,7 @@ class BaseLanguageProcessor(object):
         """
         pass
 
-    def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
+    def process(self, name: str, content: Any, report_builder: ReportBuilder) -> Report:
         """Processes a report uploaded by the user, returning a `Report`
 
         This is the base function which we need to implement
@@ -61,7 +54,3 @@ class BaseLanguageProcessor(object):
             ReportExpiredException: If the report is considered expired
         """
         pass
-
-    @classmethod
-    def get_processor_name(cls) -> str:
-        return cls.__name__

@@ -1,8 +1,9 @@
 import logging
 import re
-import typing
 from typing import List
+from xml.etree.ElementTree import Element
 
+import sentry_sdk
 from shared.reports.resources import Report
 from timestring import Date, TimestringInvalid
 
@@ -19,13 +20,15 @@ log = logging.getLogger(__name__)
 
 
 class CoberturaProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        if bool(list(content.iter("coverage"))):
-            return True
-        return bool(list(content.iter("scoverage")))
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return bool(
+            next(content.iter("coverage"), None)
+            or next(content.iter("scoverage"), None)
+        )
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_xml(content, report_builder_session)
@@ -43,11 +46,10 @@ def get_sources_to_attempt(xml) -> List[str]:
     return [s for s in sources if isinstance(s, str) and s.startswith("/")]
 
 
-def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid, repo_yaml = (
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines, repo_yaml = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
         report_builder_session.current_yaml,
     )
 

@@ -339,10 +339,11 @@ class TestGcov(BaseTestCase):
         )
 
     def test_detect(self):
-        assert gcov.detect(b"   -: 0:Source:black") is True
-        assert gcov.detect(b"..... 0:Source:white") is True
-        assert gcov.detect(b"") is False
-        assert gcov.detect(b"0:Source") is False
+        processor = gcov.GcovProcessor()
+        assert processor.matches_content(b"   -: 0:Source:black", "", "") is True
+        assert processor.matches_content(b"..... 0:Source:white", "", "") is True
+        assert processor.matches_content(b"", "", "") is False
+        assert processor.matches_content(b"0:Source", "", "") is False
 
     def test_ignored(self):
         report_builder = ReportBuilder(
