@@ -5,11 +5,14 @@ from uuid import uuid4
 
 import pytest
 from redis import Redis
+from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
+from database.models.core import Commit, CompareCommit, Repository
 from database.tests.factories import CommitFactory, RepositoryFactory
+from database.tests.factories.core import PullFactory
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
@@ -35,6 +38,78 @@ def write_raw_upload(
 
 def lines(lines: Iterable[tuple[int, ReportLine]]) -> list[tuple[int, int]]:
     return list(((lineno, line.coverage) for lineno, line in lines))
+
+
+def get_base_report():
+    file_a = ReportFile("a.rs")
+    file_a.append(1, ReportLine.create(coverage=1, sessions=[[0, 1]]))
+    file_a.append(1, ReportLine.create(coverage=2, sessions=[[1, 2]]))
+
+    file_b = ReportFile("b.rs")
+    file_b.append(1, ReportLine.create(coverage=3, sessions=[[0, 3]]))
+    file_b.append(2, ReportLine.create(coverage=5, sessions=[[1, 5]]))
+    report = Report()
+    report.append(file_a)
+    report.append(file_b)
+    return report
+
+
+def setup_base_commit(repository: Repository, dbsession: Session) -> Commit:
+    base_report = get_base_report()
+    commit = CommitFactory(repository=repository)
+    dbsession.add(commit)
+    dbsession.flush()
+    report_service = ReportService({})
+    report_service.save_full_report(commit, base_report)
+    return commit
+
+
+def setup_mock_get_compare(
+    base_commit: Commit, head_commit: Commit, mock_repo_provider
+):
+    get_compare = {
+        "diff": {
+            "files": {
+                "a.rs": {
+                    "type": "modified",
+                    "before": None,
+                    "segments": [
+                        {
+                            "header": ["1", "3", "1", "4"],
+                            "lines": [
+                                " fn main() {",
+                                '-   println!("Salve!");',
+                                '+   println!("Hello World!");',
+                                '+   println!(":wink:");',
+                                " }",
+                            ],
+                        }
+                    ],
+                }
+            }
+        },
+        "commits": [
+            {
+                "commitid": base_commit.commitid,
+                "message": "BASE commit",
+                "timestamp": base_commit.timestamp,
+                "author": {
+                    "id": base_commit.author.service_id,
+                    "username": base_commit.author.username,
+                },
+            },
+            {
+                "commitid": head_commit.commitid,
+                "message": "HEAD commit",
+                "timestamp": head_commit.timestamp,
+                "author": {
+                    "id": head_commit.author.service_id,
+                    "username": head_commit.author.username,
+                },
+            },
+        ],
+    }
+    mock_repo_provider.get_compare.return_value = get_compare
 
 
 @pytest.mark.integration
@@ -81,11 +156,24 @@ def test_full_upload(
     dbsession.add(repository)
     dbsession.flush()
 
+    # setup a base commit (with a report) to compare against the current one
+    base_commit = setup_base_commit(repository, dbsession)
+
     repoid = repository.repoid
     commitid = uuid4().hex
-    commit = CommitFactory.create(repository=repository, commitid=commitid)
+    commit = CommitFactory.create(repository=repository, commitid=commitid, pullid=12)
     dbsession.add(commit)
     dbsession.flush()
+
+    # BASE and HEAD are connected in a PR
+    pull = PullFactory(
+        pullid=12,
+        repository=repository,
+        compared_to=base_commit.commitid,
+    )
+    dbsession.add(pull)
+    dbsession.flush()
+    setup_mock_get_compare(base_commit, commit, mock_repo_provider)
 
     archive_service = ArchiveService(repository)
     do_upload = partial(
@@ -96,38 +184,47 @@ def test_full_upload(
         commitid,
     )
 
-    do_upload(b"""
+    do_upload(
+        b"""
 a.rs
 <<<<<< network
 # path=coverage.lcov
 SF:a.rs
 DA:1,1
 end_of_record
-""")
-    do_upload(b"""
+"""
+    )
+    do_upload(
+        b"""
 a.rs
 <<<<<< network
 # path=coverage.lcov
 SF:a.rs
 DA:2,2
+DA:3,1
 end_of_record
-""")
-    do_upload(b"""
+"""
+    )
+    do_upload(
+        b"""
 b.rs
 <<<<<< network
 # path=coverage.lcov
 SF:b.rs
 DA:1,3
 end_of_record
-""")
-    do_upload(b"""
+"""
+    )
+    do_upload(
+        b"""
 b.rs
 <<<<<< network
 # path=coverage.lcov
 SF:b.rs
 DA:2,5
 end_of_record
-""")
+"""
+    )
 
     with run_tasks():
         upload_task.apply_async(
@@ -148,6 +245,7 @@ end_of_record
     assert lines(a.lines) == [
         (1, 1),
         (2, 2),
+        (3, 1),
     ]
 
     b = report.get("b.rs")
@@ -156,14 +254,16 @@ end_of_record
 
     # Adding one more upload
 
-    do_upload(b"""
+    do_upload(
+        b"""
 c.rs
 <<<<<< network
 # path=coverage.lcov
 SF:c.rs
 DA:2,4
 end_of_record
-""")
+"""
+    )
 
     with run_tasks():
         upload_task.apply_async(
@@ -188,3 +288,21 @@ end_of_record
     assert raw_chunks_path in archive
     raw_files_sessions_path = f"v4/repos/{repo_hash}/commits/{commitid}/json_data/commits/report_json/{commitid}.json"
     assert raw_files_sessions_path in archive
+
+    comparison: CompareCommit = (
+        dbsession.query(CompareCommit)
+        .filter(
+            CompareCommit.base_commit_id == base_commit.id,
+            CompareCommit.compare_commit_id == commit.id,
+        )
+        .first()
+    )
+    assert comparison is not None
+    assert comparison.error is None
+    assert comparison.state == "processed"
+    assert comparison.patch_totals == {
+        "hits": 2,
+        "misses": 0,
+        "coverage": 1,
+        "partials": 0,
+    }
