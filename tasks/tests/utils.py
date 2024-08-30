@@ -37,6 +37,7 @@ GLOBALS_USING_REPO_PROVIDER = [
     "tasks.notify.get_repo_provider_service",
     "tasks.upload_processor.get_repo_provider_service",
     "tasks.upload.get_repo_provider_service",
+    "services.comparison.get_repo_provider_service",
 ]
 
 

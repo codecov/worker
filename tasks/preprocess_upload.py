@@ -114,9 +114,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             commit_yaml, gh_app_installation_name=installation_name_to_use
         )
         # For parallel upload processing experiment, saving the report to GCS happens here
-        commit_report = async_to_sync(report_service.initialize_and_save_report)(
-            commit, report_code
-        )
+        commit_report = report_service.initialize_and_save_report(commit, report_code)
         # Persist changes from within the lock
         db_session.flush()
         return {

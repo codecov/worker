@@ -423,18 +423,16 @@ def sample_commit_with_report_big_already_carriedforward(dbsession, mock_storage
 
 
 class TestReportService(BaseTestCase):
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_no_report_saved(self, dbsession, mocker):
+    def test_build_report_from_commit_no_report_saved(self, dbsession, mocker):
         commit = CommitFactory(_report_json=None)
         dbsession.add(commit)
         dbsession.commit()
-        res = await ReportService({}).build_report_from_commit(commit)
+        res = ReportService({}).build_report_from_commit(commit)
         assert res is not None
         assert res.files == []
         assert tuple(res.totals) == (0, 0, 0, 0, 0, None, 0, 0, 0, 0, 0, 0, 0)
 
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit(self, dbsession, mock_storage):
+    def test_build_report_from_commit(self, dbsession, mock_storage):
         commit = CommitFactory(_report_json=None)
         dbsession.add(commit)
         report = ReportFactory(commit=commit)
@@ -500,7 +498,7 @@ class TestReportService(BaseTestCase):
             chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
             mock_storage.write_file("archive", chunks_url, content)
 
-        report = await ReportService({}).build_report_from_commit(commit)
+        report = ReportService({}).build_report_from_commit(commit)
         assert report is not None
         assert report.files == [
             "awesome/__init__.py",
@@ -545,8 +543,7 @@ class TestReportService(BaseTestCase):
         # make sure report is still serializable
         ReportService({}).save_report(commit, report)
 
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_with_flags(self, dbsession, mock_storage):
+    def test_build_report_from_commit_with_flags(self, dbsession, mock_storage):
         commit = CommitFactory(_report_json=None)
         dbsession.add(commit)
         report = ReportFactory(commit=commit)
@@ -696,7 +693,7 @@ class TestReportService(BaseTestCase):
                 ]
             }
         }
-        report = await ReportService(yaml).build_report_from_commit(commit)
+        report = ReportService(yaml).build_report_from_commit(commit)
         assert report is not None
         assert report.files == [
             "awesome/__init__.py",
@@ -760,10 +757,7 @@ class TestReportService(BaseTestCase):
         # make sure report is still serializable
         ReportService({}).save_report(commit, report)
 
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_fallback(
-        self, dbsession, mocker, mock_storage
-    ):
+    def test_build_report_from_commit_fallback(self, dbsession, mocker, mock_storage):
         commit = CommitFactory()
         dbsession.add(commit)
         dbsession.commit()
@@ -772,7 +766,7 @@ class TestReportService(BaseTestCase):
             archive_hash = ArchiveService.get_archive_hash(commit.repository)
             chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
             mock_storage.write_file("archive", chunks_url, content)
-        res = await ReportService({}).build_report_from_commit(commit)
+        res = ReportService({}).build_report_from_commit(commit)
         assert res is not None
         assert res.files == [
             "awesome/__init__.py",
@@ -809,9 +803,8 @@ class TestReportService(BaseTestCase):
         assert res.totals.complexity_total == 0
         # notice we dont compare the diff since that one comes from git information we lost on the reset
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit(
+    def test_create_new_report_for_commit(
         self,
         dbsession,
         sample_commit_with_report_big,
@@ -828,9 +821,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -1834,9 +1825,8 @@ class TestReportService(BaseTestCase):
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_with_labels(
+    def test_create_new_report_for_commit_with_labels(
         self, dbsession, sample_commit_with_report_big_with_labels
     ):
         parent_commit = sample_commit_with_report_big_with_labels
@@ -1850,9 +1840,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert report.labels_index == {
             0: "Th2dMtk4M_codecov",
@@ -2273,8 +2261,7 @@ class TestReportService(BaseTestCase):
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_is_called_as_generate(
+    def test_create_new_report_for_commit_is_called_as_generate(
         self, dbsession, mocker
     ):
         commit = CommitFactory.create(_report_json=None)
@@ -2286,12 +2273,11 @@ class TestReportService(BaseTestCase):
         mocked_create_new_report_for_commit.return_value.set_result("report")
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         report_service = ReportService(UserYaml(yaml_dict))
-        report = await report_service.build_report_from_commit(commit)
+        report = report_service.build_report_from_commit(commit)
         assert report == mocked_create_new_report_for_commit.return_value
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_build_report_from_commit_carriedforward_add_sessions(
+    def test_build_report_from_commit_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -2314,9 +2300,7 @@ class TestReportService(BaseTestCase):
             "_possibly_shift_carryforward_report",
             side_effect=fake_possibly_shift,
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         mock_possibly_shift.assert_called()
@@ -2379,17 +2363,14 @@ class TestReportService(BaseTestCase):
         assert readable_report["report"] == expected_results["report"]
         assert readable_report == expected_results
 
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_already_carriedforward_add_sessions(
+    def test_build_report_from_commit_already_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big_already_carriedforward
     ):
         commit = sample_commit_with_report_big_already_carriedforward
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = await ReportService(UserYaml(yaml_dict)).build_report_from_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).build_report_from_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         assert sorted(report.sessions.keys()) == [0, 1, 2, 3]
@@ -2494,9 +2475,8 @@ class TestReportService(BaseTestCase):
         )
         assert new_readable_report["report"]["sessions"]["3"] == newly_added_session
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_with_path_filters(
+    def test_create_new_report_for_commit_with_path_filters(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -2524,9 +2504,7 @@ class TestReportService(BaseTestCase):
             "_possibly_shift_carryforward_report",
             side_effect=fake_possibly_shift,
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py"]
@@ -3001,8 +2979,7 @@ class TestReportService(BaseTestCase):
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_no_flags(
+    def test_create_new_report_for_commit_no_flags(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -3022,9 +2999,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         mock_possibly_shift.assert_not_called()
@@ -3072,9 +3047,8 @@ class TestReportService(BaseTestCase):
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_no_parent(
+    def test_create_new_report_for_commit_no_parent(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -3089,9 +3063,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         mock_possibly_shift.assert_not_called()
@@ -3139,9 +3111,8 @@ class TestReportService(BaseTestCase):
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_parent_not_ready(
+    def test_create_new_report_for_commit_parent_not_ready(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         grandparent_commit = sample_commit_with_report_big
@@ -3165,9 +3136,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         mock_possibly_shift.assert_called()
         assert sorted(report.files) == sorted(
@@ -3344,9 +3313,8 @@ class TestReportService(BaseTestCase):
         )
         assert expected_results_report == readable_report["report"]
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_parent_not_ready_but_skipped(
+    def test_create_new_report_for_commit_parent_not_ready_but_skipped(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -3366,9 +3334,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         mock_possibly_shift.assert_called()
         assert sorted(report.files) == sorted(
@@ -3452,9 +3418,8 @@ class TestReportService(BaseTestCase):
             expected_results_report["sessions"] == readable_report["report"]["sessions"]
         )
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_too_many_ancestors_not_ready(
+    def test_create_new_report_for_commit_too_many_ancestors_not_ready(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         grandparent_commit = sample_commit_with_report_big
@@ -3478,9 +3443,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         mock_possibly_shift.assert_not_called()
         assert sorted(report.files) == []
@@ -3488,9 +3451,8 @@ class TestReportService(BaseTestCase):
         expected_results_report = {"files": {}, "sessions": {}}
         assert expected_results_report == readable_report["report"]
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
+    def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
         current_commit = CommitFactory.create(parent_commit_id=None, state="pending")
         dbsession.add(current_commit)
         for i in range(5):
@@ -3510,13 +3472,10 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         with pytest.raises(NotReadyToBuildReportYetError):
-            await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-                commit
-            )
+            ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_potential_cf_but_not_real_cf(
+    def test_create_new_report_for_commit_potential_cf_but_not_real_cf(
         self, dbsession, sample_commit_with_report_big
     ):
         parent_commit = sample_commit_with_report_big
@@ -3537,14 +3496,11 @@ class TestReportService(BaseTestCase):
                 "individual_flags": [{"name": "banana", "carryforward": True}],
             }
         }
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report.is_empty()
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_parent_has_no_report(
+    def test_create_new_report_for_commit_parent_has_no_report(
         self, mock_storage, dbsession
     ):
         parent = CommitFactory.create()
@@ -3558,7 +3514,7 @@ class TestReportService(BaseTestCase):
         report_service = ReportService(
             UserYaml({"flags": {"enterprise": {"carryforward": True}}})
         )
-        r = await report_service.create_new_report_for_commit(commit)
+        r = report_service.create_new_report_for_commit(commit)
         assert r.files == []
 
     def test_save_full_report(
@@ -4084,20 +4040,18 @@ class TestReportService(BaseTestCase):
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_brand_new(self, dbsession, mock_storage):
+    def test_initialize_and_save_report_brand_new(self, dbsession, mock_storage):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
         report_service = ReportService({})
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert r is not None
         assert r.details is not None
         assert r.details.files_array == []
         assert len(mock_storage.storage["archive"]) == 0
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_report_but_no_details(
+    def test_initialize_and_save_report_report_but_no_details(
         self, dbsession, mock_storage
     ):
         commit = CommitFactory.create()
@@ -4107,16 +4061,15 @@ class TestReportService(BaseTestCase):
         dbsession.add(report_row)
         dbsession.flush()
         report_service = ReportService({})
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         dbsession.refresh(report_row)
         assert r is not None
         assert r.details is not None
         assert r.details.files_array == []
         assert len(mock_storage.storage["archive"]) == 0
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default"})
-    async def test_initialize_and_save_report_carryforward_needed(
+    def test_initialize_and_save_report_carryforward_needed(
         self, dbsession, sample_commit_with_report_big, mocker, mock_storage
     ):
         parent_commit = sample_commit_with_report_big
@@ -4129,7 +4082,7 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         report_service = ReportService(UserYaml(yaml_dict))
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert len(r.uploads) == 2
         first_upload = dbsession.query(Upload).filter_by(
             report_id=r.id_, order_number=2
@@ -4194,9 +4147,8 @@ class TestReportService(BaseTestCase):
             "file_14.py",
         ]
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default"})
-    async def test_initialize_and_save_report_report_but_no_details_carryforward_needed(
+    def test_initialize_and_save_report_report_but_no_details_carryforward_needed(
         self, dbsession, sample_commit_with_report_big, mock_storage
     ):
         parent_commit = sample_commit_with_report_big
@@ -4212,7 +4164,7 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         report_service = ReportService(UserYaml(yaml_dict))
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert len(r.uploads) == 2
         first_upload = dbsession.query(Upload).filter_by(
             report_id=r.id_, order_number=2
@@ -4277,8 +4229,7 @@ class TestReportService(BaseTestCase):
             "file_14.py",
         ]
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_needs_backporting(
+    def test_initialize_and_save_report_needs_backporting(
         self, dbsession, sample_commit_with_report_big, mock_storage, mocker
     ):
         commit = sample_commit_with_report_big
@@ -4286,7 +4237,7 @@ class TestReportService(BaseTestCase):
         mocker.patch.object(
             ReportDetails, "_should_write_to_storage", return_value=True
         )
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert r is not None
         assert r.details is not None
         assert len(r.uploads) == 4
@@ -4402,8 +4353,7 @@ class TestReportService(BaseTestCase):
         storage_keys = mock_storage.storage["archive"].keys()
         assert any(map(lambda key: key.endswith("chunks.txt"), storage_keys))
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_existing_report(
+    def test_initialize_and_save_report_existing_report(
         self, mock_storage, sample_report, dbsession, mocker
     ):
         mocker_save_full_report = mocker.patch.object(ReportService, "save_full_report")
@@ -4418,7 +4368,7 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         report_service = ReportService({})
         report_service.save_report(commit, sample_report)
-        res = await report_service.initialize_and_save_report(commit)
+        res = report_service.initialize_and_save_report(commit)
         assert res == current_report_row
         assert not mocker_save_full_report.called
 
@@ -4534,8 +4484,7 @@ class TestReportService(BaseTestCase):
         assert upload_obj.state_id == UploadState.PROCESSED.db_id
         assert len(upload_obj.errors) == 0
 
-    @pytest.mark.asyncio
-    async def test_shift_carryforward_report(
+    def test_shift_carryforward_report(
         self, dbsession, sample_report, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
@@ -4582,7 +4531,7 @@ class TestReportService(BaseTestCase):
             return fake_diff
 
         mock_repo_provider.get_compare = mock.AsyncMock(side_effect=fake_get_compare)
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             sample_report, parent_commit, commit
         )
         readable_report = self.convert_report_to_better_readable(result)
@@ -4617,9 +4566,8 @@ class TestReportService(BaseTestCase):
             ],
         }
 
-    @pytest.mark.asyncio
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    async def test_create_new_report_for_commit_and_shift(
+    def test_create_new_report_for_commit_and_shift(
         self, dbsession, sample_report, mocker, mock_repo_provider, mock_storage
     ):
         parent_commit = CommitFactory()
@@ -4690,9 +4638,7 @@ class TestReportService(BaseTestCase):
             ReportService, "get_existing_report_for_commit", return_value=sample_report
         )
 
-        result = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        result = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert mock_get_report.call_count == 1
         readable_report = self.convert_report_to_better_readable(result)
         assert readable_report["archive"] == {
@@ -4726,8 +4672,7 @@ class TestReportService(BaseTestCase):
             ],
         }
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_cant_get_diff(
+    def test_possibly_shift_carryforward_report_cant_get_diff(
         self, dbsession, sample_report, mocker
     ):
         parent_commit = CommitFactory()
@@ -4745,7 +4690,7 @@ class TestReportService(BaseTestCase):
         mock_provider_service = mocker.patch(
             "services.report.get_repo_provider_service", return_value=fake_provider
         )
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             sample_report, parent_commit, commit
         )
         assert result == sample_report
@@ -4764,8 +4709,7 @@ class TestReportService(BaseTestCase):
             ),
         )
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_bot_error(
+    def test_possibly_shift_carryforward_report_bot_error(
         self, dbsession, sample_report, mocker
     ):
         parent_commit = CommitFactory()
@@ -4781,7 +4725,7 @@ class TestReportService(BaseTestCase):
         mock_provider_service = mocker.patch(
             "services.report.get_repo_provider_service", side_effect=raise_error
         )
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             sample_report, parent_commit, commit
         )
         assert result == sample_report
@@ -4795,8 +4739,7 @@ class TestReportService(BaseTestCase):
             ),
         )
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_random_processing_error(
+    def test_possibly_shift_carryforward_report_random_processing_error(
         self, dbsession, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
@@ -4814,7 +4757,7 @@ class TestReportService(BaseTestCase):
         )
         mock_report = mocker.Mock()
         mock_report.shift_lines_by_diff = raise_error
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             mock_report, parent_commit, commit
         )
         assert result == mock_report
@@ -4827,8 +4770,7 @@ class TestReportService(BaseTestCase):
             ),
         )
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_softtimelimit_reraised(
+    def test_possibly_shift_carryforward_report_softtimelimit_reraised(
         self, dbsession, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
@@ -4843,6 +4785,6 @@ class TestReportService(BaseTestCase):
         mock_report = mocker.Mock()
         mock_report.shift_lines_by_diff = raise_error
         with pytest.raises(SoftTimeLimitExceeded):
-            await ReportService({})._possibly_shift_carryforward_report(
+            ReportService({})._possibly_shift_carryforward_report(
                 mock_report, parent_commit, commit
             )
