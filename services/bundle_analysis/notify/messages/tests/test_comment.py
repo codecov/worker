@@ -10,23 +10,23 @@ from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.tests.factories.core import PullFactory
-from services.bundle_analysis.new_notify.conftest import (
+from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
     get_report_pair,
     save_mock_bundle_analysis_report,
 )
-from services.bundle_analysis.new_notify.contexts.comment import (
+from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
     BundleAnalysisPRCommentNotificationContext,
 )
-from services.bundle_analysis.new_notify.helpers import bytes_readable
-from services.bundle_analysis.new_notify.messages.comment import (
+from services.bundle_analysis.notify.helpers import bytes_readable
+from services.bundle_analysis.notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
     BundleCommentTemplateContext,
     BundleRow,
 )
-from services.bundle_analysis.new_notify.types import NotificationUserConfig
+from services.bundle_analysis.notify.types import NotificationUserConfig
 from services.notification.notifiers.base import NotificationResult
 
 
@@ -78,12 +78,7 @@ class TestCommentMesage:
             total_size_readable=bytes_readable(total_size_delta),
         )
         expected = (
-            "## [Bundle](example.url) Report\n"
-            + "\n"
-            + summary_line
-            + "\n"
-            + "\n| Bundle name | Size | Change |"
-            + "\n| ----------- | ---- | ------ |\n"
+            "## [Bundle](example.url) Report\n" + "\n" + summary_line + "\n" + "\n"
         )
         assert template.render(context) == expected
 
@@ -154,23 +149,9 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
 
 | Bundle name | Size | Change |
 | ----------- | ---- | ------ |
-| @codecov/remix-vite-plugin-cjs | 1.32kB | 0 bytes  |
-| @codecov/remix-vite-plugin-esm | 975 bytes | 0 bytes  |
-| @codecov/example-next-app-edge-server-array-push | 354 bytes | 0 bytes  |
 | @codecov/sveltekit-plugin-esm | 1.1kB | 188 bytes :arrow_up: |
 | @codecov/rollup-plugin-esm | 1.32kB | 1.01kB :arrow_down: |
-| @codecov/webpack-plugin-cjs | 3.77kB | 0 bytes  |
-| @codecov/rollup-plugin-cjs | 2.82kB | 0 bytes  |
-| @codecov/nuxt-plugin-cjs | 1.41kB | 0 bytes  |
-| @codecov/nuxt-plugin-esm | 855 bytes | 0 bytes  |
-| @codecov/example-webpack-app-array-push | 71.19kB | 0 bytes  |
 | @codecov/bundler-plugin-core-esm | 8.2kB | 30.02kB :arrow_down: |
-| @codecov/webpack-plugin-esm | 1.44kB | 0 bytes  |
-| @codecov/sveltekit-plugin-cjs | 1.33kB | 0 bytes  |
-| @codecov/vite-plugin-cjs | 2.8kB | 0 bytes  |
-| @codecov/vite-plugin-esm | 1.26kB | 0 bytes  |
-| @codecov/example-rollup-app-iife | 95.46kB | 0 bytes  |
-| @codecov/example-vite-app-esm | 150.61kB | 0 bytes  |
 | @codecov/bundler-plugin-core-cjs | 43.32kB | 611 bytes :arrow_up: |
 | @codecov/example-next-app-server-cjs | (removed) | 342.32kB :arrow_down: |
 """.format(
@@ -190,7 +171,7 @@ Changes will decrease total bundle size by 372.56kB :arrow_down:
         fake_repo_provider.post_comment.return_value = {"id": 1000}
         fake_repo_provider.edit_comment.return_value = {"id": 1000}
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
+            "services.bundle_analysis.notify.contexts.get_repo_provider_service",
             return_value=fake_repo_provider,
         )
         head_commit, _ = get_commit_pair(dbsession)
@@ -317,11 +298,11 @@ class TestUpgradeMessage:
             provider_pull={"author": {"username": "PR_author_username"}},
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.messages.comment.requires_license",
+            "services.bundle_analysis.notify.messages.comment.requires_license",
             return_value=False,
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.messages.comment.get_members_url",
+            "services.bundle_analysis.notify.messages.comment.get_members_url",
             return_value="http://members_url",
         )
         strategy = BundleAnalysisCommentMarkdownStrategy()
@@ -346,11 +327,11 @@ class TestUpgradeMessage:
             provider_pull={"author": {"username": "PR_author_username"}},
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.messages.comment.requires_license",
+            "services.bundle_analysis.notify.messages.comment.requires_license",
             return_value=True,
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.messages.comment.get_members_url",
+            "services.bundle_analysis.notify.messages.comment.get_members_url",
             return_value="http://members_url",
         )
         strategy = BundleAnalysisCommentMarkdownStrategy()

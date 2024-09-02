@@ -7,21 +7,21 @@ from shared.yaml import UserYaml
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.tests.factories.core import CommitFactory
 from services.bundle_analysis.comparison import ComparisonLoader
-from services.bundle_analysis.new_notify.conftest import (
+from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
     get_report_pair,
     save_mock_bundle_analysis_report,
 )
-from services.bundle_analysis.new_notify.contexts import (
+from services.bundle_analysis.notify.contexts import (
     ContextNotLoadedError,
     NotificationContextBuildError,
 )
-from services.bundle_analysis.new_notify.contexts.commit_status import (
+from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusLevel,
     CommitStatusNotificationContextBuilder,
 )
-from services.bundle_analysis.new_notify.types import NotificationUserConfig
+from services.bundle_analysis.notify.types import NotificationUserConfig
 
 
 class TestBundleAnalysisPRCommentNotificationContext:
@@ -31,11 +31,11 @@ class TestBundleAnalysisPRCommentNotificationContext:
         user_yaml = UserYaml.from_dict({})
         fake_repo_service = mocker.MagicMock(name="fake_repo_service")
         mock_fetch_pr = mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
+            "services.bundle_analysis.notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
             return_value=None,
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
+            "services.bundle_analysis.notify.contexts.get_repo_provider_service",
             return_value=fake_repo_service,
         )
         builder = CommitStatusNotificationContextBuilder().initialize(
@@ -100,11 +100,11 @@ class TestBundleAnalysisPRCommentNotificationContext:
             dbsession, (head_commit, base_commit)
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
+            "services.bundle_analysis.notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
             return_value=None,
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
+            "services.bundle_analysis.notify.contexts.get_repo_provider_service",
             return_value=mocker.MagicMock(name="fake_repo_service"),
         )
 

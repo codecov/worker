@@ -4,12 +4,12 @@ import pytest
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from services.bundle_analysis.new_notify.conftest import (
+from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
     get_report_pair,
     save_mock_bundle_analysis_report,
 )
-from services.bundle_analysis.new_notify.contexts import (
+from services.bundle_analysis.notify.contexts import (
     ContextNotLoadedError,
     NotificationContextBuilder,
     NotificationContextBuildError,

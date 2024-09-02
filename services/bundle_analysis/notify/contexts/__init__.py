@@ -14,8 +14,8 @@ from database.enums import ReportType
 from database.models.core import Commit, Repository
 from database.models.reports import CommitReport
 from services.archive import ArchiveService
-from services.bundle_analysis.new_notify.helpers import to_BundleThreshold
-from services.bundle_analysis.new_notify.types import (
+from services.bundle_analysis.notify.helpers import to_BundleThreshold
+from services.bundle_analysis.notify.types import (
     NotificationType,
     NotificationUserConfig,
 )

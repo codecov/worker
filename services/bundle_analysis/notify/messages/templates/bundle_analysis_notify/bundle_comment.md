@@ -6,4 +6,4 @@ Changes will increase total bundle size by {{total_size_readable}} :arrow_up:
 {% else %}
 Changes will decrease total bundle size by {{total_size_readable}} :arrow_down:
 {% endif %}
-{% include "bundle_analysis_notify/bundle_table.md" %}
+{% if bundle_rows %}{% include "bundle_analysis_notify/bundle_table.md" %}{% endif %}

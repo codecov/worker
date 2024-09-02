@@ -10,7 +10,7 @@ from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
 from database.models.core import Owner
-from services.bundle_analysis.new_notify.types import NotificationType
+from services.bundle_analysis.notify.types import NotificationType
 
 
 def is_commit_status_configured(

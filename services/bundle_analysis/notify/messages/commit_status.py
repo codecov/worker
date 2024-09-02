@@ -7,15 +7,15 @@ from shared.helpers.cache import make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError
 
 from helpers.cache import cache
-from services.bundle_analysis.new_notify.contexts.commit_status import (
+from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusLevel,
     CommitStatusNotificationContext,
 )
-from services.bundle_analysis.new_notify.helpers import (
+from services.bundle_analysis.notify.helpers import (
     bytes_readable,
     get_github_app_used,
 )
-from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
+from services.bundle_analysis.notify.messages import MessageStrategyInterface
 from services.notification.notifiers.base import NotificationResult
 
 log = logging.getLogger(__name__)

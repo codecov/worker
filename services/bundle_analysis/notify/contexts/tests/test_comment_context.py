@@ -6,17 +6,17 @@ from shared.yaml import UserYaml
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.tests.factories.core import CommitFactory
 from services.bundle_analysis.comparison import ComparisonLoader
-from services.bundle_analysis.new_notify.conftest import (
+from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
     get_report_pair,
     save_mock_bundle_analysis_report,
 )
-from services.bundle_analysis.new_notify.contexts import (
+from services.bundle_analysis.notify.contexts import (
     ContextNotLoadedError,
     NotificationContextBuildError,
 )
-from services.bundle_analysis.new_notify.contexts.comment import (
+from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
 )
 from services.seats import SeatActivationInfo, ShouldActivateSeat
@@ -29,11 +29,11 @@ class TestBundleAnalysisPRCommentNotificationContext:
         user_yaml = UserYaml.from_dict({})
         fake_repo_service = mocker.MagicMock(name="fake_repo_service")
         mock_fetch_pr = mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.comment.fetch_and_update_pull_request_information_from_commit",
+            "services.bundle_analysis.notify.contexts.comment.fetch_and_update_pull_request_information_from_commit",
             return_value=None,
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
+            "services.bundle_analysis.notify.contexts.get_repo_provider_service",
             return_value=fake_repo_service,
         )
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
@@ -242,15 +242,15 @@ class TestBundleAnalysisPRCommentNotificationContext:
             reason="mocked",
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.comment.determine_seat_activation",
+            "services.bundle_analysis.notify.contexts.comment.determine_seat_activation",
             return_value=activation_result,
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.comment.activate_user",
+            "services.bundle_analysis.notify.contexts.comment.activate_user",
             return_value=auto_activate_succeeds,
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.comment.schedule_new_user_activated_task",
+            "services.bundle_analysis.notify.contexts.comment.schedule_new_user_activated_task",
             return_value=auto_activate_succeeds,
         )
         head_commit, _ = get_commit_pair(dbsession)
