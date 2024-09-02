@@ -34,7 +34,6 @@ from database.models.reports import (
     ReportDetails,
     ReportLevelTotals,
     RepositoryFlag,
-    UploadLevelTotals,
 )
 from helpers.environment import Environment, get_current_env
 from helpers.exceptions import (
@@ -1076,12 +1075,6 @@ class ReportService(BaseReportService):
     def update_upload_with_processing_result(
         self, upload_obj: Upload, processing_result: ProcessingResult
     ):
-        rounding: str = read_yaml_field(
-            self.current_yaml, ("coverage", "round"), "nearest"
-        )
-        precision: int = read_yaml_field(
-            self.current_yaml, ("coverage", "precision"), 2
-        )
         db_session = upload_obj.get_db_session()
         session = processing_result.session
         if processing_result.error is None:
@@ -1095,24 +1088,6 @@ class ReportService(BaseReportService):
             upload_obj.state_id = UploadState.PROCESSED.db_id
             upload_obj.state = "processed"
             upload_obj.order_number = session.id
-            upload_totals = upload_obj.totals
-            if upload_totals is None:
-                upload_totals = UploadLevelTotals(
-                    upload_id=upload_obj.id,
-                    branches=0,
-                    coverage=0,
-                    hits=0,
-                    lines=0,
-                    methods=0,
-                    misses=0,
-                    partials=0,
-                    files=0,
-                )
-                db_session.add(upload_totals)
-            if session.totals is not None:
-                upload_totals.update_from_totals(
-                    session.totals, precision=precision, rounding=rounding
-                )
         else:
             error = processing_result.error
             upload_obj.state = "error"
@@ -1123,7 +1098,7 @@ class ReportService(BaseReportService):
                 error_params=error.params,
             )
             db_session.add(error_obj)
-            db_session.flush()
+        db_session.flush()
 
     @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):
@@ -1252,12 +1227,6 @@ class ReportService(BaseReportService):
             db_session.add(upload)
             db_session.flush()
             self._attach_flags_to_upload(upload, session.flags if session.flags else [])
-            if session.totals is not None:
-                upload_totals = UploadLevelTotals(upload_id=upload.id_)
-                db_session.add(upload_totals)
-                upload_totals.update_from_totals(
-                    session.totals, precision=precision, rounding=rounding
-                )
         return res
 
     @sentry_sdk.trace

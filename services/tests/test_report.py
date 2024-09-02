@@ -18,7 +18,6 @@ from database.tests.factories import (
     ReportLevelTotalsFactory,
     RepositoryFlagFactory,
     UploadFactory,
-    UploadLevelTotalsFactory,
 )
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
@@ -477,18 +476,6 @@ class TestReportService(BaseTestCase):
 
         upload = UploadFactory(report=report, order_number=0, upload_type="upload")
         dbsession.add(upload)
-        upload_totals = UploadLevelTotalsFactory(
-            upload=upload,
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=85.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals)
         dbsession.commit()
         dbsession.flush()
 
@@ -524,21 +511,6 @@ class TestReportService(BaseTestCase):
         assert len(report.sessions) == 1
         assert report.sessions[0].flags == []
         assert report.sessions[0].session_type == SessionType.uploaded
-        assert report.sessions[0].totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=Decimal("85.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
 
         # make sure report is still serializable
         ReportService({}).save_report(commit, report)
@@ -606,54 +578,18 @@ class TestReportService(BaseTestCase):
             report=report, flags=[flag1], order_number=0, upload_type="upload"
         )
         dbsession.add(upload1)
-        upload_totals1 = UploadLevelTotalsFactory(
-            upload=upload1,
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=85.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals1)
         dbsession.commit()
 
         upload2 = UploadFactory(
             report=report, flags=[flag1], order_number=1, upload_type="carriedforward"
         )
         dbsession.add(upload2)
-        upload_totals2 = UploadLevelTotalsFactory(
-            upload=upload2,
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=100.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals2)
         dbsession.commit()
 
         upload3 = UploadFactory(
             report=report, flags=[flag2], order_number=2, upload_type="carriedforward"
         )
         dbsession.add(upload3)
-        upload_totals3 = UploadLevelTotalsFactory(
-            upload=upload3,
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=100.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals3)
         dbsession.commit()
         dbsession.flush()
 
@@ -661,18 +597,6 @@ class TestReportService(BaseTestCase):
             report=report, flags=[flag3], order_number=3, upload_type="upload"
         )
         dbsession.add(upload4)
-        upload_totals4 = UploadLevelTotalsFactory(
-            upload=upload4,
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=100.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals4)
         dbsession.commit()
         dbsession.flush()
 
@@ -719,39 +643,9 @@ class TestReportService(BaseTestCase):
         assert len(report.sessions) == 2
         assert report.sessions[0].flags == ["unit"]
         assert report.sessions[0].session_type == SessionType.uploaded
-        assert report.sessions[0].totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=Decimal("85.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
         assert 1 not in report.sessions  # CF w/ equivalent direct upload
         assert report.sessions[2].flags == ["integration"]
         assert report.sessions[2].session_type == SessionType.carriedforward
-        assert report.sessions[2].totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=Decimal("100.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
         assert 3 not in report.sessions  # labels flag w/ empty label set
 
         # make sure report is still serializable
@@ -3576,15 +3470,6 @@ class TestReportService(BaseTestCase):
         assert len(first_upload.flags) == 1
         assert first_upload.flags[0].repository == commit.repository
         assert first_upload.flags[0].flag_name == "unit"
-        assert first_upload.totals is not None
-        assert first_upload.totals.branches == 0
-        assert first_upload.totals.coverage == Decimal("0.0")
-        assert first_upload.totals.hits == 0
-        assert first_upload.totals.lines == 10
-        assert first_upload.totals.methods == 0
-        assert first_upload.totals.misses == 0
-        assert first_upload.totals.partials == 0
-        assert first_upload.totals.files == 2
         assert first_upload.upload_extras == {}
         assert first_upload.upload_type == "uploaded"
         assert second_upload.build_code == "poli"
