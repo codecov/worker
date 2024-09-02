@@ -200,16 +200,16 @@ def test_bundle_analysis_notify(
     success = notifier.notify()
     assert success == BundleAnalysisNotifyReturn(
         notifications_configured=(
-            NotificationType.COMMIT_STATUS,
             NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
         notifications_attempted=(
-            NotificationType.COMMIT_STATUS,
             NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
         notifications_successful=(
-            NotificationType.COMMIT_STATUS,
             NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
     )
 
@@ -221,16 +221,16 @@ def test_bundle_analysis_notify(
     success = notifier.notify()
     assert success == BundleAnalysisNotifyReturn(
         notifications_configured=(
-            NotificationType.COMMIT_STATUS,
             NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
         notifications_attempted=(
-            NotificationType.COMMIT_STATUS,
             NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
         notifications_successful=(
-            NotificationType.COMMIT_STATUS,
             NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
     )
 

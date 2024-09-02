@@ -1,5 +1,4 @@
 import logging
-from functools import partial
 from typing import NamedTuple
 
 import sentry_sdk
@@ -124,7 +123,6 @@ class BundleAnalysisNotifyService:
             ),
         }
         notifier_strategy = notifier_lookup.get(notification_type)
-
         if notifier_strategy is None:
             msg = f"No context builder for {notification_type}. Skipping"
             log.error(msg)
@@ -146,6 +144,22 @@ class BundleAnalysisNotifyService:
                 ),
             )
             return None
+
+    def get_notification_contexts(
+        self,
+        base_context: BaseBundleAnalysisNotificationContext,
+        notification_types: list[NotificationType],
+    ) -> list[BaseBundleAnalysisNotificationContext]:
+        previous_context = base_context
+        specific_contexts = []
+        for notification_type in notification_types:
+            full_context = self.create_context_for_notification(
+                previous_context, notification_type
+            )
+            if full_context:
+                previous_context = full_context.notification_context
+                specific_contexts.append(full_context)
+        return specific_contexts
 
     def notify(self) -> BundleAnalysisNotifyReturn:
         """Entrypoint for BundleAnalysis notifications. This function does the following:
@@ -169,12 +183,8 @@ class BundleAnalysisNotifyService:
                 notifications_successful=tuple(),
             )
 
-        notification_full_contexts = filter(
-            None,
-            map(
-                partial(self.create_context_for_notification, base_context),
-                notification_types,
-            ),
+        notification_full_contexts = self.get_notification_contexts(
+            base_context, notification_types
         )
         notifications_sent = []
         notifications_successful = []
