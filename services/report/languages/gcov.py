@@ -1,8 +1,8 @@
 import re
-import typing
 from collections import defaultdict
 from io import BytesIO
 
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -15,11 +15,12 @@ from services.yaml import read_yaml_field
 
 
 class GcovProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return detect(content)
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
+        return b"0:Source:" in content.split(b"\n", 1)[0]
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_txt(content, report_builder_session)
@@ -28,10 +29,6 @@ class GcovProcessor(BaseLanguageProcessor):
 ignored_lines = re.compile(r"(\{|\})(\s*\/\/.*)?").match
 detect_loop = re.compile(r"^\s+(for|while)\s?\(").match
 detect_conditional = re.compile(r"^\s+((if\s?\()|(\} else if\s?\())").match
-
-
-def detect(report):
-    return b"0:Source:" in report.split(b"\n", 1)[0]
 
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:

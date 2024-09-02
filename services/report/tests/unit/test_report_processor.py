@@ -17,21 +17,24 @@ class TestReportTypeMatching(object):
     def test_report_type_matching(self):
         assert (
             report_type_matching(
-                ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b""))
+                ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b"")),
+                "",
             )[1]
             == "txt"
         )
         assert (
             report_type_matching(
-                ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b"{}"))
+                ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b"{}")),
+                "{}",
             )[1]
-            == "txt"
+            == "json"
         )
         assert (
             report_type_matching(
                 ParsedUploadedReportFile(
                     filename="name", file_contents=BytesIO(xcode_report.encode())
-                )
+                ),
+                "",
             )[1]
             == "txt"
         )
@@ -39,13 +42,15 @@ class TestReportTypeMatching(object):
             ParsedUploadedReportFile(
                 filename="name",
                 file_contents=BytesIO(json.dumps({"value": 1}).encode()),
-            )
+            ),
+            "{value: 1}",
         ) == ({"value": 1}, "json")
         assert report_type_matching(
             ParsedUploadedReportFile(
                 filename="name",
                 file_contents=BytesIO(('\n\n{"value": 1}').encode()),
-            )
+            ),
+            "",
         ) == ({"value": 1}, "json")
         assert (
             report_type_matching(
@@ -54,7 +59,8 @@ class TestReportTypeMatching(object):
                     file_contents=BytesIO(
                         '<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
                     ),
-                )
+                ),
+                "",
             )[1]
             == "xml"
         )
@@ -65,7 +71,8 @@ class TestReportTypeMatching(object):
                     file_contents=BytesIO(
                         '\n\n\n\n\n<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
                     ),
-                )
+                ),
+                "",
             )[1]
             == "xml"
         )
@@ -76,17 +83,20 @@ class TestReportTypeMatching(object):
                     file_contents=BytesIO(
                         '\ufeff<?xml version="1.0" ?><statements><statement>source.scala</statement></statements>'.encode()
                     ),
-                )
+                ),
+                "",
             )[1]
             == "xml"
         )
         assert report_type_matching(
             ParsedUploadedReportFile(
                 filename="name", file_contents=BytesIO("normal file".encode())
-            )
+            ),
+            "normal file",
         ) == (b"normal file", "txt")
         assert report_type_matching(
             ParsedUploadedReportFile(
                 filename="name", file_contents=BytesIO("1".encode())
-            )
+            ),
+            "1",
         ) == (b"1", "txt")

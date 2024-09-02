@@ -1,6 +1,6 @@
 import re
-import typing
 
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -12,21 +12,18 @@ from services.report.report_builder import (
 
 
 class LuaProcessor(BaseLanguageProcessor):
-    def matches_content(self, content: bytes, first_line, name):
-        return detect(content)
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
+        return content[:7] == b"======="
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_txt(content, report_builder_session)
 
 
 docs = re.compile(r"^=+\n", re.M).split
-
-
-def detect(report: bytes):
-    return report[:7] == b"======="
 
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:

@@ -1,9 +1,9 @@
 import logging
-import typing
 from collections import defaultdict
 from decimal import Decimal
 from io import BytesIO
 
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -17,22 +17,18 @@ log = logging.getLogger(__name__)
 
 
 class LcovProcessor(BaseLanguageProcessor):
-    def matches_content(self, content: bytes, first_line, name):
-        return detect(content)
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
+        return b"\nend_of_record" in content
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_txt(content, report_builder_session)
 
 
-def detect(report):
-    return b"\nend_of_record" in report
-
-
-# def from_txt(reports, fix, ignored_lines, sessionid):
-def from_txt(reports, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Report:
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
     # merge same files
     for string in reports.split(b"\nend_of_record"):

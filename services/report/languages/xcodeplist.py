@@ -1,33 +1,34 @@
 import plistlib
-import typing
 
+import sentry_sdk
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import LineSession, ReportLine
 
+from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import ReportBuilder
 
 
 class XCodePlistProcessor(BaseLanguageProcessor):
-    def matches_content(self, content: bytes, first_line, name):
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
         if name:
             return name.endswith("xccoverage.plist")
         if content.find(b'<plist version="1.0">') > -1 and content.startswith(b"<?xml"):
             return True
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
+        return from_xml(
+            content,
             report_builder.path_fixer,
             report_builder.ignored_lines,
             report_builder.sessionid,
-            report_builder.repo_yaml,
         )
-        return from_xml(content, path_fixer, ignored_lines, sessionid)
 
 
-def from_xml(xml: bytes, fix, ignored_lines, sessionid):
+def from_xml(xml: bytes, fix: PathFixer, ignored_lines: dict, sessionid: int):
     objects = plistlib.loads(xml)["$objects"]
 
     _report = Report()

@@ -1,5 +1,4 @@
-import typing
-
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -11,26 +10,21 @@ from services.report.report_builder import (
 
 
 class CoverallsProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return detect(content)
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
+        return "source_files" in content
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
         return from_json(content, report_builder.create_report_builder_session(name))
 
 
-def detect(report):
-    return "source_files" in report
-
-
-def from_json(report, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(report: dict, report_builder_session: ReportBuilderSession) -> Report:
     # https://github.com/codecov/support/issues/253
-    path_fixer, ignored_lines, sessionid, repo_yaml = (
+    path_fixer, ignored_lines = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
-        report_builder_session.current_yaml,
     )
     for _file in report["source_files"]:
         filename = path_fixer(_file["name"])

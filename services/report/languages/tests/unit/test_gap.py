@@ -61,7 +61,13 @@ class TestGap(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
-        assert gap.detect(b"") is False
-        assert gap.detect(b'{"Type":"S","File":"lib/error.g","FileId":37}') is True
-        assert gap.detect(b'{"coverage"}') is False
-        assert gap.detect(b"-1.7") is False
+        processor = gap.GapProcessor()
+        assert processor.matches_content(b"", "", "") is False
+        assert (
+            processor.matches_content(
+                b"", '{"Type":"S","File":"lib/error.g","FileId":37}', ""
+            )
+            is True
+        )
+        assert processor.matches_content(b'{"coverage"}', "", "") is False
+        assert processor.matches_content(b"-1.7", "", "") is False
