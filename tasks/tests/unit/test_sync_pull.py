@@ -20,19 +20,21 @@ here = Path(__file__)
 
 class TestPullSyncTask(object):
     @pytest.mark.parametrize(
-        "flake_detection,flaky_shadow_mode,tests_exist,outcome",
+        "flake_detection_config, flake_detection,flaky_shadow_mode,tests_exist,outcome",
         [
-            (False, False, False, False),
-            (False, True, False, False),
-            (True, False, False, False),
-            (False, True, True, True),
-            (True, True, True, True),
+            (False, True, True, True, False),
+            (True, False, False, False, False),
+            (True, False, False, True, False),
+            (True, True, False, True, True),
+            (True, False, True, True, True),
+            (True, True, True, True, True),
         ],
     )
     def test_update_pull_commits_merged(
         self,
         dbsession,
         mocker,
+        flake_detection_config,
         flake_detection,
         flaky_shadow_mode,
         tests_exist,
@@ -108,7 +110,7 @@ class TestPullSyncTask(object):
         current_yaml = UserYaml.from_dict(
             {
                 "test_analytics": {
-                    "flake_detection": flake_detection,
+                    "flake_detection": flake_detection_config,
                 }
             }
         )
