@@ -37,6 +37,11 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
     repo.name = "testing"
     dbsession.commit()
 
+    # this wouldn't trigger the publish via SQLAlchemy events (after_update) since it's an unimportant attribute
+    repo.activated = True
+    dbsession.commit()
+
+    # this is from the first trigger
     publish.assert_called_once_with(
         "projects/test-project-id/topics/test-topic-id",
         b'{"type": "repo", "sync": "one", "id": 91728376}',
