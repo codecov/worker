@@ -1,5 +1,6 @@
-import typing
+from xml.etree.ElementTree import Element
 
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -11,20 +12,20 @@ from services.report.report_builder import (
 
 
 class JetBrainsXMLProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content.tag == "Root")
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return content.tag == "Root"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
         return from_xml(content, report_builder.create_report_builder_session(name))
 
 
-def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid = (
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
     )
     # dict of {"fileid": "path"}
     file_by_id = {}

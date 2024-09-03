@@ -5,7 +5,6 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
-from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.celery_config import (
     compute_comparison_task_name,
@@ -170,9 +169,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
 
             with metrics.timer(f"{self.metrics_prefix}.save_parallel_report_results"):
-                parallel_paths = async_to_sync(
-                    report_service.save_parallel_report_to_archive
-                )(commit, report, report_code)
+                parallel_paths = report_service.save_parallel_report_to_archive(
+                    commit, report, report_code
+                )
             # now that we've built the report and stored it to GCS, we have what we need to
             # compare the results with the current upload pipeline. We end execution of the
             # finisher task here so that we don't cause any additional side-effects

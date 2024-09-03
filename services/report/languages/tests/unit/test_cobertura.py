@@ -465,7 +465,6 @@ class TestCobertura(BaseTestCase):
             <source>/user/repo</source>
         </sources>
         """
-        processor = cobertura.CoberturaProcessor()
         report_builder = ReportBuilder(
             path_fixer=lambda path, bases_to_try: [
                 os.path.join(b, path) for b in bases_to_try
@@ -492,7 +491,6 @@ class TestCobertura(BaseTestCase):
             <source>not a path</source>
         </sources>
         """
-        processor = cobertura.CoberturaProcessor()
         report_builder = ReportBuilder(
             path_fixer=lambda path, bases_to_try: path,
             ignored_lines={},

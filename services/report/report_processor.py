@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-
+import json
 import logging
-import numbers
-from json import load
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Literal
+from xml.etree.ElementTree import Element
 
 import sentry_sdk
 from lxml import etree
@@ -12,39 +10,39 @@ from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
 from helpers.metrics import KiB, MiB
-from services.report.languages import (
-    BullseyeProcessor,
-    CloverProcessor,
-    CoberturaProcessor,
-    CoverallsProcessor,
-    CSharpProcessor,
-    DLSTProcessor,
-    ElmProcessor,
-    FlowcoverProcessor,
-    GapProcessor,
-    GcovProcessor,
-    GoProcessor,
-    JacocoProcessor,
-    JetBrainsXMLProcessor,
-    LcovProcessor,
-    LuaProcessor,
-    MonoProcessor,
-    NodeProcessor,
-    PyCoverageProcessor,
-    RlangProcessor,
-    SalesforceProcessor,
-    ScalaProcessor,
-    SCoverageProcessor,
-    SimplecovProcessor,
-    VbProcessor,
-    VbTwoProcessor,
-    VOneProcessor,
-    XCodePlistProcessor,
-    XCodeProcessor,
-)
+from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
 from services.report.parser.types import ParsedUploadedReportFile
 from services.report.report_builder import ReportBuilder
+
+from .languages.bullseye import BullseyeProcessor
+from .languages.clover import CloverProcessor
+from .languages.cobertura import CoberturaProcessor
+from .languages.coveralls import CoverallsProcessor
+from .languages.csharp import CSharpProcessor
+from .languages.dlst import DLSTProcessor
+from .languages.elm import ElmProcessor
+from .languages.flowcover import FlowcoverProcessor
+from .languages.gap import GapProcessor
+from .languages.gcov import GcovProcessor
+from .languages.go import GoProcessor
+from .languages.jacoco import JacocoProcessor
+from .languages.jetbrainsxml import JetBrainsXMLProcessor
+from .languages.lcov import LcovProcessor
+from .languages.lua import LuaProcessor
+from .languages.mono import MonoProcessor
+from .languages.node import NodeProcessor
+from .languages.pycoverage import PyCoverageProcessor
+from .languages.rlang import RlangProcessor
+from .languages.salesforce import SalesforceProcessor
+from .languages.scala import ScalaProcessor
+from .languages.scoverage import SCoverageProcessor
+from .languages.simplecov import SimplecovProcessor
+from .languages.v1 import VOneProcessor
+from .languages.vb import VbProcessor
+from .languages.vb2 import VbTwoProcessor
+from .languages.xcode import XCodeProcessor
+from .languages.xcodeplist import XCodePlistProcessor
 
 log = logging.getLogger(__name__)
 
@@ -83,8 +81,13 @@ RAW_REPORT_PROCESSOR_COUNTER = Counter(
 )
 
 
-def report_type_matching(report: ParsedUploadedReportFile) -> Tuple[Any, Optional[str]]:
-    first_line = remove_non_ascii(report.get_first_line().decode(errors="replace"))
+def report_type_matching(
+    report: ParsedUploadedReportFile, first_line: str
+) -> (
+    tuple[bytes, Literal["txt"] | Literal["plist"]]
+    | tuple[dict | list, Literal["json"]]
+    | tuple[Element, Literal["xml"]]
+):
     name = report.filename or ""
     raw_report = report.contents
     xcode_first_line_endings = (
@@ -111,29 +114,48 @@ def report_type_matching(report: ParsedUploadedReportFile) -> Tuple[Any, Optiona
         return raw_report, "txt"
     if raw_report.find(b'<plist version="1.0">') >= 0 or name.endswith(".plist"):
         return raw_report, "plist"
-    if raw_report:
-        try:
-            processed = load(report.file_contents)
-            if processed != dict() and not isinstance(processed, numbers.Number):
-                return processed, "json"
-        except ValueError:
-            pass
-        if b"<classycle " in raw_report and b"</classycle>" in raw_report:
-            return None, None
-        try:
-            parser = etree.XMLParser(recover=True, resolve_entities=False)
-            processed = etree.fromstring(raw_report, parser=parser)
-            if processed is not None and len(processed) > 0:
-                return processed, "xml"
-        except ValueError:
-            pass
+    if not raw_report:
+        return raw_report, "txt"
+
+    try:
+        processed = json.load(report.file_contents)
+        if isinstance(processed, dict) or isinstance(processed, list):
+            return processed, "json"
+    except ValueError:
+        pass
+
+    try:
+        parser = etree.XMLParser(recover=True, resolve_entities=False)
+        processed = etree.fromstring(raw_report, parser=parser)
+        if processed is not None and len(processed) > 0:
+            return processed, "xml"
+    except ValueError:
+        pass
+
     return raw_report, "txt"
 
 
-def get_possible_processors_list(report_type: str) -> List[Any]:
-    processor_dict: Dict[str, List[Any]] = {
-        "plist": [XCodePlistProcessor()],
-        "xml": [
+def process_report(
+    report: ParsedUploadedReportFile, report_builder: ReportBuilder
+) -> Report | None:
+    report_filename = report.filename or ""
+    first_line = remove_non_ascii(report.get_first_line().decode(errors="replace"))
+    raw_report = report.contents
+
+    if b"<classycle " in raw_report and b"</classycle>" in raw_report:
+        log.warning(
+            "Ignored <classycle> report",
+            extra=dict(report_filename=report_filename, first_line=first_line[:100]),
+        )
+        return None
+
+    parsed_report, report_type = report_type_matching(report, first_line)
+
+    processors: list[BaseLanguageProcessor] = []
+    if report_type == "plist":
+        processors = [XCodePlistProcessor()]
+    elif report_type == "xml":
+        processors = [
             BullseyeProcessor(),
             SCoverageProcessor(),
             JetBrainsXMLProcessor(),
@@ -144,8 +166,12 @@ def get_possible_processors_list(report_type: str) -> List[Any]:
             VbProcessor(),
             VbTwoProcessor(),
             CoberturaProcessor(),
-        ],
-        "txt": [
+        ]
+    elif report_type == "txt":
+        if parsed_report[-11:] == b"has no code":
+            # empty [dlst]
+            return None
+        processors = [
             LcovProcessor(),
             GcovProcessor(),
             LuaProcessor(),
@@ -153,8 +179,9 @@ def get_possible_processors_list(report_type: str) -> List[Any]:
             DLSTProcessor(),
             GoProcessor(),
             XCodeProcessor(),
-        ],
-        "json": [
+        ]
+    elif report_type == "json" and parsed_report:
+        processors = [
             SalesforceProcessor(),
             ElmProcessor(),
             RlangProcessor(),
@@ -166,60 +193,52 @@ def get_possible_processors_list(report_type: str) -> List[Any]:
             GapProcessor(),
             PyCoverageProcessor(),
             NodeProcessor(),
-        ],
-    }
-    return processor_dict.get(report_type, [])
+        ]
 
-
-def process_report(
-    report: ParsedUploadedReportFile, report_builder: ReportBuilder
-) -> Optional[Report]:
-    name = report.filename or ""
-    first_line = remove_non_ascii(report.get_first_line().decode(errors="replace"))
-    parsed_report, report_type = report_type_matching(report)
-    if report_type == "txt" and parsed_report[-11:] == b"has no code":
-        # empty [dlst]
-        return None
-    processors = get_possible_processors_list(report_type) if report_type else []
     for processor in processors:
-        if processor.matches_content(parsed_report, first_line, name):
-            sentry_sdk.metrics.incr(
-                "services.report.report_processor.parser",
-                tags={"type": type(processor).__name__},
-            )
-            RAW_REPORT_SIZE.labels(processor=processor.name).observe(report.size)
-            with RAW_REPORT_PROCESSOR_RUNTIME_SECONDS.labels(
-                processor=processor.name
-            ).time():
-                try:
-                    res = processor.process(name, parsed_report, report_builder)
-                    RAW_REPORT_PROCESSOR_COUNTER.labels(
-                        processor=processor.name, result="success"
-                    ).inc()
-                    return res
-                except CorruptRawReportError as e:
-                    log.warning(
-                        "Processor matched file but later a problem with file was discovered",
-                        extra=dict(
-                            processor_name=processor.name,
-                            expected_format=e.expected_format,
-                            corruption_error=e.corruption_error,
-                        ),
-                        exc_info=True,
-                    )
-                    RAW_REPORT_PROCESSOR_COUNTER.labels(
-                        processor=processor.name, result="corrupt_raw_report"
-                    ).inc()
-                    return None
-                except Exception:
-                    RAW_REPORT_PROCESSOR_COUNTER.labels(
-                        processor=processor.name, result="failure"
-                    ).inc()
-                    raise
+        if not processor.matches_content(parsed_report, first_line, report_filename):
+            continue
+        processor_name = type(processor).__name__
+
+        sentry_sdk.metrics.incr(
+            "services.report.report_processor.parser",
+            tags={"type": processor_name},
+        )
+        RAW_REPORT_SIZE.labels(processor=processor_name).observe(report.size)
+        with RAW_REPORT_PROCESSOR_RUNTIME_SECONDS.labels(
+            processor=processor_name
+        ).time():
+            try:
+                res = processor.process(report_filename, parsed_report, report_builder)
+                RAW_REPORT_PROCESSOR_COUNTER.labels(
+                    processor=processor_name, result="success"
+                ).inc()
+                return res
+            except CorruptRawReportError as e:
+                log.warning(
+                    "Processor matched file but later a problem with file was discovered",
+                    extra=dict(
+                        processor_name=processor_name,
+                        expected_format=e.expected_format,
+                        corruption_error=e.corruption_error,
+                    ),
+                    exc_info=True,
+                )
+                RAW_REPORT_PROCESSOR_COUNTER.labels(
+                    processor=processor_name, result="corrupt_raw_report"
+                ).inc()
+                return None
+            except Exception:
+                RAW_REPORT_PROCESSOR_COUNTER.labels(
+                    processor=processor_name, result="failure"
+                ).inc()
+                raise
     log.warning(
         "File format could not be recognized",
         extra=dict(
-            report_filename=name, first_line=first_line[:100], report_type=report_type
+            report_filename=report_filename,
+            first_line=first_line[:100],
+            report_type=report_type,
         ),
     )
     return None

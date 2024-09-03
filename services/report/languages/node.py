@@ -2,6 +2,7 @@ import typing
 from collections import defaultdict
 from fractions import Fraction
 
+import sentry_sdk
 from shared.reports.resources import Report
 from shared.utils.merge import partials_to_line
 
@@ -15,13 +16,14 @@ from services.yaml import read_yaml_field
 
 
 class NodeProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        if not isinstance(content, dict):
-            return False
-        return all(isinstance(data, dict) for data in content.values())
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
+        return isinstance(content, dict) and all(
+            isinstance(data, dict) for data in content.values()
+        )
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_json(content, report_builder_session)
@@ -336,15 +338,16 @@ def jscoverage(_file, data, report_builder_session: ReportBuilderSession):
             )
 
 
-def from_json(report_dict, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(
+    report_dict: dict, report_builder_session: ReportBuilderSession
+) -> Report:
     config = (
         read_yaml_field(report_builder_session.current_yaml, ("parsers", "javascript"))
         or {}
     )
-    fix, ignored_lines, sessionid = (
+    fix, ignored_lines = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
     )
 
     if config.get("enable_partials", False):

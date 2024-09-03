@@ -8,7 +8,7 @@ from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.storage.exceptions import PutRequestRateLimitError
 
 from database.enums import ReportType
-from database.models import CommitReport
+from database.models import CommitReport, Upload
 from database.tests.factories import CommitFactory, RepositoryFactory, UploadFactory
 from services.archive import ArchiveService
 from tasks.bundle_analysis_processor import BundleAnalysisProcessorTask
@@ -1235,3 +1235,61 @@ def test_bundle_analysis_processor_caching_previous_report(
 
     assert commit.state == "complete"
     assert upload.state == "processed"
+
+
+@pytest.mark.django_db(databases={"default", "timeseries"})
+def test_bundle_analysis_processor_task_no_upload(
+    mocker,
+    dbsession,
+    mock_storage,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
+
+    commit = CommitFactory.create(state="pending")
+    dbsession.add(commit)
+    dbsession.flush()
+
+    result = BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_pk": None,
+            "commit": commit.commitid,
+        },
+    )
+
+    commit_report = dbsession.query(CommitReport).filter_by(commit_id=commit.id).first()
+    assert commit_report is not None
+
+    upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
+    assert upload is not None
+
+    assert result == {
+        "results": [
+            {"previous": "result"},
+            {
+                "error": None,
+                "session_id": None,
+                "upload_id": upload.id_,
+                "bundle_name": None,
+            },
+        ],
+    }
+
+    assert commit.state == "complete"
+    assert upload.state == "processed"
+    assert upload.upload_type == "carriedforward"

@@ -9,14 +9,14 @@ from shared.bundle_analysis import (
 )
 from shared.torngit.exceptions import TorngitClientError
 
-from services.bundle_analysis.new_notify.contexts.comment import (
+from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentNotificationContext,
 )
-from services.bundle_analysis.new_notify.helpers import (
+from services.bundle_analysis.notify.helpers import (
     bytes_readable,
     get_github_app_used,
 )
-from services.bundle_analysis.new_notify.messages import MessageStrategyInterface
+from services.bundle_analysis.notify.messages import MessageStrategyInterface
 from services.license import requires_license
 from services.notification.notifiers.base import NotificationResult
 from services.urls import get_bundle_analysis_pull_url, get_members_url
@@ -129,6 +129,9 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
                 size = bytes_readable(head_bundle_report.total_size())
 
             change_size = bundle_change.size_delta
+            if change_size == 0:
+                # Don't include bundles that were not changes in the table
+                continue
             icon = ""
             if change_size > 0:
                 icon = ":arrow_up:"

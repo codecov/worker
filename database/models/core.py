@@ -147,6 +147,7 @@ class Repository(CodecovBaseModel):
     hookid = Column(types.Text)
     webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
+    bundle_analysis_enabled = Column(types.Boolean, default=False)
 
     # DEPRECATED - prefer GithubAppInstallation.is_repo_covered_by_integration
     using_integration = Column(types.Boolean)

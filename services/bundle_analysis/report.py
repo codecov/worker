@@ -14,8 +14,9 @@ from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.django_apps.bundle_analysis.service.bundle_analysis import (
     BundleAnalysisCacheConfigService,
 )
-from shared.reports.enums import UploadState
+from shared.reports.enums import UploadState, UploadType
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
+from shared.utils.sessions import SessionType
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
@@ -57,7 +58,7 @@ class ProcessingResult:
             "error": self.error.as_dict() if self.error else None,
         }
 
-    def update_upload(self):
+    def update_upload(self, carriedforward: Optional[bool] = False) -> None:
         """
         Updates this result's `Upload` record with information from
         this result.
@@ -81,6 +82,10 @@ class ProcessingResult:
             self.upload.state = "processed"
             self.upload.state_id = UploadState.PROCESSED.db_id
             self.upload.order_number = self.session_id
+
+        if carriedforward:
+            self.upload.upload_type = SessionType.carriedforward.value
+            self.upload_type_id = UploadType.CARRIEDFORWARD.db_id
 
         sentry_sdk.metrics.incr(
             "bundle_analysis_upload",
@@ -225,27 +230,29 @@ class BundleAnalysisReportService(BaseReportService):
         # download raw upload data to local tempfile
         _, local_path = tempfile.mkstemp()
         try:
-            with open(local_path, "wb") as f:
-                storage_service.read_file(
-                    get_bucket_name(), upload.storage_path, file_obj=f
-                )
-
-            # load the downloaded data into the bundle report
-            session_id, bundle_name = bundle_report.ingest(local_path, compare_sha)
-
-            # Retrieve previous commit's BAR and associate past Assets
-            prev_bar = self._previous_bundle_analysis_report(
-                bundle_loader, commit, head_bundle_report=bundle_report
-            )
-            if prev_bar:
-                bundle_report.associate_previous_assets(prev_bar)
-
-            # Turn on caching option by default for all new bundles only for default branch
-            if commit.branch == commit.repository.branch:
-                for bundle in bundle_report.bundle_reports():
-                    BundleAnalysisCacheConfigService.update_cache_option(
-                        commit.repoid, bundle.name
+            session_id, prev_bar, bundle_name = None, None, None
+            if upload.storage_path != "":
+                with open(local_path, "wb") as f:
+                    storage_service.read_file(
+                        get_bucket_name(), upload.storage_path, file_obj=f
                     )
+
+                # load the downloaded data into the bundle report
+                session_id, bundle_name = bundle_report.ingest(local_path, compare_sha)
+
+                # Retrieve previous commit's BAR and associate past Assets
+                prev_bar = self._previous_bundle_analysis_report(
+                    bundle_loader, commit, head_bundle_report=bundle_report
+                )
+                if prev_bar:
+                    bundle_report.associate_previous_assets(prev_bar)
+
+                # Turn on caching option by default for all new bundles only for default branch
+                if commit.branch == commit.repository.branch:
+                    for bundle in bundle_report.bundle_reports():
+                        BundleAnalysisCacheConfigService.update_cache_option(
+                            commit.repoid, bundle.name
+                        )
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)

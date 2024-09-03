@@ -2,9 +2,10 @@ import itertools
 import logging
 import time
 import uuid
+from copy import deepcopy
 from datetime import datetime
 from json import loads
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -555,6 +556,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     ):
         commit_yaml = commit_yaml.to_dict()
 
+        # Carryforward the parent BA report for the current commit's BA report when handling uploads
+        # that's not bundle analysis type.
+        self.possibly_carryforward_bundle_report(
+            commit, commit_report, commit_yaml, argument_list
+        )
+
         if upload_context.report_type == ReportType.COVERAGE:
             assert (
                 commit_report.report_type is None
@@ -718,6 +725,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit: Commit,
         commit_yaml: dict,
         argument_list: list[dict],
+        do_notify: Optional[bool] = True,
     ):
         task_signatures = [
             bundle_analysis_processor_task.s(
@@ -732,13 +740,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         # it might make sense to eventually have a "finisher" task that
         # does whatever extra stuff + enqueues a notify
-        task_signatures.append(
-            bundle_analysis_notify_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml,
+        if do_notify:
+            task_signatures.append(
+                bundle_analysis_notify_task.s(
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                    commit_yaml=commit_yaml,
+                )
             )
-        )
 
         return chain(task_signatures).apply_async()
 
@@ -772,6 +781,40 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 }
             ),
         ).apply_async()
+
+    def possibly_carryforward_bundle_report(
+        self,
+        commit: Commit,
+        commit_report: CommitReport,
+        commit_yaml: UserYaml,
+        argument_list: List[Dict],
+    ):
+        """
+        If an upload is not of bundle analysis type we will create an additional BA report and upload for it.
+        The reason this is done is because when doing BA comparisons if the base report does not have a proper
+        BA upload then the head can not be compared. So to prevent that we will always create a BA report on
+        all upload types, if the upload is not a BA upload then we will copy the parent's report to it.
+        This implementation is similar to carryforward flag mechanism in coverage, note the the difference it
+        that instead of traversing the commit tree during fetch, we always create a permanent report on every upload.
+        """
+        if (
+            commit_report.report_type != ReportType.BUNDLE_ANALYSIS.value
+            and commit.repository.bundle_analysis_enabled
+        ):
+            # Override upload_pk from other upload types and create the BA uploads in the
+            # BA processor task
+            ba_argument_list = []
+            for arg in argument_list:
+                ba_arg = deepcopy(arg)
+                ba_arg["upload_pk"] = None
+                ba_argument_list.append(ba_arg)
+
+            self._schedule_bundle_analysis_processing_task(
+                commit,
+                commit_yaml,
+                ba_argument_list,
+                do_notify=False,
+            )
 
     def possibly_setup_webhooks(self, commit: Commit, repository_service):
         repository = commit.repository

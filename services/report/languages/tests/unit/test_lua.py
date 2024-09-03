@@ -125,6 +125,7 @@ class TestLua(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
-        assert lua.detect(b"=========") is True
-        assert lua.detect(b"=== fefef") is False
-        assert lua.detect(b"<xml>") is False
+        processor = lua.LuaProcessor()
+        assert processor.matches_content(b"=========", "", "") is True
+        assert processor.matches_content(b"=== fefef", "", "") is False
+        assert processor.matches_content(b"<xml>", "", "") is False

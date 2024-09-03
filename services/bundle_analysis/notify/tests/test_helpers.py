@@ -10,14 +10,14 @@ from database.models.core import (
     Owner,
 )
 from database.tests.factories.core import OwnerFactory
-from services.bundle_analysis.new_notify.helpers import (
+from services.bundle_analysis.notify.helpers import (
     bytes_readable,
     get_github_app_used,
     get_notification_types_configured,
     is_bundle_change_within_bundle_threshold,
     to_BundleThreshold,
 )
-from services.bundle_analysis.new_notify.types import NotificationType
+from services.bundle_analysis.notify.types import NotificationType
 
 
 @pytest.mark.parametrize(
@@ -81,19 +81,19 @@ def gitlab_owner(dbsession) -> Owner:
         pytest.param(
             {"comment": {"require_bundle_changes": False}},
             "github_owner_no_apps",
-            (NotificationType.COMMIT_STATUS, NotificationType.PR_COMMENT),
+            (NotificationType.PR_COMMENT, NotificationType.COMMIT_STATUS),
             id="default_values_github_no_apps",
         ),
         pytest.param(
             {"comment": {"require_bundle_changes": False}},
             "github_owner_with_apps",
-            (NotificationType.GITHUB_COMMIT_CHECK, NotificationType.PR_COMMENT),
+            (NotificationType.PR_COMMENT, NotificationType.GITHUB_COMMIT_CHECK),
             id="default_values_github_with_apps",
         ),
         pytest.param(
             {"comment": {"require_bundle_changes": False}},
             "gitlab_owner",
-            (NotificationType.COMMIT_STATUS, NotificationType.PR_COMMENT),
+            (NotificationType.PR_COMMENT, NotificationType.COMMIT_STATUS),
             id="default_values_gitlab",
         ),
         pytest.param(

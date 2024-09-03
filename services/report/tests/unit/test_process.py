@@ -790,21 +790,25 @@ class TestProcessReport(BaseTestCase):
         )
         assert result is None
         assert mocked.called
-        mocked.assert_called_with(r)
+        mocked.assert_called_with(r, "<data>")
 
     def test_process_report_exception_raised(self, mocker):
         class SpecialUnexpectedException(Exception):
             pass
 
-        mock_bad_processor = mocker.MagicMock(
-            matches_content=mocker.MagicMock(return_value=True),
-            process=mocker.MagicMock(side_effect=SpecialUnexpectedException()),
-            name="mock_bad_processor",
+        mocker.patch(
+            "services.report.report_processor.report_type_matching",
+            return_value=(b"", "plist"),
         )
-        mock_possible_list = mocker.patch(
-            "services.report.report_processor.get_possible_processors_list"
+        mocker.patch(
+            "services.report.report_processor.XCodePlistProcessor.matches_content",
+            return_value=True,
         )
-        mock_possible_list.return_value = [mock_bad_processor]
+        mocker.patch(
+            "services.report.report_processor.XCodePlistProcessor.process",
+            side_effect=SpecialUnexpectedException(),
+        )
+
         with pytest.raises(SpecialUnexpectedException):
             process.process_report(
                 report=ParsedUploadedReportFile(
@@ -817,19 +821,19 @@ class TestProcessReport(BaseTestCase):
             )
 
     def test_process_report_corrupt_format(self, mocker):
-        mock_bad_processor = mocker.MagicMock(
-            matches_content=mocker.MagicMock(return_value=True),
-            process=mocker.MagicMock(
-                side_effect=CorruptRawReportError(
-                    "expected_format", "error_explanation"
-                )
-            ),
-            name="mock_bad_processor",
+        mocker.patch(
+            "services.report.report_processor.report_type_matching",
+            return_value=(b"", "plist"),
         )
         mocker.patch(
-            "services.report.report_processor.get_possible_processors_list",
-            return_value=[mock_bad_processor],
+            "services.report.report_processor.XCodePlistProcessor.matches_content",
+            return_value=True,
         )
+        mocker.patch(
+            "services.report.report_processor.XCodePlistProcessor.process",
+            side_effect=CorruptRawReportError("expected_format", "error_explanation"),
+        )
+
         res = process.process_report(
             report=ParsedUploadedReportFile(
                 filename="/Users/path/to/app.coverage.txt",

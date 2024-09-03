@@ -47,7 +47,7 @@ MIDDLEWARE = [
 ]
 
 BUNDLE_ANALYSIS_NOTIFY_MESSAGE_TEMPLATES = (
-    BASE_DIR / "services" / "bundle_analysis" / "new_notify" / "messages" / "templates"
+    BASE_DIR / "services" / "bundle_analysis" / "notify" / "messages" / "templates"
 )
 TEMPLATES = [
     {

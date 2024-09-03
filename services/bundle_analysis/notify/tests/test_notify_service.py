@@ -5,28 +5,28 @@ from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.tests.factories.core import CommitFactory
-from services.bundle_analysis.new_notify import (
+from services.bundle_analysis.notify import (
     BundleAnalysisNotifyReturn,
     BundleAnalysisNotifyService,
     NotificationSuccess,
 )
-from services.bundle_analysis.new_notify.conftest import (
+from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
     get_report_pair,
     save_mock_bundle_analysis_report,
 )
-from services.bundle_analysis.new_notify.contexts import (
+from services.bundle_analysis.notify.contexts import (
     BaseBundleAnalysisNotificationContext,
     NotificationContextBuildError,
 )
-from services.bundle_analysis.new_notify.contexts.comment import (
+from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentNotificationContext,
 )
-from services.bundle_analysis.new_notify.messages.comment import (
+from services.bundle_analysis.notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
 )
-from services.bundle_analysis.new_notify.types import NotificationType
+from services.bundle_analysis.notify.types import NotificationType
 from services.notification.notifiers.base import NotificationResult
 
 
@@ -36,12 +36,12 @@ def override_comment_builder_and_message_strategy(mocker):
     mock_comment_builder.build_context.return_value = mock_comment_builder
     mock_comment_builder.initialize_from_context.return_value = mock_comment_builder
     mock_comment_builder = mocker.patch(
-        "services.bundle_analysis.new_notify.BundleAnalysisPRCommentContextBuilder",
+        "services.bundle_analysis.notify.BundleAnalysisPRCommentContextBuilder",
         return_value=mock_comment_builder,
     )
     mock_markdown_strategy = AsyncMock(name="fake_markdown_strategy")
     mock_markdown_strategy = mocker.patch(
-        "services.bundle_analysis.new_notify.BundleAnalysisCommentMarkdownStrategy",
+        "services.bundle_analysis.notify.BundleAnalysisCommentMarkdownStrategy",
         return_value=mock_markdown_strategy,
     )
     mock_comment_builder.return_value.get_result.return_value = MagicMock(
@@ -64,12 +64,12 @@ def override_commit_status_builder_and_message_strategy(mocker):
         mock_commit_status_builder
     )
     mock_commit_status_builder = mocker.patch(
-        "services.bundle_analysis.new_notify.CommitStatusNotificationContextBuilder",
+        "services.bundle_analysis.notify.CommitStatusNotificationContextBuilder",
         return_value=mock_commit_status_builder,
     )
     commit_status_message_strategy = AsyncMock(name="fake_markdown_strategy")
     commit_status_message_strategy = mocker.patch(
-        "services.bundle_analysis.new_notify.CommitStatusMessageStrategy",
+        "services.bundle_analysis.notify.CommitStatusMessageStrategy",
         return_value=commit_status_message_strategy,
     )
     mock_commit_status_builder.return_value.get_result.return_value = MagicMock(
@@ -183,7 +183,7 @@ class TestCreateContextForNotification:
         )
         current_yaml = UserYaml.from_dict({})
         mock_comment_builder = mocker.patch(
-            "services.bundle_analysis.new_notify.BundleAnalysisPRCommentContextBuilder",
+            "services.bundle_analysis.notify.BundleAnalysisPRCommentContextBuilder",
             return_value=mock_comment_builder,
         )
         service = BundleAnalysisNotifyService(mock_base_context.commit, current_yaml)
@@ -219,8 +219,8 @@ class TestBundleAnalysisNotifyService:
         )
         assert result == BundleAnalysisNotifyReturn(
             notifications_configured=(
-                NotificationType.COMMIT_STATUS,
                 NotificationType.PR_COMMENT,
+                NotificationType.COMMIT_STATUS,
             ),
             notifications_attempted=tuple(),
             notifications_successful=tuple(),
