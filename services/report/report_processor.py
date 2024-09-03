@@ -116,12 +116,14 @@ def report_type_matching(
         return raw_report, "plist"
     if not raw_report:
         return raw_report, "txt"
+
     try:
         processed = json.load(report.file_contents)
         if isinstance(processed, dict) or isinstance(processed, list):
             return processed, "json"
     except ValueError:
         pass
+
     try:
         parser = etree.XMLParser(recover=True, resolve_entities=False)
         processed = etree.fromstring(raw_report, parser=parser)
@@ -129,6 +131,7 @@ def report_type_matching(
             return processed, "xml"
     except ValueError:
         pass
+
     return raw_report, "txt"
 
 
@@ -177,7 +180,7 @@ def process_report(
             GoProcessor(),
             XCodeProcessor(),
         ]
-    elif report_type == "json":
+    elif report_type == "json" and parsed_report:
         processors = [
             SalesforceProcessor(),
             ElmProcessor(),
