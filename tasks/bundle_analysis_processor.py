@@ -2,7 +2,6 @@ import logging
 from copy import deepcopy
 from typing import Any, Dict
 
-from asgiref.sync import async_to_sync
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.reports.enums import UploadState
 from shared.yaml import UserYaml
@@ -117,9 +116,7 @@ class BundleAnalysisProcessorTask(
         # unless when this task is called on a non-BA upload then we have to create an empty upload
         upload_pk, carriedforward = params["upload_pk"], False
         if upload_pk is None:
-            commit_report = async_to_sync(report_service.initialize_and_save_report)(
-                commit
-            )
+            commit_report = report_service.initialize_and_save_report(commit)
             upload_pk = report_service.create_report_upload(
                 {"url": ""}, commit_report
             ).id_
