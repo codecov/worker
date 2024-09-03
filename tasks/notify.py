@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from shared.celery_config import (
@@ -14,15 +15,17 @@ from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.base import TokenType, TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
+from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.enums import CommitErrorTypes, Decoration, NotificationState, ReportType
 from database.models import Commit, Pull
-from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, CompareCommit
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.clock import get_seconds_to_next_hour
+from helpers.comparison import minimal_totals
 from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
@@ -511,6 +514,33 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             return True
         return False
 
+    @sentry_sdk.trace
+    def save_patch_totals(self, comparison: ComparisonProxy) -> None:
+        """Saves patch coverage to the CompareCommit, if it exists.
+        This is done to make sure the patch coverage reported by notifications and UI is the same
+        (because they come from the same source)
+        """
+        if comparison.project_coverage_base.commit is None:
+            # This is the base that will be saved in the CommitComparison
+            # Even if the patch coverage could come from a different commit
+            return
+        head_commit = comparison.head.commit
+        db_session = head_commit.get_db_session()
+        patch_coverage = async_to_sync(comparison.get_patch_totals)()
+        statement = (
+            CompareCommit.__table__.update()
+            .where(
+                and_(
+                    CompareCommit.compare_commit_id == head_commit.id,
+                    CompareCommit.base_commit_id
+                    == comparison.project_coverage_base.commit.id,
+                )
+            )
+            .values(patch_totals=minimal_totals(patch_coverage))
+        )
+        db_session.execute(statement)
+
+    @sentry_sdk.trace
     def submit_third_party_notifications(
         self,
         current_yaml: UserYaml,
@@ -561,6 +591,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 gh_is_using_codecov_commenter=gh_is_using_codecov_commenter,
             ),
         )
+
+        self.save_patch_totals(comparison)
 
         decoration_type = self.determine_decoration_type_from_pull(
             enriched_pull, empty_upload
@@ -687,6 +719,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             ),
         )
 
+    @sentry_sdk.trace
     def fetch_and_update_whether_ci_passed(
         self, repository_service, commit, current_yaml
     ):

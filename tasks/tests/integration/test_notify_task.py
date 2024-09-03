@@ -6,8 +6,10 @@ from mock import PropertyMock
 from shared.validation.types import CoverageCommentRequiredChanges
 
 from database.models import Pull
+from database.models.core import CompareCommit
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
+from services.comparison import get_or_create_comparison
 from services.notification.notifiers.base import NotificationResult
 from tasks.notify import NotifyTask
 
@@ -194,6 +196,7 @@ class TestNotifyTask(object):
         )
         dbsession.add(commit)
         dbsession.add(master_commit)
+        get_or_create_comparison(dbsession, master_commit, commit)
         dbsession.flush()
         task = NotifyTask()
         with open("tasks/tests/samples/sample_chunks_1.txt") as f:
@@ -218,15 +221,14 @@ class TestNotifyTask(object):
                     "notifier": "status-project",
                     "title": "default",
                     "result": NotificationResult(
-                        notification_attempted=False,
-                        notification_successful=None,
-                        explanation="already_done",
+                        notification_attempted=True,
+                        notification_successful=True,
                         data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to 17a71a9",
                         },
-                        data_received=None,
+                        data_received={"id": 1},
                     ),
                 },
                 {
@@ -328,6 +330,7 @@ class TestNotifyTask(object):
                 },
             ],
         }
+        assert result is not None
         assert (
             result["notifications"][0]["result"]
             == expected_result["notifications"][0]["result"]
@@ -335,6 +338,23 @@ class TestNotifyTask(object):
         assert result["notifications"][0] == expected_result["notifications"][0]
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
+
+        comparison = (
+            dbsession.query(CompareCommit)
+            .filter(
+                CompareCommit.compare_commit_id == commit.id,
+                CompareCommit.base_commit_id == master_commit.id,
+            )
+            .first()
+        )
+        assert comparison is not None
+        assert comparison.patch_totals is not None
+        assert comparison.patch_totals == {
+            "hits": 2,
+            "misses": 0,
+            "partials": 0,
+            "coverage": 1.0,
+        }
 
     @patch("requests.post")
     def test_simple_call_only_status_notifiers_no_pull_request(

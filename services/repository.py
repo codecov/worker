@@ -471,6 +471,7 @@ class EnrichedPull(object):
     provider_pull: Optional[Mapping[str, Any]]
 
 
+@sentry_sdk.trace
 async def fetch_and_update_pull_request_information_from_commit(
     repository_service, commit, current_yaml
 ) -> Optional[EnrichedPull]:
