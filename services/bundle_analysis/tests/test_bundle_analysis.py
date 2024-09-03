@@ -1,3 +1,6 @@
+from textwrap import dedent
+from unittest.mock import PropertyMock
+
 import pytest
 from shared.bundle_analysis.comparison import BundleChange
 from shared.bundle_analysis.models import AssetType
@@ -9,7 +12,11 @@ from database.models import CommitReport, MeasurementName
 from database.tests.factories import CommitFactory, PullFactory, UploadFactory
 from database.tests.factories.timeseries import DatasetFactory, Measurement
 from services.archive import ArchiveService
-from services.bundle_analysis.notify import Notifier
+from services.bundle_analysis.notify import (
+    BundleAnalysisNotifyReturn,
+    BundleAnalysisNotifyService,
+)
+from services.bundle_analysis.notify.types import NotificationType
 from services.bundle_analysis.report import (
     BundleAnalysisReportService,
     ProcessingResult,
@@ -23,58 +30,96 @@ class MockBundleReport:
         return 123456
 
 
-def test_bytes_readable():
-    notifier = Notifier(None, UserYaml.from_dict({}))
-    assert notifier._bytes_readable(999) == "999 bytes"
-    assert notifier._bytes_readable(1234) == "1.23kB"
-    assert notifier._bytes_readable(123456) == "123.46kB"
-    assert notifier._bytes_readable(1234567) == "1.23MB"
-    assert notifier._bytes_readable(1234567890) == "1.23GB"
+def hook_mock_repo_provider(mocker, mock_repo_provider):
+    USING_GET_REPO_PROVIDER = [
+        "services.bundle_analysis.notify.contexts.get_repo_provider_service",
+    ]
+    for usage in USING_GET_REPO_PROVIDER:
+        mocker.patch(
+            usage,
+            return_value=mock_repo_provider,
+        )
 
 
-@pytest.mark.asyncio
+def hook_mock_pull(mocker, mock_pull):
+    USING_MOCK_PULL = [
+        "services.bundle_analysis.notify.contexts.comment.fetch_and_update_pull_request_information_from_commit",
+        "services.bundle_analysis.notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
+    ]
+    for usage in USING_MOCK_PULL:
+        mocker.patch(usage, return_value=mock_pull)
+
+
 @pytest.mark.parametrize(
-    "config, should_notify",
+    "bundle_changes, expected_message",
     [
-        pytest.param({}, True, id="default_config"),
         pytest.param(
-            {"comment": {"require_bundle_changes": False}},
-            True,
-            id="no_required_changes",
+            [
+                BundleChange(
+                    "added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345
+                ),
+                BundleChange(
+                    "changed-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
+                ),
+                BundleChange(
+                    "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
+                ),
+            ],
+            dedent("""\
+            ## [Bundle](URL) Report
+
+            Changes will increase total bundle size by 14.57kB :arrow_up:
+
+            | Bundle name | Size | Change |
+            | ----------- | ---- | ------ |
+            | added-bundle | 123.46kB | 12.35kB :arrow_up: |
+            | changed-bundle | 123.46kB | 3.46kB :arrow_up: |
+            | removed-bundle | (removed) | 1.23kB :arrow_down: |
+        """),
+            id="comment_increase_size",
         ),
         pytest.param(
-            {"comment": {"require_bundle_changes": True}}, True, id="required_changes"
+            [
+                BundleChange(
+                    "test-bundle", BundleChange.ChangeType.CHANGED, size_delta=-3456
+                ),
+            ],
+            dedent("""\
+            ## [Bundle](URL) Report
+
+            Changes will decrease total bundle size by 3.46kB :arrow_down:
+
+            | Bundle name | Size | Change |
+            | ----------- | ---- | ------ |
+            | test-bundle | 123.46kB | 3.46kB :arrow_down: |
+        """),
+            id="comment_decrease_size",
         ),
         pytest.param(
-            {"comment": {"require_bundle_changes": "bundle_increase"}},
-            True,
-            id="required_increase",
-        ),
-        pytest.param(
-            {
-                "comment": {
-                    "require_bundle_changes": "bundle_increase",
-                    "bundle_change_threshold": 1000,
-                }
-            },
-            True,
-            id="required_increase_with_small_threshold",
-        ),
-        pytest.param(
-            {
-                "comment": {
-                    "require_bundle_changes": "bundle_increase",
-                    "bundle_change_threshold": 1000000,
-                }
-            },
-            False,
-            id="required_increase_with_big_threshold",
+            [
+                BundleChange(
+                    "test-bundle", BundleChange.ChangeType.CHANGED, size_delta=0
+                ),
+            ],
+            dedent("""\
+            ## [Bundle](URL) Report
+
+            Bundle size has no change :white_check_mark:
+
+        """),
+            id="comment_no_change",
         ),
     ],
 )
-async def test_bundle_analysis_notify(
-    config, should_notify, dbsession, mocker, mock_storage, mock_repo_provider
+def test_bundle_analysis_notify(
+    bundle_changes: list[BundleChange],
+    expected_message: str,
+    dbsession,
+    mocker,
+    mock_storage,
+    mock_repo_provider,
 ):
+    hook_mock_repo_provider(mocker, mock_repo_provider)
     base_commit = CommitFactory()
     dbsession.add(base_commit)
     base_commit_report = CommitReport(
@@ -98,7 +143,7 @@ async def test_bundle_analysis_notify(
     dbsession.add(pull)
     dbsession.commit()
 
-    notifier = Notifier(head_commit, UserYaml.from_dict(config))
+    notifier = BundleAnalysisNotifyService(head_commit, UserYaml.from_dict({}))
 
     repo_key = ArchiveService.get_archive_hash(base_commit.repository)
     mock_storage.write_file(
@@ -117,35 +162,28 @@ async def test_bundle_analysis_notify(
         return_value=mock_storage,
     )
     mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
-    mocker.patch(
-        "services.bundle_analysis.notify.get_repo_provider_service",
-        return_value=mock_repo_provider,
-    )
 
-    bundle_changes = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes"
+    mocker.patch(
+        "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes",
+        return_value=bundle_changes,
     )
-    bundle_changes.return_value = [
-        BundleChange("added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345),
-        BundleChange(
-            "changed-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
-        ),
-        BundleChange(
-            "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
-        ),
-    ]
+    mock_percentage = mocker.patch(
+        "shared.bundle_analysis.comparison.BundleAnalysisComparison.percentage_delta",
+        new_callable=PropertyMock,
+    )
+    mock_percentage.return_value = 2.0
 
     bundle_report = mocker.patch(
         "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report"
     )
     bundle_report.return_value = MockBundleReport()
 
-    fetch_pr = mocker.patch(
-        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
-    )
-    fetch_pr.return_value = EnrichedPull(
-        database_pull=pull,
-        provider_pull={},
+    hook_mock_pull(
+        mocker,
+        EnrichedPull(
+            database_pull=pull,
+            provider_pull={},
+        ),
     )
 
     mock_check_compare_sha = mocker.patch(
@@ -153,473 +191,53 @@ async def test_bundle_analysis_notify(
     )
     mock_check_compare_sha.return_value = None
 
-    url = get_bundle_analysis_pull_url(pull=pull)
-    expected_message_increase = f"""## [Bundle]({url}) Report
-
-Changes will increase total bundle size by 14.57kB :arrow_up:
-
-| Bundle name | Size | Change |
-| ----------- | ---- | ------ |
-| added-bundle | 123.46kB | 12.35kB :arrow_up: |
-| changed-bundle | 123.46kB | 3.46kB :arrow_up: |
-| removed-bundle | (removed) | 1.23kB :arrow_down: |"""
+    expected_message = expected_message.replace(
+        "URL", get_bundle_analysis_pull_url(pull=pull)
+    )
 
     mock_repo_provider.post_comment.return_value = {"id": "test-comment-id"}
 
-    success = await notifier.notify()
-    assert success == True
-    if should_notify:
-        assert pull.bundle_analysis_commentid is not None
-        mock_repo_provider.post_comment.assert_called_once_with(
-            pull.pullid, expected_message_increase
-        )
-    else:
-        assert pull.bundle_analysis_commentid is None
-        mock_repo_provider.post_comment.assert_not_called()
-
-    success = await notifier.notify()
-    assert success == True
-    if should_notify:
-        assert pull.bundle_analysis_commentid is not None
-        mock_repo_provider.edit_comment.assert_called_once_with(
-            pull.pullid, "test-comment-id", expected_message_increase
-        )
-    else:
-        assert pull.bundle_analysis_commentid is None
-        mock_repo_provider.edit_comment.assert_not_called()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "config, should_notify",
-    [
-        pytest.param({}, True, id="default_config"),
-        pytest.param(
-            {"comment": {"require_bundle_changes": False}},
-            True,
-            id="no_required_changes",
+    success = notifier.notify()
+    assert success == BundleAnalysisNotifyReturn(
+        notifications_configured=(
+            NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
-        pytest.param(
-            {"comment": {"require_bundle_changes": True}}, True, id="required_changes"
+        notifications_attempted=(
+            NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
-        pytest.param(
-            {"comment": {"require_bundle_changes": "bundle_increase"}},
-            False,
-            id="required_increase",
+        notifications_successful=(
+            NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
         ),
-        pytest.param(
-            {
-                "comment": {
-                    "require_bundle_changes": True,
-                    "bundle_change_threshold": 1000,
-                }
-            },
-            True,
-            id="required_increase_with_small_threshold",
-        ),
-        pytest.param(
-            {
-                "comment": {
-                    "require_bundle_changes": True,
-                    "bundle_change_threshold": 1000000,
-                }
-            },
-            False,
-            id="required_increase_with_big_threshold",
-        ),
-    ],
-)
-async def test_bundle_analysis_notify_size_decrease(
-    config, should_notify, dbsession, mocker, mock_storage, mock_repo_provider
-):
-    base_commit = CommitFactory()
-    dbsession.add(base_commit)
-    base_commit_report = CommitReport(
-        commit=base_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(base_commit_report)
-
-    head_commit = CommitFactory(repository=base_commit.repository)
-    dbsession.add(head_commit)
-    head_commit_report = CommitReport(
-        commit=head_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(head_commit_report)
-
-    pull = PullFactory(
-        repository=base_commit.repository,
-        head=head_commit.commitid,
-        base=base_commit.commitid,
-        compared_to=base_commit.commitid,
-    )
-    dbsession.add(pull)
-    dbsession.commit()
-
-    notifier = Notifier(head_commit, UserYaml.from_dict(config))
-
-    repo_key = ArchiveService.get_archive_hash(base_commit.repository)
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{base_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
-    )
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{head_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
     )
 
-    mocker.patch(
-        "services.bundle_analysis.comparison.get_appropriate_storage_service",
-        return_value=mock_storage,
-    )
-    mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
-    mocker.patch(
-        "services.bundle_analysis.notify.get_repo_provider_service",
-        return_value=mock_repo_provider,
-    )
-
-    bundle_changes = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes"
-    )
-    bundle_changes.return_value = [
-        BundleChange("test-bundle", BundleChange.ChangeType.CHANGED, size_delta=-3456),
-    ]
-
-    bundle_report = mocker.patch(
-        "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report"
-    )
-    bundle_report.return_value = MockBundleReport()
-
-    fetch_pr = mocker.patch(
-        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
-    )
-    fetch_pr.return_value = EnrichedPull(
-        database_pull=pull,
-        provider_pull={},
-    )
-
-    mock_check_compare_sha = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
-    )
-    mock_check_compare_sha.return_value = None
-
-    url = get_bundle_analysis_pull_url(pull=pull)
-    expected_message_decrease = f"""## [Bundle]({url}) Report
-
-Changes will decrease total bundle size by 3.46kB :arrow_down:
-
-| Bundle name | Size | Change |
-| ----------- | ---- | ------ |
-| test-bundle | 123.46kB | 3.46kB :arrow_down: |"""
-
-    success = await notifier.notify()
-    assert success == True
-    if should_notify:
-        assert pull.bundle_analysis_commentid is not None
-        mock_repo_provider.post_comment.assert_called_once_with(
-            pull.pullid, expected_message_decrease
-        )
-    else:
-        assert pull.bundle_analysis_commentid is None
-        mock_repo_provider.post_comment.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_bundle_analysis_notify_size_unchanged(
-    dbsession, mocker, mock_storage, mock_repo_provider
-):
-    base_commit = CommitFactory()
-    dbsession.add(base_commit)
-    base_commit_report = CommitReport(
-        commit=base_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(base_commit_report)
-
-    head_commit = CommitFactory(repository=base_commit.repository)
-    dbsession.add(head_commit)
-    head_commit_report = CommitReport(
-        commit=head_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(head_commit_report)
-
-    pull = PullFactory(
-        repository=base_commit.repository,
-        head=head_commit.commitid,
-        base=base_commit.commitid,
-        compared_to=base_commit.commitid,
-    )
-    dbsession.add(pull)
-    dbsession.commit()
-
-    notifier = Notifier(head_commit, UserYaml.from_dict({}))
-
-    repo_key = ArchiveService.get_archive_hash(base_commit.repository)
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{base_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
-    )
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{head_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
-    )
-
-    mocker.patch(
-        "services.bundle_analysis.comparison.get_appropriate_storage_service",
-        return_value=mock_storage,
-    )
-    mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
-    mocker.patch(
-        "services.bundle_analysis.notify.get_repo_provider_service",
-        return_value=mock_repo_provider,
-    )
-
-    bundle_changes = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes"
-    )
-    bundle_changes.return_value = [
-        BundleChange("test-bundle", BundleChange.ChangeType.CHANGED, size_delta=0),
-    ]
-
-    bundle_report = mocker.patch(
-        "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report"
-    )
-    bundle_report.return_value = MockBundleReport()
-
-    fetch_pr = mocker.patch(
-        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
-    )
-    fetch_pr.return_value = EnrichedPull(
-        database_pull=pull,
-        provider_pull={},
-    )
-
-    mock_check_compare_sha = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
-    )
-    mock_check_compare_sha.return_value = None
-
-    url = get_bundle_analysis_pull_url(pull=pull)
-    expected_message_unchanged = f"""## [Bundle]({url}) Report
-
-Bundle size has no change :white_check_mark:"""
-
-    success = await notifier.notify()
-    assert success == True
+    assert pull.bundle_analysis_commentid is not None
     mock_repo_provider.post_comment.assert_called_once_with(
-        pull.pullid, expected_message_unchanged
+        pull.pullid, expected_message
     )
 
-
-@pytest.mark.asyncio
-async def test_bundle_analysis_no_notification_size_unchanged(
-    dbsession, mocker, mock_storage, mock_repo_provider
-):
-    base_commit = CommitFactory()
-    dbsession.add(base_commit)
-    base_commit_report = CommitReport(
-        commit=base_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(base_commit_report)
-
-    head_commit = CommitFactory(repository=base_commit.repository)
-    dbsession.add(head_commit)
-    head_commit_report = CommitReport(
-        commit=head_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(head_commit_report)
-
-    pull = PullFactory(
-        repository=base_commit.repository,
-        head=head_commit.commitid,
-        base=base_commit.commitid,
-        compared_to=base_commit.commitid,
-    )
-    dbsession.add(pull)
-    dbsession.commit()
-
-    notifier = Notifier(
-        head_commit, UserYaml.from_dict({"comment": {"require_bundle_changes": True}})
+    success = notifier.notify()
+    assert success == BundleAnalysisNotifyReturn(
+        notifications_configured=(
+            NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
+        ),
+        notifications_attempted=(
+            NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
+        ),
+        notifications_successful=(
+            NotificationType.PR_COMMENT,
+            NotificationType.COMMIT_STATUS,
+        ),
     )
 
-    repo_key = ArchiveService.get_archive_hash(base_commit.repository)
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{base_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
+    assert pull.bundle_analysis_commentid is not None
+    mock_repo_provider.edit_comment.assert_called_once_with(
+        pull.pullid, "test-comment-id", expected_message
     )
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{head_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
-    )
-
-    mocker.patch(
-        "services.bundle_analysis.comparison.get_appropriate_storage_service",
-        return_value=mock_storage,
-    )
-    mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
-    mocker.patch(
-        "services.bundle_analysis.notify.get_repo_provider_service",
-        return_value=mock_repo_provider,
-    )
-
-    bundle_changes = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes"
-    )
-    bundle_changes.return_value = [
-        BundleChange("test-bundle", BundleChange.ChangeType.CHANGED, size_delta=0),
-    ]
-
-    bundle_report = mocker.patch(
-        "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report"
-    )
-    bundle_report.return_value = MockBundleReport()
-
-    fetch_pr = mocker.patch(
-        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
-    )
-    fetch_pr.return_value = EnrichedPull(
-        database_pull=pull,
-        provider_pull={},
-    )
-
-    mock_check_compare_sha = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison._check_compare_sha"
-    )
-    mock_check_compare_sha.return_value = None
-
-    success = await notifier.notify()
-    assert success == True
-    mock_repo_provider.post_comment.assert_not_called()
-    mock_repo_provider.edit_comment.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_bundle_analysis_notify_missing_commit_report(
-    dbsession, mocker, mock_storage, mock_repo_provider
-):
-    base_commit = CommitFactory()
-    dbsession.add(base_commit)
-    base_commit_report = CommitReport(
-        commit=base_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(base_commit_report)
-
-    head_commit = CommitFactory(repository=base_commit.repository)
-    dbsession.add(head_commit)
-
-    notifier = Notifier(head_commit, UserYaml.from_dict({}))
-
-    success = await notifier.notify()
-    assert success == False
-
-
-@pytest.mark.asyncio
-async def test_bundle_analysis_notify_missing_bundle_report(
-    dbsession, mocker, mock_storage, mock_repo_provider
-):
-    base_commit = CommitFactory()
-    dbsession.add(base_commit)
-    base_commit_report = CommitReport(
-        commit=base_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(base_commit_report)
-
-    head_commit = CommitFactory(repository=base_commit.repository)
-    dbsession.add(head_commit)
-    head_commit_report = CommitReport(
-        commit=head_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(head_commit_report)
-
-    pull = PullFactory(
-        repository=base_commit.repository,
-        head=head_commit.commitid,
-        base=base_commit.commitid,
-        compared_to=base_commit.commitid,
-    )
-    dbsession.add(pull)
-    dbsession.commit()
-
-    notifier = Notifier(head_commit, UserYaml.from_dict({}))
-
-    success = await notifier.notify()
-    assert success == False
-
-
-@pytest.mark.asyncio
-async def test_bundle_analysis_notify_missing_pull(
-    dbsession, mocker, mock_storage, mock_repo_provider
-):
-    base_commit = CommitFactory()
-    dbsession.add(base_commit)
-    base_commit_report = CommitReport(
-        commit=base_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(base_commit_report)
-
-    head_commit = CommitFactory(repository=base_commit.repository)
-    dbsession.add(head_commit)
-    head_commit_report = CommitReport(
-        commit=head_commit, report_type=ReportType.BUNDLE_ANALYSIS.value
-    )
-    dbsession.add(head_commit_report)
-
-    pull = PullFactory(
-        repository=base_commit.repository,
-        head=head_commit.commitid,
-        base=base_commit.commitid,
-        compared_to=base_commit.commitid,
-    )
-    dbsession.add(pull)
-    dbsession.commit()
-
-    notifier = Notifier(head_commit, UserYaml.from_dict({}))
-
-    repo_key = ArchiveService.get_archive_hash(base_commit.repository)
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{base_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
-    )
-    mock_storage.write_file(
-        get_bucket_name(),
-        f"v1/repos/{repo_key}/{head_commit_report.external_id}/bundle_report.sqlite",
-        "test-content",
-    )
-
-    mocker.patch(
-        "services.bundle_analysis.comparison.get_appropriate_storage_service",
-        return_value=mock_storage,
-    )
-    mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
-    mocker.patch(
-        "services.bundle_analysis.notify.get_repo_provider_service",
-        return_value=mock_repo_provider,
-    )
-
-    bundle_changes = mocker.patch(
-        "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes"
-    )
-    bundle_changes.return_value = [
-        BundleChange("test-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456),
-    ]
-
-    bundle_report = mocker.patch(
-        "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report"
-    )
-    bundle_report.return_value = MockBundleReport()
-
-    fetch_pr = mocker.patch(
-        "services.bundle_analysis.notify.fetch_and_update_pull_request_information_from_commit"
-    )
-    fetch_pr.return_value = None
-
-    success = await notifier.notify()
-    assert success == False
 
 
 @pytest.mark.asyncio

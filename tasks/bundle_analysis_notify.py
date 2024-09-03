@@ -8,8 +8,8 @@ from app import celery_app
 from database.enums import ReportType
 from database.models import Commit
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from services.bundle_analysis.new_notify import BundleAnalysisNotifyService
-from services.bundle_analysis.new_notify.types import NotificationSuccess
+from services.bundle_analysis.notify import BundleAnalysisNotifyService
+from services.bundle_analysis.notify.types import NotificationSuccess
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
 

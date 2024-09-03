@@ -1,5 +1,4 @@
-import typing
-
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -17,17 +16,18 @@ class SimplecovProcessor(BaseLanguageProcessor):
 
     """
 
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
         return isinstance(content, dict) and content.get("command_name") == "RSpec"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_json(content, report_builder_session)
 
 
-def from_json(json, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Report:
     ignored_lines = report_builder_session.ignored_lines
     for data in json["files"]:
         fn = report_builder_session.path_fixer(data["filename"])

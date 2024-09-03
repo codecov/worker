@@ -1,5 +1,6 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -14,12 +15,12 @@ COVERAGE_MISS = 0
 
 
 class PyCoverageProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name) -> bool:
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
         return (
             "meta" in content
+            and "files" in content
             and isinstance(content.get("meta"), dict)
             and "show_contexts" in content.get("meta")
-            and "files" in content
         )
 
     def _normalize_label(self, testname) -> str:
@@ -56,7 +57,10 @@ class PyCoverageProcessor(BaseLanguageProcessor):
 
         return sorted(label_ids_for_line)
 
-    def process(self, name: str, content: Any, report_builder: ReportBuilder) -> Report:
+    @sentry_sdk.trace
+    def process(
+        self, name: str, content: dict, report_builder: ReportBuilder
+    ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         # Compressed pycoverage files will include a labels_table
         # Mapping label_idx: int --> label: str

@@ -98,7 +98,7 @@ class ProcessingResult:
 
 
 class BundleAnalysisReportService(BaseReportService):
-    async def initialize_and_save_report(
+    def initialize_and_save_report(
         self, commit: Commit, report_code: str = None
     ) -> CommitReport:
         db_session = commit.get_db_session()

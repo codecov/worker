@@ -28,7 +28,10 @@ class CoverageType(Enum):
 
 class ReportBuilderSession(object):
     def __init__(
-        self, report_builder, report_filepath, should_use_label_index: bool = False
+        self,
+        report_builder: "ReportBuilder",
+        report_filepath: str,
+        should_use_label_index: bool = False,
     ):
         self._report_builder = report_builder
         self._report_filepath = report_filepath
@@ -240,7 +243,7 @@ class ReportBuilder(object):
         self,
         current_yaml: UserYaml,
         sessionid: int,
-        ignored_lines,
+        ignored_lines: dict,
         path_fixer: PathFixer,
         should_use_label_index: bool = False,
     ):
@@ -248,7 +251,7 @@ class ReportBuilder(object):
         self.sessionid = sessionid
         self.ignored_lines = ignored_lines
         self.path_fixer = path_fixer
-        self.shoud_use_label_index = should_use_label_index
+        self.should_use_label_index = should_use_label_index
 
     @property
     def repo_yaml(self) -> UserYaml:
@@ -256,7 +259,7 @@ class ReportBuilder(object):
         return self.current_yaml
 
     def create_report_builder_session(self, filepath) -> ReportBuilderSession:
-        return ReportBuilderSession(self, filepath, self.shoud_use_label_index)
+        return ReportBuilderSession(self, filepath, self.should_use_label_index)
 
     def supports_labels(self) -> bool:
         """Returns wether a report supports labels.

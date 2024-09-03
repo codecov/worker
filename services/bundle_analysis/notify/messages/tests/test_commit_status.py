@@ -7,16 +7,16 @@ from shared.typings.torngit import TorngitInstanceData
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from services.bundle_analysis.new_notify.conftest import (
+from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
     get_report_pair,
     save_mock_bundle_analysis_report,
 )
-from services.bundle_analysis.new_notify.contexts.commit_status import (
+from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusNotificationContextBuilder,
 )
-from services.bundle_analysis.new_notify.messages.commit_status import (
+from services.bundle_analysis.notify.messages.commit_status import (
     CommitStatusMessageStrategy,
 )
 from services.notification.notifiers.base import NotificationResult
@@ -45,7 +45,7 @@ def mock_cache(mocker):
     fake_cache = mocker.MagicMock(name="fake_cache")
     fake_cache.get_backend.return_value = FakeRedis()
     mocker.patch(
-        "services.bundle_analysis.new_notify.messages.commit_status.cache", fake_cache
+        "services.bundle_analysis.notify.messages.commit_status.cache", fake_cache
     )
     return fake_cache
 
@@ -156,7 +156,7 @@ class TestCommitStatusMessage:
         )
         fake_repo_provider.set_commit_status.return_value = {"id": 1000}
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
+            "services.bundle_analysis.notify.contexts.get_repo_provider_service",
             return_value=fake_repo_provider,
         )
         mocker.patch(
@@ -178,7 +178,7 @@ class TestCommitStatusMessage:
             repository, base_commit_report, mock_storage, sample_report_number=2
         )
         mocker.patch(
-            "services.bundle_analysis.new_notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
+            "services.bundle_analysis.notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
             return_value=None,
         )
         user_yaml = UserYaml.from_dict({})

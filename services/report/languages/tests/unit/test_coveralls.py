@@ -22,8 +22,9 @@ txt = """
 
 class TestCoveralls(BaseTestCase):
     def test_detect(self):
-        assert coveralls.detect({"source_files": ""})
-        assert not coveralls.detect({"coverage": ""})
+        processor = coveralls.CoverallsProcessor()
+        assert processor.matches_content({"source_files": ""}, "", "")
+        assert not processor.matches_content({"coverage": ""}, "", "")
 
     def test_report(self):
         def fixes(path):

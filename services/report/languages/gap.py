@@ -2,42 +2,40 @@ import typing
 from io import BytesIO
 from json import dumps, loads
 
+import sentry_sdk
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
+from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import ReportBuilder
 
 
 class GapProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return detect(first_line)
+    def matches_content(self, content: typing.Any, first_line: str, name: str) -> bool:
+        try:
+            val = content if isinstance(content, dict) else loads(first_line)
+            return "Type" in val and "File" in val
+        except (TypeError, ValueError):
+            return False
 
+    @sentry_sdk.trace
     def process(
         self, name: str, content: typing.Any, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
         if isinstance(content, dict):
             content = dumps(content)
         if isinstance(content, str):
             content = content.encode()
-        return from_string(content, path_fixer, ignored_lines, sessionid)
+        return from_string(
+            content,
+            report_builder.path_fixer,
+            report_builder.ignored_lines,
+            report_builder.sessionid,
+        )
 
 
-def detect(string: bytes):
-    try:
-        val = loads(string)
-        return "Type" in val and "File" in val
-    except (TypeError, ValueError):
-        return False
-
-
-def from_string(string, fix, ignored_lines, sessionid):
+def from_string(string: bytes, fix: PathFixer, ignored_lines: dict, sessionid: int):
     # https://github.com/codecov/support/issues/253
     report = Report()
     _file = None

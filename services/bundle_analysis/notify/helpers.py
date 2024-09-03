@@ -10,7 +10,7 @@ from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
 from database.models.core import Owner
-from services.bundle_analysis.new_notify.types import NotificationType
+from services.bundle_analysis.notify.types import NotificationType
 
 
 def is_commit_status_configured(
@@ -49,8 +49,8 @@ def get_notification_types_configured(
     """Gets a tuple with all the different bundle analysis notifications that we should attempt to send,
     based on the given YAML"""
     notification_types = [
-        is_commit_status_configured(yaml, owner),
         is_comment_configured(yaml, owner),
+        is_commit_status_configured(yaml, owner),
     ]
     return tuple(filter(None, notification_types))
 

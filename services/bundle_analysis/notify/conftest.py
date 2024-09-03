@@ -48,8 +48,8 @@ def get_enriched_pull_setting_up_mocks(dbsession, mocker, commit_pair) -> Enrich
         provider_pull={},
     )
     fake_pull_patches_to_apply = [
-        "services.bundle_analysis.new_notify.contexts.comment.fetch_and_update_pull_request_information_from_commit",
-        "services.bundle_analysis.new_notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
+        "services.bundle_analysis.notify.contexts.comment.fetch_and_update_pull_request_information_from_commit",
+        "services.bundle_analysis.notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
     ]
     for patch_to_apply in fake_pull_patches_to_apply:
         mocker.patch(
@@ -58,7 +58,7 @@ def get_enriched_pull_setting_up_mocks(dbsession, mocker, commit_pair) -> Enrich
         )
     fake_repo_service = mocker.MagicMock(name="fake_repo_service")
     mocker.patch(
-        "services.bundle_analysis.new_notify.contexts.get_repo_provider_service",
+        "services.bundle_analysis.notify.contexts.get_repo_provider_service",
         return_value=fake_repo_service,
     )
 

@@ -3,6 +3,7 @@ from collections import defaultdict
 from io import BytesIO
 from itertools import groupby
 
+import sentry_sdk
 from shared.reports.resources import Report
 from shared.utils import merge
 from shared.utils.merge import LineType, line_type, partials_to_line
@@ -18,11 +19,12 @@ from services.yaml import read_yaml_field
 
 
 class GoProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
         return content[:6] == b"mode: " or ".go:" in first_line
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_txt(content, report_builder_session)

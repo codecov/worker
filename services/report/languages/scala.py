@@ -1,5 +1,4 @@
-import typing
-
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -11,17 +10,18 @@ from services.report.report_builder import (
 
 
 class ScalaProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
         return "fileReports" in content
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_json(content, report_builder_session)
 
 
-def from_json(data_dict, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(data_dict: dict, report_builder_session: ReportBuilderSession) -> Report:
     ignored_lines = report_builder_session.ignored_lines
     for f in data_dict["fileReports"]:
         filename = report_builder_session.path_fixer(f["filename"])

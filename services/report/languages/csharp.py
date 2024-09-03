@@ -1,7 +1,8 @@
-import typing
 from collections import defaultdict
 from itertools import repeat
+from xml.etree.ElementTree import Element
 
+import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -13,11 +14,12 @@ from services.report.report_builder import (
 
 
 class CSharpProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content.tag == "CoverageSession")
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return content.tag == "CoverageSession"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
         return from_xml(content, report_builder_session)
@@ -38,7 +40,7 @@ def _build_branches(branch_gen):
     return branches
 
 
-def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
     """
     https://github.com/OpenCover/opencover/issues/293#issuecomment-94598145
     @sl - start line
@@ -50,13 +52,10 @@ def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
     @vc - statement executed
     <SequencePoint vc="2" uspid="3" ordinal="0" offset="0" sl="35" sc="8" el="35" ec="9" bec="0" bev="0" fileid="1" />
     """
-    ignored_lines, sessionid = (
-        report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
-    )
+    ignored_lines = report_builder_session.ignored_lines
+
     # dict of {"fileid": "path"}
     file_by_id = {}
-    file_by_id_get = file_by_id.get
     file_by_name = {None: None}
     for f in xml.iter("File"):
         filename = report_builder_session.path_fixer(

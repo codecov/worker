@@ -1,29 +1,31 @@
-import typing
+from xml.etree.ElementTree import Element
 
+import sentry_sdk
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
+from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import ReportBuilder
 
 
 class VbProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content.tag == "results")
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return content.tag == "results"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
+        return from_xml(
+            content,
             report_builder.path_fixer,
             report_builder.ignored_lines,
             report_builder.sessionid,
-            report_builder.repo_yaml,
         )
-        return from_xml(content, path_fixer, ignored_lines, sessionid)
 
 
-def from_xml(xml, fix, ignored_lines, sessionid):
+def from_xml(xml: Element, fix: PathFixer, ignored_lines: dict, sessionid: int):
     report = Report()
     for module in xml.iter("module"):
         file_by_source = {}

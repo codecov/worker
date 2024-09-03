@@ -161,10 +161,11 @@ class TestLcov(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
-        assert lcov.detect(b"hello\nend_of_record\n") is True
-        assert lcov.detect(txt) is True
-        assert lcov.detect(b"hello_end_of_record") is False
-        assert lcov.detect(b"") is False
+        processor = lcov.LcovProcessor()
+        assert processor.matches_content(b"hello\nend_of_record\n", "", "") is True
+        assert processor.matches_content(txt, "", "") is True
+        assert processor.matches_content(b"hello_end_of_record", "", "") is False
+        assert processor.matches_content(b"", "", "") is False
 
     def test_negative_execution_count(self):
         text = "\n".join(

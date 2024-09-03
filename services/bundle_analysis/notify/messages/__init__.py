@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from services.bundle_analysis.new_notify.contexts import (
+from services.bundle_analysis.notify.contexts import (
     BaseBundleAnalysisNotificationContext,
 )
 from services.notification.notifiers.base import NotificationResult

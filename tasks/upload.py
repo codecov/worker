@@ -483,7 +483,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         try:
             log.info("Initializing and saving report", extra=upload_context.log_extra())
-            commit_report = async_to_sync(report_service.initialize_and_save_report)(
+            commit_report = report_service.initialize_and_save_report(
                 commit,
                 upload_context.report_code,
             )

@@ -1,6 +1,6 @@
-import typing
 from io import BytesIO
 
+import sentry_sdk
 from shared.reports.resources import Report
 from shared.reports.types import ReportLine
 
@@ -12,16 +12,17 @@ from services.report.report_builder import (
 
 
 class DLSTProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content[-7:] == b"covered")
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
+        return content[-7:] == b"covered"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
         return from_string(content, report_builder.create_report_builder_session(name))
 
 
-def from_string(string, report_builder_session: ReportBuilderSession) -> Report:
+def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
     path_fixer, ignored_lines, sessionid, filename = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,

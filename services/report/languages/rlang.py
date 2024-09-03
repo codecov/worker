@@ -1,29 +1,29 @@
-import typing
-
+import sentry_sdk
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
 
+from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import ReportBuilder
 
 
 class RlangProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
         return isinstance(content, dict) and content.get("uploader") == "R"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
+        self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
+        return from_json(
+            content,
             report_builder.path_fixer,
             report_builder.ignored_lines,
             report_builder.sessionid,
-            report_builder.repo_yaml,
         )
-        return from_json(content, path_fixer, ignored_lines, sessionid)
 
 
-def from_json(data_dict, fix, ignored_lines, sessionid):
+def from_json(data_dict: dict, fix: PathFixer, ignored_lines: dict, sessionid: int):
     """
     Report example
 
