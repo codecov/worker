@@ -408,6 +408,8 @@ def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
 
 
 def should_read_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
-    return FLAKY_TEST_DETECTION.check_value(
-        identifier=repoid, default=False
-    ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
+    return (
+        FLAKY_TEST_DETECTION.check_value(identifier=repoid, default=False)
+        and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), False)
+        or FLAKY_SHADOW_MODE.check_value(identifier=repoid, default=False)
+    )
