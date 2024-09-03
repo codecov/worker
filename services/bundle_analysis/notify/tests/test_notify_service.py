@@ -219,8 +219,8 @@ class TestBundleAnalysisNotifyService:
         )
         assert result == BundleAnalysisNotifyReturn(
             notifications_configured=(
-                NotificationType.COMMIT_STATUS,
                 NotificationType.PR_COMMENT,
+                NotificationType.COMMIT_STATUS,
             ),
             notifications_attempted=tuple(),
             notifications_successful=tuple(),

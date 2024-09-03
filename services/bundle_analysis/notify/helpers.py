@@ -49,8 +49,8 @@ def get_notification_types_configured(
     """Gets a tuple with all the different bundle analysis notifications that we should attempt to send,
     based on the given YAML"""
     notification_types = [
-        is_commit_status_configured(yaml, owner),
         is_comment_configured(yaml, owner),
+        is_commit_status_configured(yaml, owner),
     ]
     return tuple(filter(None, notification_types))
 
