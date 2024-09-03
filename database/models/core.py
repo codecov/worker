@@ -140,7 +140,6 @@ class Repository(CodecovBaseModel):
             random.choice(string.ascii_uppercase + string.digits) for _ in range(10)
         ),
     )
-    upload_token = Column(postgresql.UUID)
     language = Column(types.Text)
     languages = Column(postgresql.ARRAY(types.String), nullable=True, default=[])
     languages_last_updated = Column(types.DateTime, server_default=FetchedValue())

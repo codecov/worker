@@ -3,7 +3,7 @@ import logging
 
 from google.cloud import pubsub_v1
 from shared.config import get_config
-from sqlalchemy import event, inspect
+from sqlalchemy import event
 
 from database.models.core import Repository
 
@@ -51,10 +51,5 @@ def after_insert_repo(mapper, connection, target):
 
 @event.listens_for(Repository, "after_update")
 def after_update_repo(mapper, connection, target):
-    state = inspect(target)
-
-    for attr in state.attrs:
-        if attr.key in ["name", "upload_token"] and attr.history.has_changes():
-            log.info("After update signal")
-            _sync_repo(target)
-            break
+    log.info("After update signal")
+    _sync_repo(target)
