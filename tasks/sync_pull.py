@@ -17,7 +17,7 @@ from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
-from database.models import Commit, Pull, Repository
+from database.models import Commit, Pull, Repository, Test
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
@@ -377,9 +377,11 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                             synchronize_session=False,
                         )
                     )
-                self.trigger_process_flakes(
-                    repoid, pull.head, pull_dict["head"]["branch"], current_yaml
-                )
+
+                if db_session.query(Test).filter(Test.repoid == repoid).count() > 0:
+                    self.trigger_process_flakes(
+                        repoid, pull.head, pull_dict["head"]["branch"], current_yaml
+                    )
 
             # set the rest of the commits to deleted (do not show in the UI)
             deleted_count = (

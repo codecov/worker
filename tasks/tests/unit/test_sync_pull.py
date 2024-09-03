@@ -9,6 +9,7 @@ from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from database.tests.factories.reports import TestFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.repository import EnrichedPull
 from services.yaml import UserYaml
@@ -18,15 +19,44 @@ here = Path(__file__)
 
 
 class TestPullSyncTask(object):
-    @pytest.mark.parametrize("flake_detection", [False, True])
-    def test_update_pull_commits_merged(self, dbsession, mocker, flake_detection):
+    @pytest.mark.parametrize(
+        "flake_detection,flaky_shadow_mode,tests_exist,outcome",
+        [
+            (False, False, False, False),
+            (False, True, False, False),
+            (True, False, False, False),
+            (False, True, True, True),
+            (True, True, True, True),
+        ],
+    )
+    def test_update_pull_commits_merged(
+        self,
+        dbsession,
+        mocker,
+        flake_detection,
+        flaky_shadow_mode,
+        tests_exist,
+        outcome,
+    ):
         if flake_detection:
             mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
             mock_feature.check_value.return_value = True
 
+        if flaky_shadow_mode:
+            _flaky_shadow_mode_feature = mocker.patch(
+                "services.test_results.FLAKY_SHADOW_MODE"
+            )
+            _flaky_shadow_mode_feature.check_value.return_value = True
+
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
+
+        if tests_exist:
+            t = TestFactory(repository=repository)
+            dbsession.add(t)
+            dbsession.flush()
+
         base_commit = CommitFactory.create(repository=repository)
         head_commit = CommitFactory.create(repository=repository)
         pull = PullFactory.create(
@@ -89,7 +119,7 @@ class TestPullSyncTask(object):
             mock_repo_provider, enriched_pull, commits, commits_at_base, current_yaml
         )
 
-        if flake_detection:
+        if outcome:
             apply_async.assert_called_once_with(
                 kwargs=dict(
                     repo_id=repository.repoid,
