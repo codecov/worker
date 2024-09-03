@@ -47,9 +47,18 @@ class BundleAnalysisSaveMeasurementsTask(
         )
         assert commit, "commit not found"
 
-        assert uploadid is not None
         upload = db_session.query(Upload).filter_by(id_=uploadid).first()
-        assert upload is not None
+        if upload is None:
+            log.info(
+                "Skipping bundle analysis save measurements - cached bundle",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    uploadid=uploadid,
+                    success=True,
+                ),
+            )
+            return {"successful": True}
 
         save_measurements = True
 
