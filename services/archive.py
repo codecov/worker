@@ -102,13 +102,6 @@ class ArchiveService(object):
         _hash.update(val)
         return b16encode(_hash.digest()).decode()
 
-    def update_archive(self, path, data) -> None:
-        """
-        Grabs path from storage, adds data to path object
-        writes back to path, overwriting the original contents
-        """
-        self.storage.append_to_file(self.root, path, data)
-
     @sentry_sdk.trace
     def write_file(
         self, path, data, reduced_redundancy=False, *, is_already_gzipped=False
