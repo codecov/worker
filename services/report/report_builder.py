@@ -192,10 +192,8 @@ class ReportBuilderSession(object):
 
     def create_coverage_line(
         self,
-        filename,
         coverage,
-        *,
-        coverage_type: CoverageType,
+        coverage_type: CoverageType | None = None,
         labels_list_of_lists: Union[
             List[Union[str, SpecialLabelsEnum]], List[int]
         ] = None,
@@ -203,7 +201,7 @@ class ReportBuilderSession(object):
         missing_branches=None,
         complexity=None,
     ) -> ReportLine:
-        coverage_type_str = coverage_type.map_to_string()
+        coverage_type_str = coverage_type.map_to_string() if coverage_type else None
         datapoints = (
             [
                 CoverageDatapoint(

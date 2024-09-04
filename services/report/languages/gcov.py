@@ -218,17 +218,13 @@ def _process_gcov_file(
             coverage = "%s/%s" % tuple(branches)
             _file.append(
                 ln,
-                report_builder_session.create_coverage_line(
-                    filename=filename, coverage=coverage, coverage_type=_type
-                ),
+                report_builder_session.create_coverage_line(coverage, _type),
             )
         else:
             for coverage in coverages:
                 _file.append(
                     ln,
-                    report_builder_session.create_coverage_line(
-                        filename=filename, coverage=coverage, coverage_type=_type
-                    ),
+                    report_builder_session.create_coverage_line(coverage, _type),
                 )
 
     return _file

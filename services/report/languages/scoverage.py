@@ -78,9 +78,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             _file.append(
                 ln,
                 report_builder_session.create_coverage_line(
-                    filename=filename,
-                    coverage=cov,
-                    coverage_type=CoverageType.branch,
+                    cov,
+                    CoverageType.branch,
                 ),
             )
         else:
@@ -88,9 +87,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             _file.append(
                 ln,
                 report_builder_session.create_coverage_line(
-                    filename=filename,
-                    coverage=cov,
-                    coverage_type=CoverageType.line,
+                    cov,
                 ),
             )
 

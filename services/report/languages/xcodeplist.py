@@ -88,11 +88,8 @@ def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> Report
                         _file.append(
                             ln,
                             report_builder_session.create_coverage_line(
-                                filename=filename,
-                                coverage=coverage,
-                                coverage_type=CoverageType.branch
-                                if partials
-                                else CoverageType.line,
+                                coverage,
+                                CoverageType.branch if partials else CoverageType.line,
                             ),
                         )
 

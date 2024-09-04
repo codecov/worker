@@ -182,9 +182,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 _file.append(
                     ln,
                     report_builder_session.create_coverage_line(
-                        filename=filename,
-                        coverage=coverage,
-                        coverage_type=_type,
+                        coverage,
+                        _type,
                         missing_branches=missing_branches,
                     ),
                 )
@@ -206,9 +205,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             _file.append(
                 line_no,
                 report_builder_session.create_coverage_line(
-                    filename=filename,
-                    coverage=coverage,
-                    coverage_type=coverage_type,
+                    coverage,
+                    coverage_type,
                 ),
             )
         report_builder_session.append(_file)

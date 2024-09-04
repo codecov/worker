@@ -139,9 +139,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
                     report_file_obj.append(
                         ln,
                         report_builder_session.create_coverage_line(
-                            filename,
-                            coverage=cov,
-                            coverage_type=coverage_type,
+                            cov,
+                            coverage_type,
                             complexity=complexity,
                         ),
                     )

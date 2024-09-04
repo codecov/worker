@@ -7,7 +7,6 @@ from shared.reports.resources import Report, ReportFile
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
 from services.report.report_builder import (
-    CoverageType,
     ReportBuilder,
     ReportBuilderSession,
 )
@@ -129,8 +128,7 @@ def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Re
                             _file.append(
                                 ln,
                                 report_builder_session.create_coverage_line(
-                                    coverage=0,
-                                    coverage_type=CoverageType.line,
+                                    0,
                                     partials=partials,
                                 ),
                             )
@@ -153,9 +151,7 @@ def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Re
                         try:
                             _file.append(
                                 ln,
-                                report_builder_session.create_coverage_line(
-                                    coverage=cov, coverage_type=CoverageType.line
-                                ),
+                                report_builder_session.create_coverage_line(cov),
                             )
                         except Exception:
                             pass

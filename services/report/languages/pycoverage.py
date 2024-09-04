@@ -5,7 +5,6 @@ from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
-    CoverageType,
     ReportBuilder,
     SpecialLabelsEnum,
 )
@@ -103,9 +102,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                         report_file.append(
                             ln,
                             report_builder_session.create_coverage_line(
-                                fixed_filename,
                                 cov,
-                                coverage_type=CoverageType.line,
                                 labels_list_of_lists=label_list_of_lists,
                             ),
                         )

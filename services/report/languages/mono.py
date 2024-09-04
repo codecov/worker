@@ -5,7 +5,6 @@ from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
-    CoverageType,
     ReportBuilder,
     ReportBuilderSession,
 )
@@ -48,9 +47,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             _file.append(
                 int(line["line"]),
                 report_builder_session.create_coverage_line(
-                    filename=filename,
-                    coverage=coverage,
-                    coverage_type=CoverageType.line,
+                    coverage,
                 ),
             )
 

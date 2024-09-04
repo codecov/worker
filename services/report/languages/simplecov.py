@@ -3,7 +3,6 @@ from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
-    CoverageType,
     ReportBuilder,
     ReportBuilderSession,
 )
@@ -50,7 +49,7 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
             report_file_obj.append(
                 ln,
                 report_builder_session.create_coverage_line(
-                    filename=fn, coverage=cov, coverage_type=CoverageType.line
+                    cov,
                 ),
             )
 

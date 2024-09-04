@@ -121,9 +121,7 @@ def _process_file(
                     )
                     _already_informed_of_negative_execution_count = True
                 cov = 0
-            coverage_line = report_builder_session.create_coverage_line(
-                filename=_file.name, coverage=cov, coverage_type=CoverageType.line
-            )
+            coverage_line = report_builder_session.create_coverage_line(cov)
             _file.append(int(line), coverage_line)
 
         elif method == "FN" and not JS:
@@ -190,9 +188,8 @@ def _process_file(
         _file.append(
             int(ln),
             report_builder_session.create_coverage_line(
-                filename=_file.name,
-                coverage=cov,
-                coverage_type=coverage_type,
+                cov,
+                coverage_type,
                 missing_branches=(mb if mb != [] else None),
             ),
         )

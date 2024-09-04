@@ -72,9 +72,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
                         _file.append(
                             ln,
                             report_builder_session.create_coverage_line(
-                                filename=filename,
-                                coverage=coverage,
-                                coverage_type=_type,
+                                coverage,
+                                _type,
                             ),
                         )
                 report_builder_session.append(_file)

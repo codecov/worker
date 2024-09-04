@@ -147,9 +147,8 @@ def next_from_json(
                         _file.append(
                             ln,
                             report_builder_session.create_coverage_line(
-                                filename=name,
-                                coverage=cov,
-                                coverage_type=CoverageType.branch,
+                                cov,
+                                CoverageType.branch,
                                 partials=partials,
                                 missing_branches=branches,
                             ),
@@ -183,9 +182,7 @@ def next_from_json(
                 _file.append(
                     ln,
                     report_builder_session.create_coverage_line(
-                        filename=name,
-                        coverage=cov,
-                        coverage_type=CoverageType.line,
+                        cov,
                         partials=partials,
                     ),
                 )
@@ -210,9 +207,8 @@ def next_from_json(
                                 _file.append(
                                     sl,
                                     report_builder_session.create_coverage_line(
-                                        filename=name,
-                                        coverage=cov,
-                                        coverage_type=CoverageType.branch,
+                                        cov,
+                                        CoverageType.branch,
                                         missing_branches=mb,
                                         partials=partials,
                                     ),
@@ -228,9 +224,8 @@ def next_from_json(
                                 _file.append(
                                     sl,
                                     report_builder_session.create_coverage_line(
-                                        filename=name,
-                                        coverage=cov,
-                                        coverage_type=CoverageType.branch,
+                                        cov,
+                                        CoverageType.branch,
                                         missing_branches=mb,
                                         partials=cur_partials,
                                     ),
@@ -250,9 +245,8 @@ def next_from_json(
                                 _file.append(
                                     sl,
                                     report_builder_session.create_coverage_line(
-                                        filename=name,
-                                        coverage=cov,
-                                        coverage_type=CoverageType.branch,
+                                        cov,
+                                        CoverageType.branch,
                                         missing_branches=mb,
                                         partials=sorted(partials, key=lambda p: p[0]),
                                     ),
@@ -264,9 +258,8 @@ def next_from_json(
                             _file.append(
                                 sl,
                                 report_builder_session.create_coverage_line(
-                                    filename=name,
-                                    coverage=cov,
-                                    coverage_type=CoverageType.branch,
+                                    cov,
+                                    CoverageType.branch,
                                     missing_branches=mb,
                                     partials=_file[sl].sessions[-1].partials,
                                 ),
@@ -276,9 +269,8 @@ def next_from_json(
                         _file.append(
                             sl,
                             report_builder_session.create_coverage_line(
-                                filename=name,
-                                coverage=cov,
-                                coverage_type=CoverageType.branch,
+                                cov,
+                                CoverageType.branch,
                                 missing_branches=mb,
                             ),
                         )
@@ -290,9 +282,8 @@ def next_from_json(
                     _file.append(
                         ln,
                         report_builder_session.create_coverage_line(
-                            filename=name,
-                            coverage=cov,
-                            coverage_type=CoverageType.method,
+                            cov,
+                            CoverageType.method,
                         ),
                     )
 
@@ -344,11 +335,8 @@ def jscoverage(
             _file.append(
                 ln,
                 report_builder_session.create_coverage_line(
-                    filename=_file.name,
-                    coverage=coverage,
-                    coverage_type=CoverageType.branch
-                    if partials
-                    else CoverageType.line,
+                    coverage,
+                    CoverageType.branch if partials else CoverageType.line,
                     partials=partials,
                 ),
             )
@@ -397,9 +385,7 @@ def from_json(
                 _file.append(
                     int(ln),
                     report_builder_session.create_coverage_line(
-                        filename=name,
-                        coverage=coverage,
-                        coverage_type=CoverageType.line,
+                        coverage,
                     ),
                 )
             report_builder_session.append(_file)
@@ -413,9 +399,7 @@ def from_json(
                     _file.append(
                         location_int,
                         report_builder_session.create_coverage_line(
-                            filename=name,
-                            coverage=data["s"][sid],
-                            coverage_type=CoverageType.line,
+                            data["s"][sid],
                         ),
                     )
 
@@ -428,9 +412,8 @@ def from_json(
                         _file.append(
                             location_int,
                             report_builder_session.create_coverage_line(
-                                filename=name,
-                                coverage=data["b"][bid][lid],
-                                coverage_type=CoverageType.branch,
+                                data["b"][bid][lid],
+                                CoverageType.branch,
                             ),
                         )
 
@@ -441,9 +424,8 @@ def from_json(
                     _file.append(
                         location_int,
                         report_builder_session.create_coverage_line(
-                            filename=name,
-                            coverage=data["f"][fid],
-                            coverage_type=CoverageType.method,
+                            data["f"][fid],
+                            CoverageType.method,
                         ),
                     )
 

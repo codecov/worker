@@ -288,9 +288,8 @@ def test_report_builder_session_create_line(mocker):
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
     line = builder_session.create_coverage_line(
-        "filename.py",
         1,
-        coverage_type=CoverageType.branch,
+        CoverageType.branch,
         labels_list_of_lists=[[], [0], [1]],
     )
     assert line == ReportLine.create(

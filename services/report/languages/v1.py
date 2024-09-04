@@ -91,12 +91,9 @@ def from_json(json: str, report_builder_session: ReportBuilderSession) -> Report
                         )
                         report_file_obj.append(
                             line_number,
-                            (
-                                report_builder_session.create_coverage_line(
-                                    filename=fn,
-                                    coverage=cov,
-                                    coverage_type=coverage_type,
-                                )
+                            report_builder_session.create_coverage_line(
+                                cov,
+                                coverage_type,
                             ),
                         )
 
