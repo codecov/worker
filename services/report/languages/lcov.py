@@ -36,7 +36,9 @@ def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Re
     return report_builder_session.output_report()
 
 
-def _process_file(doc: bytes, report_builder_session: ReportBuilderSession)-> ReportFile:
+def _process_file(
+    doc: bytes, report_builder_session: ReportBuilderSession
+) -> ReportFile:
     ignored_lines = report_builder_session.ignored_lines
     _already_informed_of_negative_execution_count = False
     lines = {}
@@ -185,11 +187,14 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession)-> Re
         cov = "%s/%s" % (s, li)
 
         coverage_type = CoverageType.method if ln in methods else CoverageType.branch
-        _file.append(int(ln), report_builder_session.create_coverage_line(
-            filename=_file.name,
-            coverage=cov,
-            coverage_type=coverage_type,
-            missing_branches=(mb if mb != [] else None),
-        ))
+        _file.append(
+            int(ln),
+            report_builder_session.create_coverage_line(
+                filename=_file.name,
+                coverage=cov,
+                coverage_type=coverage_type,
+                missing_branches=(mb if mb != [] else None),
+            ),
+        )
 
     return _file

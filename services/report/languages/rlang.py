@@ -1,10 +1,12 @@
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
-from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class RlangProcessor(BaseLanguageProcessor):
@@ -15,15 +17,10 @@ class RlangProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
-        return from_json(
-            content,
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-        )
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
-def from_json(data_dict: dict, fix: PathFixer, ignored_lines: dict, sessionid: int):
+def from_json(data_dict: dict, report_builder_session: ReportBuilderSession) -> Report:
     """
     Report example
 
@@ -32,18 +29,29 @@ def from_json(data_dict: dict, fix: PathFixer, ignored_lines: dict, sessionid: i
         name:
         coverage: [null]
     """
-    report = Report()
+    path_fixer, ignored_lines = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+    )
 
     for data in data_dict["files"]:
-        filename = fix(data["name"])
+        filename = path_fixer(data["name"])
         if filename:
-            _file = ReportFile(filename, ignore=ignored_lines.get(filename))
-            fs = _file.__setitem__
-            [
-                fs(ln, ReportLine.create(int(cov), None, [[sessionid, int(cov)]]))
-                for ln, cov in enumerate(data["coverage"])
-                if cov is not None
-            ]
-            report.append(_file)
+            _file = report_builder_session.file_class(
+                name=filename, ignore=ignored_lines.get(filename)
+            )
 
-    return report
+            for ln, cov in enumerate(data["coverage"]):
+                if cov:
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            filename=filename,
+                            coverage=int(cov),
+                            coverage_type=CoverageType.line,
+                        ),
+                    )
+
+            report_builder_session.append(_file)
+
+    return report_builder_session.output_report()

@@ -47,9 +47,14 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
                 try:
                     cov = source.strip().split(" ")[0]
                     cov = 0 if cov[-2:] in ("*0", "0") else int(cov)
-                    _file.append(ln, report_builder_session.create_coverage_line(
-                        filename=filename, coverage=cov, coverage_type=CoverageType.line
-                    ))
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            filename=filename,
+                            coverage=cov,
+                            coverage_type=CoverageType.line,
+                        ),
+                    )
 
                 except Exception:
                     pass

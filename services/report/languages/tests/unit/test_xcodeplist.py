@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from services.report.languages import xcodeplist
+from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
 
 here = Path(__file__)
@@ -45,8 +46,12 @@ class TestXCodePlist(BaseTestCase):
         return contents
 
     def test_report(self):
+        report_builder = ReportBuilder(
+            current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+        )
         report = xcodeplist.from_xml(
-            self.readfile("xccoverage.xml").encode(), str, {}, 0
+            self.readfile("xccoverage.xml").encode(),
+            report_builder.create_report_builder_session(""),
         )
         archive = report.to_archive()
         expect = self.readfile("xcodeplist.txt")

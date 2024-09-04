@@ -27,7 +27,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
     )
-    
+
     file_by_id: dict[str, ReportFile] = {}
     for f in xml.iter("File"):
         filename = path_fixer(f.attrib["Name"].replace("\\", "/"))

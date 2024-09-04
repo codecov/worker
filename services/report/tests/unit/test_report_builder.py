@@ -9,7 +9,6 @@ from services.report.report_builder import (
 )
 
 
-
 def test_report_builder_generate_session(mocker):
     current_yaml, sessionid, ignored_lines, path_fixer = (
         mocker.MagicMock(),

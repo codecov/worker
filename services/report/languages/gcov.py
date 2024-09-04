@@ -63,10 +63,18 @@ def _process_gcov_file(
     report_builder_session: ReportBuilderSession,
 ):
     settings = read_yaml_field(report_builder_session.current_yaml, ("parsers", "gcov"))
-    branch_detection_method = read_yaml_field(settings, ("branch_detection", "method"), False)
-    branch_detection_loop =  read_yaml_field(settings, ("branch_detection", "loop"), False)
-    branch_detection_condition = read_yaml_field(settings, ("branch_detection", "conditional"), False)
-    branch_detection_macro = read_yaml_field(settings, ("branch_detection", "macro"), False)
+    branch_detection_method = read_yaml_field(
+        settings, ("branch_detection", "method"), False
+    )
+    branch_detection_loop = read_yaml_field(
+        settings, ("branch_detection", "loop"), False
+    )
+    branch_detection_condition = read_yaml_field(
+        settings, ("branch_detection", "conditional"), False
+    )
+    branch_detection_macro = read_yaml_field(
+        settings, ("branch_detection", "macro"), False
+    )
 
     ignore = False
     ln = None
@@ -106,7 +114,10 @@ def _process_gcov_file(
                 _cur_branch_detected = False  # first set to false, prove me true
 
                 # class
-                if line_types[ln] == CoverageType.method and not branch_detection_method:
+                if (
+                    line_types[ln] == CoverageType.method
+                    and not branch_detection_method
+                ):
                     continue
                 # loop
                 elif detect_loop(data):

@@ -75,7 +75,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                 clean_label = self._normalize_label(testname)
                 report_builder_session.label_index[int(idx)] = clean_label
             self.are_labels_already_encoded = True
-            
+
         for filename, file_coverage in content["files"].items():
             fixed_filename = report_builder.path_fixer(filename)
             if fixed_filename:

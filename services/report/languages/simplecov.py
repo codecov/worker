@@ -47,9 +47,12 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
         )
 
         for ln, cov in enumerate(coverage_to_check, start=1):
-            report_file_obj.append(ln,report_builder_session.create_coverage_line(
-                filename=fn, coverage=cov, coverage_type=CoverageType.line
-            ))
+            report_file_obj.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    filename=fn, coverage=cov, coverage_type=CoverageType.line
+                ),
+            )
 
         report_builder_session.append(report_file_obj)
 

@@ -13,27 +13,14 @@ RAW = b"""{"Type":"S","File":"lib/error.g","FileId":37}
 {"Type":"R","Line":1,"FileId":1}
 """
 
-result = {
-    "files": {
-        "lib/error.g": {
-            "l": {
-                "1": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "2": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "3": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "4": {"c": 0, "s": [[0, 0, None, None, None]]},
-            }
-        },
-        "lib/test.g": {"l": {"1": {"c": 0, "s": [[0, 0, None, None, None]]}}},
-    }
-}
-
 
 class TestGap(BaseTestCase):
     def test_report(self):
-        report = gap.from_string(RAW, str, {}, 0)
+        report_builder = ReportBuilder(
+            current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+        )
+        report = gap.from_string(RAW, report_builder.create_report_builder_session(""))
         processed_report = self.convert_report_to_better_readable(report)
-        # import pprint
-        # pprint.pprint(processed_report['archive'])
         expected_result_archive = {
             "lib/error.g": [
                 (1, 0, None, [[0, 0, None, None, None]], None, None),
@@ -54,8 +41,6 @@ class TestGap(BaseTestCase):
         )
         report = gap.GapProcessor().process(name, data, report_builder)
         processed_report = self.convert_report_to_better_readable(report)
-        # import pprint
-        # pprint.pprint(processed_report['archive'])
         expected_result_archive = {}
 
         assert expected_result_archive == processed_report["archive"]

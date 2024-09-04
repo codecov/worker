@@ -1,6 +1,7 @@
 import xml.etree.cElementTree as etree
 
 from services.report.languages import vb
+from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
 
 txt = """<?xml version="1.0" encoding="UTF-8"?>
@@ -42,11 +43,14 @@ txt = """<?xml version="1.0" encoding="UTF-8"?>
 
 class TestVBOne(BaseTestCase):
     def test_report(self):
-        report = vb.from_xml(etree.fromstring(txt), str, {}, 0)
-        processed_report = self.convert_report_to_better_readable(report)
-        import pprint
+        report_builder = ReportBuilder(
+            current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
+        )
+        report = vb.from_xml(
+            etree.fromstring(txt), report_builder.create_report_builder_session("")
+        )
 
-        pprint.pprint(processed_report["archive"])
+        processed_report = self.convert_report_to_better_readable(report)
         expected_result_archive = {
             "Source/Mobius/csharp/Tests.Common/Picklers.cs": [
                 (42, 1, None, [[0, 1, None, None, None]], None, None),

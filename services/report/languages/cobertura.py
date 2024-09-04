@@ -69,25 +69,20 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             parsed_datetime = None
             is_valid_timestamp = False
 
-        if (
-            timestamp
-            and is_valid_timestamp
-            and parsed_datetime
-            < max_age
-        ):
+        if timestamp and is_valid_timestamp and parsed_datetime < max_age:
             # report expired over 12 hours ago
             raise ReportExpiredException("Cobertura report expired " + timestamp)
 
     handle_missing_conditions = read_yaml_field(
-                        yaml,
-                        ("parsers", "cobertura", "handle_missing_conditions"),
-                        False,
-                    )
+        yaml,
+        ("parsers", "cobertura", "handle_missing_conditions"),
+        False,
+    )
     partials_as_hits = read_yaml_field(
-                        yaml,
-                        ("parsers", "cobertura", "partials_as_hits"),
-                        False,
-                    )
+        yaml,
+        ("parsers", "cobertura", "partials_as_hits"),
+        False,
+    )
 
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
@@ -207,14 +202,14 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 coverage_type = CoverageType.branch
             elif stmt["method"]:
                 coverage_type = CoverageType.method
-            
+
             _file.append(
                 line_no,
                 report_builder_session.create_coverage_line(
                     filename=filename,
                     coverage=coverage,
                     coverage_type=coverage_type,
-                )
+                ),
             )
         report_builder_session.append(_file)
 

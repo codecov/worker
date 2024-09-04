@@ -1,12 +1,14 @@
 import plistlib
 
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import LineSession, ReportLine
+from shared.reports.resources import Report
 
-from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class XCodePlistProcessor(BaseLanguageProcessor):
@@ -20,30 +22,30 @@ class XCodePlistProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
-        return from_xml(
-            content,
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-        )
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
-def from_xml(xml: bytes, fix: PathFixer, ignored_lines: dict, sessionid: int):
+def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+    )
+
     objects = plistlib.loads(xml)["$objects"]
-
-    _report = Report()
 
     for obj in objects[2]["NS.objects"]:
         for sourceFile in objects[objects[obj["CF$UID"]]["sourceFiles"]["CF$UID"]][
             "NS.objects"
         ]:
             # get filename
-            filename = fix(
+            filename = path_fixer(
                 objects[objects[sourceFile["CF$UID"]]["documentLocation"]["CF$UID"]]
             )
             if filename:
                 # create a file
-                _file = ReportFile(filename, ignore=ignored_lines.get(filename))
+                _file = report_builder_session.file_class(
+                    name=filename, ignore=ignored_lines.get(filename)
+                )
                 # loop lines
                 for ln, line in enumerate(
                     objects[objects[sourceFile["CF$UID"]]["lines"]["CF$UID"]][
@@ -85,19 +87,16 @@ def from_xml(xml: bytes, fix: PathFixer, ignored_lines: dict, sessionid: int):
                         # append line to report
                         _file.append(
                             ln,
-                            ReportLine.create(
+                            report_builder_session.create_coverage_line(
+                                filename=filename,
                                 coverage=coverage,
-                                type="b" if partials else None,
-                                sessions=[
-                                    LineSession(
-                                        id=sessionid,
-                                        coverage=coverage,
-                                        partials=partials,
-                                    )
-                                ],
+                                coverage_type=CoverageType.branch
+                                if partials
+                                else CoverageType.line,
                             ),
                         )
-                # append file to report
-                _report.append(_file)
 
-    return _report
+                # append file to report
+                report_builder_session.append(_file)
+
+    return report_builder_session.output_report()

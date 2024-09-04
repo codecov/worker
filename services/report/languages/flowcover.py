@@ -40,12 +40,15 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
                 if start["line"] == end["line"]
                 else None
             )
-            _file.append(start["line"], report_builder_session.create_coverage_line(
-                filename=fn,
-                coverage=1,
-                coverage_type=CoverageType.line,
-                partials=partials,
-            ))
+            _file.append(
+                start["line"],
+                report_builder_session.create_coverage_line(
+                    filename=fn,
+                    coverage=1,
+                    coverage_type=CoverageType.line,
+                    partials=partials,
+                ),
+            )
 
         for loc in data["expressions"].get("uncovered_locs", []):
             start, end = loc["start"], loc["end"]
@@ -54,12 +57,15 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
                 if start["line"] == end["line"]
                 else None
             )
-            _file.append(start["line"], report_builder_session.create_coverage_line(
-                filename=fn,
-                coverage=0,
-                coverage_type=CoverageType.line,
-                partials=partials,
-            ))
+            _file.append(
+                start["line"],
+                report_builder_session.create_coverage_line(
+                    filename=fn,
+                    coverage=0,
+                    coverage_type=CoverageType.line,
+                    partials=partials,
+                ),
+            )
 
         report_builder_session.append(_file)
 

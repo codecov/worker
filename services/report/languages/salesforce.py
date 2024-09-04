@@ -35,9 +35,12 @@ def from_json(json: list, report_builder_session: ReportBuilderSession) -> Repor
                 name=fn, ignore=ignored_lines.get(fn)
             )
             for ln, cov in obj["lines"].items():
-                _file.append(int(ln), report_builder_session.create_coverage_line(
-                    filename=fn, coverage=cov, coverage_type=CoverageType.line
-                ))
+                _file.append(
+                    int(ln),
+                    report_builder_session.create_coverage_line(
+                        filename=fn, coverage=cov, coverage_type=CoverageType.line
+                    ),
+                )
 
             report_builder_session.append(_file)
 

@@ -60,8 +60,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
         )
         if filename:
             file_by_id[f.attrib["uid"]] = report_builder_session.file_class(
-                    filename, ignore=ignored_lines.get(filename)
-                )
+                filename, ignore=ignored_lines.get(filename)
+            )
 
     for method in xml.iter("Method"):
         fileref = method.find("FileRef")

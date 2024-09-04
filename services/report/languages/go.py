@@ -1,4 +1,3 @@
-import typing
 from collections import defaultdict
 from io import BytesIO
 from itertools import groupby
@@ -31,8 +30,10 @@ class GoProcessor(BaseLanguageProcessor):
 
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    partials_as_hits = (
-        read_yaml_field(report_builder_session.current_yaml, ("parsers", "go", "partials_as_hits"), False)
+    partials_as_hits = read_yaml_field(
+        report_builder_session.current_yaml,
+        ("parsers", "go", "partials_as_hits"),
+        False,
     )
 
     # Process the bytes from uploaded report to intermediary representation
@@ -52,14 +53,16 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
                 cov_to_use = cov
             else:
                 cov_to_use = best_in_partials
-            if (
-                partials_as_hits
-                and line_type(cov_to_use) == LineType.partial
-            ):
+            if partials_as_hits and line_type(cov_to_use) == LineType.partial:
                 cov_to_use = 1
-            _file.append(ln, report_builder_session.create_coverage_line(
-                filename=filename, coverage=cov_to_use, coverage_type=CoverageType.line
-            ))
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    filename=filename,
+                    coverage=cov_to_use,
+                    coverage_type=CoverageType.line,
+                ),
+            )
         report_builder_session.append(_file)
 
     return report_builder_session.output_report()

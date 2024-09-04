@@ -2,7 +2,7 @@ from xml.etree.ElementTree import Element
 
 import sentry_sdk
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report,ReportFile
+from shared.reports.resources import Report, ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
@@ -75,18 +75,24 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
         if next(statement.iter("branch")).text == "true":
             cov = "%s/2" % hits
-            _file.append(ln, report_builder_session.create_coverage_line(
-                filename=filename,
-                coverage=cov,
-                coverage_type=CoverageType.branch,
-            ))
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    filename=filename,
+                    coverage=cov,
+                    coverage_type=CoverageType.branch,
+                ),
+            )
         else:
             cov = maxint(hits)
-            _file.append(ln, report_builder_session.create_coverage_line(
-                filename=filename,
-                coverage=cov,
-                coverage_type=CoverageType.line,
-            ))
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    filename=filename,
+                    coverage=cov,
+                    coverage_type=CoverageType.line,
+                ),
+            )
 
     for v in files.values():
         report_builder_session.append(v)

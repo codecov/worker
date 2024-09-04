@@ -109,13 +109,15 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 _type = CoverageType.line
 
             # add line to report
-            _file.append(ln,
-             report_builder_session.create_coverage_line(
-                coverage=coverage,
-                coverage_type=_type,
-                filename=filename,
-                complexity=complexity,
-            ))
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    coverage=coverage,
+                    coverage_type=_type,
+                    filename=filename,
+                    complexity=complexity,
+                ),
+            )
 
     for f in files.values():
         report_builder_session.append(f)

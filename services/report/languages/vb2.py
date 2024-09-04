@@ -1,12 +1,14 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report
 
-from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import (
+    CoverageType,
+    ReportBuilder,
+    ReportBuilderSession,
+)
 
 
 class VbTwoProcessor(BaseLanguageProcessor):
@@ -17,21 +19,23 @@ class VbTwoProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
-        return from_xml(
-            content,
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-        )
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
-def from_xml(xml: Element, fix: PathFixer, ignored_lines: dict, sessionid: int):
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+    path_fixer, ignored_lines = (
+        report_builder_session.path_fixer,
+        report_builder_session.ignored_lines,
+    )
+
     file_by_source = {}
     for source in xml.iter("SourceFileNames"):
-        filename = fix(source.find("SourceFileName").text.replace("\\", "/"))
+        filename = path_fixer(source.find("SourceFileName").text.replace("\\", "/"))
         if filename:
-            file_by_source[source.find("SourceFileID").text] = ReportFile(
-                filename, ignore=ignored_lines.get(filename)
+            file_by_source[source.find("SourceFileID").text] = (
+                report_builder_session.file_class(
+                    name=filename, ignore=ignored_lines.get(filename)
+                )
             )
 
     for line in xml.iter("Lines"):
@@ -43,9 +47,16 @@ def from_xml(xml: Element, fix: PathFixer, ignored_lines: dict, sessionid: int):
             for ln in range(
                 int(line.find("LnStart").text), int(line.find("LnEnd").text) + 1
             ):
-                _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
+                _file.append(
+                    ln,
+                    report_builder_session.create_coverage_line(
+                        filename=_file.name,
+                        coverage=cov,
+                        coverage_type=CoverageType.line,
+                    ),
+                )
 
-    report = Report()
     for value in file_by_source.values():
-        report.append(value)
-    return report
+        report_builder_session.append(value)
+
+    return report_builder_session.output_report()

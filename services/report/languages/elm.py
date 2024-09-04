@@ -37,28 +37,37 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
             complexity = sec.get("complexity")
             sl, sc = sec["from"]["line"], sec["from"]["column"]
             el, ec = sec["to"]["line"], sec["to"]["column"]
-            _file.append(sl, report_builder_session.create_coverage_line(
-                filename=fn,
-                coverage=cov,
-                coverage_type=CoverageType.line,
-                complexity=complexity,
-                partials=[[sc, ec if el == sl else None, cov]],
-            ))
-            if el > sl:
-                for ln in range(sl, el):
-                    _file.append(ln,report_builder_session.create_coverage_line(
-                        filename=fn,
-                        coverage=cov,
-                        coverage_type=CoverageType.line,
-                        complexity=complexity,
-                    ))
-                _file.append(sl, report_builder_session.create_coverage_line(
+            _file.append(
+                sl,
+                report_builder_session.create_coverage_line(
                     filename=fn,
                     coverage=cov,
                     coverage_type=CoverageType.line,
                     complexity=complexity,
-                    partials=[[None, ec, cov]],
-                ))
+                    partials=[[sc, ec if el == sl else None, cov]],
+                ),
+            )
+            if el > sl:
+                for ln in range(sl, el):
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            filename=fn,
+                            coverage=cov,
+                            coverage_type=CoverageType.line,
+                            complexity=complexity,
+                        ),
+                    )
+                _file.append(
+                    sl,
+                    report_builder_session.create_coverage_line(
+                        filename=fn,
+                        coverage=cov,
+                        coverage_type=CoverageType.line,
+                        complexity=complexity,
+                        partials=[[None, ec, cov]],
+                    ),
+                )
 
         report_builder_session.append(_file)
 

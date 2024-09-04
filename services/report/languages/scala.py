@@ -32,9 +32,12 @@ def from_json(data_dict: dict, report_builder_session: ReportBuilderSession) -> 
         )
 
         for ln, cov in f["coverage"].items():
-            _file.append(int(ln), report_builder_session.create_coverage_line(
-                filename=filename, coverage=cov, coverage_type=CoverageType.line
-            ))
+            _file.append(
+                int(ln),
+                report_builder_session.create_coverage_line(
+                    filename=filename, coverage=cov, coverage_type=CoverageType.line
+                ),
+            )
 
         report_builder_session.append(_file)
     return report_builder_session.output_report()
