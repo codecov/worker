@@ -62,6 +62,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
         self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
         report_builder_session = report_builder.create_report_builder_session(name)
+
         # Compressed pycoverage files will include a labels_table
         # Mapping label_idx: int --> label: str
         self.labels_table: Dict[int, str] = None
@@ -74,6 +75,7 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                 clean_label = self._normalize_label(testname)
                 report_builder_session.label_index[int(idx)] = clean_label
             self.are_labels_already_encoded = True
+            
         for filename, file_coverage in content["files"].items():
             fixed_filename = report_builder.path_fixer(filename)
             if fixed_filename:

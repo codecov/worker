@@ -3,7 +3,7 @@ from collections import defaultdict
 from fractions import Fraction
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import Report,ReportFile
 from shared.utils.merge import partials_to_line
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -25,8 +25,7 @@ class NodeProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_json(content, report_builder_session)
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
 def get_line_coverage(location, cov, line_type):
@@ -80,11 +79,10 @@ def must_be_dict(value):
         return value
 
 
-def next_from_json(report_dict, report_builder_session: ReportBuilderSession) -> Report:
-    fix, ignored_lines, sessionid = (
+def next_from_json(report_dict: dict, report_builder_session: ReportBuilderSession) -> Report:
+    fix, ignored_lines = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
     )
     for filename, data in report_dict.items():
         name = fix(filename)
@@ -208,13 +206,13 @@ def next_from_json(report_dict, report_builder_session: ReportBuilderSession) ->
                             cur_partials = line.sessions[-1].partials
                             if not cur_partials:
                                 _, cov, partials = get_line_coverage(branch, cov, "b")
-                                _file[sl] = report_builder_session.create_coverage_line(
+                                _file.append(sl, report_builder_session.create_coverage_line(
                                     filename=name,
                                     coverage=cov,
                                     coverage_type=CoverageType.branch,
                                     missing_branches=mb,
                                     partials=partials,
-                                )
+                                ))
                                 continue
 
                             sc, ec = sc + 4, cur_partials[0][0] - 2
@@ -223,13 +221,13 @@ def next_from_json(report_dict, report_builder_session: ReportBuilderSession) ->
                                 cur_partials.append(
                                     [cur_partials[-1][1] + 2, iec, icov]
                                 )
-                                _file[sl] = report_builder_session.create_coverage_line(
+                                _file.append(sl, report_builder_session.create_coverage_line(
                                     filename=name,
                                     coverage=cov,
                                     coverage_type=CoverageType.branch,
                                     missing_branches=mb,
                                     partials=cur_partials,
-                                )
+                                ))
                             else:
                                 partials = [[sc, ec, cov]]
                                 found = False
@@ -242,24 +240,24 @@ def next_from_json(report_dict, report_builder_session: ReportBuilderSession) ->
                                         partials.append(p)
                                     else:
                                         partials.append([ec + 2, iec, icov])
-                                _file[sl] = report_builder_session.create_coverage_line(
+                                _file.append(sl, report_builder_session.create_coverage_line(
                                     filename=name,
                                     coverage=cov,
                                     coverage_type=CoverageType.branch,
                                     missing_branches=mb,
                                     partials=sorted(partials, key=lambda p: p[0]),
-                                )
+                                ))
 
                         else:
                             # if ( exp && expr )
                             # change to branch
-                            _file[sl] = report_builder_session.create_coverage_line(
+                            _file.append(sl, report_builder_session.create_coverage_line(
                                 filename=name,
                                 coverage=cov,
                                 coverage_type=CoverageType.branch,
                                 missing_branches=mb,
                                 partials=_file[sl].sessions[-1].partials,
-                            )
+                            ))
 
                     else:
                         _file.append(
@@ -290,7 +288,7 @@ def next_from_json(report_dict, report_builder_session: ReportBuilderSession) ->
     return report_builder_session.output_report()
 
 
-def _location_to_int(location) -> typing.Optional[int]:
+def _location_to_int(location: dict) -> int | None:
     if "loc" in location:
         location = location["loc"]
 
@@ -316,13 +314,11 @@ def _jscoverage_eval_partial(partial):
     ]
 
 
-def jscoverage(_file, data, report_builder_session: ReportBuilderSession):
-    branches = dict(
-        (
-            (ln, map(_jscoverage_eval_partial, branchData[1:]))
+def jscoverage(_file: ReportFile, data: dict, report_builder_session: ReportBuilderSession):
+    branches = {ln:  map(_jscoverage_eval_partial, branchData[1:])
             for ln, branchData in must_be_dict(data["branchData"]).items()
-        )
-    )
+        
+    }
 
     for ln, coverage in enumerate(data["lineData"]):
         if coverage is not None:
@@ -330,27 +326,24 @@ def jscoverage(_file, data, report_builder_session: ReportBuilderSession):
             if partials:
                 partials = list(partials)
                 coverage = partials_to_line(partials)
-            _file[ln] = report_builder_session.create_coverage_line(
+            _file.append(ln, report_builder_session.create_coverage_line(
                 filename=_file.name,
                 coverage=coverage,
                 coverage_type=CoverageType.branch if partials else CoverageType.line,
                 partials=partials,
-            )
+            ))
 
 
 def from_json(
     report_dict: dict, report_builder_session: ReportBuilderSession
 ) -> Report:
-    config = (
-        read_yaml_field(report_builder_session.current_yaml, ("parsers", "javascript"))
-        or {}
-    )
+    enable_partials = read_yaml_field(report_builder_session.current_yaml, ("parsers", "javascript", "enable_partials"), False)
     fix, ignored_lines = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
     )
 
-    if config.get("enable_partials", False):
+    if enable_partials:
         if next(iter(report_dict.items()))[0].endswith(".js"):
             # only javascript is supported ATM
             return next_from_json(report_dict, report_builder_session)

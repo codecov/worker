@@ -19,8 +19,7 @@ class MonoProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_xml(content, report_builder_session)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:

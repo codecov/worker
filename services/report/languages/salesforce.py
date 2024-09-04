@@ -17,8 +17,7 @@ class SalesforceProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: list, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_json(content, report_builder_session)
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
 def from_json(json: list, report_builder_session: ReportBuilderSession) -> Report:
@@ -36,9 +35,9 @@ def from_json(json: list, report_builder_session: ReportBuilderSession) -> Repor
                 name=fn, ignore=ignored_lines.get(fn)
             )
             for ln, cov in obj["lines"].items():
-                _file[int(ln)] = report_builder_session.create_coverage_line(
+                _file.append(int(ln), report_builder_session.create_coverage_line(
                     filename=fn, coverage=cov, coverage_type=CoverageType.line
-                )
+                ))
 
             report_builder_session.append(_file)
 

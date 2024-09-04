@@ -23,8 +23,7 @@ class SimplecovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_json(content, report_builder_session)
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
 def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Report:
@@ -48,9 +47,9 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
         )
 
         for ln, cov in enumerate(coverage_to_check, start=1):
-            report_file_obj[ln] = report_builder_session.create_coverage_line(
+            report_file_obj.append(ln,report_builder_session.create_coverage_line(
                 filename=fn, coverage=cov, coverage_type=CoverageType.line
-            )
+            ))
 
         report_builder_session.append(report_file_obj)
 

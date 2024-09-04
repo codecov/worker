@@ -1,7 +1,7 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import Report, ReportFile
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
@@ -22,8 +22,7 @@ class CloverProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_xml(content, report_builder_session)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
 def get_end_of_file(filename, xmlfile):
@@ -47,21 +46,19 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
         report_builder_session.current_yaml,
     )
 
-    if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+    if max_age := read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
         try:
             timestamp = next(xml.iter("coverage")).get("generated")
             if "-" in timestamp:
                 t = timestamp.split("-")
                 timestamp = t[1] + "-" + t[0] + "-" + t[2]
-            if timestamp and Date(timestamp) < read_yaml_field(
-                yaml, ("codecov", "max_report_age"), "12h ago"
-            ):
+            if timestamp and Date(timestamp) < max_age:
                 # report expired over 12 hours ago
                 raise ReportExpiredException("Clover report expired %s" % timestamp)
         except StopIteration:
             pass
 
-    files = {}
+    files: dict[str, ReportFile] = {}
     for f in xml.iter("file"):
         filename = f.attrib.get("path") or f.attrib["name"]
 
@@ -75,7 +72,6 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
         if filename not in files:
             files[filename] = report_builder_session.file_class(filename)
-
         _file = files[filename]
 
         # fix extra lines
@@ -113,15 +109,16 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 _type = CoverageType.line
 
             # add line to report
-            _file[ln] = report_builder_session.create_coverage_line(
+            _file.append(ln,
+             report_builder_session.create_coverage_line(
                 coverage=coverage,
                 coverage_type=_type,
                 filename=filename,
                 complexity=complexity,
-            )
+            ))
 
     for f in files.values():
-        report_builder_session.append((f))
+        report_builder_session.append(f)
     report_builder_session.resolve_paths([(f, path_fixer(f)) for f in files.keys()])
     report_builder_session.ignore_lines(ignored_lines)
 

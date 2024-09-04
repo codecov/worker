@@ -2,8 +2,7 @@ from io import BytesIO
 
 import sentry_sdk
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report
-from shared.reports.types import ReportLine
+from shared.reports.resources import Report,ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
@@ -72,12 +71,11 @@ def get_partials_in_line(line):
 
 
 def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid = (
+    path_fixer, ignored_lines = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
     )
-    files = {}
+    files: dict[str, ReportFile] = {}
     skip = False
     _file = None
     ln_i = 1
@@ -103,61 +101,60 @@ def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Re
                                 ignore=ignored_lines.get(filename),
                             ),
                         )
-
-                elif skip:
                     continue
 
-                elif _file is not None:
-                    line = line.split("|")
-                    lnl = len(line)
-                    if lnl > 1:
-                        if lnl > 2 and line[2].strip() == "}":
-                            # skip ending bracket lines
+                if skip or _file is None:
+                    continue
+
+                line = line.split("|")
+                lnl = len(line)
+                if lnl > 1:
+                    if lnl > 2 and line[2].strip() == "}":
+                        # skip ending bracket lines
+                        continue
+
+                    try:
+                        ln = int(line[ln_i].strip())
+                    except Exception:
+                        # bad xcode line
+                        if line[0] == "1":
+                            ln_i, cov_i = 0, 1
+                            ln = 1
+                        else:
                             continue
 
+                    if line[2]:
+                        partials = get_partials_in_line(line[2])
+                        if partials:
+                            _file.append(
+                                ln,
+                                report_builder_session.create_coverage_line(
+                                    coverage=0,
+                                    coverage_type=CoverageType.line,
+                                    partials=partials,
+                                ),
+                            )
+                            continue
+
+                    cov = line[cov_i].replace("E", "").strip()
+                    if cov != "":
                         try:
-                            ln = int(line[ln_i].strip())
-                        except Exception:
-                            # bad xcode line
-                            if line[0] == "1":
-                                ln_i, cov_i = 0, 1
-                                ln = 1
+                            if "k" in cov or "K" in cov:
+                                cov = maxint(
+                                    str(int(float(cov.replace("k", "")) * 1000.0))
+                                )
+                            elif "m" in cov or "M" in cov:
+                                cov = 99999
                             else:
-                                continue
+                                cov = maxint(str(int(float(cov))))
+                        except Exception:
+                            cov = 1
 
-                        if line[2]:
-                            partials = get_partials_in_line(line[2])
-                            if partials:
-                                _file.append(
-                                    ln,
-                                    report_builder_session.create_coverage_line(
-                                        coverage=0,
-                                        coverage_type=CoverageType.line,
-                                        partials=partials,
-                                    ),
-                                )
-                                continue
-
-                        cov = line[cov_i].replace("E", "").strip()
-                        if cov != "":
-                            try:
-                                if "k" in cov or "K" in cov:
-                                    cov = maxint(
-                                        str(int(float(cov.replace("k", "")) * 1000.0))
-                                    )
-                                elif "m" in cov or "M" in cov:
-                                    cov = 99999
-                                else:
-                                    cov = maxint(str(int(float(cov))))
-                            except Exception:
-                                cov = 1
-
-                            try:
-                                _file.append(
-                                    ln, ReportLine.create(cov, None, [[sessionid, cov]])
-                                )
-                            except Exception:
-                                pass
+                        try:
+                            _file.append(
+                                ln, report_builder_session.create_coverage_line(coverage=cov, coverage_type = CoverageType.line))
+                        except Exception:
+                            pass
 
     for val in files.values():
         report_builder_session.append(val)

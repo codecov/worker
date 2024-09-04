@@ -30,8 +30,7 @@ class CoberturaProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_xml(content, report_builder_session)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
 def Int(value):
@@ -47,14 +46,14 @@ def get_sources_to_attempt(xml) -> List[str]:
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, repo_yaml = (
+    path_fixer, ignored_lines, yaml = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
         report_builder_session.current_yaml,
     )
 
     # # process timestamp
-    if read_yaml_field(repo_yaml, ("codecov", "max_report_age"), "12h ago"):
+    if max_age := read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
         try:
             timestamp = next(xml.iter("coverage")).get("timestamp")
         except StopIteration:
@@ -74,10 +73,21 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             timestamp
             and is_valid_timestamp
             and parsed_datetime
-            < read_yaml_field(repo_yaml, ("codecov", "max_report_age"), "12h ago")
+            < max_age
         ):
             # report expired over 12 hours ago
             raise ReportExpiredException("Cobertura report expired " + timestamp)
+
+    handle_missing_conditions = read_yaml_field(
+                        yaml,
+                        ("parsers", "cobertura", "handle_missing_conditions"),
+                        False,
+                    )
+    partials_as_hits = read_yaml_field(
+                        yaml,
+                        ("parsers", "cobertura", "partials_as_hits"),
+                        False,
+                    )
 
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
@@ -122,11 +132,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                         for _ in line.iter("condition")
                         if _.attrib.get("coverage") != "100%"
                     ]
-                    if read_yaml_field(
-                        repo_yaml,
-                        ("parsers", "cobertura", "handle_missing_conditions"),
-                        False,
-                    ):
+                    if handle_missing_conditions:
                         if isinstance(coverage, str):
                             covered_conditions, total_conditions = coverage.split("/")
                             if len(conditions) < int(total_conditions):
@@ -172,11 +178,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 if (
                     isinstance(coverage, str)
                     and not coverage[0] == "0"
-                    and read_yaml_field(
-                        repo_yaml,
-                        ("parsers", "cobertura", "partials_as_hits"),
-                        False,
-                    )
+                    and partials_as_hits
                 ):  # if coverage[0] is 0 this is a miss
                     missing_branches = None
                     coverage = 1
@@ -199,26 +201,21 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             if stmt.get("ignored") == "true":
                 continue
             coverage = Int(stmt["invocation-count"])
+            line_no = int(stmt["line"])
+            coverage_type = CoverageType.line
             if stmt["branch"] == "true":
-                _file.append(
-                    int(stmt["line"]),
-                    report_builder_session.create_coverage_line(
-                        filename=filename,
-                        coverage=coverage,
-                        coverage_type=CoverageType.branch,
-                    ),
+                coverage_type = CoverageType.branch
+            elif stmt["method"]:
+                coverage_type = CoverageType.method
+            
+            _file.append(
+                line_no,
+                report_builder_session.create_coverage_line(
+                    filename=filename,
+                    coverage=coverage,
+                    coverage_type=coverage_type,
                 )
-            else:
-                _file.append(
-                    int(stmt["line"]),
-                    report_builder_session.create_coverage_line(
-                        filename=filename,
-                        coverage=coverage,
-                        coverage_type=CoverageType.method
-                        if stmt["method"]
-                        else CoverageType.line,
-                    ),
-                )
+            )
         report_builder_session.append(_file)
 
     # path rename

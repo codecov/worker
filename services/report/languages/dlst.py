@@ -2,10 +2,10 @@ from io import BytesIO
 
 import sentry_sdk
 from shared.reports.resources import Report
-from shared.reports.types import ReportLine
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
+    CoverageType,
     ReportBuilder,
     ReportBuilderSession,
 )
@@ -23,10 +23,9 @@ class DLSTProcessor(BaseLanguageProcessor):
 
 
 def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid, filename = (
+    path_fixer, ignored_lines,  filename = (
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
         report_builder_session.filepath,
     )
     if filename:
@@ -51,7 +50,11 @@ def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> 
         line = encoded_line.decode(errors="replace").rstrip("\n")
         try:
             coverage = int(line.split("|", 1)[0].strip())
-            _file[ln] = ReportLine.create(coverage, None, [[sessionid, coverage]])
+            _file.append(ln, report_builder_session.create_coverage_line(
+                         filename=filename,
+                         coverage=coverage,
+                         coverage_type=CoverageType.line)
+            )
         except Exception:
             # not a vaild line
             pass

@@ -1,7 +1,7 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import Report, ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
@@ -27,9 +27,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
     )
-    # dict of {"fileid": "path"}
-    file_by_id = {}
-    file_by_id_get = file_by_id.get
+    
+    file_by_id: dict[str, ReportFile] = {}
     for f in xml.iter("File"):
         filename = path_fixer(f.attrib["Name"].replace("\\", "/"))
         if filename:

@@ -22,8 +22,7 @@ class GcovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_txt(content, report_builder_session)
+        return from_txt(content, report_builder.create_report_builder_session(name))
 
 
 ignored_lines = re.compile(r"(\{|\})(\s*\/\/.*)?").match
@@ -58,12 +57,16 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
 
 
 def _process_gcov_file(
-    filename,
+    filename: str,
     ignore_func,
     gcov_line_iterator,
     report_builder_session: ReportBuilderSession,
 ):
     settings = read_yaml_field(report_builder_session.current_yaml, ("parsers", "gcov"))
+    branch_detection_method = read_yaml_field(settings, ("branch_detection", "method"), False)
+    branch_detection_loop =  read_yaml_field(settings, ("branch_detection", "loop"), False)
+    branch_detection_condition = read_yaml_field(settings, ("branch_detection", "conditional"), False)
+    branch_detection_macro = read_yaml_field(settings, ("branch_detection", "macro"), False)
 
     ignore = False
     ln = None
@@ -103,32 +106,20 @@ def _process_gcov_file(
                 _cur_branch_detected = False  # first set to false, prove me true
 
                 # class
-                if line_types[ln] == CoverageType.method:
-                    if (
-                        read_yaml_field(settings, ("branch_detection", "method"))
-                        is not True
-                    ):
-                        continue
+                if line_types[ln] == CoverageType.method and not branch_detection_method:
+                    continue
                 # loop
                 elif detect_loop(data):
                     line_types[ln] = CoverageType.branch
-                    if (
-                        read_yaml_field(settings, ("branch_detection", "loop"))
-                        is not True
-                    ):
+                    if not branch_detection_loop:
                         continue
                 # conditional
                 elif detect_conditional(data):
                     line_types[ln] = CoverageType.branch
-                    if (
-                        read_yaml_field(settings, ("branch_detection", "conditional"))
-                        is not True
-                    ):
+                    if not branch_detection_condition:
                         continue
                 # else macro
-                elif (
-                    read_yaml_field(settings, ("branch_detection", "macro")) is not True
-                ):
+                elif not branch_detection_macro:
                     continue
 
                 _cur_branch_detected = True  # proven true

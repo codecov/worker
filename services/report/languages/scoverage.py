@@ -2,7 +2,7 @@ from xml.etree.ElementTree import Element
 
 import sentry_sdk
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report
+from shared.reports.resources import Report,ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
@@ -20,8 +20,7 @@ class SCoverageProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_xml(content, report_builder_session)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
@@ -33,7 +32,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
     ignore = []
     cache_fixes = {}
     _cur_file_name = None
-    files = {}
+    files: dict[str, ReportFile] = {}
     for statement in xml.iter("statement"):
         # Determine the path
         unfixed_path = next(statement.iter("source")).text
@@ -76,18 +75,18 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
         if next(statement.iter("branch")).text == "true":
             cov = "%s/2" % hits
-            _file[ln] = report_builder_session.create_coverage_line(
+            _file.append(ln, report_builder_session.create_coverage_line(
                 filename=filename,
                 coverage=cov,
                 coverage_type=CoverageType.branch,
-            )
+            ))
         else:
             cov = maxint(hits)
-            _file[ln] = report_builder_session.create_coverage_line(
+            _file.append(ln, report_builder_session.create_coverage_line(
                 filename=filename,
                 coverage=cov,
                 coverage_type=CoverageType.line,
-            )
+            ))
 
     for v in files.values():
         report_builder_session.append(v)

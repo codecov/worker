@@ -31,13 +31,11 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
         report_builder_session.ignored_lines,
         report_builder_session.current_yaml,
     )
-    if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+    if max_age := read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
         build_id = xml.attrib.get("buildId")
         # build_id format has timestamp at the end "4362c668_2020-10-28_17:55:47"
         timestamp = " ".join(build_id.split("_")[1:])
-        if timestamp and Date(timestamp) < read_yaml_field(
-            yaml, ("codecov", "max_report_age"), "12h ago"
-        ):
+        if timestamp and Date(timestamp) < max_age:
             raise ReportExpiredException("Bullseye report expired %s" % timestamp)
 
     for folder in xml.iter("{https://www.bullseye.com/covxml}folder"):

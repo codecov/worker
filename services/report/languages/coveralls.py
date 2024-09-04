@@ -34,11 +34,11 @@ def from_json(report: dict, report_builder_session: ReportBuilderSession) -> Rep
             )
             for ln, coverage in enumerate(_file["coverage"], start=1):
                 if coverage is not None:
-                    report_file[ln] = report_builder_session.create_coverage_line(
+                    report_file.append(ln, report_builder_session.create_coverage_line(
                         filename=filename,
                         coverage=coverage,
                         coverage_type=CoverageType.line,
-                    )
+                    ))
             report_builder_session.append(report_file)
 
     return report_builder_session.output_report()

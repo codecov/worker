@@ -17,10 +17,7 @@ class FlowcoverProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: dict, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(
-            filepath=name
-        )
-        return from_json(content, report_builder_session)
+        return from_json(content, report_builder.create_report_builder_session(name))
 
 
 def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Report:
@@ -43,12 +40,12 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
                 if start["line"] == end["line"]
                 else None
             )
-            _file[start["line"]] = report_builder_session.create_coverage_line(
+            _file.append(start["line"], report_builder_session.create_coverage_line(
                 filename=fn,
                 coverage=1,
                 coverage_type=CoverageType.line,
                 partials=partials,
-            )
+            ))
 
         for loc in data["expressions"].get("uncovered_locs", []):
             start, end = loc["start"], loc["end"]
@@ -57,12 +54,12 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
                 if start["line"] == end["line"]
                 else None
             )
-            _file[start["line"]] = report_builder_session.create_coverage_line(
+            _file.append(start["line"], report_builder_session.create_coverage_line(
                 filename=fn,
                 coverage=0,
                 coverage_type=CoverageType.line,
                 partials=partials,
-            )
+            ))
 
         report_builder_session.append(_file)
 

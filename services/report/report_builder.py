@@ -41,7 +41,7 @@ class ReportBuilderSession(object):
         self.should_use_label_index = should_use_label_index
 
     @property
-    def file_class(self):
+    def file_class(self) -> type[ReportFile]:
         return self._report.file_class
 
     @property
@@ -70,10 +70,10 @@ class ReportBuilderSession(object):
     def resolve_paths(self, paths):
         return self._report.resolve_paths(paths)
 
-    def get_file(self, filename):
+    def get_file(self, filename: str) -> ReportFile | None:
         return self._report.get(filename)
 
-    def append(self, file):
+    def append(self, file: ReportFile):
         if not self.should_use_label_index:
             # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
             if file is not None:
@@ -252,11 +252,6 @@ class ReportBuilder(object):
         self.ignored_lines = ignored_lines
         self.path_fixer = path_fixer
         self.should_use_label_index = should_use_label_index
-
-    @property
-    def repo_yaml(self) -> UserYaml:
-        # small alias for compat purposes
-        return self.current_yaml
 
     def create_report_builder_session(self, filepath) -> ReportBuilderSession:
         return ReportBuilderSession(self, filepath, self.should_use_label_index)

@@ -3,7 +3,7 @@ from itertools import repeat
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import Report, ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
@@ -21,8 +21,7 @@ class CSharpProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: Element, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_xml(content, report_builder_session)
+        return from_xml(content, report_builder.create_report_builder_session(name))
 
 
 def _build_branches(branch_gen):
@@ -54,82 +53,77 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
     """
     ignored_lines = report_builder_session.ignored_lines
 
-    # dict of {"fileid": "path"}
-    file_by_id = {}
-    file_by_name = {None: None}
+    file_by_id: dict[str, ReportFile] = {}
     for f in xml.iter("File"):
         filename = report_builder_session.path_fixer(
             f.attrib["fullPath"].replace("\\", "/")
         )
         if filename:
-            file_by_id[f.attrib["uid"]] = filename
-            file_by_name.setdefault(
-                filename,
-                report_builder_session.file_class(
+            file_by_id[f.attrib["uid"]] = report_builder_session.file_class(
                     filename, ignore=ignored_lines.get(filename)
-                ),
-            )
+                )
 
     for method in xml.iter("Method"):
         fileref = method.find("FileRef")
-        if fileref is not None:
-            _file = file_by_name[file_by_id.get(fileref.attrib["uid"])]
-            if _file is not None:
-                branches = _build_branches(method.iter("BranchPoint"))
-                branches_get = branches.get
-                file_append = _file.append
+        if fileref is None:
+            continue
+        _file = file_by_id.get(fileref.attrib["uid"])
+        if not _file:
+            continue
 
-                for _type, node in zip(repeat(None), method.iter("SequencePoint")):
-                    attrib = node.attrib.get
-                    sl, el = attrib("sl"), attrib("el")
-                    if sl and el:
-                        complexity = (
-                            int(attrib("cyclomaticComplexity", 0))
-                            if _type == CoverageType.method
-                            else None
+        branches = _build_branches(method.iter("BranchPoint"))
+
+        for _type, node in zip(repeat(None), method.iter("SequencePoint")):
+            attrib = node.attrib.get
+            sl, el = attrib("sl"), attrib("el")
+            if sl and el:
+                complexity = (
+                    int(attrib("cyclomaticComplexity", 0))
+                    if _type == CoverageType.method
+                    else None
+                )
+                sl, el = int(sl), int(el)
+                vc, bec = int(attrib("vc")), attrib("bec")
+                if bec is not None:
+                    bev = attrib("bev")
+                    if bec != "0":
+                        coverage = "%s/%s" % (bev, bec)
+                        _type = _type or CoverageType.branch
+                    elif vc > 0:
+                        coverage = vc
+                    else:
+                        coverage = 0
+                else:
+                    coverage = vc
+
+                coverage_type = _type or CoverageType.line
+                # spans > 1 line
+                if el > sl:
+                    for ln in range(sl, el + 1):
+                        _file.append(
+                            ln,
+                            report_builder_session.create_coverage_line(
+                                filename=_file.name,
+                                coverage=coverage,
+                                coverage_type=coverage_type,
+                                missing_branches=branches.get(ln),
+                                complexity=complexity,
+                            ),
                         )
-                        sl, el = int(sl), int(el)
-                        vc, bec = int(attrib("vc")), attrib("bec")
-                        if bec is not None:
-                            bev = attrib("bev")
-                            if bec != "0":
-                                coverage = "%s/%s" % (bev, bec)
-                                _type = _type or CoverageType.branch
-                            elif vc > 0:
-                                coverage = vc
-                            else:
-                                coverage = 0
-                        else:
-                            coverage = vc
+                # spans = 1 line
+                else:
+                    _file.append(
+                        sl,
+                        report_builder_session.create_coverage_line(
+                            filename=_file.name,
+                            coverage=coverage,
+                            coverage_type=coverage_type,
+                            missing_branches=branches.get(sl),
+                            complexity=complexity,
+                        ),
+                    )
 
-                        coverage_type = _type or CoverageType.line
-                        # spans > 1 line
-                        if el > sl:
-                            for ln in range(sl, el + 1):
-                                file_append(
-                                    ln,
-                                    report_builder_session.create_coverage_line(
-                                        filename=_file.name,
-                                        coverage=coverage,
-                                        coverage_type=coverage_type,
-                                        missing_branches=branches_get(ln),
-                                        complexity=complexity,
-                                    ),
-                                )
-                        # spans = 1 line
-                        else:
-                            file_append(
-                                sl,
-                                report_builder_session.create_coverage_line(
-                                    filename=_file.name,
-                                    coverage=coverage,
-                                    coverage_type=coverage_type,
-                                    missing_branches=branches_get(sl),
-                                    complexity=complexity,
-                                ),
-                            )
-
-    for v in file_by_name.values():
+    for v in file_by_id.values():
         report_builder_session.append(v)
 
     return report_builder_session.output_report()

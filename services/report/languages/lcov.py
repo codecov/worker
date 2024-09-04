@@ -4,7 +4,7 @@ from decimal import Decimal
 from io import BytesIO
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import Report, ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import (
@@ -24,8 +24,7 @@ class LcovProcessor(BaseLanguageProcessor):
     def process(
         self, name: str, content: bytes, report_builder: ReportBuilder
     ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-        return from_txt(content, report_builder_session)
+        return from_txt(content, report_builder.create_report_builder_session(name))
 
 
 def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Report:
@@ -37,7 +36,7 @@ def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Re
     return report_builder_session.output_report()
 
 
-def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
+def _process_file(doc: bytes, report_builder_session: ReportBuilderSession)-> ReportFile:
     ignored_lines = report_builder_session.ignored_lines
     _already_informed_of_negative_execution_count = False
     lines = {}
@@ -173,7 +172,9 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
                 )
 
     # remove skipped
-    [(branches.pop(sl, None), lines.pop(sl, None)) for sl in skip_lines]
+    for sl in skip_lines:
+        branches.pop(sl, None)
+        lines.pop(sl, None)
 
     methods = fln.values()
 
@@ -184,11 +185,11 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
         cov = "%s/%s" % (s, li)
 
         coverage_type = CoverageType.method if ln in methods else CoverageType.branch
-        _file[int(ln)] = report_builder_session.create_coverage_line(
+        _file.append(int(ln), report_builder_session.create_coverage_line(
             filename=_file.name,
             coverage=cov,
             coverage_type=coverage_type,
             missing_branches=(mb if mb != [] else None),
-        )
+        ))
 
     return _file
