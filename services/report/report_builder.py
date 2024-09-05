@@ -1,7 +1,7 @@
 import dataclasses
 import logging
 from enum import Enum
-from typing import List, Union
+from typing import Any, List, Sequence
 
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
@@ -9,6 +9,7 @@ from shared.yaml.user_yaml import UserYaml
 
 from helpers.labels import SpecialLabelsEnum
 from services.path_fixer import PathFixer
+from services.yaml.reader import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -41,10 +42,6 @@ class ReportBuilderSession(object):
         self.should_use_label_index = should_use_label_index
 
     @property
-    def file_class(self) -> type[ReportFile]:
-        return self._report.file_class
-
-    @property
     def filepath(self):
         return self._report_filepath
 
@@ -53,22 +50,14 @@ class ReportBuilderSession(object):
         return self._report_builder.path_fixer
 
     @property
-    def sessionid(self):
-        return self._report_builder.sessionid
-
-    @property
-    def current_yaml(self):
-        return self._report_builder.current_yaml
-
-    @property
     def ignored_lines(self):
         return self._report_builder.ignored_lines
 
-    def ignore_lines(self, *args, **kwargs):
-        return self._report.ignore_lines(*args, **kwargs)
-
     def resolve_paths(self, paths):
         return self._report.resolve_paths(paths)
+
+    def yaml_field(self, keys: Sequence[str], default: Any = None) -> Any:
+        return read_yaml_field(self._report_builder.current_yaml, keys, default)
 
     def get_file(self, filename: str) -> ReportFile | None:
         return self._report.get(filename)
@@ -190,22 +179,32 @@ class ReportBuilderSession(object):
             ]
         return [datapoint]
 
+    def create_coverage_file(
+        self, path: str, do_fix_path: bool = True
+    ) -> ReportFile | None:
+        fixed_path = self._report_builder.path_fixer(path) if do_fix_path else path
+        if not fixed_path:
+            return None
+
+        return ReportFile(
+            fixed_path, ignore=self._report_builder.ignored_lines.get(fixed_path)
+        )
+
     def create_coverage_line(
         self,
-        coverage,
+        coverage: int,
         coverage_type: CoverageType | None = None,
-        labels_list_of_lists: Union[
-            List[Union[str, SpecialLabelsEnum]], List[int]
-        ] = None,
+        labels_list_of_lists: list[str | SpecialLabelsEnum] | list[int] | None = None,
         partials=None,
         missing_branches=None,
         complexity=None,
     ) -> ReportLine:
+        sessionid = self._report_builder.sessionid
         coverage_type_str = coverage_type.map_to_string() if coverage_type else None
         datapoints = (
             [
                 CoverageDatapoint(
-                    sessionid=self.sessionid,
+                    sessionid=sessionid,
                     coverage=coverage,
                     coverage_type=coverage_type_str,
                     label_ids=label_ids,
@@ -223,7 +222,7 @@ class ReportBuilderSession(object):
             sessions=[
                 (
                     LineSession(
-                        id=self.sessionid,
+                        id=sessionid,
                         coverage=coverage,
                         branches=missing_branches,
                         partials=partials,

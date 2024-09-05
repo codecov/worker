@@ -26,11 +26,6 @@ class XCodePlistProcessor(BaseLanguageProcessor):
 
 
 def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
-
     objects = plistlib.loads(xml)["$objects"]
 
     for obj in objects[2]["NS.objects"]:
@@ -38,62 +33,59 @@ def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> Report
             "NS.objects"
         ]:
             # get filename
-            filename = path_fixer(
-                objects[objects[sourceFile["CF$UID"]]["documentLocation"]["CF$UID"]]
-            )
-            if filename:
-                # create a file
-                _file = report_builder_session.file_class(
-                    name=filename, ignore=ignored_lines.get(filename)
-                )
-                # loop lines
-                for ln, line in enumerate(
-                    objects[objects[sourceFile["CF$UID"]]["lines"]["CF$UID"]][
-                        "NS.objects"
-                    ],
-                    start=1,
-                ):
-                    # get line object
-                    line = objects[line["CF$UID"]]
-                    # is line is tracked in coverage?
-                    if line["x"] is not False:
-                        # does line have partial content?
-                        if line["s"]["CF$UID"] != 0:
-                            partials = []
-                            hits = 0
-                            # loop branches
-                            for branch in objects[line["s"]["CF$UID"]]["NS.objects"]:
-                                # get branch object
-                                branch = objects[branch["CF$UID"]]
-                                # skip ending branches
-                                if branch["len"] != 2:  # ending method
-                                    # append partials
-                                    partials.append(
-                                        [
-                                            branch["c"],
-                                            branch["c"] + branch["len"],
-                                            branch["x"],
-                                        ]
-                                    )
-                                    hits += 1 if branch["x"] > 0 else 0
-                            # set coverage ratio
-                            coverage = "%s/%s" % (hits, len(partials))
+            filename = objects[
+                objects[sourceFile["CF$UID"]]["documentLocation"]["CF$UID"]
+            ]
+            _file = report_builder_session.create_coverage_file(filename)
+            if _file is None:
+                continue
 
-                        else:
-                            # statement line
-                            partials = None
-                            coverage = line["c"]
+            # loop lines
+            for ln, line in enumerate(
+                objects[objects[sourceFile["CF$UID"]]["lines"]["CF$UID"]]["NS.objects"],
+                start=1,
+            ):
+                # get line object
+                line = objects[line["CF$UID"]]
+                # is line is tracked in coverage?
+                if line["x"] is not False:
+                    # does line have partial content?
+                    if line["s"]["CF$UID"] != 0:
+                        partials = []
+                        hits = 0
+                        # loop branches
+                        for branch in objects[line["s"]["CF$UID"]]["NS.objects"]:
+                            # get branch object
+                            branch = objects[branch["CF$UID"]]
+                            # skip ending branches
+                            if branch["len"] != 2:  # ending method
+                                # append partials
+                                partials.append(
+                                    [
+                                        branch["c"],
+                                        branch["c"] + branch["len"],
+                                        branch["x"],
+                                    ]
+                                )
+                                hits += 1 if branch["x"] > 0 else 0
+                        # set coverage ratio
+                        coverage = "%s/%s" % (hits, len(partials))
 
-                        # append line to report
-                        _file.append(
-                            ln,
-                            report_builder_session.create_coverage_line(
-                                coverage,
-                                CoverageType.branch if partials else CoverageType.line,
-                            ),
-                        )
+                    else:
+                        # statement line
+                        partials = None
+                        coverage = line["c"]
 
-                # append file to report
-                report_builder_session.append(_file)
+                    # append line to report
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            coverage,
+                            CoverageType.branch if partials else CoverageType.line,
+                        ),
+                    )
+
+            # append file to report
+            report_builder_session.append(_file)
 
     return report_builder_session.output_report()

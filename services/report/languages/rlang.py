@@ -2,10 +2,7 @@ import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class RlangProcessor(BaseLanguageProcessor):
@@ -28,27 +25,21 @@ def from_json(data_dict: dict, report_builder_session: ReportBuilderSession) -> 
         name:
         coverage: [null]
     """
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
 
     for data in data_dict["files"]:
-        filename = path_fixer(data["name"])
-        if filename:
-            _file = report_builder_session.file_class(
-                name=filename, ignore=ignored_lines.get(filename)
-            )
+        _file = report_builder_session.create_coverage_file(data["name"])
+        if _file is None:
+            continue
 
-            for ln, cov in enumerate(data["coverage"]):
-                if cov:
-                    _file.append(
-                        ln,
-                        report_builder_session.create_coverage_line(
-                            int(cov),
-                        ),
-                    )
+        for ln, cov in enumerate(data["coverage"]):
+            if cov:
+                _file.append(
+                    ln,
+                    report_builder_session.create_coverage_line(
+                        int(cov),
+                    ),
+                )
 
-            report_builder_session.append(_file)
+        report_builder_session.append(_file)
 
     return report_builder_session.output_report()

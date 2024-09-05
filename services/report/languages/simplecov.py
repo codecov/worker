@@ -2,10 +2,7 @@ import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class SimplecovProcessor(BaseLanguageProcessor):
@@ -26,15 +23,10 @@ class SimplecovProcessor(BaseLanguageProcessor):
 
 
 def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Report:
-    ignored_lines = report_builder_session.ignored_lines
     for data in json["files"]:
-        fn = report_builder_session.path_fixer(data["filename"])
-        if fn is None:
+        _file = report_builder_session.create_coverage_file(data["filename"])
+        if _file is None:
             continue
-
-        report_file_obj = report_builder_session.file_class(
-            fn, ignore=ignored_lines.get(fn)
-        )
 
         # Structure depends on which Simplecov version was used so we need to handle either structure
         coverage = data["coverage"]
@@ -46,13 +38,13 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
         )
 
         for ln, cov in enumerate(coverage_to_check, start=1):
-            report_file_obj.append(
+            _file.append(
                 ln,
                 report_builder_session.create_coverage_line(
                     cov,
                 ),
             )
 
-        report_builder_session.append(report_file_obj)
+        report_builder_session.append(_file)
 
     return report_builder_session.output_report()

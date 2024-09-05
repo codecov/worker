@@ -31,8 +31,8 @@ detect_conditional = re.compile(r"^\s+((if\s?\()|(\} else if\s?\())").match
 
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    name, fix, ignored_lines = (
-        report_builder_session._report_filepath,
+    filepath, path_fixer, ignored_lines = (
+        report_builder_session.filepath,
         report_builder_session.path_fixer,
         report_builder_session.ignored_lines,
     )
@@ -41,28 +41,14 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
     # clean and strip lines
     filename = next(line_iterator).decode(errors="replace").rstrip("\n")
     filename = filename.split(":")[3].lstrip("./")
-    if name and name.endswith(filename + ".gcov"):
-        filename = fix(name[:-5]) or fix(filename)
+    if filepath and filepath.endswith(filename + ".gcov"):
+        filename = path_fixer(filepath[:-5]) or path_fixer(filename)
     else:
-        filename = fix(filename)
+        filename = path_fixer(filename)
     if not filename:
         return None
 
-    report_builder_session.append(
-        _process_gcov_file(
-            filename, ignored_lines.get(filename), line_iterator, report_builder_session
-        )
-    )
-    return report_builder_session.output_report()
-
-
-def _process_gcov_file(
-    filename: str,
-    ignore_func,
-    gcov_line_iterator,
-    report_builder_session: ReportBuilderSession,
-):
-    settings = read_yaml_field(report_builder_session.current_yaml, ("parsers", "gcov"))
+    settings = report_builder_session.yaml_field(("parsers", "gcov"))
     branch_detection_method = read_yaml_field(
         settings, ("branch_detection", "method"), False
     )
@@ -87,7 +73,7 @@ def _process_gcov_file(
     lines = defaultdict(list)
     line_types = {}
 
-    for encoded_line in gcov_line_iterator:
+    for encoded_line in line_iterator:
         line = encoded_line.decode(errors="replace").rstrip("\n")
         if "LCOV_EXCL_START" in line:
             ignore = True
@@ -210,7 +196,7 @@ def _process_gcov_file(
 
             next_is_func = False
 
-    _file = report_builder_session.file_class(filename, ignore=ignore_func)
+    _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
     for ln, coverages in lines.items():
         _type = line_types[ln]
         branches = line_branches.get(ln)
@@ -227,4 +213,6 @@ def _process_gcov_file(
                     report_builder_session.create_coverage_line(coverage, _type),
                 )
 
-    return _file
+    report_builder_session.append(_file)
+
+    return report_builder_session.output_report()

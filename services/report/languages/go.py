@@ -10,11 +10,7 @@ from shared.utils.merge import LineType, line_type, partials_to_line
 from helpers.exceptions import CorruptRawReportError
 from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
-from services.yaml import read_yaml_field
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class GoProcessor(BaseLanguageProcessor):
@@ -29,8 +25,7 @@ class GoProcessor(BaseLanguageProcessor):
 
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    partials_as_hits = read_yaml_field(
-        report_builder_session.current_yaml,
+    partials_as_hits = report_builder_session.yaml_field(
         ("parsers", "go", "partials_as_hits"),
         False,
     )
@@ -39,11 +34,8 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
     # files: {new_name: <lines defaultdict(list)>}
     files = process_bytes_into_files(string, report_builder_session.path_fixer)
     # create a file
-    ignored_lines = report_builder_session.ignored_lines
     for filename, lines in files.items():
-        _file = report_builder_session.file_class(
-            filename, ignore=ignored_lines.get(filename)
-        )
+        _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
         for ln, partials in lines.items():
             best_in_partials = max(map(lambda p: p[2], partials))
             partials = combine_partials(partials)

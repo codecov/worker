@@ -4,10 +4,7 @@ import sentry_sdk
 from shared.reports.resources import Report, ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class JetBrainsXMLProcessor(BaseLanguageProcessor):
@@ -22,42 +19,39 @@ class JetBrainsXMLProcessor(BaseLanguageProcessor):
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
-
     file_by_id: dict[str, ReportFile] = {}
     for f in xml.iter("File"):
-        filename = path_fixer(f.attrib["Name"].replace("\\", "/"))
-        if filename:
-            file_by_id[str(f.attrib["Index"])] = report_builder_session.file_class(
-                name=filename, ignore=ignored_lines.get(filename)
-            )
+        _file = report_builder_session.create_coverage_file(
+            f.attrib["Name"].replace("\\", "/")
+        )
+        if _file:
+            file_by_id[str(f.attrib["Index"])] = _file
 
     for statement in xml.iter("Statement"):
         _file = file_by_id.get(str(statement.attrib["FileIndex"]))
-        if _file is not None:
-            sl = int(statement.attrib["Line"])
-            el = int(statement.attrib["EndLine"])
-            sc = int(statement.attrib["Column"])
-            ec = int(statement.attrib["EndColumn"])
-            cov = 1 if statement.attrib["Covered"] == "True" else 0
-            if sl == el:
-                _file.append(
-                    sl,
-                    report_builder_session.create_coverage_line(
-                        cov,
-                        partials=[[sc, ec, cov]],
-                    ),
-                )
-            else:
-                _file.append(
-                    sl,
-                    report_builder_session.create_coverage_line(
-                        cov,
-                    ),
-                )
+        if _file is None:
+            continue
+
+        sl = int(statement.attrib["Line"])
+        el = int(statement.attrib["EndLine"])
+        sc = int(statement.attrib["Column"])
+        ec = int(statement.attrib["EndColumn"])
+        cov = 1 if statement.attrib["Covered"] == "True" else 0
+        if sl == el:
+            _file.append(
+                sl,
+                report_builder_session.create_coverage_line(
+                    cov,
+                    partials=[[sc, ec, cov]],
+                ),
+            )
+        else:
+            _file.append(
+                sl,
+                report_builder_session.create_coverage_line(
+                    cov,
+                ),
+            )
 
     for content in file_by_id.values():
         report_builder_session.append(content)

@@ -4,10 +4,7 @@ import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class DLSTProcessor(BaseLanguageProcessor):
@@ -22,14 +19,10 @@ class DLSTProcessor(BaseLanguageProcessor):
 
 
 def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, filename = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-        report_builder_session.filepath,
-    )
+    filename = report_builder_session.filepath
     if filename:
         # src/file.lst => src/file.d
-        filename = path_fixer("%sd" % filename[:-3])
+        filename = report_builder_session.path_fixer("%sd" % filename[:-3])
 
     if not filename:
         # file.d => src/file.d
@@ -38,13 +31,10 @@ def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> 
         if filename.startswith("source "):
             filename = filename[7:]
 
-        filename = path_fixer(filename)
-        if not filename:
-            return None
+    _file = report_builder_session.create_coverage_file(filename)
+    if _file is None:
+        return None
 
-    _file = report_builder_session.file_class(
-        filename, ignore=ignored_lines.get(filename)
-    )
     for ln, encoded_line in enumerate(BytesIO(string), start=1):
         line = encoded_line.decode(errors="replace").rstrip("\n")
         try:
@@ -60,4 +50,5 @@ def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> 
             pass
 
     report_builder_session.append(_file)
+
     return report_builder_session.output_report()

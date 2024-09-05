@@ -31,7 +31,8 @@ def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Re
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
     # merge same files
     for string in reports.split(b"\nend_of_record"):
-        report_builder_session.append(_process_file(string, report_builder_session))
+        if _file := _process_file(string, report_builder_session):
+            report_builder_session.append(_file)
 
     return report_builder_session.output_report()
 
@@ -39,7 +40,6 @@ def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Re
 def _process_file(
     doc: bytes, report_builder_session: ReportBuilderSession
 ) -> ReportFile:
-    ignored_lines = report_builder_session.ignored_lines
     _already_informed_of_negative_execution_count = False
     lines = {}
     branches = defaultdict(dict)
@@ -48,6 +48,7 @@ def _process_file(
     CPP = False
     skip_lines = []
     _file = None
+
     for encoded_line in BytesIO(doc):
         line = encoded_line.decode(errors="replace").rstrip("\n")
         if line == "" or ":" not in line:
@@ -67,19 +68,16 @@ def _process_file(
 
         elif method == "SF":
             """
-            For  each  source  file  referenced in the .da file, there is a section
+            For each source file referenced in the .da file, there is a section
             containing filename and coverage data:
 
             SF:<absolute path to the source file>
             """
             # file name
-            content = report_builder_session.path_fixer(content)
-            if content is None:
+            _file = report_builder_session.create_coverage_file(content)
+            if _file is None:
                 return None
 
-            _file = report_builder_session.file_class(
-                content, ignore=ignored_lines.get(content)
-            )
             JS = content[-3:] == ".js"
             CPP = content[-4:] == ".cpp"
 

@@ -2,10 +2,7 @@ import sentry_sdk
 from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class ElmProcessor(BaseLanguageProcessor):
@@ -20,16 +17,10 @@ class ElmProcessor(BaseLanguageProcessor):
 
 
 def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
     for name, data in json["coverageData"].items():
-        fn = path_fixer(json["moduleMap"][name])
-        if fn is None:
+        _file = report_builder_session.create_coverage_file(json["moduleMap"][name])
+        if _file is None:
             continue
-
-        _file = report_builder_session.file_class(name=fn, ignore=ignored_lines.get(fn))
 
         for sec in data:
             cov = sec.get("count", 0)

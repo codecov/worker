@@ -1,13 +1,10 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import Report, ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 
 class MonoProcessor(BaseLanguageProcessor):
@@ -22,22 +19,17 @@ class MonoProcessor(BaseLanguageProcessor):
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
+    files: dict[str, ReportFile | None] = {}
+
     # loop through methods
     for method in xml.iter("method"):
-        # get file name
-        filename = path_fixer(method.attrib["filename"])
-        if filename is None:
+        filename = method.attrib["filename"]
+        if filename not in files:
+            _file = report_builder_session.create_coverage_file(filename)
+            files[filename] = _file
+        _file = files[filename]
+        if _file is None:
             continue
-
-        _file = report_builder_session.get_file(filename)
-        if not _file:
-            _file = report_builder_session.file_class(
-                name=filename, ignore=ignored_lines.get(filename)
-            )
 
         # loop through statements
         for line in method.iter("statement"):
@@ -51,6 +43,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 ),
             )
 
-        report_builder_session.append(_file)
+    for _file in files.values():
+        if _file:
+            report_builder_session.append(_file)
 
     return report_builder_session.output_report()

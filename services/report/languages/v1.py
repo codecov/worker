@@ -34,13 +34,9 @@ def _list_to_dict(lines):
     """
     if isinstance(lines, list):
         if len(lines) > 1:
-            return dict(
-                [
-                    (ln, cov)
-                    for ln, cov in enumerate(lines[1:], start=1)
-                    if cov is not None
-                ]
-            )
+            return {
+                ln: cov for ln, cov in enumerate(lines[1:], start=1) if cov is not None
+            }
         else:
             return {}
     elif "lines" in lines:
@@ -53,49 +49,45 @@ def _list_to_dict(lines):
 
 
 def from_json(json: str, report_builder_session: ReportBuilderSession) -> Report:
-    if isinstance(json["coverage"], dict):
-        # messages = json.get('messages', {})
-        for fn, lns in json["coverage"].items():
-            fn = report_builder_session.path_fixer(fn)
-            if fn is None:
-                continue
+    if not isinstance(json["coverage"], dict):
+        return
 
-            lns = _list_to_dict(lns)
-            if lns:
-                report_file_obj = report_builder_session.file_class(
-                    fn, ignore=report_builder_session.ignored_lines.get(fn)
+    for fn, lns in json["coverage"].items():
+        _file = report_builder_session.create_coverage_file(fn)
+        if _file is None:
+            continue
+
+        lns = _list_to_dict(lns)
+        for ln, cov in lns.items():
+            try:
+                line_number = int(ln)
+            except ValueError:
+                raise CorruptRawReportError(
+                    "v1",
+                    "file dictionaries expected to have integers, not strings",
+                )
+            if line_number > 0:
+                if isinstance(cov, str):
+                    try:
+                        int(cov)
+                    except Exception:
+                        pass
+                    else:
+                        cov = int(cov)
+
+                coverage_type = (
+                    CoverageType.branch
+                    if type(cov) in (str, bool)
+                    else CoverageType.line
+                )
+                _file.append(
+                    line_number,
+                    report_builder_session.create_coverage_line(
+                        cov,
+                        coverage_type,
+                    ),
                 )
 
-                for ln, cov in lns.items():
-                    try:
-                        line_number = int(ln)
-                    except ValueError:
-                        raise CorruptRawReportError(
-                            "v1",
-                            "file dictionaries expected to have integers, not strings",
-                        )
-                    if line_number > 0:
-                        if isinstance(cov, str):
-                            try:
-                                int(cov)
-                            except Exception:
-                                pass
-                            else:
-                                cov = int(cov)
+        report_builder_session.append(_file)
 
-                        # message = messages.get(fn, {}).get(ln)
-                        coverage_type = (
-                            CoverageType.branch
-                            if type(cov) in (str, bool)
-                            else CoverageType.line
-                        )
-                        report_file_obj.append(
-                            line_number,
-                            report_builder_session.create_coverage_line(
-                                cov,
-                                coverage_type,
-                            ),
-                        )
-
-                report_builder_session.append(report_file_obj)
-        return report_builder_session.output_report()
+    return report_builder_session.output_report()

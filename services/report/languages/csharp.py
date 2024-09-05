@@ -51,17 +51,13 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
     @vc - statement executed
     <SequencePoint vc="2" uspid="3" ordinal="0" offset="0" sl="35" sc="8" el="35" ec="9" bec="0" bev="0" fileid="1" />
     """
-    ignored_lines = report_builder_session.ignored_lines
 
     file_by_id: dict[str, ReportFile] = {}
     for f in xml.iter("File"):
-        filename = report_builder_session.path_fixer(
-            f.attrib["fullPath"].replace("\\", "/")
-        )
-        if filename:
-            file_by_id[f.attrib["uid"]] = report_builder_session.file_class(
-                filename, ignore=ignored_lines.get(filename)
-            )
+        filename = f.attrib["fullPath"].replace("\\", "/")
+        _file = report_builder_session.create_coverage_file(filename)
+        if _file is not None:
+            file_by_id[f.attrib["uid"]] = _file
 
     for method in xml.iter("Method"):
         fileref = method.find("FileRef")

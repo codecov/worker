@@ -2,14 +2,11 @@ from io import BytesIO
 
 import sentry_sdk
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
-from services.report.report_builder import (
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilder, ReportBuilderSession
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"
@@ -70,12 +67,6 @@ def get_partials_in_line(line):
 
 
 def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
-    files: dict[str, ReportFile] = {}
-    skip = False
     _file = None
     ln_i = 1
     cov_i = 0
@@ -86,23 +77,15 @@ def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Re
             if line[0] not in ("-", "|", "w"):
                 line = line.replace(NAME_COLOR, "")
                 if line.endswith(":") and "|" not in line:
+                    if _file is not None:
+                        report_builder_session.append(_file)
                     # file names could be "relative/path.abc:" or "/absolute/path.abc:"
                     # new file
-                    filename = path_fixer(line.replace(END_PARTIAL, "")[1:-1])
-                    # skip empty files
-                    skip = filename is None
-                    # add new file
-                    if not skip:
-                        _file = files.setdefault(
-                            filename,
-                            report_builder_session.file_class(
-                                filename,
-                                ignore=ignored_lines.get(filename),
-                            ),
-                        )
-                    continue
+                    _file = report_builder_session.create_coverage_file(
+                        line.replace(END_PARTIAL, "")[1:-1]
+                    )
 
-                if skip or _file is None:
+                elif _file is None:
                     continue
 
                 line = line.split("|")
@@ -156,6 +139,7 @@ def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Re
                         except Exception:
                             pass
 
-    for val in files.values():
-        report_builder_session.append(val)
+    if _file is not None:
+        report_builder_session.append(_file)
+
     return report_builder_session.output_report()

@@ -11,7 +11,6 @@ from services.report.report_builder import (
     ReportBuilder,
     ReportBuilderSession,
 )
-from services.yaml import read_yaml_field
 
 
 class CloverProcessor(BaseLanguageProcessor):
@@ -40,13 +39,9 @@ def get_end_of_file(filename, xmlfile):
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, yaml = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-        report_builder_session.current_yaml,
-    )
-
-    if max_age := read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+    if max_age := report_builder_session.yaml_field(
+        ("codecov", "max_report_age"), "12h ago"
+    ):
         try:
             timestamp = next(xml.iter("coverage")).get("generated")
             if "-" in timestamp:
@@ -71,8 +66,11 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             continue
 
         if filename not in files:
-            files[filename] = report_builder_session.file_class(filename)
-        _file = files[filename]
+            if _file := report_builder_session.create_coverage_file(filename):
+                files[filename] = _file
+        _file = files.get(filename)
+        if _file is None:
+            continue
 
         # fix extra lines
         eof = get_end_of_file(filename, f)
@@ -120,7 +118,5 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
     for f in files.values():
         report_builder_session.append(f)
-    report_builder_session.resolve_paths([(f, path_fixer(f)) for f in files.keys()])
-    report_builder_session.ignore_lines(ignored_lines)
 
     return report_builder_session.output_report()

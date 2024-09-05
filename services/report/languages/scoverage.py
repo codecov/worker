@@ -24,10 +24,7 @@ class SCoverageProcessor(BaseLanguageProcessor):
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
+    path_fixer = report_builder_session.path_fixer
 
     ignore = []
     cache_fixes = {}
@@ -57,12 +54,12 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
         # Get the file
         if filename != _cur_file_name:
             _cur_file_name = filename
-            _file = files.get(filename)
-            if not _file:
-                _file = report_builder_session.file_class(
-                    name=filename, ignore=ignored_lines.get(filename)
+            if filename not in files:
+                _file = report_builder_session.create_coverage_file(
+                    filename, do_fix_path=False
                 )
                 files[filename] = _file
+            _file = files[filename]
 
         # Add the line
         ln = int(next(statement.iter("line")).text)

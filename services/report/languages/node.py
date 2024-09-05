@@ -11,7 +11,6 @@ from services.report.report_builder import (
     ReportBuilder,
     ReportBuilderSession,
 )
-from services.yaml import read_yaml_field
 
 
 class NodeProcessor(BaseLanguageProcessor):
@@ -81,18 +80,15 @@ def must_be_dict(value):
 def next_from_json(
     report_dict: dict, report_builder_session: ReportBuilderSession
 ) -> Report:
-    fix, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
-    for filename, data in report_dict.items():
-        name = fix(filename)
-        if name is None:
-            name = fix(filename.replace("lib/", "src/", 1))
-            if name is None:
-                continue
+    path_fixer = report_builder_session.path_fixer
 
-        _file = report_builder_session.file_class(name, ignore=ignored_lines.get(name))
+    for filename, data in report_dict.items():
+        filename = path_fixer(filename) or path_fixer(
+            filename.replace("lib/", "src/", 1)
+        )
+        if filename is None:
+            continue
+        _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
 
         if "lineData" in data:
             jscoverage(_file, data, report_builder_session)
@@ -345,15 +341,11 @@ def jscoverage(
 def from_json(
     report_dict: dict, report_builder_session: ReportBuilderSession
 ) -> Report:
-    enable_partials = read_yaml_field(
-        report_builder_session.current_yaml,
+    enable_partials = report_builder_session.yaml_field(
         ("parsers", "javascript", "enable_partials"),
         False,
     )
-    fix, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
+    path_fixer = report_builder_session.path_fixer
 
     if enable_partials:
         if next(iter(report_dict.items()))[0].endswith(".js"):
@@ -361,15 +353,12 @@ def from_json(
             return next_from_json(report_dict, report_builder_session)
 
     for filename, data in report_dict.items():
-        name = fix(filename)
-        if name is None:
-            name = fix(filename.replace("lib/", "src/", 1))
-            if name is None:
-                continue
-
-        _file = report_builder_session.file_class(
-            name=name, ignore=ignored_lines.get(name)
+        filename = path_fixer(filename) or path_fixer(
+            filename.replace("lib/", "src/", 1)
         )
+        if filename is None:
+            continue
+        _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
 
         if data.get("data"):
             # why. idk. node is like that.
