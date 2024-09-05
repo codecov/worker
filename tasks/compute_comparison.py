@@ -7,7 +7,6 @@ from shared.celery_config import compute_comparison_task_name
 from shared.components import Component
 from shared.helpers.flag import Flag
 from shared.reports.readonly import ReadOnlyReport
-from shared.reports.types import ReportTotals
 from shared.torngit.exceptions import TorngitRateLimitError
 from shared.yaml import UserYaml
 
@@ -15,6 +14,7 @@ from app import celery_app
 from database.enums import CompareCommitError, CompareCommitState
 from database.models import CompareCommit, CompareComponent, CompareFlag
 from database.models.reports import ReportLevelTotals, RepositoryFlag
+from helpers.comparison import minimal_totals
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.archive import ArchiveService
 from services.comparison import ComparisonContext, ComparisonProxy, FilteredComparison
@@ -66,8 +66,9 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
 
         # At this point we can calculate the patch coverage
         # Because we have a HEAD report and a base commit to get the diff from
-        patch_totals = async_to_sync(comparison_proxy.get_patch_totals)()
-        comparison.patch_totals = self.minimal_totals(patch_totals)
+        if comparison.patch_totals is None:
+            patch_totals = async_to_sync(comparison_proxy.get_patch_totals)()
+            comparison.patch_totals = minimal_totals(patch_totals)
 
         if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
@@ -96,18 +97,6 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         path = self.store_results(comparison, impacted_files)
 
         comparison.report_storage_path = path
-        calculated_patch_totals = impacted_files.get("changes_summary").get(
-            "patch_totals"
-        )
-        if calculated_patch_totals != comparison.patch_totals:
-            log.warning(
-                "Calculated patch totals differ!",
-                extra={
-                    **log_extra,
-                    "calculated_patch_totals": calculated_patch_totals,
-                    "patch_totals": comparison.patch_totals,
-                },
-            )
 
         comparison.state = CompareCommitState.processed.value
         log.info("Computing comparison successful", extra=log_extra)
@@ -118,25 +107,6 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         self.compute_component_comparisons(db_session, comparison, comparison_proxy)
         db_session.commit()
         return {"successful": True}
-
-    def minimal_totals(self, totals: ReportTotals | None) -> dict:
-        if totals is None:
-            return {
-                "hits": 0,
-                "misses": 0,
-                "partials": 0,
-                "coverage": None,
-            }
-        return {
-            "hits": totals.hits,
-            "misses": totals.misses,
-            "partials": totals.partials,
-            # ReportTotals has coverage as a string, we want float in the DB
-            # Also the coverage from ReportTotals is 0-100, while in the DB it's 0-1
-            "coverage": (
-                (float(totals.coverage) / 100) if totals.coverage is not None else None
-            ),
-        }
 
     def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
         log_extra = dict(comparison_id=comparison.id)

@@ -508,6 +508,7 @@ class TestNotifyTask(object):
             "https://codecov.io"
         )
         mocker.patch.object(NotifyTask, "app")
+        mocker.patch.object(NotifyTask, "save_patch_totals")
         mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)
         fetch_and_update_whether_ci_passed_result = {}
         mocker.patch.object(
@@ -938,6 +939,7 @@ class TestNotifyTask(object):
             "get_notifiers_instances",
             return_value=[bad_notifier, good_notifier, disabled_notifier],
         )
+        mocker.patch.object(NotifyTask, "save_patch_totals")
         task = NotifyTask()
         expected_result = [
             {"notifier": "bad_name", "title": "bad_notifier", "result": None},
@@ -1108,6 +1110,7 @@ class TestNotifyTask(object):
             "https://codecov.io"
         )
         mocker.patch.object(NotifyTask, "app")
+        mocker.patch.object(NotifyTask, "save_patch_totals")
         mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)
         fetch_and_update_whether_ci_passed_result = {}
         mocker.patch.object(
