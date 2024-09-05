@@ -1,8 +1,7 @@
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class SimplecovProcessor(BaseLanguageProcessor):
@@ -17,12 +16,12 @@ class SimplecovProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: dict, report_builder: ReportBuilder
-    ) -> Report:
-        return from_json(content, report_builder.create_report_builder_session(name))
+        self, content: dict, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_json(content, report_builder_session)
 
 
-def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(json: dict, report_builder_session: ReportBuilderSession) -> None:
     for data in json["files"]:
         _file = report_builder_session.create_coverage_file(data["filename"])
         if _file is None:
@@ -46,5 +45,3 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> Repor
             )
 
         report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

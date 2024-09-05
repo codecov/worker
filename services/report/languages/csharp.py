@@ -3,14 +3,10 @@ from itertools import repeat
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class CSharpProcessor(BaseLanguageProcessor):
@@ -19,9 +15,9 @@ class CSharpProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(content, report_builder.create_report_builder_session(name))
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
 def _build_branches(branch_gen):
@@ -39,7 +35,7 @@ def _build_branches(branch_gen):
     return branches
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     """
     https://github.com/OpenCover/opencover/issues/293#issuecomment-94598145
     @sl - start line
@@ -119,5 +115,3 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
     for v in file_by_id.values():
         report_builder_session.append(v)
-
-    return report_builder_session.output_report()

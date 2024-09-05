@@ -3,14 +3,13 @@ from io import BytesIO
 from itertools import groupby
 
 import sentry_sdk
-from shared.reports.resources import Report
 from shared.utils import merge
 from shared.utils.merge import LineType, line_type, partials_to_line
 
 from helpers.exceptions import CorruptRawReportError
 from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class GoProcessor(BaseLanguageProcessor):
@@ -19,12 +18,12 @@ class GoProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        return from_txt(content, report_builder.create_report_builder_session(name))
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_txt(content, report_builder_session)
 
 
-def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> None:
     partials_as_hits = report_builder_session.yaml_field(
         ("parsers", "go", "partials_as_hits"),
         False,
@@ -53,8 +52,6 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
                 ),
             )
         report_builder_session.append(_file)
-
-    return report_builder_session.output_report()
 
 
 def process_bytes_into_files(

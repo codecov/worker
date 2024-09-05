@@ -2,11 +2,10 @@ from io import BytesIO
 
 import sentry_sdk
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
 from services.report.languages.helpers import remove_non_ascii
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 START_PARTIAL = "\033[0;41m"
 END_PARTIAL = "\033[0m"
@@ -34,8 +33,10 @@ class XCodeProcessor(BaseLanguageProcessor):
         )
 
     @sentry_sdk.trace
-    def process(self, name: str, content: str, report_builder: ReportBuilder) -> Report:
-        return from_txt(content, report_builder.create_report_builder_session(name))
+    def process(
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_txt(content, report_builder_session)
 
 
 def get_partials_in_line(line):
@@ -66,7 +67,7 @@ def get_partials_in_line(line):
         return partials
 
 
-def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> None:
     _file = None
     ln_i = 1
     cov_i = 0
@@ -141,5 +142,3 @@ def from_txt(content: bytes, report_builder_session: ReportBuilderSession) -> Re
 
     if _file is not None:
         report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

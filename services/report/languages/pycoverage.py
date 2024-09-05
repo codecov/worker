@@ -1,10 +1,9 @@
 from typing import Dict, List, Optional, Union
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, SpecialLabelsEnum
+from services.report.report_builder import ReportBuilderSession, SpecialLabelsEnum
 
 COVERAGE_HIT = 1
 COVERAGE_MISS = 0
@@ -55,10 +54,8 @@ class PyCoverageProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: dict, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
-
+        self, content: dict, report_builder_session: ReportBuilderSession
+    ) -> None:
         # Compressed pycoverage files will include a labels_table
         # Mapping label_idx: int --> label: str
         self.labels_table: dict[int, str] = None
@@ -109,5 +106,3 @@ class PyCoverageProcessor(BaseLanguageProcessor):
         # We don't need these anymore, so let them be removed by the garbage collector
         self.reverse_table = None
         self.labels_table = None
-
-        return report_builder_session.output_report()

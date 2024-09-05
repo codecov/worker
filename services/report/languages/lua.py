@@ -1,10 +1,9 @@
 import re
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class LuaProcessor(BaseLanguageProcessor):
@@ -13,15 +12,15 @@ class LuaProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        return from_txt(content, report_builder.create_report_builder_session(name))
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_txt(content, report_builder_session)
 
 
 docs = re.compile(r"^=+\n", re.M).split
 
 
-def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> None:
     _file = None
     for string in docs(string.decode(errors="replace").replace("\t", " ")):
         string = string.rstrip()
@@ -47,5 +46,3 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
                     pass
 
             report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

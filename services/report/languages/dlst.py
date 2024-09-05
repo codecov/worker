@@ -1,10 +1,9 @@
 from io import BytesIO
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class DLSTProcessor(BaseLanguageProcessor):
@@ -13,12 +12,12 @@ class DLSTProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        return from_string(content, report_builder.create_report_builder_session(name))
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_string(content, report_builder_session)
 
 
-def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> None:
     filename = report_builder_session.filepath
     if filename:
         # src/file.lst => src/file.d
@@ -50,5 +49,3 @@ def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> 
             pass
 
     report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

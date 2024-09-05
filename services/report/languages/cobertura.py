@@ -4,16 +4,11 @@ from typing import List
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
 from timestring import Date, TimestringInvalid
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 log = logging.getLogger(__name__)
 
@@ -27,9 +22,9 @@ class CoberturaProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(content, report_builder.create_report_builder_session(name))
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
 def Int(value):
@@ -44,7 +39,7 @@ def get_sources_to_attempt(xml) -> List[str]:
     return [s for s in sources if isinstance(s, str) and s.startswith("/")]
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     # # process timestamp
     if max_age := report_builder_session.yaml_field(
         ("codecov", "max_report_age"), "12h ago"
@@ -217,5 +212,3 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
     report_builder_session.resolve_paths(
         sorted(path_name_fixing, key=lambda a: _set & set(a[0].split("/")))
     )
-
-    return report_builder_session.output_report()

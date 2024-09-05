@@ -1,14 +1,9 @@
 import plistlib
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class XCodePlistProcessor(BaseLanguageProcessor):
@@ -20,12 +15,12 @@ class XCodePlistProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(content, report_builder.create_report_builder_session(name))
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> None:
     objects = plistlib.loads(xml)["$objects"]
 
     for obj in objects[2]["NS.objects"]:
@@ -87,5 +82,3 @@ def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> Report
 
             # append file to report
             report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

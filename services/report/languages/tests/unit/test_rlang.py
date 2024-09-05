@@ -1,6 +1,7 @@
 from services.report.languages import rlang
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 json = {
     "uploader": "R",
@@ -17,12 +18,11 @@ class TestRlang(BaseTestCase):
             assert path in ("source/cov.r", "source/app.r")
             return path
 
-        report_builder = ReportBuilder(
-            current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=fixes
-        )
-        report = rlang.from_json(json, report_builder.create_report_builder_session(""))
-
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        rlang.from_json(json, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
+
         expected_result_archive = {
             "source/app.r": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
             "source/cov.r": [

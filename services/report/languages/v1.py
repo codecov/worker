@@ -1,13 +1,8 @@
 import sentry_sdk
-from shared.reports.resources import Report
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class VOneProcessor(BaseLanguageProcessor):
@@ -16,15 +11,15 @@ class VOneProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: dict, report_builder: ReportBuilder
-    ) -> Report:
+        self, content: dict, report_builder_session: ReportBuilderSession
+    ) -> None:
         if "RSpec" in content:
             content = content["RSpec"]
 
         elif "MiniTest" in content:
             content = content["MiniTest"]
 
-        return from_json(content, report_builder.create_report_builder_session(name))
+        return from_json(content, report_builder_session)
 
 
 def _list_to_dict(lines):
@@ -48,7 +43,7 @@ def _list_to_dict(lines):
         return lines or {}
 
 
-def from_json(json: str, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(json: str, report_builder_session: ReportBuilderSession) -> None:
     if not isinstance(json["coverage"], dict):
         return
 
@@ -89,5 +84,3 @@ def from_json(json: str, report_builder_session: ReportBuilderSession) -> Report
                 )
 
         report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

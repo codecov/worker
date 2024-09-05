@@ -4,14 +4,10 @@ from decimal import Decimal
 from io import BytesIO
 
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 log = logging.getLogger(__name__)
 
@@ -22,19 +18,17 @@ class LcovProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        return from_txt(content, report_builder.create_report_builder_session(name))
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_txt(content, report_builder_session)
 
 
-def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> None:
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
     # merge same files
     for string in reports.split(b"\nend_of_record"):
         if _file := _process_file(string, report_builder_session):
             report_builder_session.append(_file)
-
-    return report_builder_session.output_report()
 
 
 def _process_file(

@@ -1,23 +1,14 @@
-from json import loads
-
 from services.report.languages import coveralls
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
 
-txt = """
-{
+from . import create_report_builder_session
+
+json = {
     "source_files": [
-    {
-      "name": "file",
-      "coverage": [0, 1, null]
-    },
-    {
-      "name": "ignore",
-      "coverage": [null, 1, 0]
-    }
+        {"name": "file", "coverage": [0, 1, None]},
+        {"name": "ignore", "coverage": [None, 1, 0]},
     ]
 }
-"""
 
 
 class TestCoveralls(BaseTestCase):
@@ -31,17 +22,11 @@ class TestCoveralls(BaseTestCase):
             assert path in ("file", "ignore")
             return path if path == "file" else None
 
-        report_builder = ReportBuilder(
-            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = coveralls.from_json(loads(txt), report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        coveralls.from_json(json, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report)
         expected_result = {
             "archive": {
                 "file": [

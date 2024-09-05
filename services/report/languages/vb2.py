@@ -1,10 +1,10 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class VbTwoProcessor(BaseLanguageProcessor):
@@ -13,12 +13,12 @@ class VbTwoProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(content, report_builder.create_report_builder_session(name))
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     files: dict[str, ReportFile] = {}
     for source in xml.iter("SourceFileNames"):
         _file = report_builder_session.create_coverage_file(
@@ -47,5 +47,3 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
     for _file in files.values():
         report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

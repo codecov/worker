@@ -1,6 +1,7 @@
 from services.report.languages import gap
-from services.report.report_processor import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 RAW = b"""{"Type":"S","File":"lib/error.g","FileId":37}
 {"Type":"R","Line":1,"FileId":37}
@@ -16,11 +17,11 @@ RAW = b"""{"Type":"S","File":"lib/error.g","FileId":37}
 
 class TestGap(BaseTestCase):
     def test_report(self):
-        report_builder = ReportBuilder(
-            current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
-        )
-        report = gap.from_string(RAW, report_builder.create_report_builder_session(""))
+        report_builder_session = create_report_builder_session()
+        gap.from_string(RAW, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
+
         expected_result_archive = {
             "lib/error.g": [
                 (1, 0, None, [[0, 0, None, None, None]], None, None),
@@ -30,19 +31,16 @@ class TestGap(BaseTestCase):
             ],
             "lib/test.g": [(1, 0, None, [[0, 0, None, None, None]], None, None)],
         }
-
         assert expected_result_archive == processed_report["archive"]
 
     def test_report_from_dict(self):
         data = {"Type": "S", "File": "lib/error.g", "FileId": 37}
-        name = "aaa"
-        report_builder = ReportBuilder(
-            current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
-        )
-        report = gap.GapProcessor().process(name, data, report_builder)
+        report_builder_session = create_report_builder_session(filename="aaa")
+        gap.GapProcessor().process(data, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        expected_result_archive = {}
 
+        expected_result_archive = {}
         assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):

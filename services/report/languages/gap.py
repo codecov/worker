@@ -3,10 +3,9 @@ from io import BytesIO
 from json import dumps, loads
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class GapProcessor(BaseLanguageProcessor):
@@ -19,16 +18,18 @@ class GapProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
+        self,
+        content: typing.Any,
+        report_builder_session: ReportBuilderSession,
+    ) -> None:
         if isinstance(content, dict):
             content = dumps(content)
         if isinstance(content, str):
             content = content.encode()
-        return from_string(content, report_builder.create_report_builder_session(name))
+        return from_string(content, report_builder_session)
 
 
-def from_string(string: bytes, report_builder_session: ReportBuilderSession):
+def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> None:
     _file = None
     for encoded_line in BytesIO(string):
         line = encoded_line.decode(errors="replace").rstrip("\n")
@@ -54,5 +55,3 @@ def from_string(string: bytes, report_builder_session: ReportBuilderSession):
     # append last file
     if _file:
         report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

@@ -1,8 +1,7 @@
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class SalesforceProcessor(BaseLanguageProcessor):
@@ -11,12 +10,12 @@ class SalesforceProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: list, report_builder: ReportBuilder
-    ) -> Report:
-        return from_json(content, report_builder.create_report_builder_session(name))
+        self, content: list, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_json(content, report_builder_session)
 
 
-def from_json(json: list, report_builder_session: ReportBuilderSession) -> Report:
+def from_json(json: list, report_builder_session: ReportBuilderSession) -> None:
     for obj in json:
         if obj and obj.get("name") and obj.get("lines"):
             filename = obj["name"] + (".cls" if "." not in obj["name"] else "")
@@ -31,5 +30,3 @@ def from_json(json: list, report_builder_session: ReportBuilderSession) -> Repor
                 )
 
             report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

@@ -3,14 +3,9 @@ from collections import defaultdict
 from io import BytesIO
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
@@ -20,9 +15,11 @@ class GcovProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        return from_txt(content, report_builder.create_report_builder_session(name))
+        self,
+        content: bytes,
+        report_builder_session: ReportBuilderSession,
+    ) -> None:
+        return from_txt(content, report_builder_session)
 
 
 ignored_lines = re.compile(r"(\{|\})(\s*\/\/.*)?").match
@@ -30,7 +27,7 @@ detect_loop = re.compile(r"^\s+(for|while)\s?\(").match
 detect_conditional = re.compile(r"^\s+((if\s?\()|(\} else if\s?\())").match
 
 
-def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> None:
     filepath, path_fixer, ignored_lines = (
         report_builder_session.filepath,
         report_builder_session.path_fixer,
@@ -214,5 +211,3 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Rep
                 )
 
     report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

@@ -2,14 +2,10 @@ from xml.etree.ElementTree import Element
 
 import sentry_sdk
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class SCoverageProcessor(BaseLanguageProcessor):
@@ -18,12 +14,12 @@ class SCoverageProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(content, report_builder.create_report_builder_session(name))
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     path_fixer = report_builder_session.path_fixer
 
     ignore = []
@@ -88,7 +84,5 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 ),
             )
 
-    for v in files.values():
-        report_builder_session.append(v)
-
-    return report_builder_session.output_report()
+    for _file in files.values():
+        report_builder_session.append(_file)

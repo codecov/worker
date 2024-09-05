@@ -2,15 +2,11 @@ from collections import defaultdict
 from fractions import Fraction
 
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import ReportFile
 from shared.utils.merge import partials_to_line
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class NodeProcessor(BaseLanguageProcessor):
@@ -21,9 +17,9 @@ class NodeProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: dict, report_builder: ReportBuilder
-    ) -> Report:
-        return from_json(content, report_builder.create_report_builder_session(name))
+        self, content: dict, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_json(content, report_builder_session)
 
 
 def get_line_coverage(location, cov, line_type):
@@ -79,7 +75,7 @@ def must_be_dict(value):
 
 def next_from_json(
     report_dict: dict, report_builder_session: ReportBuilderSession
-) -> Report:
+) -> None:
     path_fixer = report_builder_session.path_fixer
 
     for filename, data in report_dict.items():
@@ -285,8 +281,6 @@ def next_from_json(
 
         report_builder_session.append(_file)
 
-    return report_builder_session.output_report()
-
 
 def _location_to_int(location: dict) -> int | None:
     if "loc" in location:
@@ -338,9 +332,7 @@ def jscoverage(
             )
 
 
-def from_json(
-    report_dict: dict, report_builder_session: ReportBuilderSession
-) -> Report:
+def from_json(report_dict: dict, report_builder_session: ReportBuilderSession) -> None:
     enable_partials = report_builder_session.yaml_field(
         ("parsers", "javascript", "enable_partials"),
         False,
@@ -419,5 +411,3 @@ def from_json(
                     )
 
         report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

@@ -1,10 +1,10 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report, ReportFile
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder, ReportBuilderSession
+from services.report.report_builder import ReportBuilderSession
 
 
 class JetBrainsXMLProcessor(BaseLanguageProcessor):
@@ -13,12 +13,12 @@ class JetBrainsXMLProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(content, report_builder.create_report_builder_session(name))
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     file_by_id: dict[str, ReportFile] = {}
     for f in xml.iter("File"):
         _file = report_builder_session.create_coverage_file(
@@ -55,5 +55,3 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
     for content in file_by_id.values():
         report_builder_session.append(content)
-
-    return report_builder_session.output_report()

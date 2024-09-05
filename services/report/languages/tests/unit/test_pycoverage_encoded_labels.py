@@ -1,7 +1,8 @@
 from services.report.languages.pycoverage import PyCoverageProcessor
 from services.report.report_builder import SpecialLabelsEnum
-from services.report.report_processor import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 SAMPLE = {
     "meta": {
@@ -220,7 +221,7 @@ class TestPyCoverageProcessor(BaseTestCase):
     def test_process_pycoverage(self):
         content = SAMPLE
         p = PyCoverageProcessor()
-        report_builder = ReportBuilder(
+        report_builder_session = create_report_builder_session(
             current_yaml={
                 "flag_management": {
                     "default_rules": {
@@ -229,12 +230,11 @@ class TestPyCoverageProcessor(BaseTestCase):
                     }
                 }
             },
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
             should_use_label_index=True,
         )
-        report = p.process("name", content, report_builder)
+        p.process(content, report_builder_session)
+        report = report_builder_session.output_report()
+
         assert report.labels_index == {
             1: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             2: "test_another.py::test_fib_simple_case",
@@ -242,6 +242,7 @@ class TestPyCoverageProcessor(BaseTestCase):
             4: "test_source.py::test_some_code",
         }
         processed_report = self.convert_report_to_better_readable(report)
+
         assert processed_report["archive"]["source.py"][0] == (
             1,
             1,
@@ -497,7 +498,7 @@ class TestPyCoverageProcessor(BaseTestCase):
     def test_process_compressed_report(self):
         content = COMPRESSED_SAMPLE
         p = PyCoverageProcessor()
-        report_builder = ReportBuilder(
+        report_builder_session = create_report_builder_session(
             current_yaml={
                 "flag_management": {
                     "default_rules": {
@@ -506,12 +507,11 @@ class TestPyCoverageProcessor(BaseTestCase):
                     }
                 }
             },
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
             should_use_label_index=True,
         )
-        report = p.process("name", content, report_builder)
+        p.process(content, report_builder_session)
+        report = report_builder_session.output_report()
+
         assert report.labels_index == {
             0: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
             1: "label_1",
@@ -520,7 +520,7 @@ class TestPyCoverageProcessor(BaseTestCase):
             4: "label_5",
         }
         processed_report = self.convert_report_to_better_readable(report)
-        print(processed_report)
+
         assert processed_report == {
             "archive": {
                 "awesome.py": [

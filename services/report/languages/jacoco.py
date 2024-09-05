@@ -3,17 +3,12 @@ from collections import defaultdict
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
 from shared.utils.merge import LineType, branch_type
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 log = logging.getLogger(__name__)
 
@@ -24,15 +19,12 @@ class JacocoProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(
-            content,
-            report_builder.create_report_builder_session(name),
-        )
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     """
     nr = line number
     mi = missed instructions
@@ -150,5 +142,3 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
 
             # append file to report
             report_builder_session.append(_file)
-
-    return report_builder_session.output_report()
