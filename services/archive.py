@@ -8,7 +8,6 @@ from uuid import uuid4
 
 import sentry_sdk
 from shared.config import get_config
-from shared.storage.base import BaseStorageService
 from shared.utils.ReportEncoder import ReportEncoder
 
 from helpers.metrics import metrics
@@ -39,27 +38,16 @@ class MinioEndpoints(Enum):
 # Service class for performing archive operations. Meant to work against the
 # underlying StorageService
 class ArchiveService(object):
+    root = None
     """
     The root level of the archive. In s3 terms,
     this would be the name of the bucket
     """
 
-    root = None
-
-    """
-    Region where the storage is located.
-    """
-    region = None
-
+    storage_hash = None
     """
     A hash key of the repo for internal storage
     """
-    storage_hash = None
-
-    """
-    Boolean. True if enterprise, False if not.
-    """
-    enterprise = False
 
     def __init__(self, repository, bucket=None) -> None:
         if bucket is None:
@@ -72,13 +60,6 @@ class ArchiveService(object):
 
     def get_now(self) -> datetime:
         return datetime.now()
-
-    def storage_client(self) -> BaseStorageService:
-        """
-        Accessor for underlying StorageService. You typically shouldn't need
-        this for anything.
-        """
-        return self.storage
 
     @classmethod
     def get_archive_hash(cls, repository) -> str:
@@ -293,16 +274,3 @@ class ArchiveService(object):
         )
 
         return self.read_file(path).decode(errors="replace")
-
-    def delete_chunk_from_archive(self, commit_sha, report_code=None) -> None:
-        """
-        Delete a chunk file from the archive
-        """
-        chunks_file_name = report_code if report_code is not None else "chunks"
-        path = MinioEndpoints.chunks.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            commitid=commit_sha,
-            chunks_file_name=chunks_file_name,
-        )
-        self.delete_file(path)
