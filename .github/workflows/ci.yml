@@ -50,7 +50,7 @@ jobs:
 
   shared-change-checker:
     name: See if shared changed
-    uses: codecov/gha-workflows/.github/workflows/diff-dep.yml@main
+    uses: codecov/gha-workflows/.github/workflows/diff-dep.yml@pr32
     with:
       dep: 'shared'
 
