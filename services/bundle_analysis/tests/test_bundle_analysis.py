@@ -26,8 +26,14 @@ from services.urls import get_bundle_analysis_pull_url
 
 
 class MockBundleReport:
+    def __init__(self, name):
+        self.name = name
+
     def total_size(self):
         return 123456
+
+    def is_cached(self):
+        return self.name.startswith("cached")
 
 
 def hook_mock_repo_provider(mocker, mock_repo_provider):
@@ -77,6 +83,33 @@ def hook_mock_pull(mocker, mock_pull):
             | removed-bundle | (removed) | 1.23kB :arrow_down: |
         """),
             id="comment_increase_size",
+        ),
+        pytest.param(
+            [
+                BundleChange(
+                    "added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345
+                ),
+                BundleChange(
+                    "cached-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
+                ),
+                BundleChange(
+                    "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
+                ),
+            ],
+            dedent("""\
+            ## [Bundle](URL) Report
+
+            Changes will increase total bundle size by 14.57kB :arrow_up:
+
+            | Bundle name | Size | Change |
+            | ----------- | ---- | ------ |
+            | added-bundle | 123.46kB | 12.35kB :arrow_up: |
+            | cached-bundle* | 123.46kB | 3.46kB :arrow_up: |
+            | removed-bundle | (removed) | 1.23kB :arrow_down: |
+            
+            ℹ️ *Bundle size includes cached data from a previous commit
+        """),
+            id="comment_increase_size_cached_values",
         ),
         pytest.param(
             [
@@ -173,10 +206,10 @@ def test_bundle_analysis_notify(
     )
     mock_percentage.return_value = 2.0
 
-    bundle_report = mocker.patch(
-        "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report"
+    mocker.patch(
+        "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report",
+        side_effect=lambda name: MockBundleReport(name),
     )
-    bundle_report.return_value = MockBundleReport()
 
     hook_mock_pull(
         mocker,

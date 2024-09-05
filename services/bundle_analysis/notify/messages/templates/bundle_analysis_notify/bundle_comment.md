@@ -6,4 +6,6 @@ Changes will increase total bundle size by {{total_size_readable}} :arrow_up:
 {% else %}
 Changes will decrease total bundle size by {{total_size_readable}} :arrow_down:
 {% endif %}
-{% if bundle_rows %}{% include "bundle_analysis_notify/bundle_table.md" %}{% endif %}
+{% if bundle_rows %}{% include "bundle_analysis_notify/bundle_table.md" %}{% if has_cached %}
+ℹ️ *Bundle size includes cached data from a previous commit
+{%endif%}{% endif %}

@@ -29,6 +29,7 @@ class BundleRow(TypedDict):
     bundle_size: str
     change_size_readable: str
     change_icon: str
+    has_cached: bool
 
 
 class BundleCommentTemplateContext(TypedDict):
@@ -36,6 +37,7 @@ class BundleCommentTemplateContext(TypedDict):
     total_size_delta: int
     total_size_readable: str
     bundle_rows: list[BundleRow]
+    has_cached_bundles: bool
 
 
 class UpgradeCommentTemplateContext(TypedDict):
@@ -59,8 +61,10 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
     ) -> str:
         template = loader.get_template("bundle_analysis_notify/bundle_comment.md")
         total_size_delta = context.bundle_analysis_comparison.total_size_delta
+        bundle_rows = self._create_bundle_rows(context.bundle_analysis_comparison)
         context = BundleCommentTemplateContext(
-            bundle_rows=self._create_bundle_rows(context.bundle_analysis_comparison),
+            has_cached=any(row["is_cached"] for row in bundle_rows),
+            bundle_rows=bundle_rows,
             pull_url=get_bundle_analysis_pull_url(pull=context.pull.database_pull),
             total_size_delta=total_size_delta,
             total_size_readable=bytes_readable(total_size_delta),
@@ -115,7 +119,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
     def _create_bundle_rows(
         self,
         comparison: BundleAnalysisComparison,
-    ) -> tuple[BundleRow]:
+    ) -> list[BundleRow]:
         bundle_rows = []
         bundle_changes = comparison.bundle_changes()
         # Calculate bundle change data in one loop since bundle_changes is a generator
@@ -124,9 +128,11 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
             bundle_name = bundle_change.bundle_name
             if bundle_change.change_type == BundleChange.ChangeType.REMOVED:
                 size = "(removed)"
+                is_cached = False
             else:
                 head_bundle_report = comparison.head_report.bundle_report(bundle_name)
                 size = bytes_readable(head_bundle_report.total_size())
+                is_cached = head_bundle_report.is_cached()
 
             change_size = bundle_change.size_delta
             if change_size == 0:
@@ -144,6 +150,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
                     bundle_size=size,
                     change_size_readable=bytes_readable(change_size),
                     change_icon=icon,
+                    is_cached=is_cached,
                 )
             )
 
