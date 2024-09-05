@@ -530,7 +530,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         head_commit = comparison.head.commit
         db_session = head_commit.get_db_session()
         patch_coverage = async_to_sync(comparison.get_patch_totals)()
-        if comparison.project_coverage_base is not None:
+        if (
+            comparison.project_coverage_base is not None
+            and comparison.project_coverage_base.commit is not None
+        ):
             # Update existing Comparison
             statement = (
                 CompareCommit.__table__.update()
@@ -544,7 +547,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 .values(patch_totals=minimal_totals(patch_coverage))
             )
             db_session.execute(statement)
-        else:
+        elif (
+            patch_coverage is not None
+            and comparison.comparison.patch_coverage_base_commitid is not None
+        ):
             # We calculated patch coverage, but there's no project base
             # So we will create a comparison to save the patch_totals, to make sure
             # the UI and the PR have the same information
