@@ -541,6 +541,7 @@ async def _pick_best_base_comparedto_pair(
     return (candidates_to_base[0], None)
 
 
+@sentry_sdk.trace
 async def fetch_and_update_pull_request_information(
     repository_service, db_session, repoid, pullid, current_yaml
 ) -> EnrichedPull:

@@ -31,7 +31,11 @@ from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.activation import activate_user
 from services.commit_status import RepositoryCIFilter
-from services.comparison import ComparisonContext, ComparisonProxy
+from services.comparison import (
+    ComparisonContext,
+    ComparisonProxy,
+    get_or_create_comparison,
+)
 from services.comparison.types import Comparison, FullCommit
 from services.decoration import determine_decoration_details
 from services.github import get_github_app_for_commit, set_github_app_for_commit
@@ -520,25 +524,44 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         This is done to make sure the patch coverage reported by notifications and UI is the same
         (because they come from the same source)
         """
-        if comparison.project_coverage_base.commit is None:
-            # This is the base that will be saved in the CommitComparison
-            # Even if the patch coverage could come from a different commit
+        if comparison.comparison.patch_coverage_base_commitid is None:
+            # Can't get diff to calculate patch totals
             return
         head_commit = comparison.head.commit
         db_session = head_commit.get_db_session()
         patch_coverage = async_to_sync(comparison.get_patch_totals)()
-        statement = (
-            CompareCommit.__table__.update()
-            .where(
-                and_(
-                    CompareCommit.compare_commit_id == head_commit.id,
-                    CompareCommit.base_commit_id
-                    == comparison.project_coverage_base.commit.id,
+        if comparison.project_coverage_base is not None:
+            # Update existing Comparison
+            statement = (
+                CompareCommit.__table__.update()
+                .where(
+                    and_(
+                        CompareCommit.compare_commit_id == head_commit.id,
+                        CompareCommit.base_commit_id
+                        == comparison.project_coverage_base.commit.id,
+                    )
                 )
+                .values(patch_totals=minimal_totals(patch_coverage))
             )
-            .values(patch_totals=minimal_totals(patch_coverage))
-        )
-        db_session.execute(statement)
+            db_session.execute(statement)
+        else:
+            # We calculated patch coverage, but there's no project base
+            # So we will create a comparison to save the patch_totals, to make sure
+            # the UI and the PR have the same information
+            base_commit = (
+                db_session.query(Commit)
+                .filter(
+                    Commit.commitid
+                    == comparison.comparison.patch_coverage_base_commitid,
+                    Commit.repository == head_commit.repository,
+                )
+                .first()
+            )
+            if base_commit:
+                compare_commit = get_or_create_comparison(
+                    db_session, base_commit, head_commit
+                )
+                compare_commit.patch_totals = minimal_totals(patch_coverage)
 
     @sentry_sdk.trace
     def submit_third_party_notifications(
