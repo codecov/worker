@@ -79,7 +79,7 @@ class TestCSharp(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result = {
+        assert processed_report == {
             "archive": {
                 "source": [
                     (1, "2/2", "b", [[0, "2/2", None, None, None]], None, None),
@@ -118,4 +118,3 @@ class TestCSharp(BaseTestCase):
                 "s": 0,
             },
         }
-        assert processed_report == expected_result

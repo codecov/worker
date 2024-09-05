@@ -30,7 +30,7 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Non
         elif string.endswith((".lua", ".lisp")):
             _file = report_builder_session.create_coverage_file(string)
 
-        elif _file:
+        elif _file is not None:
             for ln, source in enumerate(string.splitlines(), start=1):
                 try:
                     cov = source.strip().split(" ")[0]

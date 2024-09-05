@@ -28,11 +28,8 @@ detect_conditional = re.compile(r"^\s+((if\s?\()|(\} else if\s?\())").match
 
 
 def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> None:
-    filepath, path_fixer, ignored_lines = (
-        report_builder_session.filepath,
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
+    filepath = report_builder_session.filepath
+    path_fixer = report_builder_session.path_fixer
 
     line_iterator = iter(BytesIO(string))
     # clean and strip lines

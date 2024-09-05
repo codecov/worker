@@ -34,24 +34,16 @@ class ReportBuilderSession(object):
         report_filepath: str,
         should_use_label_index: bool = False,
     ):
+        self.filepath = report_filepath
         self._report_builder = report_builder
-        self._report_filepath = report_filepath
         self._report = Report()
         self.label_index = {}
         self._present_labels = set()
         self.should_use_label_index = should_use_label_index
 
     @property
-    def filepath(self):
-        return self._report_filepath
-
-    @property
     def path_fixer(self):
         return self._report_builder.path_fixer
-
-    @property
-    def ignored_lines(self):
-        return self._report_builder.ignored_lines
 
     def resolve_paths(self, paths):
         return self._report.resolve_paths(paths)

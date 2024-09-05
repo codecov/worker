@@ -60,7 +60,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
         if fileref is None:
             continue
         _file = file_by_id.get(fileref.attrib["uid"])
-        if not _file:
+        if _file is None:
             continue
 
         branches = _build_branches(method.iter("BranchPoint"))
@@ -113,5 +113,5 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
                         ),
                     )
 
-    for v in file_by_id.values():
-        report_builder_session.append(v)
+    for _file in file_by_id.values():
+        report_builder_session.append(_file)

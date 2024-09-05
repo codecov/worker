@@ -149,7 +149,7 @@ class TestGo(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "path/file.go": [
                 (18, 0, None, [[0, 0, None, None, None]], None, None),
                 (19, 0, None, [[0, 0, None, None, None]], None, None),
@@ -350,7 +350,6 @@ class TestGo(BaseTestCase):
             ]
         }
 
-        assert expected_result_archive == processed_report["archive"]
         assert report.totals == ReportTotals(
             files=1,
             lines=196,
@@ -371,12 +370,15 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        report_builder_session = create_report_builder_session(
+            path_fixer=fixes,
+            current_yaml={"parsers": {"go": {"partials_as_hits": True}}},
+        )
         go.from_txt(huge_txt, report_builder_session)
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "path/file.go": [
                 (18, 0, None, [[0, 0, None, None, None]], None, None),
                 (19, 0, None, [[0, 0, None, None, None]], None, None),
@@ -577,8 +579,6 @@ class TestGo(BaseTestCase):
             ]
         }
 
-        assert expected_result_archive == processed_report["archive"]
-        print(report.totals)
         assert report.totals == ReportTotals(
             files=1,
             lines=196,

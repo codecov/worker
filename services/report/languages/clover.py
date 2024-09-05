@@ -1,7 +1,6 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import ReportFile
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
@@ -49,30 +48,26 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
         except StopIteration:
             pass
 
-    files: dict[str, ReportFile] = {}
-    for f in xml.iter("file"):
-        filename = f.attrib.get("path") or f.attrib["name"]
+    for file in xml.iter("file"):
+        filename = file.attrib.get("path") or file.attrib["name"]
 
         # skip empty file documents
         if (
             "{" in filename
             or ("/vendor/" in ("/" + filename) and filename.endswith(".php"))
-            or f.find("line") is None
+            or file.find("line") is None
         ):
             continue
 
-        if filename not in files:
-            if _file := report_builder_session.create_coverage_file(filename):
-                files[filename] = _file
-        _file = files.get(filename)
+        _file = report_builder_session.create_coverage_file(filename)
         if _file is None:
             continue
 
         # fix extra lines
-        eof = get_end_of_file(filename, f)
+        eof = get_end_of_file(filename, file)
 
         # process coverage
-        for line in f.iter("line"):
+        for line in file.iter("line"):
             attribs = line.attrib
             ln = int(attribs["num"])
             complexity = None
@@ -112,5 +107,4 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
                 ),
             )
 
-    for f in files.values():
-        report_builder_session.append(f)
+        report_builder_session.append(_file)

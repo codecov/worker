@@ -164,7 +164,7 @@ class TestGcov(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "tmp.c": [
                 (2, 1, None, [[0, 1, None, None, None]], None, None),
                 (3, 0, None, [[0, 0, None, None, None]], None, None),
@@ -175,8 +175,6 @@ class TestGcov(BaseTestCase):
                 (14, "2/2", "b", [[0, "2/2", None, None, None]], None, None),
             ]
         }
-
-        assert expected_result_archive == processed_report["archive"]
 
     def test_report_duplicate_lines(self):
         report_builder_session = create_report_builder_session(
@@ -191,7 +189,7 @@ class TestGcov(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "project/rsl/h264/Mp4NaluParser.h": [
                 (13, 90, "m", [[0, 90, None, None, None]], None, None),
                 (15, 730, "m", [[0, 730, None, None, None]], None, None),
@@ -199,12 +197,6 @@ class TestGcov(BaseTestCase):
                 (17, 730, None, [[0, 730, None, None, None]], None, None),
             ]
         }
-
-        assert (
-            expected_result_archive["project/rsl/h264/Mp4NaluParser.h"]
-            == processed_report["archive"]["project/rsl/h264/Mp4NaluParser.h"]
-        )
-        assert expected_result_archive == processed_report["archive"]
 
     def test_no_cond_branch_report(self):
         report_builder_session = create_report_builder_session(
@@ -216,12 +208,11 @@ class TestGcov(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        assert processed_report["archive"]["tmp.c"][3][0] == 10
         assert processed_report["archive"]["tmp.c"][3] == (
             10,
             1,
             "b",
-            [[1, 1, None, None, None]],
+            [[0, 1, None, None, None]],
             None,
             None,
         )
@@ -246,20 +237,19 @@ class TestGcov(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        assert processed_report["archive"]["tmp.c"][6][0] == 14
-        assert processed_report["archive"]["tmp.c"][6] == (
-            14,
-            1,
-            "b",
-            [[1, 1, None, None, None]],
-            None,
-            None,
-        )
         assert processed_report["archive"]["tmp.c"][3] == (
             10,
             1,
             "b",
-            [[1, 1, None, None, None]],
+            [[0, 1, None, None, None]],
+            None,
+            None,
+        )
+        assert processed_report["archive"]["tmp.c"][6] == (
+            14,
+            1,
+            "b",
+            [[0, 1, None, None, None]],
             None,
             None,
         )
@@ -272,20 +262,19 @@ class TestGcov(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        assert processed_report["archive"]["tmp.c"][5][0] == 13
-        assert processed_report["archive"]["tmp.c"][5] == (
-            13,
-            "0/2",
-            None,
-            [[1, "0/2", None, None, None]],
-            None,
-            None,
-        )
         assert processed_report["archive"]["tmp.c"][3] == (
             10,
             1,
             "b",
-            [[1, 1, None, None, None]],
+            [[0, 1, None, None, None]],
+            None,
+            None,
+        )
+        assert processed_report["archive"]["tmp.c"][5] == (
+            13,
+            "0/2",
+            None,
+            [[0, "0/2", None, None, None]],
             None,
             None,
         )
@@ -298,20 +287,19 @@ class TestGcov(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        assert processed_report["archive"]["tmp.c"][5][0] == 13
-        assert processed_report["archive"]["tmp.c"][5] == (
-            13,
-            1,
-            None,
-            [[1, 1, None, None, None]],
-            None,
-            None,
-        )
         assert processed_report["archive"]["tmp.c"][3] == (
             10,
             1,
             "b",
-            [[1, 1, None, None, None]],
+            [[0, 1, None, None, None]],
+            None,
+            None,
+        )
+        assert processed_report["archive"]["tmp.c"][5] == (
+            13,
+            1,
+            None,
+            [[0, 1, None, None, None]],
             None,
             None,
         )

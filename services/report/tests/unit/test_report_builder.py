@@ -20,7 +20,6 @@ def test_report_builder_generate_session(mocker):
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
     assert builder_session.path_fixer == path_fixer
-    assert builder_session.ignored_lines == ignored_lines
 
 
 def test_report_builder_session(mocker):

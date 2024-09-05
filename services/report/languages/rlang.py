@@ -31,7 +31,7 @@ def from_json(data_dict: dict, report_builder_session: ReportBuilderSession) -> 
             continue
 
         for ln, cov in enumerate(data["coverage"]):
-            if cov:
+            if cov is not None:
                 _file.append(
                     ln,
                     report_builder_session.create_coverage_line(

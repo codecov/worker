@@ -94,20 +94,17 @@ class TestNodeProcessor(BaseTestCase):
         )
         node.from_json(nodejson, report_builder_session)
         report = report_builder_session.output_report()
+
         totals_dict, report_dict = report.to_database()
         report_dict = loads(report_dict)
         archive = report.to_archive()
+
         expected_result = loads(self.readfile("node/node%s-result.json" % i))
-        print(dumps(report_dict))
-        print("\n")
-        assert expected_result["report"]["files"] == report_dict["files"]
-        assert expected_result["report"] == report_dict
-        print(dumps(totals_dict))
-        print("\n")
-        assert expected_result["totals"] == totals_dict
-        print(dumps(archive.split("<<<<< end_of_chunk >>>>>")))
-        print("\n")
-        assert expected_result["archive"] == archive.split("<<<<< end_of_chunk >>>>>")
+
+        assert report_dict == expected_result["report"]
+        assert totals_dict == expected_result["totals"]
+
+        assert archive.split("<<<<< end_of_chunk >>>>>") == expected_result["archive"]
 
     @pytest.mark.parametrize("name", ["inline", "ifbinary", "ifbinarymb"])
     def test_singles(self, name):
@@ -117,6 +114,7 @@ class TestNodeProcessor(BaseTestCase):
         )
         node.from_json(record["report"], report_builder_session)
         report = report_builder_session.output_report()
+
         for filename, lines in record["result"].items():
             for ln, result in lines.items():
                 assert loads(dumps(report[filename][int(ln)], cls=OwnEncoder)) == result

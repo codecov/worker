@@ -77,6 +77,7 @@ def from_xml(xml: bytes, report_builder_session: ReportBuilderSession) -> None:
                         report_builder_session.create_coverage_line(
                             coverage,
                             CoverageType.branch if partials else CoverageType.line,
+                            partials=partials,
                         ),
                     )
 

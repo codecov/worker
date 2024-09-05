@@ -23,12 +23,10 @@ class TestRlang(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "source/app.r": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
             "source/cov.r": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
                 (2, 0, None, [[0, 0, None, None, None]], None, None),
             ],
         }
-
-        assert expected_result_archive == processed_report["archive"]
