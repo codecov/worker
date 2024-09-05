@@ -4,7 +4,7 @@ on:
   pull_request:
 
 permissions:
-  contents: "write"
+  issues: "write"
 
 jobs:
   shared-change-checker:
