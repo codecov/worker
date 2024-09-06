@@ -168,8 +168,7 @@ async def fetch_appropriate_parent_for_commit(
         else:
             possible_commit = possible_commit_query.filter(
                 Commit.branch == commit.branch,
-            )
-            possible_commit = possible_commit_query.first()
+            ).first()
         if possible_commit:
             return possible_commit.commitid
     ancestors_tree = await repository_service.get_ancestors_tree(commitid)

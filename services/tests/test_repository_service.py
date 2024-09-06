@@ -635,17 +635,17 @@ class TestRepositoryServiceTestCase(object):
         first_parent_commit_id = "8aa5be054aeb21cf5a664ecd504a1af6f5ceafba"
         second_parent_commit_id = "a" * 32
         repository = RepositoryFactory.create()
-        first_parent_commit = CommitFactory.create(
-            commitid=first_parent_commit_id, repository=repository, branch="1stBranch"
-        )
         second_parent_commit = CommitFactory.create(
             commitid=second_parent_commit_id, repository=repository, branch="2ndBranch"
+        )
+        first_parent_commit = CommitFactory.create(
+            commitid=first_parent_commit_id, repository=repository, branch="1stBranch"
         )
         commit = CommitFactory.create(
             parent_commit_id=None, repository=repository, branch="1stBranch"
         )
-        dbsession.add(first_parent_commit)
         dbsession.add(second_parent_commit)
+        dbsession.add(first_parent_commit)
         dbsession.add(commit)
         dbsession.flush()
         git_commit = {"parents": [first_parent_commit_id, second_parent_commit_id]}
