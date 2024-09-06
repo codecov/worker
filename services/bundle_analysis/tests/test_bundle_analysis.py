@@ -57,7 +57,7 @@ def hook_mock_pull(mocker, mock_pull):
 
 
 @pytest.mark.parametrize(
-    "bundle_changes, expected_message",
+    "bundle_changes, percent_change, user_config, expected_message",
     [
         pytest.param(
             [
@@ -71,18 +71,55 @@ def hook_mock_pull(mocker, mock_pull):
                     "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
                 ),
             ],
+            5.56,
+            {
+                "bundle_analysis": {
+                    "status": "informational",
+                    "warning_threshold": ["percentage", 5.0],
+                }
+            },
             dedent("""\
             ## [Bundle](URL) Report
 
-            Changes will increase total bundle size by 14.57kB :arrow_up:
+            Changes will increase total bundle size by 14.57kB (5.56%) :arrow_up::warning:, exceeding the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold of 5%.
 
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB :arrow_up: |
             | changed-bundle | 123.46kB | 3.46kB :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB :arrow_down: |
-        """),
-            id="comment_increase_size",
+            | removed-bundle | (removed) | 1.23kB :arrow_down: |"""),
+            id="comment_increase_size_warning",
+        ),
+        pytest.param(
+            [
+                BundleChange(
+                    "added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345
+                ),
+                BundleChange(
+                    "changed-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
+                ),
+                BundleChange(
+                    "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
+                ),
+            ],
+            5.56,
+            {
+                "bundle_analysis": {
+                    "status": True,
+                    "warning_threshold": ["absolute", 10000],
+                }
+            },
+            dedent("""\
+            ## [Bundle](URL) Report
+
+            :x: Check failed: changes will increase total bundle size by 14.57kB (5.56%) :arrow_up:, **exceeding** the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold of 10.0kB.
+
+            | Bundle name | Size | Change |
+            | ----------- | ---- | ------ |
+            | added-bundle | 123.46kB | 12.35kB :arrow_up: |
+            | changed-bundle | 123.46kB | 3.46kB :arrow_up: |
+            | removed-bundle | (removed) | 1.23kB :arrow_down: |"""),
+            id="comment_increase_size_error",
         ),
         pytest.param(
             [
@@ -96,17 +133,28 @@ def hook_mock_pull(mocker, mock_pull):
                     "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
                 ),
             ],
+            3.46,
+            {
+                "bundle_analysis": {
+                    "status": "informational",
+                    "warning_threshold": ["percentage", 5.0],
+                }
+            },
             dedent("""\
             ## [Bundle](URL) Report
 
-            Changes will increase total bundle size by 14.57kB :arrow_up:
+            Changes will increase total bundle size by 14.57kB (3.46%) :arrow_up:. This is within the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold :white_check_mark:
 
+            <details><summary>Detailed changes</summary>
+                   
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB :arrow_up: |
             | cached-bundle* | 123.46kB | 3.46kB :arrow_up: |
             | removed-bundle | (removed) | 1.23kB :arrow_down: |
-            
+                   
+            </details>
+
             ℹ️ *Bundle size includes cached data from a previous commit
         """),
             id="comment_increase_size_cached_values",
@@ -117,15 +165,25 @@ def hook_mock_pull(mocker, mock_pull):
                     "test-bundle", BundleChange.ChangeType.CHANGED, size_delta=-3456
                 ),
             ],
+            -0.52,
+            {
+                "bundle_analysis": {
+                    "status": "informational",
+                    "warning_threshold": ["percentage", 5.0],
+                }
+            },
             dedent("""\
             ## [Bundle](URL) Report
 
-            Changes will decrease total bundle size by 3.46kB :arrow_down:
+            Changes will decrease total bundle size by 3.46kB (-0.52%) :arrow_down:. This is within the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold :white_check_mark:
 
+            <details><summary>Detailed changes</summary>
+            
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
             | test-bundle | 123.46kB | 3.46kB :arrow_down: |
-        """),
+            
+            </details>"""),
             id="comment_decrease_size",
         ),
         pytest.param(
@@ -134,6 +192,13 @@ def hook_mock_pull(mocker, mock_pull):
                     "test-bundle", BundleChange.ChangeType.CHANGED, size_delta=0
                 ),
             ],
+            0,
+            {
+                "bundle_analysis": {
+                    "status": "informational",
+                    "warning_threshold": ["percentage", 5.0],
+                }
+            },
             dedent("""\
             ## [Bundle](URL) Report
 
@@ -146,6 +211,8 @@ def hook_mock_pull(mocker, mock_pull):
 )
 def test_bundle_analysis_notify(
     bundle_changes: list[BundleChange],
+    percent_change: float,
+    user_config: dict,
     expected_message: str,
     dbsession,
     mocker,
@@ -176,7 +243,7 @@ def test_bundle_analysis_notify(
     dbsession.add(pull)
     dbsession.commit()
 
-    notifier = BundleAnalysisNotifyService(head_commit, UserYaml.from_dict({}))
+    notifier = BundleAnalysisNotifyService(head_commit, UserYaml.from_dict(user_config))
 
     repo_key = ArchiveService.get_archive_hash(base_commit.repository)
     mock_storage.write_file(
@@ -204,7 +271,7 @@ def test_bundle_analysis_notify(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison.percentage_delta",
         new_callable=PropertyMock,
     )
-    mock_percentage.return_value = 2.0
+    mock_percentage.return_value = percent_change
 
     mocker.patch(
         "shared.bundle_analysis.report.BundleAnalysisReport.bundle_report",
