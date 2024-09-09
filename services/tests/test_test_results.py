@@ -108,7 +108,6 @@ def test_build_message():
     payload = TestResultsNotificationPayload(1, 2, 3, [fail], dict())
     commit = CommitFactory(branch="thing/thing")
     tn = TestResultsNotifier(commit, None, None, None, payload)
-    print(commit.branch)
     res = tn.build_message()
 
     assert (
