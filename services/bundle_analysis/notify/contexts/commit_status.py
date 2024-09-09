@@ -1,6 +1,3 @@
-from enum import Enum, auto
-from typing import Literal
-
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.bundle_analysis import (
@@ -19,6 +16,7 @@ from services.bundle_analysis.exceptions import (
 )
 from services.bundle_analysis.notify.contexts import (
     BaseBundleAnalysisNotificationContext,
+    CommitStatusLevel,
     NotificationContextBuilder,
     NotificationContextBuildError,
     NotificationContextField,
@@ -32,17 +30,6 @@ from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
 )
 from services.urls import get_bundle_analysis_pull_url, get_commit_url
-
-
-class CommitStatusLevel(Enum):
-    INFO = auto()
-    WARNING = auto()
-    ERROR = auto()
-
-    def to_str(self) -> Literal["success"] | Literal["failure"]:
-        if self.value == "ERROR":
-            return "failure"
-        return "success"
 
 
 class CommitStatusNotificationContext(BaseBundleAnalysisNotificationContext):

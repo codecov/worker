@@ -2,7 +2,6 @@ from textwrap import dedent
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from django.template import loader
 from shared.torngit.exceptions import TorngitClientError
 from shared.typings.torngit import TorngitInstanceData
 from shared.validation.types import BundleThreshold
@@ -20,102 +19,14 @@ from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
     BundleAnalysisPRCommentNotificationContext,
 )
-from services.bundle_analysis.notify.helpers import bytes_readable
 from services.bundle_analysis.notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
-    BundleCommentTemplateContext,
-    BundleRow,
 )
 from services.bundle_analysis.notify.types import NotificationUserConfig
 from services.notification.notifiers.base import NotificationResult
 
 
 class TestCommentMesage:
-    @pytest.mark.parametrize(
-        "total_size_delta, summary_line",
-        [
-            pytest.param(
-                100,
-                "Changes will increase total bundle size by 100 bytes :arrow_up:",
-                id="increase_100b",
-            ),
-            pytest.param(
-                1234,
-                "Changes will increase total bundle size by 1.23kB :arrow_up:",
-                id="increase_1.23kB",
-            ),
-            pytest.param(
-                1e6 + 500,
-                "Changes will increase total bundle size by 1.0MB :arrow_up:",
-                id="increase_1MB",
-            ),
-            pytest.param(
-                0, "Bundle size has no change :white_check_mark:", id="no_change"
-            ),
-            pytest.param(
-                -100,
-                "Changes will decrease total bundle size by 100 bytes :arrow_down:",
-                id="decrease_100b",
-            ),
-            pytest.param(
-                -1234,
-                "Changes will decrease total bundle size by 1.23kB :arrow_down:",
-                id="decrease_1.23kB",
-            ),
-            pytest.param(
-                -1e6 - 500,
-                "Changes will decrease total bundle size by 1.0MB :arrow_down:",
-                id="decrease_1MB",
-            ),
-        ],
-    )
-    def test_summary_change_line_template(self, total_size_delta, summary_line):
-        template = loader.get_template("bundle_analysis_notify/bundle_comment.md")
-        context = BundleCommentTemplateContext(
-            pull_url="example.url",
-            bundle_rows=[],
-            total_size_delta=total_size_delta,
-            total_size_readable=bytes_readable(total_size_delta),
-        )
-        expected = (
-            "## [Bundle](example.url) Report\n" + "\n" + summary_line + "\n" + "\n"
-        )
-        assert template.render(context) == expected
-
-    def test_bundle_change_row_template(self):
-        template = loader.get_template("bundle_analysis_notify/bundle_table.md")
-        context = {
-            "bundle_rows": [
-                BundleRow(
-                    bundle_name="@test/increase",
-                    bundle_size="50kB",
-                    change_size_readable="100 bytes",
-                    change_icon=":arrow_up:",
-                ),
-                BundleRow(
-                    bundle_name="@test/decrease",
-                    bundle_size="50kB",
-                    change_size_readable="100 bytes",
-                    change_icon=":arrow_down:",
-                ),
-                BundleRow(
-                    bundle_name="@test/removed",
-                    bundle_size="(removed)",
-                    change_size_readable="100 bytes",
-                    change_icon=":arrow_down:",
-                ),
-            ]
-        }
-        expected = (
-            "| Bundle name | Size | Change |"
-            + "\n| ----------- | ---- | ------ |"
-            + "\n| @test/increase | 50kB | 100 bytes :arrow_up: |"
-            + "\n| @test/decrease | 50kB | 100 bytes :arrow_down: |"
-            + "\n| @test/removed | (removed) | 100 bytes :arrow_down: |"
-            + "\n"
-        )
-        assert template.render(context) == expected
-
     def test_build_message_from_samples(self, dbsession, mocker, mock_storage):
         head_commit, base_commit = get_commit_pair(dbsession)
         repository = head_commit.repository
@@ -141,24 +52,25 @@ class TestCommentMesage:
         )
         context = builder.build_context().get_result()
         message = BundleAnalysisCommentMarkdownStrategy().build_message(context)
-        assert (
-            message
-            == """## [Bundle](https://app.codecov.io/gh/{owner}/{repo}/pull/{pullid}?dropdown=bundle) Report
+        assert message == dedent("""\
+                ## [Bundle](https://app.codecov.io/gh/{owner}/{repo}/pull/{pullid}?dropdown=bundle) Report
 
-Changes will decrease total bundle size by 372.56kB :arrow_down:
+                Changes will decrease total bundle size by 372.56kB (-48.89%) :arrow_down:. This is within the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold :white_check_mark:
 
-| Bundle name | Size | Change |
-| ----------- | ---- | ------ |
-| @codecov/sveltekit-plugin-esm | 1.1kB | 188 bytes :arrow_up: |
-| @codecov/rollup-plugin-esm | 1.32kB | 1.01kB :arrow_down: |
-| @codecov/bundler-plugin-core-esm | 8.2kB | 30.02kB :arrow_down: |
-| @codecov/bundler-plugin-core-cjs | 43.32kB | 611 bytes :arrow_up: |
-| @codecov/example-next-app-server-cjs | (removed) | 342.32kB :arrow_down: |
-""".format(
-                pullid=enriched_pull.database_pull.pullid,
-                owner=head_commit.repository.owner.username,
-                repo=head_commit.repository.name,
-            )
+                <details><summary>Detailed changes</summary>
+
+                | Bundle name | Size | Change |
+                | ----------- | ---- | ------ |
+                | @codecov/sveltekit-plugin-esm | 1.1kB | 188 bytes :arrow_up: |
+                | @codecov/rollup-plugin-esm | 1.32kB | 1.01kB :arrow_down: |
+                | @codecov/bundler-plugin-core-esm | 8.2kB | 30.02kB :arrow_down: |
+                | @codecov/bundler-plugin-core-cjs | 43.32kB | 611 bytes :arrow_up: |
+                | @codecov/example-next-app-server-cjs | (removed) | 342.32kB :arrow_down: |
+
+                </details>""").format(
+            pullid=enriched_pull.database_pull.pullid,
+            owner=head_commit.repository.owner.username,
+            repo=head_commit.repository.name,
         )
 
     def _setup_send_message_tests(
