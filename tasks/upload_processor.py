@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit, Upload
+from database.models.core import Pull, Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
@@ -25,9 +26,9 @@ from helpers.parallel_upload_processing import (
 )
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
+from services.archive import ArchiveService
 from services.redis import get_redis_connection
-from services.report import Report, ReportService
-from services.report.parser.types import ParsedRawReport
+from services.report import ProcessingResult, RawReportInfo, Report, ReportService
 from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -223,6 +224,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
                     report = Report()
 
+        raw_reports: list[RawReportInfo] = []
         try:
             for arguments in arguments_list:
                 pr = arguments.get("pr")
@@ -252,15 +254,20 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     with metrics.timer(
                         f"{self.metrics_prefix}.process_individual_report"
                     ):
-                        result = self.process_individual_report(
+                        raw_report_info = RawReportInfo()
+                        processing_result = self.process_individual_report(
                             report_service,
                             commit,
                             report,
                             upload_obj,
+                            raw_report_info,
                             parallel_idx=parallel_idx,
                             in_parallel=in_parallel,
                         )
-                    individual_info.update(result)
+                        # NOTE: this is only used because test mocking messes with the return value here.
+                        # in normal flow, the function mutates the argument instead.
+                        if processing_result.report:
+                            report = processing_result.report
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
                     raise
                 except Exception:
@@ -277,16 +284,26 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
                     upload_obj.state_id = UploadState.ERROR.db_id
                     upload_obj.state = "error"
-                    self._attempt_rewrite_raw_report_readable_error_case(
-                        report_service, commit, upload_obj
-                    )
+                    if raw_report_info.raw_report:
+                        self._rewrite_raw_report_readable(
+                            report_service.get_archive_service(commit.repository),
+                            commit,
+                            raw_report_info,
+                        )
                     raise
-                if individual_info.get("successful"):
-                    report = individual_info.pop("report")
-                    n_processed += 1
-                else:
+
+                if error := processing_result.error:
                     n_failed += 1
+                    individual_info["successful"] = False
+                    individual_info["error"] = error.as_dict()
+
+                else:
+                    n_processed += 1
+                    individual_info["successful"] = True
                 processings_so_far.append(individual_info)
+
+                if raw_report_info.raw_report:
+                    raw_reports.append(raw_report_info)
 
             log.info(
                 f"Finishing the processing of {n_processed} reports"
@@ -302,35 +319,31 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             parallel_incremental_result = None
             results_dict = {}
             if in_parallel:
-                with metrics.timer(
-                    f"{self.metrics_prefix}.save_incremental_report_results"
-                ):
-                    parallel_incremental_result = save_incremental_report_results(
-                        report_service, commit, report, parallel_idx, report_code
-                    )
-                    parallel_incremental_result["upload_pk"] = arguments_list[0].get(
-                        "upload_pk"
-                    )
+                parallel_incremental_result = save_incremental_report_results(
+                    report_service, commit, report, parallel_idx, report_code
+                )
+                parallel_incremental_result["upload_pk"] = arguments_list[0].get(
+                    "upload_pk"
+                )
 
-                    log.info(
-                        "Saved incremental report results to storage",
-                        extra=dict(
-                            repoid=repoid,
-                            commit=commitid,
-                            incremental_result_path=parallel_incremental_result,
-                        ),
-                    )
+                log.info(
+                    "Saved incremental report results to storage",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        incremental_result_path=parallel_incremental_result,
+                    ),
+                )
             else:
-                with metrics.timer(f"{self.metrics_prefix}.save_report_results"):
-                    results_dict = self.save_report_results(
-                        db_session,
-                        report_service,
-                        repository,
-                        commit,
-                        report,
-                        pr,
-                        report_code,
-                    )
+                results_dict = self.save_report_results(
+                    db_session,
+                    report_service,
+                    repository,
+                    commit,
+                    report,
+                    pr,
+                    report_code,
+                )
 
                 # Save the final accumulated result from the serial flow for the
                 # ParallelVerification task to compare with later, for the parallel
@@ -349,17 +362,9 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         ),
                     )
 
-            for processed_individual_report in processings_so_far:
-                upload = processed_individual_report.pop("upload_obj", None)
-                raw_report = processed_individual_report.pop("raw_report", None)
-                if upload:
-                    deleted_archive = self._possibly_delete_archive(
-                        upload, report_service, commit
-                    )
-                    if not deleted_archive and raw_report:
-                        self._rewrite_raw_report_readable(
-                            raw_report, upload, report_service, commit
-                        )
+            if raw_reports:
+                self.postprocess_raw_reports(report_service, commit, raw_reports)
+
             log.info(
                 f"Processed {n_processed} reports (+ {n_failed} failed)"
                 + (" (in parallel)" if in_parallel else ""),
@@ -373,13 +378,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
-            result = {
+            processing_result = {
                 "processings_so_far": processings_so_far,
             }
             if in_parallel:
-                result["parallel_incremental_result"] = parallel_incremental_result
+                processing_result["parallel_incremental_result"] = (
+                    parallel_incremental_result
+                )
 
-            return result
+            return processing_result
         except CeleryError:
             raise
         except Exception:
@@ -397,11 +404,12 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit: Commit,
         report: Report,
         upload: Upload,
+        raw_report_info: RawReportInfo,
         parallel_idx=None,
         in_parallel=False,
-    ):
+    ) -> ProcessingResult:
         processing_result = report_service.build_report_from_raw_content(
-            report, upload=upload, parallel_idx=parallel_idx
+            report, raw_report_info, upload=upload, parallel_idx=parallel_idx
         )
         if (
             processing_result.error is not None
@@ -427,7 +435,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             report_service.update_upload_with_processing_result(
                 upload, processing_result
             )
-        return processing_result.as_dict()
+
+        return processing_result
 
     def should_delete_archive(self, commit_yaml: UserYaml) -> bool:
         if get_config("services", "minio", "expire_raw_after_n_days"):
@@ -436,77 +445,65 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             commit_yaml, ("codecov", "archive", "uploads"), _else=True
         )
 
-    def _possibly_delete_archive(
-        self, upload: Upload, report_service: ReportService, commit: Commit
-    ) -> bool:
-        if self.should_delete_archive(report_service.current_yaml):
-            archive_url = upload.storage_path
-            if archive_url and not archive_url.startswith("http"):
-                log.info(
-                    "Deleting uploaded file as requested",
-                    extra=dict(
-                        archive_url=archive_url,
-                        commit=commit.commitid,
-                        upload=upload.external_id,
-                        parent_task=self.request.parent_id,
-                    ),
-                )
-                archive_service = report_service.get_archive_service(commit.repository)
-                archive_service.delete_file(archive_url)
-                return True
-        return False
+    @sentry_sdk.trace
+    def postprocess_raw_reports(
+        self,
+        report_service: ReportService,
+        commit: Commit,
+        reports: list[RawReportInfo],
+    ):
+        should_delete_archive = self.should_delete_archive(report_service.current_yaml)
+        archive_service = report_service.get_archive_service(commit.repository)
 
-    def _attempt_rewrite_raw_report_readable_error_case(
-        self, report_service: ReportService, commit: Commit, upload: Upload
-    ) -> None:
-        log.info(
-            "Attempting to rewrite raw upload in readable format for debugging purposes (processing already failed)",
-            extra=dict(commit=commit.commitid, upload=upload.external_id),
-        )
-        try:
-            raw_report = report_service.parse_raw_report_from_storage(
-                commit.repository, upload, is_error_case=True
-            )
-            self._rewrite_raw_report_readable(
-                raw_report,
-                upload,
-                report_service=report_service,
-                commit=commit,
-            )
-        except FileNotFoundError:
-            log.exception(
-                "Failed to rewrite raw report in readable format",
-                extra=dict(commit=commit.commitid, upload=upload.external_id),
-            )
+        if should_delete_archive:
+            for report_info in reports:
+                archive_url = report_info.archive_url
+                if not archive_url.startswith("http"):
+                    log.info(
+                        "Deleting uploaded file as requested",
+                        extra=dict(
+                            archive_url=archive_url,
+                            commit=commit.commitid,
+                            upload=report_info.upload,
+                            parent_task=self.request.parent_id,
+                        ),
+                    )
+                    archive_service.delete_file(archive_url)
+
+        else:
+            for report_info in reports:
+                self._rewrite_raw_report_readable(archive_service, commit, report_info)
 
     def _rewrite_raw_report_readable(
         self,
-        raw_report: ParsedRawReport,
-        upload: Upload,
-        report_service: ReportService,
+        archive_service: ArchiveService,
         commit: Commit,
+        raw_report_info: RawReportInfo,
     ) -> None:
-        archive_url = upload.storage_path
+        assert raw_report_info.raw_report
+        archive_url = raw_report_info.archive_url
         log.info(
             "Re-writing raw report in readable format",
             extra=dict(
                 archive_url=archive_url,
                 commit=commit.commitid,
-                upload=upload.external_id,
+                upload=raw_report_info.upload,
                 parent_task=self.request.parent_id,
             ),
         )
-        archive_service = report_service.get_archive_service(commit.repository)
-        archive_service.write_file(archive_url, raw_report.content().getvalue())
+        archive_service.write_file(
+            archive_url, raw_report_info.raw_report.content().getvalue()
+        )
 
+    @sentry_sdk.trace
     def save_report_results(
         self,
         db_session,
-        report_service,
-        repository,
-        commit,
-        report,
-        pr,
+        report_service: ReportService,
+        repository: Repository,
+        commit: Commit,
+        report: Report,
+        pr: Pull,
         report_code=None,
     ):
         """Saves the result of `report` to the commit database and chunks archive

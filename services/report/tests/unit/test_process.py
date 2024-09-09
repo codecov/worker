@@ -67,12 +67,16 @@ class TestProcessRawUpload(BaseTestCase):
         if "M" in keys:
             master = self.get_v3_report()
         else:
-            master = None
-        parsed_report = LegacyReportParser().parse_raw_report_from_io(
-            BytesIO("\n".join(report).encode())
+            master = Report()
+        parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
+            "\n".join(report).encode()
         )
         result = process.process_raw_upload(
-            commit_yaml=None, original_report=master, reports=parsed_report, flags=[]
+            commit_yaml=None,
+            report=master,
+            raw_reports=parsed_report,
+            flags=[],
+            session=Session(),
         )
         master = result.report
 
@@ -152,11 +156,12 @@ class TestProcessRawUpload(BaseTestCase):
 
         result = process.process_raw_upload(
             commit_yaml={},
-            original_report=None,
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO("\n".join(report).encode())
+            report=Report(),
+            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                "\n".join(report).encode()
             ),
             flags=[],
+            session=Session(),
         )
         master = result.report
         assert master.files == ["source", "file"]
@@ -194,9 +199,9 @@ class TestProcessRawUpload(BaseTestCase):
         with pytest.raises(ReportEmptyError):
             process.process_raw_upload(
                 commit_yaml=None,
-                original_report=original_report,
-                reports=LegacyReportParser().parse_raw_report_from_io(
-                    BytesIO("\n".join(report_data).encode())
+                report=original_report,
+                raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                    "\n".join(report_data).encode()
                 ),
                 session=Session(flags=["fruits"]),
                 flags=[],
@@ -274,9 +279,10 @@ class TestProcessRawUpload(BaseTestCase):
         with pytest.raises(ReportEmptyError, match="No files found in report."):
             process.process_raw_upload(
                 self,
-                {},
-                LegacyReportParser().parse_raw_report_from_io(BytesIO(b"")),
+                Report(),
+                LegacyReportParser().parse_raw_report_from_bytes(b""),
                 [],
+                Session(),
             )
 
 
@@ -296,12 +302,12 @@ class TestProcessRawUploadFixed(BaseTestCase):
         )
         result = process.process_raw_upload(
             commit_yaml={},
-            original_report=None,
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(reports.encode())
+            report=Report(),
+            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                reports.encode()
             ),
             flags=[],
-            session={},
+            session=Session(),
         )
         report = result.report
         assert 2 not in report["file.go"], "2 never existed"
@@ -334,11 +340,11 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
             with pytest.raises(NotImplementedError):
                 report = process.process_raw_upload(
                     commit_yaml=UserYaml(yaml),
-                    original_report=Mock(
+                    report=Mock(
                         merge=merge, add_session=Mock(return_value=(1, Session()))
                     ),
-                    reports=LegacyReportParser().parse_raw_report_from_io(
-                        BytesIO("a<<<<<< EOF".encode())
+                    raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                        b"a<<<<<< EOF"
                     ),
                     flags=[flag],
                     session=Session(),
@@ -356,12 +362,10 @@ class TestProcessRawUploadFlags(BaseTestCase):
     def test_flags(self, flag):
         result = process.process_raw_upload(
             commit_yaml=UserYaml({"flags": {"docker": flag}}),
-            original_report={},
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
-                )
+            report=Report(),
+            session=Session(),
+            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
             ),
             flags=["docker"],
         )
@@ -372,32 +376,27 @@ class TestProcessRawUploadFlags(BaseTestCase):
 
 class TestProcessSessions(BaseTestCase):
     def test_sessions(self):
-        result = process.process_raw_upload(
+        report = Report()
+        process.process_raw_upload(
             commit_yaml={},
-            original_report={},
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
-                )
+            report=report,
+            session=Session(),
+            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
             ),
             flags=None,
         )
-        master = result.report
-        result = process.process_raw_upload(
+        process.process_raw_upload(
             commit_yaml={},
-            original_report=master,
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
-                )
+            report=report,
+            session=Session(),
+            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
             ),
             flags=None,
         )
-        master = result.report
-        print(master.totals)
-        assert master.totals.sessions == 2
+        print(report.totals)
+        assert report.totals.sessions == 2
 
 
 class TestProcessReport(BaseTestCase):
@@ -431,12 +430,10 @@ class TestProcessReport(BaseTestCase):
         commit_yaml = {"fixes": ["arroba::prefix", "bingo::prefix"]}
         result = process.process_raw_upload(
             commit_yaml=UserYaml(commit_yaml),
-            original_report=None,
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}'.encode()
-                )
+            report=Report(),
+            session=Session(),
+            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
+                b'{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}'
             ),
             flags=None,
         )
@@ -1013,7 +1010,7 @@ class TestProcessReport(BaseTestCase):
         with pytest.raises(ReportExpiredException) as e:
             _ = process.process_raw_upload(
                 UserYaml({}),
-                None,
+                Report(),
                 uploaded_reports,
                 ["flag_one", "flag_two"],
                 session=session,
@@ -1111,8 +1108,8 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
             session=session,
         )
         report = result.report
-        assert result.fully_deleted_sessions == [1]
-        assert result.partially_deleted_sessions == []
+        assert result.session_adjustment.fully_deleted_sessions == [1]
+        assert result.session_adjustment.partially_deleted_sessions == []
         assert sorted(report.sessions.keys()) == [0, session.id]
         assert session.id == 2
         assert report.sessions[session.id] == session
