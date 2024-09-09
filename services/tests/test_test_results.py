@@ -106,7 +106,7 @@ def test_build_message():
         "https://example.com/build_url",
     )
     payload = TestResultsNotificationPayload(1, 2, 3, [fail], dict())
-    commit = CommitFactory()
+    commit = CommitFactory(branch="thing/thing")
     tn = TestResultsNotifier(commit, None, None, None, payload)
     res = tn.build_message()
 
@@ -136,7 +136,7 @@ def test_build_message():
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})"""
+To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/thing%2Fthing)"""
     )
 
 

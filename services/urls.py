@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, quote_plus, urlencode, urlparse, urlunparse
 
 from shared.config import get_config
 
@@ -191,7 +191,7 @@ def get_test_analytics_url(repo: Repository, commit: Commit) -> str:
         service_short=services_short_dict.get(repo.service),
         username=repo.owner.username,
         project_name=repo.name,
-        branch_name=commit.branch,
+        branch_name=quote_plus(commit.branch),
     )
 
 
