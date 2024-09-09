@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from os.path import relpath
 from typing import Sequence
@@ -42,17 +41,20 @@ def _get_best_match(path: str, possibilities: list[str]) -> str:
     return best_match[1]
 
 
-@dataclass
 class Node:
-    terminals: list[str] = field(default_factory=list)
+    full_paths: list[str]
     """
-    A list of paths terminating in this node.
+    The full paths terminating in this node.
     """
 
-    children: dict[str, "Node"] = field(default_factory=dict)
+    children: dict[str, "Node"]
     """
     Child nodes, keyed by path component.
     """
+
+    def __init__(self) -> None:
+        self.full_paths = []
+        self.children = {}
 
 
 class Tree:
@@ -80,7 +82,7 @@ class Tree:
 
     Matching / lookup again happens in reverse path-component order, from right to left.
     In this particular case, the tree traversal would walk the tree `Node`s `mod.rs`, `foo`, `src`
-    before it hits the `src/foo/mod.rs` "terminal", which is the result of the lookup.
+    before it hits the `src/foo/mod.rs` "full_path", which is the result of the lookup.
     """
 
     def __init__(self, paths: Sequence[str]):
@@ -95,9 +97,11 @@ class Tree:
         node = self.root
         for component in components:
             component = component.lower()
-            node = node.children.setdefault(component, Node())
+            if component not in node.children:
+                node.children[component] = Node()
+            node = node.children[component]
 
-        node.terminals.append(path)
+        node.full_paths.append(path)
 
     def resolve_path(self, path: str, ancestors: int | None = None) -> str | None:
         path = _clean_path(path)
@@ -113,14 +117,14 @@ class Tree:
         # path was not resolved
         return None
 
-    def _drill(self, node: Node) -> list[str] | None:
+    def _drill(self, node: Node) -> str | None:
         """
-        "Drill down" a straight branch of a tree, returning the first terminal.
+        "Drill down" a straight branch of a tree, returning the first `full_paths`.
         """
         while len(node.children) == 1:
             node = next(iter(node.children.values()))
-            if len(node.terminals):
-                return node.terminals
+            if len(node.full_paths):
+                return node.full_paths
 
         return None
 
@@ -144,9 +148,9 @@ class Tree:
             node.children.get(components[i].lower()) if i < len(components) else None
         )
         if child_node:
-            is_end = len(child_node.terminals) > 0
+            is_end = len(child_node.full_paths) > 0
             if is_end:
-                results = child_node.terminals
+                results = child_node.full_paths
             return self._recursive_lookup(
                 child_node, components, results, i + 1, is_end, True
             )
