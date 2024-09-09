@@ -325,7 +325,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         with pytest.raises(ContextNotLoadedError):
             other_context.bundle_analysis_comparison
 
-        fake_comparison = MagicMock(name="fake_comparison")
+        fake_comparison = MagicMock(name="fake_comparison", percentage_delta=10.0)
         mocker.patch.object(
             ComparisonLoader, "get_comparison", return_value=fake_comparison
         )

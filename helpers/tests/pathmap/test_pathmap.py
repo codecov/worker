@@ -6,7 +6,7 @@ def test_clean_path():
     assert _clean_path(path) == "some/directory"
     path = "some/path\r/with/tabs\r"
     assert _clean_path(path) == "some/path/with/tabs"
-    path = "some\ very_long/directory\ name"
+    path = "some\\ very_long/directory\\ name"
     assert _clean_path(path) == "some very_long/directory name"
     path = "ms\\style\\directory"
     assert _clean_path(path) == "ms/style/directory"

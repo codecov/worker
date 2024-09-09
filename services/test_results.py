@@ -231,7 +231,7 @@ def messagify_flake(
     test_name = wrap_in_code(flaky_failure.testname.replace("\x1f", " "))
     formatted_duration = display_duration(flaky_failure.duration_seconds)
     flake_rate = flake_info.failed / flake_info.count * 100
-    flake_rate_section = f"**Flake rate in main:** {flake_rate}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
+    flake_rate_section = f"**Flake rate in main:** {flake_rate:.2f}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
     stack_trace = wrap_in_details(
         stack_trace_summary,

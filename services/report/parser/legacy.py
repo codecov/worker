@@ -1,6 +1,5 @@
 import string
 from io import BytesIO
-from typing import BinaryIO
 
 import sentry_sdk
 
@@ -109,23 +108,12 @@ class LegacyReportParser(object):
     @sentry_sdk.trace
     @metrics.timer("services.report.parser.parse_raw_report_from_bytes")
     def parse_raw_report_from_bytes(self, raw_report: bytes) -> LegacyParsedRawReport:
-        raw_report, _, compat_report_str = raw_report.partition(
+        raw_report, _, _compat_report_str = raw_report.partition(
             self.ignore_from_now_on_marker
         )
         sections = self.cut_sections(raw_report)
         res = self._generate_parsed_report_from_sections(sections)
-        if compat_report_str:
-            compat_report = self._generate_parsed_report_from_sections(
-                self.cut_sections(compat_report_str)
-            )
-            self.compare_compat_and_main_reports(res, compat_report)
         return res
-
-    def compare_compat_and_main_reports(self, actual_result, compat_result):
-        pass
-
-    def parse_raw_report_from_io(self, raw_report: BinaryIO) -> LegacyParsedRawReport:
-        return self.parse_raw_report_from_bytes(raw_report.getvalue())
 
     def _generate_parsed_report_from_sections(self, sections):
         uploaded_files = []

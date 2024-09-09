@@ -131,7 +131,7 @@ def save_commit_measurements(
     if MeasurementName.component_coverage.value in dataset_names:
         components = current_yaml.get_components()
         if components:
-            measurements = []
+            measurements = dict()
 
             for component in components:
                 if component.paths or component.flag_regexes:
@@ -143,19 +143,50 @@ def save_commit_measurements(
                     )
 
                     if filtered_report.totals.coverage is not None:
-                        measurements.append(
-                            dict(
-                                name=MeasurementName.component_coverage.value,
-                                owner_id=commit.repository.ownerid,
-                                repo_id=commit.repoid,
-                                branch=commit.branch,
-                                commit_sha=commit.commitid,
-                                timestamp=commit.timestamp,
-                                measurable_id=f"{component.component_id}",
-                                value=float(filtered_report.totals.coverage),
+                        measurement_key = (
+                            MeasurementName.component_coverage.value,
+                            commit.repository.ownerid,
+                            commit.repoid,
+                            f"{component.component_id}",
+                            commit.commitid,
+                            commit.timestamp,
+                        )
+                        if (
+                            existing_measurement := measurements.get(measurement_key)
+                        ) is not None:
+                            log.warning(
+                                "Duplicate measurement keys being added to measurements",
+                                extra=dict(
+                                    repoid=commit.repoid,
+                                    commit_id=commit.id_,
+                                    commitid=commit.commitid,
+                                    measurement_key=measurement_key,
+                                    existing_value=existing_measurement.get("value"),
+                                    new_value=float(filtered_report.totals.coverage),
+                                ),
                             )
+
+                        measurements[
+                            (
+                                MeasurementName.component_coverage.value,
+                                commit.repository.ownerid,
+                                commit.repoid,
+                                f"{component.component_id}",
+                                commit.commitid,
+                                commit.timestamp,
+                            )
+                        ] = dict(
+                            name=MeasurementName.component_coverage.value,
+                            owner_id=commit.repository.ownerid,
+                            repo_id=commit.repoid,
+                            branch=commit.branch,
+                            commit_sha=commit.commitid,
+                            timestamp=commit.timestamp,
+                            measurable_id=f"{component.component_id}",
+                            value=float(filtered_report.totals.coverage),
                         )
 
+            measurements = list(measurements.values())
             if len(measurements) > 0:
                 log.info(
                     "Upserting component coverage measurements",

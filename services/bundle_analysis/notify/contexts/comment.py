@@ -19,6 +19,7 @@ from services.bundle_analysis.exceptions import (
 )
 from services.bundle_analysis.notify.contexts import (
     BaseBundleAnalysisNotificationContext,
+    CommitStatusLevel,
     NotificationContextBuilder,
     NotificationContextBuildError,
     NotificationContextField,
@@ -44,6 +45,9 @@ class BundleAnalysisPRCommentNotificationContext(BaseBundleAnalysisNotificationC
     pull: EnrichedPull = NotificationContextField[EnrichedPull]()
     bundle_analysis_comparison: BundleAnalysisComparison = NotificationContextField[
         BundleAnalysisComparison
+    ]()
+    commit_status_level: CommitStatusLevel = NotificationContextField[
+        CommitStatusLevel
     ]()
     should_use_upgrade_comment: bool
 
@@ -183,6 +187,22 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
                 self._notification_context.should_use_upgrade_comment = False
         return self
 
+    def load_commit_status_level(self) -> Self:
+        bundle_analysis_comparison = (
+            self._notification_context.bundle_analysis_comparison
+        )
+        user_config = self._notification_context.user_config
+
+        if is_bundle_change_within_bundle_threshold(
+            bundle_analysis_comparison, user_config.warning_threshold
+        ):
+            self._notification_context.commit_status_level = CommitStatusLevel.INFO
+        elif user_config.status_level == "informational":
+            self._notification_context.commit_status_level = CommitStatusLevel.WARNING
+        else:
+            self._notification_context.commit_status_level = CommitStatusLevel.ERROR
+        return self
+
     def build_context(self) -> Self:
         super().build_context()
         async_to_sync(self.load_enriched_pull)()
@@ -190,6 +210,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
             self.load_bundle_comparison()
             .evaluate_has_enough_changes()
             .evaluate_should_use_upgrade_message()
+            .load_commit_status_level()
         )
 
     def get_result(self) -> BundleAnalysisPRCommentNotificationContext:
