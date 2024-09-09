@@ -184,7 +184,7 @@ class ReportBuilderSession(object):
 
     def create_coverage_line(
         self,
-        coverage: int,
+        coverage: int | str,
         coverage_type: CoverageType | None = None,
         labels_list_of_lists: list[str | SpecialLabelsEnum] | list[int] | None = None,
         partials=None,

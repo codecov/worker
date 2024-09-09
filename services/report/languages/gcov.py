@@ -43,16 +43,16 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Non
         return None
 
     settings = report_builder_session.yaml_field(("parsers", "gcov"))
-    branch_detection_method = read_yaml_field(
+    detect_branches_in_methods = read_yaml_field(
         settings, ("branch_detection", "method"), False
     )
-    branch_detection_loop = read_yaml_field(
+    detect_branches_in_loops = read_yaml_field(
         settings, ("branch_detection", "loop"), False
     )
-    branch_detection_condition = read_yaml_field(
+    detect_branches_in_conditions = read_yaml_field(
         settings, ("branch_detection", "conditional"), False
     )
-    branch_detection_macro = read_yaml_field(
+    detect_branches_in_macros = read_yaml_field(
         settings, ("branch_detection", "macro"), False
     )
 
@@ -96,21 +96,21 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Non
                 # class
                 if (
                     line_types[ln] == CoverageType.method
-                    and not branch_detection_method
+                    and not detect_branches_in_methods
                 ):
                     continue
                 # loop
                 elif detect_loop(data):
                     line_types[ln] = CoverageType.branch
-                    if not branch_detection_loop:
+                    if not detect_branches_in_loops:
                         continue
                 # conditional
                 elif detect_conditional(data):
                     line_types[ln] = CoverageType.branch
-                    if not branch_detection_condition:
+                    if not detect_branches_in_conditions:
                         continue
                 # else macro
-                elif not branch_detection_macro:
+                elif not detect_branches_in_macros:
                     continue
 
                 _cur_branch_detected = True  # proven true
