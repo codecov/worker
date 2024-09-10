@@ -1,58 +1,59 @@
 import re
-import typing
 
 from services.path_fixer.match import regexp_match_one
 
 
-class UserPathIncludes(object):
+class UserPathIncludes:
     """
-        This class has one purpose: To determine whether a specific path should
-            be included in the report or not/
+    This class has one purpose: To determine whether a specific path should
+    be included in the report or not/
 
-        Its usage is:
+    Its usage is:
 
-            path_patterns = ['.*', 'whatever']
-            upi = UserPathIncludes(path_patterns)
-            should_be_included = upi('sample/path/to/file.go')
-
-    Attributes:
-        excludes (typing.Sequence[str]): The patterns that should excluded
-        include_all (bool): Whether all path should be included except on `exclude` list
-        includes (typing.Sequence[str]): The patterns that should be included
-        path_patterns (typing.Sequence[str]): The paths inputted by the user
+        path_patterns = ['.*', 'whatever']
+        upi = UserPathIncludes(path_patterns)
+        should_be_included = upi('sample/path/to/file.go')
     """
 
-    def __init__(self, path_patterns: typing.Sequence[str], assume=True):
+    path_patterns: set[str]
+
+    includes: list[re.Pattern]
+    include_all: bool
+
+    excludes: list[re.Pattern]
+    exclude_all: bool
+
+    def __init__(self, path_patterns: set[str], assume=True):
         self.path_patterns = path_patterns
+        self.includes = []
+        self.include_all = False
+        self.excludes = []
+        self.exclude_all = False
+
         if not self.path_patterns:
             return
 
-        self.includes = set(filter(lambda p: not p.startswith("!"), self.path_patterns))
-        self.excludes = set(self.path_patterns) - self.includes
+        includes = set(p for p in path_patterns if not p.startswith("!"))
+        excludes = set(path_patterns) - includes
 
         # create lists of pass/fails
-        if ".*" in self.path_patterns:
+        if ".*" in path_patterns:
             # match everything, just make sure it is not negative
             self.include_all = True
-            self.includes = None
-        elif assume and len(self.includes) == 0:
+            self.includes = []
+        elif assume and len(includes) == 0:
             self.include_all = True
         else:
             self.include_all = False
-            self.includes = list(map(re.compile, self.includes))
+            self.includes = [re.compile(i) for i in includes]
 
         if "!.*" in self.path_patterns:
             self.exclude_all = False
         else:
-            self.excludes = list(
-                map(
-                    lambda p: re.compile(p[1:]),
-                    filter(lambda p: p.startswith("!"), self.path_patterns),
-                )
-            )
+            self.excludes = [re.compile(e[1:]) for e in excludes]
 
     def __call__(self, value: str) -> bool:
-        if not set(self.path_patterns):
+        if not self.path_patterns:
             return True
         if value:
             if self.include_all:

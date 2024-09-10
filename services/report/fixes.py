@@ -1,12 +1,10 @@
-from typing import Any, Callable, Dict
+from services.path_fixer import PathFixer
 
 
-def get_fixes_from_raw(content, fix: Callable) -> Dict[str, Dict[str, Any]]:
-    files = {}
-    files_long_comments = {}
+def get_fixes_from_raw(content: str, fix: PathFixer) -> dict[str, dict]:
+    files: dict[str, dict] = {}
+    files_long_comments: dict[str, tuple[list[int], list[int]]] = {}
     _cur_file = None
-    lines = None
-    ignore_this = None
 
     for line in content.splitlines():
         if line:
@@ -25,7 +23,9 @@ def get_fixes_from_raw(content, fix: Callable) -> Dict[str, Dict[str, Any]]:
                         _fixed = fix(filename)
                         if not _fixed:
                             continue
-                        lines = files.setdefault(_fixed, {"lines": set()})["lines"]
+                        lines: set[int] = files.setdefault(_fixed, {"lines": set()})[
+                            "lines"
+                        ]
 
                     if ":" not in line:
                         # multi line
