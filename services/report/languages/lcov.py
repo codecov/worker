@@ -4,14 +4,10 @@ from decimal import Decimal
 from io import BytesIO
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 log = logging.getLogger(__name__)
 
@@ -22,23 +18,22 @@ class LcovProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_txt(content, report_builder_session)
 
 
-def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> Report:
+def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> None:
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
     # merge same files
     for string in reports.split(b"\nend_of_record"):
-        report_builder_session.append(_process_file(string, report_builder_session))
+        if _file := _process_file(string, report_builder_session):
+            report_builder_session.append(_file)
 
-    return report_builder_session.output_report()
 
-
-def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
-    ignored_lines = report_builder_session.ignored_lines
+def _process_file(
+    doc: bytes, report_builder_session: ReportBuilderSession
+) -> ReportFile:
     _already_informed_of_negative_execution_count = False
     lines = {}
     branches = defaultdict(dict)
@@ -47,6 +42,7 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
     CPP = False
     skip_lines = []
     _file = None
+
     for encoded_line in BytesIO(doc):
         line = encoded_line.decode(errors="replace").rstrip("\n")
         if line == "" or ":" not in line:
@@ -66,19 +62,16 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
 
         elif method == "SF":
             """
-            For  each  source  file  referenced in the .da file, there is a section
+            For each source file referenced in the .da file, there is a section
             containing filename and coverage data:
 
             SF:<absolute path to the source file>
             """
             # file name
-            content = report_builder_session.path_fixer(content)
-            if content is None:
+            _file = report_builder_session.create_coverage_file(content)
+            if _file is None:
                 return None
 
-            _file = report_builder_session.file_class(
-                content, ignore=ignored_lines.get(content)
-            )
             JS = content[-3:] == ".js"
             CPP = content[-4:] == ".cpp"
 
@@ -120,9 +113,7 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
                     )
                     _already_informed_of_negative_execution_count = True
                 cov = 0
-            coverage_line = report_builder_session.create_coverage_line(
-                filename=_file.name, coverage=cov, coverage_type=CoverageType.line
-            )
+            coverage_line = report_builder_session.create_coverage_line(cov)
             _file.append(int(line), coverage_line)
 
         elif method == "FN" and not JS:
@@ -173,7 +164,9 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
                 )
 
     # remove skipped
-    [(branches.pop(sl, None), lines.pop(sl, None)) for sl in skip_lines]
+    for sl in skip_lines:
+        branches.pop(sl, None)
+        lines.pop(sl, None)
 
     methods = fln.values()
 
@@ -184,11 +177,13 @@ def _process_file(doc: bytes, report_builder_session: ReportBuilderSession):
         cov = "%s/%s" % (s, li)
 
         coverage_type = CoverageType.method if ln in methods else CoverageType.branch
-        _file[int(ln)] = report_builder_session.create_coverage_line(
-            filename=_file.name,
-            coverage=cov,
-            coverage_type=coverage_type,
-            missing_branches=(mb if mb != [] else None),
+        _file.append(
+            int(ln),
+            report_builder_session.create_coverage_line(
+                cov,
+                coverage_type,
+                missing_branches=(mb if mb != [] else None),
+            ),
         )
 
     return _file

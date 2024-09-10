@@ -1,17 +1,11 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
-from services.yaml import read_yaml_field
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class BullseyeProcessor(BaseLanguageProcessor):
@@ -20,24 +14,19 @@ class BullseyeProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        return from_xml(content, report_builder.create_report_builder_session(name))
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
-    path_fixer, ignored_lines, yaml = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-        report_builder_session.current_yaml,
-    )
-    if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
+    if max_age := report_builder_session.yaml_field(
+        ("codecov", "max_report_age"), "12h ago"
+    ):
         build_id = xml.attrib.get("buildId")
         # build_id format has timestamp at the end "4362c668_2020-10-28_17:55:47"
         timestamp = " ".join(build_id.split("_")[1:])
-        if timestamp and Date(timestamp) < read_yaml_field(
-            yaml, ("codecov", "max_report_age"), "12h ago"
-        ):
+        if timestamp and Date(timestamp) < max_age:
             raise ReportExpiredException("Bullseye report expired %s" % timestamp)
 
     for folder in xml.iter("{https://www.bullseye.com/covxml}folder"):
@@ -48,37 +37,35 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
             while element.getparent().tag == "{https://www.bullseye.com/covxml}folder":
                 element = element.getparent()
                 filepath = f'{element.attrib.get("name")}/{filepath}'
-            filename = path_fixer(filepath + file.attrib.get("name"))
-            if filename:
-                _file = report_builder_session.file_class(filename)
-                for function in file.iter("{https://www.bullseye.com/covxml}fn"):
-                    for probe in function.iter(
-                        "{https://www.bullseye.com/covxml}probe"
-                    ):
-                        attribs = probe.attrib
-                        ln = int(attribs["line"])
-                        if attribs["kind"] in ("condition", "decision", "switch-label"):
-                            _type = CoverageType.branch
+            filepath += file.attrib.get("name")
 
-                        elif attribs["kind"] == "function":
-                            _type = CoverageType.method
-                        else:
-                            _type = CoverageType.line
+            _file = report_builder_session.create_coverage_file(filepath)
+            if _file is None:
+                continue
 
-                        if attribs["event"] == "full":
-                            coverage = 1
-                        elif attribs["event"] == "none":
-                            coverage = 0
-                        else:
-                            coverage = "1/2"
-                        _file.append(
-                            ln,
-                            report_builder_session.create_coverage_line(
-                                filename=filename,
-                                coverage=coverage,
-                                coverage_type=_type,
-                            ),
-                        )
-                report_builder_session.append(_file)
-    report_builder_session.ignore_lines(ignored_lines)
-    return report_builder_session.output_report()
+            for function in file.iter("{https://www.bullseye.com/covxml}fn"):
+                for probe in function.iter("{https://www.bullseye.com/covxml}probe"):
+                    attribs = probe.attrib
+                    ln = int(attribs["line"])
+                    if attribs["kind"] in ("condition", "decision", "switch-label"):
+                        _type = CoverageType.branch
+
+                    elif attribs["kind"] == "function":
+                        _type = CoverageType.method
+                    else:
+                        _type = CoverageType.line
+
+                    if attribs["event"] == "full":
+                        coverage = 1
+                    elif attribs["event"] == "none":
+                        coverage = 0
+                    else:
+                        coverage = "1/2"
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            coverage,
+                            _type,
+                        ),
+                    )
+            report_builder_session.append(_file)

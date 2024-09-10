@@ -1,8 +1,9 @@
 import xml.etree.cElementTree as etree
 
 from services.report.languages import csharp
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 xml = """<?xml version="1.0" encoding="utf-8"?>
 <CoverageSession xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -71,17 +72,12 @@ class TestCSharp2(BaseTestCase):
             assert path in ("source",)
             return path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = csharp.from_xml(etree.fromstring(xml), report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        csharp.from_xml(etree.fromstring(xml), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        # import pprint
-        # pprint.pprint(processed_report['archive'])
-        expected_result_archive = {
+
+        assert processed_report["archive"] == {
             "source": [
                 (1, 2, None, [[0, 2, None, None, None]], None, None),
                 (2, 2, None, [[0, 2, None, None, None]], None, None),
@@ -92,4 +88,3 @@ class TestCSharp2(BaseTestCase):
                 (10, 2, None, [[0, 2, None, None, None]], None, None),
             ]
         }
-        assert expected_result_archive == processed_report["archive"]

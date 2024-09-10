@@ -720,14 +720,15 @@ class TestProcessReport(BaseTestCase):
         ],
     )
     def test_detect(self, lang, report):
-        with patch("services.report.languages.%s" % lang, return_value=lang) as func:
+        with patch("services.report.languages.%s" % lang) as func:
             res = process.process_report(
                 report=report,
                 report_builder=ReportBuilder(
                     current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
                 ),
             )
-            assert res == lang
+
+            assert res is not None
             assert func.called
 
     @pytest.mark.parametrize(

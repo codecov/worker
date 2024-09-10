@@ -1,17 +1,11 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
-from services.yaml import read_yaml_field
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class CloverProcessor(BaseLanguageProcessor):
@@ -20,9 +14,8 @@ class CloverProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_xml(content, report_builder_session)
 
 
@@ -40,49 +33,41 @@ def get_end_of_file(filename, xmlfile):
                 pass
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, yaml = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-        report_builder_session.current_yaml,
-    )
-
-    if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
+    if max_age := report_builder_session.yaml_field(
+        ("codecov", "max_report_age"), "12h ago"
+    ):
         try:
             timestamp = next(xml.iter("coverage")).get("generated")
             if "-" in timestamp:
                 t = timestamp.split("-")
                 timestamp = t[1] + "-" + t[0] + "-" + t[2]
-            if timestamp and Date(timestamp) < read_yaml_field(
-                yaml, ("codecov", "max_report_age"), "12h ago"
-            ):
+            if timestamp and Date(timestamp) < max_age:
                 # report expired over 12 hours ago
                 raise ReportExpiredException("Clover report expired %s" % timestamp)
         except StopIteration:
             pass
 
-    files = {}
-    for f in xml.iter("file"):
-        filename = f.attrib.get("path") or f.attrib["name"]
+    for file in xml.iter("file"):
+        filename = file.attrib.get("path") or file.attrib["name"]
 
         # skip empty file documents
         if (
             "{" in filename
             or ("/vendor/" in ("/" + filename) and filename.endswith(".php"))
-            or f.find("line") is None
+            or file.find("line") is None
         ):
             continue
 
-        if filename not in files:
-            files[filename] = report_builder_session.file_class(filename)
-
-        _file = files[filename]
+        _file = report_builder_session.create_coverage_file(filename)
+        if _file is None:
+            continue
 
         # fix extra lines
-        eof = get_end_of_file(filename, f)
+        eof = get_end_of_file(filename, file)
 
         # process coverage
-        for line in f.iter("line"):
+        for line in file.iter("line"):
             attribs = line.attrib
             ln = int(attribs["num"])
             complexity = None
@@ -113,16 +98,13 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
                 _type = CoverageType.line
 
             # add line to report
-            _file[ln] = report_builder_session.create_coverage_line(
-                coverage=coverage,
-                coverage_type=_type,
-                filename=filename,
-                complexity=complexity,
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    coverage,
+                    _type,
+                    complexity=complexity,
+                ),
             )
 
-    for f in files.values():
-        report_builder_session.append((f))
-    report_builder_session.resolve_paths([(f, path_fixer(f)) for f in files.keys()])
-    report_builder_session.ignore_lines(ignored_lines)
-
-    return report_builder_session.output_report()
+        report_builder_session.append(_file)
