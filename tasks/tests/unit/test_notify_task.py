@@ -2,7 +2,9 @@ import json
 from typing import Any
 from unittest.mock import MagicMock, call
 
+import httpx
 import pytest
+import respx
 from celery.exceptions import MaxRetriesExceededError, Retry
 from freezegun import freeze_time
 from shared.celery_config import (
@@ -15,6 +17,7 @@ from shared.torngit.exceptions import (
     TorngitClientGeneralError,
     TorngitServer5xxCodeError,
 )
+from shared.torngit.gitlab import Gitlab
 from shared.typings.oauth_token_types import Token
 from shared.typings.torngit import GithubInstallationInfo, TorngitInstanceData
 from shared.yaml import UserYaml
@@ -27,6 +30,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
+from database.tests.factories.core import ReportFactory, UploadFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
@@ -348,6 +352,54 @@ class TestNotifyTaskHelpers(object):
         mock_refresh_selection.assert_called_with(commit)
         mock_set_gh_app_for_commit.assert_called_with(12, commit)
 
+    @pytest.mark.asyncio
+    async def test_get_gitlab_extra_shas(self, dbsession):
+        commit = CommitFactory(
+            repository__owner__service="gitlab", repository__service_id=1000
+        )
+        dbsession.add(commit)
+        report = ReportFactory(commit=commit)
+        dbsession.add(report)
+        uploads = [UploadFactory(report=report, job_code=i) for i in range(3)]
+        dbsession.add_all(uploads)
+        dbsession.flush()
+        assert len(commit.report.uploads) == 3
+        with respx.mock:
+            respx.get("https://gitlab.com/api/v4/projects/1000/jobs/0").mock(
+                return_value=httpx.Response(
+                    status_code=200,
+                    json={
+                        "pipeline": {
+                            "id": 0,
+                            "project_id": 1000,
+                            "sha": commit.commitid,
+                        }
+                    },
+                )
+            )
+            respx.get("https://gitlab.com/api/v4/projects/1000/jobs/1").mock(
+                return_value=httpx.Response(
+                    status_code=200,
+                    json={
+                        "pipeline": {
+                            "id": 1,
+                            "project_id": 1000,
+                            "sha": "508c25daba5bbc77d8e7cf3c1917d5859153cfd3",
+                        }
+                    },
+                )
+            )
+            respx.get("https://gitlab.com/api/v4/projects/1000/jobs/2").mock(
+                return_value=httpx.Response(status_code=400, json={})
+            )
+            repository_service = Gitlab(token={"key": "some_token"})
+            task = NotifyTask()
+            assert await task.get_gitlab_extra_shas_to_notify(
+                commit, repository_service
+            ) == {
+                "508c25daba5bbc77d8e7cf3c1917d5859153cfd3",
+            }
+
 
 class TestNotifyTask(object):
     def test_simple_call_no_notifications(
@@ -523,7 +575,9 @@ class TestNotifyTask(object):
             ReportService, "get_existing_report_for_commit", return_value=Report()
         )
         mocked_fetch_pull.return_value = None
-        commit = CommitFactory.create(message="", pullid=None)
+        commit = CommitFactory.create(
+            message="", pullid=None, repository__owner__service="github"
+        )
         dbsession.add(commit)
         dbsession.flush()
 
