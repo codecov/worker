@@ -2,12 +2,11 @@ import copy
 import itertools
 import logging
 import sys
-import typing
 import uuid
 from dataclasses import dataclass
 from json import loads
 from time import time
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -62,15 +61,17 @@ from services.report.prometheus_metrics import (
     RAW_UPLOAD_RAW_REPORT_COUNT,
     RAW_UPLOAD_SIZE,
 )
-from services.report.raw_upload_processor import process_raw_upload
+from services.report.raw_upload_processor import (
+    process_raw_upload,
+)
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
 
 @dataclass
-class ProcessingError(object):
+class ProcessingError:
     code: str
-    params: Dict[str, Any]
+    params: dict[str, Any]
     is_retryable: bool = False
 
     def as_dict(self):
@@ -78,32 +79,17 @@ class ProcessingError(object):
 
 
 @dataclass
-class ProcessingResult(object):
-    report: Optional[Report]
+class ProcessingResult:
     session: Session
-    error: Optional[ProcessingError]
-    fully_deleted_sessions: typing.List[int]
-    partially_deleted_sessions: typing.List[int]
-    raw_report: ParsedRawReport
-    upload_obj: Upload
+    report: Report | None = None
+    error: ProcessingError | None = None
 
-    def as_dict(self):
-        # Weird flow for now in order to keep things compatible with previous logging
-        if self.error is not None:
-            return {
-                "successful": False,
-                "error": self.error.as_dict(),
-                "report": self.report,
-                "should_retry": False,
-                "raw_report": self.raw_report,
-                "upload_obj": self.upload_obj,
-            }
-        return {
-            "successful": True,
-            "report": self.report,
-            "raw_report": self.raw_report,
-            "upload_obj": self.upload_obj,
-        }
+
+@dataclass
+class RawReportInfo:
+    raw_report: ParsedRawReport | None = None
+    archive_url: str = ""
+    upload: str = ""
 
 
 log = logging.getLogger(__name__)
@@ -854,7 +840,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(
-        self, repo: Repository, upload: Upload, is_parallel=False, is_error_case=False
+        self, repo: Repository, upload: Upload, is_parallel=False
     ) -> ParsedRawReport:
         """Pulls the raw uploaded report from storage and parses it so it's
         easier to access different parts of the raw upload.
@@ -881,7 +867,7 @@ class ReportService(BaseReportService):
         # reports to a human readable version that doesn't include file fixes, so that's why copying is necessary.
         if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
             identifier=repo.repoid, default=False
-        ) and (not is_error_case):
+        ):
             parallel_url = archive_url.removesuffix(".txt") + "_PARALLEL.txt"
             log.info(
                 "In the parallel experiment for parsing raw report in storage",
@@ -939,19 +925,18 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def build_report_from_raw_content(
-        self, master: Optional[Report], upload: Upload, parallel_idx=None
+        self,
+        report: Report,
+        raw_report_info: RawReportInfo,
+        upload: Upload,
+        parallel_idx=None,
     ) -> ProcessingResult:
         """
-            Processes an upload on top of an existing report `master` and returns
-                a result, which could be successful or not
+        Processes an upload on top of an existing report `master` and returns
+        a result, which could be successful or not
 
-            Note that this function does not modify the `upload` object, as this should
-                be done by a separate function
-
-        Args:
-            master (Optional[Report]): The current report we are building on top of
-            reports (ParsedRawReport): The uploaded report string fetched and parsed
-            upload (Upload): The upload made by the user that we are processing
+        Note that this function does not modify the `upload` object, as this should
+        be done by a separate function
         """
         commit = upload.report.commit
         flags = upload.flag_names
@@ -973,10 +958,16 @@ class ReportService(BaseReportService):
             archive=archive_url,
             url=build_url,
         )
+        result = ProcessingResult(session=session)
+
+        raw_report_info.archive_url = archive_url
+        raw_report_info.upload = upload.external_id
+
         try:
-            raw_uploaded_report = self.parse_raw_report_from_storage(
+            raw_report = self.parse_raw_report_from_storage(
                 commit.repository, upload, is_parallel=parallel_idx is not None
             )
+            raw_report_info.raw_report = raw_report
         except FileNotInStorageError:
             log.info(
                 "Raw report file was not found",
@@ -989,31 +980,41 @@ class ReportService(BaseReportService):
                     in_parallel=parallel_idx is not None,
                 ),
             )
-            return ProcessingResult(
-                report=None,
-                session=session,
-                error=ProcessingError(
-                    code="file_not_in_storage",
-                    params={"location": archive_url},
-                    is_retryable=True,
-                ),
-                fully_deleted_sessions=None,
-                partially_deleted_sessions=None,
-                raw_report=None,
-                upload_obj=upload,
+            result.error = ProcessingError(
+                code="file_not_in_storage",
+                params={"location": archive_url},
+                is_retryable=True,
             )
+            return result
+        except Exception as e:
+            log.exception(
+                "Unknown error when fetching raw report from storage",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    archive_path=archive_url,
+                ),
+            )
+            result.error = ProcessingError(
+                code="unknown_storage",
+                params={"location": archive_url},
+                is_retryable=True,
+            )
+            return result
+
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
             with metrics.timer(f"{self.metrics_prefix}.process_report") as t:
-                result = process_raw_upload(
+                process_result = process_raw_upload(
                     self.current_yaml,
-                    master,
-                    raw_uploaded_report,
+                    report,
+                    raw_report,
                     flags,
                     session,
                     upload=upload,
                     parallel_idx=parallel_idx,
                 )
+                result.report = process_result.report
             log.info(
                 "Successfully processed report"
                 + (" (in parallel)" if parallel_idx is not None else ""),
@@ -1025,18 +1026,10 @@ class ReportService(BaseReportService):
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     timing_ms=t.ms,
-                    content_len=raw_uploaded_report.size,
+                    content_len=raw_report.size,
                 ),
             )
-            return ProcessingResult(
-                report=result.report,
-                session=session,
-                error=None,
-                fully_deleted_sessions=result.fully_deleted_sessions,
-                partially_deleted_sessions=result.partially_deleted_sessions,
-                raw_report=result.raw_report,
-                upload_obj=upload,
-            )
+            return result
         except ReportExpiredException as r:
             log.info(
                 "Report %s is expired",
@@ -1048,30 +1041,31 @@ class ReportService(BaseReportService):
                     file_name=r.filename,
                 ),
             )
-            return ProcessingResult(
-                report=None,
-                session=session,
-                error=ProcessingError(code="report_expired", params={}),
-                fully_deleted_sessions=None,
-                partially_deleted_sessions=None,
-                raw_report=raw_uploaded_report,
-                upload_obj=upload,
-            )
+            result.error = ProcessingError(code="report_expired", params={})
+            return result
         except ReportEmptyError:
             log.warning(
                 "Report %s is empty",
                 reportid,
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            return ProcessingResult(
-                report=None,
-                session=session,
-                error=ProcessingError(code="report_empty", params={}),
-                fully_deleted_sessions=None,
-                partially_deleted_sessions=None,
-                raw_report=raw_uploaded_report,
-                upload_obj=upload,
+            result.error = ProcessingError(code="report_empty", params={})
+            return result
+        except Exception as e:
+            log.exception(
+                "Unknown error when processing raw upload",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    archive_path=archive_url,
+                ),
             )
+            result.error = ProcessingError(
+                code="unknown_processing",
+                params={"location": archive_url},
+                is_retryable=True,
+            )
+            return result
 
     def update_upload_with_processing_result(
         self, upload_obj: Upload, processing_result: ProcessingResult

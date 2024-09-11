@@ -422,6 +422,12 @@ class TestTimeseriesService(object):
                         "flag_regexes": [],
                         "paths": [r"folder/*"],
                     },
+                    {  # testing duplicate component on purpose this was causing crashes
+                        "component_id": "all_settings",
+                        "name": "all settings",
+                        "flag_regexes": [],
+                        "paths": [r"folder/*"],
+                    },
                     {
                         "component_id": "path_not_found",
                         "name": "no expected covarage",

@@ -3,6 +3,8 @@ import xml.etree.cElementTree as etree
 from services.report.languages import vb2
 from test_utils.base import BaseTestCase
 
+from . import create_report_builder_session
+
 txt = """<?xml version="1.0" standalone="yes"?>
 <CoverageDSPriv>
   <Lines>
@@ -46,11 +48,11 @@ txt = """<?xml version="1.0" standalone="yes"?>
 
 class TestVBTwo(BaseTestCase):
     def test_report(self):
-        report = vb2.from_xml(etree.fromstring(txt), str, {}, 0)
+        report_builder_session = create_report_builder_session()
+        report = vb2.from_xml(etree.fromstring(txt), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "Source/Mobius/csharp/Tests.Common/RowHelper.cs": [
                 (260, 1, None, [[0, 1, None, None, None]], None, None),

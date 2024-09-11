@@ -1,14 +1,9 @@
 import re
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilderSession
 
 
 class LuaProcessor(BaseLanguageProcessor):
@@ -17,44 +12,37 @@ class LuaProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: bytes, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_txt(content, report_builder_session)
 
 
 docs = re.compile(r"^=+\n", re.M).split
 
 
-def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    filename = None
-    ignored_lines = report_builder_session.ignored_lines
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> None:
+    _file = None
     for string in docs(string.decode(errors="replace").replace("\t", " ")):
         string = string.rstrip()
         if string == "Summary":
-            filename = None
-            continue
+            _file = None
 
         elif string.endswith((".lua", ".lisp")):
-            filename = report_builder_session.path_fixer(string)
-            if filename is None:
-                continue
+            _file = report_builder_session.create_coverage_file(string)
 
-        elif filename:
-            _file = report_builder_session.file_class(
-                filename, ignore=ignored_lines.get(filename)
-            )
+        elif _file is not None:
             for ln, source in enumerate(string.splitlines(), start=1):
                 try:
                     cov = source.strip().split(" ")[0]
                     cov = 0 if cov[-2:] in ("*0", "0") else int(cov)
-                    _file[ln] = report_builder_session.create_coverage_line(
-                        filename=filename, coverage=cov, coverage_type=CoverageType.line
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            cov,
+                        ),
                     )
 
                 except Exception:
                     pass
 
             report_builder_session.append(_file)
-
-    return report_builder_session.output_report()

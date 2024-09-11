@@ -1,3 +1,7 @@
-| Bundle name | Size | Change |
+{% if status_level == "INFO" %}<details><summary>Detailed changes</summary>
+
+{% endif %}| Bundle name | Size | Change |
 | ----------- | ---- | ------ |{% for bundle_row in bundle_rows %}
-| {{bundle_row.bundle_name}}{% if bundle_row.is_cached %}*{% endif %} | {{bundle_row.bundle_size}} | {{bundle_row.change_size_readable}} {{bundle_row.change_icon}} |{% endfor %}
+| {{bundle_row.bundle_name}}{% if bundle_row.is_cached %}*{% endif %} | {{bundle_row.bundle_size}} | {{bundle_row.change_size_readable}} {{bundle_row.change_icon}} |{% endfor %}{% if status_level == "INFO" %}
+
+</details>{% endif %}

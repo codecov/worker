@@ -1,14 +1,10 @@
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilderSession
 
 
 class MonoProcessor(BaseLanguageProcessor):
@@ -17,29 +13,23 @@ class MonoProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
+    files: dict[str, ReportFile | None] = {}
+
     # loop through methods
     for method in xml.iter("method"):
-        # get file name
-        filename = path_fixer(method.attrib["filename"])
-        if filename is None:
+        filename = method.attrib["filename"]
+        if filename not in files:
+            _file = report_builder_session.create_coverage_file(filename)
+            files[filename] = _file
+        _file = files[filename]
+        if _file is None:
             continue
-
-        _file = report_builder_session.get_file(filename)
-        if not _file:
-            _file = report_builder_session.file_class(
-                name=filename, ignore=ignored_lines.get(filename)
-            )
 
         # loop through statements
         for line in method.iter("statement"):
@@ -49,12 +39,10 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
             _file.append(
                 int(line["line"]),
                 report_builder_session.create_coverage_line(
-                    filename=filename,
-                    coverage=coverage,
-                    coverage_type=CoverageType.line,
+                    coverage,
                 ),
             )
 
-        report_builder_session.append(_file)
-
-    return report_builder_session.output_report()
+    for _file in files.values():
+        if _file:
+            report_builder_session.append(_file)

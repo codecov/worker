@@ -1,14 +1,9 @@
 from typing import Dict, List, Optional, Union
 
 import sentry_sdk
-from shared.reports.resources import Report
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    SpecialLabelsEnum,
-)
+from services.report.report_builder import ReportBuilderSession, SpecialLabelsEnum
 
 COVERAGE_HIT = 1
 COVERAGE_MISS = 0
@@ -59,12 +54,11 @@ class PyCoverageProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: dict, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: dict, report_builder_session: ReportBuilderSession
+    ) -> None:
         # Compressed pycoverage files will include a labels_table
         # Mapping label_idx: int --> label: str
-        self.labels_table: Dict[int, str] = None
+        self.labels_table: dict[int, str] = None
         self.reverse_table = {}
         self.are_labels_already_encoded = False
         if "labels_table" in content:
@@ -74,41 +68,41 @@ class PyCoverageProcessor(BaseLanguageProcessor):
                 clean_label = self._normalize_label(testname)
                 report_builder_session.label_index[int(idx)] = clean_label
             self.are_labels_already_encoded = True
+
         for filename, file_coverage in content["files"].items():
-            fixed_filename = report_builder.path_fixer(filename)
-            if fixed_filename:
-                report_file = report_builder_session.file_class(fixed_filename)
-                lines_and_coverage = [
-                    (COVERAGE_HIT, ln) for ln in file_coverage["executed_lines"]
-                ] + [(COVERAGE_MISS, ln) for ln in file_coverage["missing_lines"]]
-                for cov, ln in lines_and_coverage:
-                    if report_builder_session.should_use_label_index:
-                        label_list_of_lists = [
-                            [single_id]
-                            for single_id in self._get_list_of_label_ids(
-                                report_builder_session.label_index,
-                                file_coverage.get("contexts", {}).get(str(ln), []),
-                            )
-                        ]
-                    else:
-                        label_list_of_lists = [
-                            [self._normalize_label(testname)]
-                            for testname in file_coverage.get("contexts", {}).get(
-                                str(ln), []
-                            )
-                        ]
-                    if ln > 0:
-                        report_file.append(
-                            ln,
-                            report_builder_session.create_coverage_line(
-                                fixed_filename,
-                                cov,
-                                coverage_type=CoverageType.line,
-                                labels_list_of_lists=label_list_of_lists,
-                            ),
+            _file = report_builder_session.create_coverage_file(filename)
+            if _file is None:
+                continue
+
+            lines_and_coverage = [
+                (COVERAGE_HIT, ln) for ln in file_coverage["executed_lines"]
+            ] + [(COVERAGE_MISS, ln) for ln in file_coverage["missing_lines"]]
+            for cov, ln in lines_and_coverage:
+                if report_builder_session.should_use_label_index:
+                    label_list_of_lists = [
+                        [single_id]
+                        for single_id in self._get_list_of_label_ids(
+                            report_builder_session.label_index,
+                            file_coverage.get("contexts", {}).get(str(ln), []),
                         )
-                report_builder_session.append(report_file)
+                    ]
+                else:
+                    label_list_of_lists = [
+                        [self._normalize_label(testname)]
+                        for testname in file_coverage.get("contexts", {}).get(
+                            str(ln), []
+                        )
+                    ]
+                if ln > 0:
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            cov,
+                            labels_list_of_lists=label_list_of_lists,
+                        ),
+                    )
+            report_builder_session.append(_file)
+
         # We don't need these anymore, so let them be removed by the garbage collector
         self.reverse_table = None
         self.labels_table = None
-        return report_builder_session.output_report()

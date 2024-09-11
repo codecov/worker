@@ -22,6 +22,7 @@ from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusNotificationContextBuilder,
 )
 from services.bundle_analysis.notify.types import NotificationUserConfig
+from services.seats import SeatActivationInfo, ShouldActivateSeat
 
 
 class TestBundleAnalysisPRCommentNotificationContext:
@@ -287,3 +288,56 @@ class TestBundleAnalysisPRCommentNotificationContext:
         assert context.bundle_analysis_report == other_context.bundle_analysis_report
         assert context.pull == other_context.pull
         assert other_context.bundle_analysis_comparison == fake_comparison
+
+    def test_evaluate_should_use_upgrade_message_no_pull(self, dbsession, mocker):
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict({})
+        builder = CommitStatusNotificationContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        builder._notification_context.pull = None
+        builder.evaluate_should_use_upgrade_message()
+        assert builder._notification_context.should_use_upgrade_comment is False
+
+    @pytest.mark.parametrize(
+        "activation_result, auto_activate_succeeds, expected",
+        [
+            (ShouldActivateSeat.AUTO_ACTIVATE, True, False),
+            (ShouldActivateSeat.AUTO_ACTIVATE, False, True),
+            (ShouldActivateSeat.MANUAL_ACTIVATE, False, True),
+            (ShouldActivateSeat.NO_ACTIVATE, False, False),
+        ],
+    )
+    def test_evaluate_should_use_upgrade_message(
+        self, activation_result, dbsession, auto_activate_succeeds, expected, mocker
+    ):
+        activation_result = SeatActivationInfo(
+            should_activate_seat=activation_result,
+            owner_id=1,
+            author_id=10,
+            reason="mocked",
+        )
+        mocker.patch(
+            "services.bundle_analysis.notify.contexts.commit_status.determine_seat_activation",
+            return_value=activation_result,
+        )
+        mocker.patch(
+            "services.bundle_analysis.notify.contexts.commit_status.activate_user",
+            return_value=auto_activate_succeeds,
+        )
+        mocker.patch(
+            "services.bundle_analysis.notify.contexts.commit_status.schedule_new_user_activated_task",
+            return_value=auto_activate_succeeds,
+        )
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict({})
+        builder = CommitStatusNotificationContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        mock_pull = MagicMock(
+            name="fake_pull",
+            database_pull=MagicMock(bundle_analysis_commentid=12345, id=12),
+        )
+        builder._notification_context.pull = mock_pull
+        builder.evaluate_should_use_upgrade_message()
+        assert builder._notification_context.should_use_upgrade_comment == expected

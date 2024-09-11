@@ -1,3 +1,4 @@
+from enum import Enum, auto
 from functools import cached_property
 from typing import Generic, Literal, Self, TypeVar
 
@@ -29,6 +30,17 @@ T = TypeVar("T")
 
 class ContextNotLoadedError(Exception):
     pass
+
+
+class CommitStatusLevel(Enum):
+    INFO = auto()
+    WARNING = auto()
+    ERROR = auto()
+
+    def to_str(self) -> Literal["success"] | Literal["failure"]:
+        if self.value == "ERROR":
+            return "failure"
+        return "success"
 
 
 class NotificationContextField(Generic[T]):

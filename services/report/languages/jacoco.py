@@ -3,18 +3,12 @@ from collections import defaultdict
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
-from shared.reports.resources import Report
 from shared.utils.merge import LineType, branch_type
 from timestring import Date
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
-from services.yaml import read_yaml_field
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 log = logging.getLogger(__name__)
 
@@ -25,13 +19,12 @@ class JacocoProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     """
     nr = line number
     mi = missed instructions
@@ -40,14 +33,12 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
     cb = covered branches
     """
     path_fixer = report_builder_session.path_fixer
-    yaml = report_builder_session.current_yaml
-    ignored_lines = report_builder_session.ignored_lines
-    if read_yaml_field(yaml, ("codecov", "max_report_age"), "12h ago"):
+    if max_age := report_builder_session.yaml_field(
+        ("codecov", "max_report_age"), "12h ago"
+    ):
         try:
             timestamp = next(xml.iter("sessioninfo")).get("start")
-            if timestamp and Date(timestamp) < read_yaml_field(
-                yaml, ("codecov", "max_report_age"), "12h ago"
-            ):
+            if timestamp and Date(timestamp) < max_age:
                 # report expired over 12 hours ago
                 raise ReportExpiredException("Jacoco report expired %s" % timestamp)
 
@@ -57,9 +48,11 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
     project = xml.attrib.get("name", "")
     project = "" if " " in project else project.strip("/")
 
-    jacoco_parser_settings = read_yaml_field(yaml, ("parsers", "jacoco")) or {}
+    partials_as_hits = report_builder_session.yaml_field(
+        ("parsers", "jacoco", "partials_as_hits"), False
+    )
 
-    def try_to_fix_path(path):
+    def try_to_fix_path(path: str) -> str | None:
         if project:
             # project/package/path
             filename = path_fixer("%s/%s" % (project, path))
@@ -103,8 +96,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
 
             method_complixity = file_method_complixity[source_name.split(".")[0]]
 
-            report_file_obj = report_builder_session.file_class(
-                filename, ignore=ignored_lines.get(filename)
+            _file = report_builder_session.create_coverage_file(
+                filename, do_fix_path=False
             )
 
             for line in source.iter("line"):
@@ -124,7 +117,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
                 if (
                     coverage_type == CoverageType.branch
                     and branch_type(cov) == LineType.partial
-                    and jacoco_parser_settings.get("partials_as_hits", False)
+                    and partials_as_hits
                 ):
                     cov = 1
 
@@ -134,11 +127,13 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
                     if complexity:
                         coverage_type = CoverageType.method
                     # add line to file
-                    report_file_obj[ln] = report_builder_session.create_coverage_line(
-                        filename,
-                        coverage=cov,
-                        coverage_type=coverage_type,
-                        complexity=complexity,
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            cov,
+                            coverage_type,
+                            complexity=complexity,
+                        ),
                     )
                 else:
                     log.warning(
@@ -146,6 +141,4 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession):
                     )
 
             # append file to report
-            report_builder_session.append(report_file_obj)
-
-    return report_builder_session.output_report()
+            report_builder_session.append(_file)

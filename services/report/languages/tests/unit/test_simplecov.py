@@ -1,9 +1,9 @@
-import pprint
 from json import loads
 
 from services.report.languages import simplecov
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 txt_v17 = """
 {
@@ -61,20 +61,17 @@ class TestSimplecovProcessor(BaseTestCase):
             ]
         }
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = simplecov.from_json(loads(txt_v17), report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        simplecov.from_json(loads(txt_v17), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        pprint.pprint(processed_report["archive"])
+
         assert expected_result_archive == processed_report["archive"]
 
-        report = simplecov.from_json(loads(txt_v18), report_builder_session)
+        simplecov.from_json(loads(txt_v18), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        pprint.pprint(processed_report["archive"])
+
         assert expected_result_archive == processed_report["archive"]
 
     def test_process(self):
@@ -90,11 +87,10 @@ class TestSimplecovProcessor(BaseTestCase):
             ]
         }
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
-        )
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
         processor = simplecov.SimplecovProcessor()
-        report = processor.process("filename", loads(txt_v17), report_builder)
+        processor.process(loads(txt_v17), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        pprint.pprint(processed_report["archive"])
+
         assert expected_result_archive == processed_report["archive"]

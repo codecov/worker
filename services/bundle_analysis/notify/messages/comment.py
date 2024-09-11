@@ -1,5 +1,5 @@
 import logging
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import sentry_sdk
 from django.template import loader
@@ -36,6 +36,9 @@ class BundleCommentTemplateContext(TypedDict):
     pull_url: str
     total_size_delta: int
     total_size_readable: str
+    total_percentage: str
+    status_level: Literal["INFO"] | Literal["WARNING"] | Literal["ERROR"]
+    warning_threshold_readable: str
     bundle_rows: list[BundleRow]
     has_cached_bundles: bool
 
@@ -62,12 +65,23 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         template = loader.get_template("bundle_analysis_notify/bundle_comment.md")
         total_size_delta = context.bundle_analysis_comparison.total_size_delta
         bundle_rows = self._create_bundle_rows(context.bundle_analysis_comparison)
+        warning_threshold = context.user_config.warning_threshold
+        if warning_threshold.type == "absolute":
+            warning_threshold_readable = bytes_readable(warning_threshold.threshold)
+        else:
+            warning_threshold_readable = str(round(warning_threshold.threshold)) + "%"
         context = BundleCommentTemplateContext(
             has_cached=any(row["is_cached"] for row in bundle_rows),
             bundle_rows=bundle_rows,
             pull_url=get_bundle_analysis_pull_url(pull=context.pull.database_pull),
             total_size_delta=total_size_delta,
+            status_level=context.commit_status_level.name,
+            total_percentage=str(
+                round(context.bundle_analysis_comparison.percentage_delta, 2)
+            )
+            + "%",
             total_size_readable=bytes_readable(total_size_delta),
+            warning_threshold_readable=warning_threshold_readable,
         )
         return template.render(context)
 

@@ -19,9 +19,12 @@ from helpers.exceptions import (
 )
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
-from services.report import ReportService
+from services.report import RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
-from services.report.raw_upload_processor import UploadProcessingResult
+from services.report.raw_upload_processor import (
+    SessionAdjustmentResult,
+    UploadProcessingResult,
+)
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
@@ -500,8 +503,10 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(ReportService, "build_report_from_raw_content")
-        mocked_2.side_effect = Exception("first", "aruba", "digimon")
+        mocked_2 = mocker.patch(
+            "services.report.process_raw_upload",
+            side_effect=Exception("first", "aruba", "digimon"),
+        )
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
         mocked_3.side_effect = celery.exceptions.Retry()
@@ -536,11 +541,11 @@ class TestUploadProcessorTask(object):
                 arguments_list=redis_queue,
             )
         assert exc.value.args == ("first", "aruba", "digimon")
-        mocked_2.assert_called_with(mocker.ANY, upload=upload, parallel_idx=mocker.ANY)
+        mocked_2.assert_called()
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
-        mocked_4.assert_called_with(commit.repository, upload, is_error_case=True)
+        mocked_4.assert_called_with(commit.repository, upload, is_parallel=False)
         mocked_5.assert_called()
 
     @pytest.mark.django_db(databases={"default"})
@@ -602,10 +607,7 @@ class TestUploadProcessorTask(object):
         false_report.append(false_report_file)
         mocked_2.side_effect = [
             UploadProcessingResult(
-                report=false_report,
-                fully_deleted_sessions=[],
-                partially_deleted_sessions=[],
-                raw_report=None,
+                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
             ),
             ReportExpiredException(),
         ]
@@ -668,8 +670,6 @@ class TestUploadProcessorTask(object):
                         "upload_pk": upload_2.id_,
                     },
                     "error": {"code": "report_expired", "params": {}},
-                    "report": None,
-                    "should_retry": False,
                     "successful": False,
                 },
             ]
@@ -713,20 +713,13 @@ class TestUploadProcessorTask(object):
             report_service=ReportService({"codecov": {"max_report_age": False}}),
             commit=commit,
             report=false_report,
+            raw_report_info=RawReportInfo(),
             upload=upload,
         )
-        expected_result = {
-            "error": {
-                "code": "file_not_in_storage",
-                "params": {"location": "locationlocation"},
-            },
-            "report": None,
-            "should_retry": False,
-            "successful": False,
-            "raw_report": None,
-            "upload_obj": upload,
+        assert result.error.as_dict() == {
+            "code": "file_not_in_storage",
+            "params": {"location": "locationlocation"},
         }
-        assert expected_result == result
         assert commit.state == "complete"
         assert upload.state == "error"
 
@@ -746,6 +739,7 @@ class TestUploadProcessorTask(object):
                 CommitFactory.create(),
                 Report(),
                 UploadFactory.create(),
+                RawReportInfo(),
             )
 
     @pytest.mark.django_db(databases={"default"})
@@ -769,10 +763,7 @@ class TestUploadProcessorTask(object):
         false_report.append(false_report_file)
         mocked_2.side_effect = [
             UploadProcessingResult(
-                report=false_report,
-                fully_deleted_sessions=[],
-                partially_deleted_sessions=[],
-                raw_report=None,
+                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
             ),
             ReportEmptyError(),
         ]
@@ -834,8 +825,6 @@ class TestUploadProcessorTask(object):
                         "upload_pk": upload_2.id_,
                     },
                     "error": {"code": "report_empty", "params": {}},
-                    "report": None,
-                    "should_retry": False,
                     "successful": False,
                 },
             ]
@@ -915,8 +904,6 @@ class TestUploadProcessorTask(object):
                         "upload_pk": upload_1.id_,
                     },
                     "error": {"code": "report_empty", "params": {}},
-                    "report": None,
-                    "should_retry": False,
                     "successful": False,
                 },
                 {
@@ -926,8 +913,6 @@ class TestUploadProcessorTask(object):
                         "upload_pk": upload_2.id_,
                     },
                     "error": {"code": "report_expired", "params": {}},
-                    "report": None,
-                    "should_retry": False,
                     "successful": False,
                 },
             ]
