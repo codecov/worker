@@ -986,6 +986,21 @@ class ReportService(BaseReportService):
                 is_retryable=True,
             )
             return result
+        except Exception as e:
+            log.exception(
+                "Unknown error when fetching raw report from storage",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    archive_path=archive_url,
+                ),
+            )
+            result.error = ProcessingError(
+                code="unknown_storage",
+                params={"location": archive_url},
+                is_retryable=True,
+            )
+            return result
 
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
@@ -1035,6 +1050,21 @@ class ReportService(BaseReportService):
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             result.error = ProcessingError(code="report_empty", params={})
+            return result
+        except Exception as e:
+            log.exception(
+                "Unknown error when processing raw upload",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    archive_path=archive_url,
+                ),
+            )
+            result.error = ProcessingError(
+                code="unknown_processing",
+                params={"location": archive_url},
+                is_retryable=True,
+            )
             return result
 
     def update_upload_with_processing_result(
