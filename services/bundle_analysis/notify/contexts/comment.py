@@ -49,7 +49,7 @@ class BundleAnalysisPRCommentNotificationContext(BaseBundleAnalysisNotificationC
     commit_status_level: CommitStatusLevel = NotificationContextField[
         CommitStatusLevel
     ]()
-    should_use_upgrade_comment: bool
+    should_use_upgrade_comment: bool = NotificationContextField[bool]()
 
 
 class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
@@ -59,6 +59,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         "user_config",
         "pull",
         "bundle_analysis_comparison",
+        "should_use_upgrade_comment",
     )
 
     def initialize(
