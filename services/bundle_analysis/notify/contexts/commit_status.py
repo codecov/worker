@@ -170,6 +170,9 @@ class CommitStatusNotificationContextBuilder(NotificationContextBuilder):
 
     @sentry_sdk.trace
     def evaluate_should_use_upgrade_message(self) -> Self:
+        if self._notification_context.pull is None:
+            self._notification_context.should_use_upgrade_comment = False
+            return self
         activate_seat_info = determine_seat_activation(self._notification_context.pull)
         match activate_seat_info.should_activate_seat:
             case ShouldActivateSeat.AUTO_ACTIVATE:
