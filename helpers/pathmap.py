@@ -32,7 +32,7 @@ def _get_best_match(path: str, possibilities: list[str]) -> str:
     Given a `path`, return the most similar one out of `possibilities`.
     """
 
-    best_match = (-1, "")
+    best_match = (-1.0, "")
     for possibility in possibilities:
         match = SequenceMatcher(None, path, possibility).ratio()
         if match > best_match[0]:
@@ -117,7 +117,7 @@ class Tree:
         # path was not resolved
         return None
 
-    def _drill(self, node: Node) -> str | None:
+    def _drill(self, node: Node) -> list[str] | None:
         """
         "Drill down" a straight branch of a tree, returning the first `full_paths`.
         """
@@ -136,7 +136,7 @@ class Tree:
         i=0,
         end=False,
         match=False,
-    ):
+    ) -> list[str]:
         """
         Performs a lookup in tree recursively
 
