@@ -15,10 +15,7 @@ log = logging.getLogger(__name__)
 
 class CoberturaProcessor(BaseLanguageProcessor):
     def matches_content(self, content: Element, first_line: str, name: str) -> bool:
-        return bool(
-            next(content.iter("coverage"), None)
-            or next(content.iter("scoverage"), None)
-        )
+        return content.tag in ("coverage", "scoverage")
 
     @sentry_sdk.trace
     def process(
@@ -45,14 +42,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
         ("codecov", "max_report_age"), "12h ago"
     ):
         try:
-            timestamp = next(xml.iter("coverage")).get("timestamp")
-        except StopIteration:
-            try:
-                timestamp = next(xml.iter("scoverage")).get("timestamp")
-            except StopIteration:
-                timestamp = None
-
-        try:
+            timestamp = xml.get("timestamp")
             parsed_datetime = Date(timestamp)
             is_valid_timestamp = True
         except TimestringInvalid:
@@ -75,15 +65,18 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
         _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
+        assert (
+            _file is not None
+        ), "`create_coverage_file` with pre-fixed path is infallible"
 
         for line in _class.iter("line"):
             _line = line.attrib
-            ln = _line["number"]
+            ln: str | int = _line["number"]
             if ln == "undefined":
                 continue
             ln = int(ln)
             if ln > 0:
-                coverage = None
+                coverage: str | int
                 _type = CoverageType.line
                 missing_branches = None
 
@@ -100,9 +93,9 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
                     coverage = Int(_line.get("hits"))
 
                 # [python] [scoverage] [groovy] Conditions
-                conditions = _line.get("missing-branches", None)
-                if conditions:
-                    conditions = conditions.split(",")
+                conditions_text = _line.get("missing-branches", None)
+                if conditions_text:
+                    conditions = conditions_text.split(",")
                     if len(conditions) > 1 and set(conditions) == set(("exit",)):
                         # python: "return [...] missed"
                         conditions = ["loop", "exit"]
@@ -179,15 +172,15 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
         # [scala] [scoverage]
         for stmt in _class.iter("statement"):
             # scoverage will have repeated data
-            stmt = stmt.attrib
-            if stmt.get("ignored") == "true":
+            attr = stmt.attrib
+            if attr.get("ignored") == "true":
                 continue
-            coverage = Int(stmt["invocation-count"])
-            line_no = int(stmt["line"])
+            coverage = Int(attr["invocation-count"])
+            line_no = int(attr["line"])
             coverage_type = CoverageType.line
-            if stmt["branch"] == "true":
+            if attr["branch"] == "true":
                 coverage_type = CoverageType.branch
-            elif stmt["method"]:
+            elif attr["method"]:
                 coverage_type = CoverageType.method
 
             _file.append(

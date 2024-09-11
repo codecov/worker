@@ -12,6 +12,7 @@ class XCodePlistProcessor(BaseLanguageProcessor):
             return name.endswith("xccoverage.plist")
         if content.find(b'<plist version="1.0">') > -1 and content.startswith(b"<?xml"):
             return True
+        return False
 
     @sentry_sdk.trace
     def process(

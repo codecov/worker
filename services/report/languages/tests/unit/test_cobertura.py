@@ -394,9 +394,13 @@ class TestCobertura(BaseTestCase):
 
     def test_matches_content(self):
         processor = cobertura.CoberturaProcessor()
-        content = etree.fromstring(xml % ("", int(time()), "", ""))
         first_line = xml.split("\n", 1)[0]
         name = "coverage.xml"
+
+        content = etree.fromstring(xml % ("", int(time()), "", ""))
+        assert processor.matches_content(content, first_line, name)
+
+        content = etree.fromstring(xml % ("s", int(time()), "", "s"))
         assert processor.matches_content(content, first_line, name)
 
     def test_not_matches_content(self):

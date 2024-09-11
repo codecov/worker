@@ -27,17 +27,18 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
         if filename not in files:
             _file = report_builder_session.create_coverage_file(filename)
             files[filename] = _file
+
         _file = files[filename]
         if _file is None:
             continue
 
         # loop through statements
         for line in method.iter("statement"):
-            line = line.attrib
-            coverage = int(line["counter"])
+            attr = line.attrib
+            coverage = int(attr["counter"])
 
             _file.append(
-                int(line["line"]),
+                int(attr["line"]),
                 report_builder_session.create_coverage_line(
                     coverage,
                 ),

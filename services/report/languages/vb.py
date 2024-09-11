@@ -31,14 +31,14 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
 
         # loop through each line
         for line in module.iter("range"):
-            line = line.attrib
-            _file = files.get(line["source_id"])
+            attr = line.attrib
+            _file = files.get(attr["source_id"])
             if _file is None:
                 continue
 
-            coverage = line["covered"]
-            coverage = 1 if coverage == "yes" else 0 if coverage == "no" else True
-            for ln in range(int(line["start_line"]), int(line["end_line"]) + 1):
+            cov_txt = attr["covered"]
+            coverage = 1 if cov_txt == "yes" else 0 if cov_txt == "no" else True
+            for ln in range(int(attr["start_line"]), int(attr["end_line"]) + 1):
                 _file.append(
                     ln,
                     report_builder_session.create_coverage_line(
