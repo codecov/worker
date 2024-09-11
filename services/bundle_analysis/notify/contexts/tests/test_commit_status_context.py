@@ -289,6 +289,16 @@ class TestBundleAnalysisPRCommentNotificationContext:
         assert context.pull == other_context.pull
         assert other_context.bundle_analysis_comparison == fake_comparison
 
+    def test_evaluate_should_use_upgrade_message_no_pull(self, dbsession, mocker):
+        head_commit, _ = get_commit_pair(dbsession)
+        user_yaml = UserYaml.from_dict({})
+        builder = CommitStatusNotificationContextBuilder().initialize(
+            head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        builder._notification_context.pull = None
+        builder.evaluate_should_use_upgrade_message()
+        assert builder._notification_context.should_use_upgrade_comment is False
+
     @pytest.mark.parametrize(
         "activation_result, auto_activate_succeeds, expected",
         [
