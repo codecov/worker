@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 """
 
 
-def read_yaml_field(yaml_dict: UserYaml, keys, _else=None) -> Any:
+def read_yaml_field(yaml_dict: UserYaml | Mapping[str, Any], keys, _else=None) -> Any:
     log.debug("Field %s requested", keys)
     try:
         for key in keys:

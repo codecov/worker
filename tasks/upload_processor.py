@@ -24,13 +24,13 @@ from helpers.parallel_upload_processing import (
     save_final_serial_report_results,
     save_incremental_report_results,
 )
+from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import ProcessingResult, RawReportInfo, Report, ReportService
 from services.repository import get_repo_provider_service
-from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -438,13 +438,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
         return processing_result
 
-    def should_delete_archive(self, commit_yaml: UserYaml) -> bool:
-        if get_config("services", "minio", "expire_raw_after_n_days"):
-            return True
-        return not read_yaml_field(
-            commit_yaml, ("codecov", "archive", "uploads"), _else=True
-        )
-
     @sentry_sdk.trace
     def postprocess_raw_reports(
         self,
@@ -452,7 +445,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit: Commit,
         reports: list[RawReportInfo],
     ):
-        should_delete_archive = self.should_delete_archive(report_service.current_yaml)
+        should_delete_archive = delete_archive_setting(report_service.current_yaml)
         archive_service = report_service.get_archive_service(commit.repository)
 
         if should_delete_archive:

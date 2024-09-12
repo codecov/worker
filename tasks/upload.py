@@ -17,10 +17,7 @@ from shared.config import get_config
 from shared.django_apps.codecov_metrics.service.codecov_metrics import (
     UserOnboardingMetricsService,
 )
-from shared.torngit.exceptions import (
-    TorngitClientError,
-    TorngitRepoNotFoundError,
-)
+from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
 from sqlalchemy.orm import Session
@@ -29,17 +26,13 @@ from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from helpers.checkpoint_logger import (
-    CheckpointLogger,
-    _kwargs_key,
-)
-from helpers.checkpoint_logger import (
-    from_kwargs as checkpoints_from_kwargs,
-)
+from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.parallel_upload_processing import get_parallel_session_ids
+from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
@@ -635,7 +628,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         do_parallel_processing = PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
             identifier=commit.repository.repoid
-        )
+        ) and not delete_archive_setting(commit_yaml)
 
         if not do_parallel_processing:
             return serial_tasks.apply_async()
