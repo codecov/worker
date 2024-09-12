@@ -28,8 +28,16 @@ class BundleCommentTemplateContext(TypedDict):
 
 
 class CommitStatusMessageStrategy(MessageStrategyInterface):
-    @sentry_sdk.trace
     def build_message(self, context: CommitStatusNotificationContext) -> str | bytes:
+        if context.should_use_upgrade_comment:
+            return self.build_upgrade_message(context)
+        else:
+            return self.build_default_message(context)
+
+    @sentry_sdk.trace
+    def build_default_message(
+        self, context: CommitStatusNotificationContext
+    ) -> str | bytes:
         template = loader.get_template(
             "bundle_analysis_notify/commit_status_summary.md"
         )
@@ -60,6 +68,13 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
             warning_threshold_readable=warning_threshold_readable,
         )
         return template.render(context)
+
+    @sentry_sdk.trace
+    def build_upgrade_message(self, context: CommitStatusNotificationContext) -> str:
+        author_username = context.pull.provider_pull["author"].get("username")
+        return (
+            f"Please activate user {author_username} to display a detailed status check"
+        )
 
     def _cache_key(self, context: CommitStatusNotificationContext) -> str:
         return make_hash_sha256(

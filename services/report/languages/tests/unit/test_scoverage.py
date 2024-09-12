@@ -1,8 +1,9 @@
 import xml.etree.cElementTree as etree
 
 from services.report.languages import scoverage
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 xml = """<?xml version="1.0" ?>
 <statements>
@@ -47,18 +48,6 @@ xml = """<?xml version="1.0" ?>
 </statements>
 """
 
-result = {
-    "files": {
-        "source.scala": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "3": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "2": {"c": "0/2", "t": "b", "s": [[0, "0/2", None, None, None]]},
-            }
-        }
-    }
-}
-
 
 class TestSCoverage(BaseTestCase):
     def test_report(self):
@@ -67,17 +56,11 @@ class TestSCoverage(BaseTestCase):
                 return None
             return path
 
-        report_builder = ReportBuilder(
-            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = scoverage.from_xml(etree.fromstring(xml), report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        scoverage.from_xml(etree.fromstring(xml), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "source.scala": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),

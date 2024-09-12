@@ -44,17 +44,25 @@ def _sync_repo(repository: Repository):
 
 
 @event.listens_for(Repository, "after_insert")
-def after_insert_repo(mapper, connection, target):
-    log.info("After insert signal")
+def after_insert_repo(mapper, connection, target: Repository):
+    log.info("After insert signal", extra=dict(repoid=target.repoid))
     _sync_repo(target)
 
 
 @event.listens_for(Repository, "after_update")
-def after_update_repo(mapper, connection, target):
+def after_update_repo(mapper, connection, target: Repository):
     state = inspect(target)
 
     for attr in state.attrs:
-        if attr.key in ["name", "upload_token"] and attr.history.has_changes():
-            log.info("After update signal")
-            _sync_repo(target)
-            break
+        if attr.key in ["name", "upload_token"]:
+            history = attr.history
+            # Detects if there are changes and if said changes are different.
+            # has_changes() is True when you update the an entry with the same value,
+            # so we must ensure those values are different to trigger the signal
+            if history.has_changes() and history.deleted and history.added:
+                old_value = history.deleted[0]
+                new_value = history.added[0]
+                if old_value != new_value:
+                    log.info("After update signal", extra=dict(repoid=target.repoid))
+                    _sync_repo(target)
+                    break

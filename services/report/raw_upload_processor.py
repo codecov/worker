@@ -42,26 +42,24 @@ def invert_pattern(string: str) -> str:
 
 
 @dataclass
-class UploadProcessingResult(object):
-    __slots__ = (
-        "report",
-        "fully_deleted_sessions",
-        "partially_deleted_sessions",
-        "raw_report",
-    )
-    report: Report
-    fully_deleted_sessions: typing.List[int]
-    partially_deleted_sessions: typing.List[int]
-    raw_report: ParsedRawReport
+class SessionAdjustmentResult:
+    fully_deleted_sessions: list[int]
+    partially_deleted_sessions: list[int]
+
+
+@dataclass
+class UploadProcessingResult:
+    report: Report  # NOTE: this is just returning the input argument, and primarily used in tests
+    session_adjustment: SessionAdjustmentResult  # NOTE: this is only ever used in tests
 
 
 @sentry_sdk.trace
 def process_raw_upload(
     commit_yaml,
-    original_report,
-    reports: ParsedRawReport,
+    report: Report,
+    raw_reports: ParsedRawReport,
     flags,
-    session=None,
+    session: Session,
     upload: Upload = None,
     parallel_idx=None,
 ) -> UploadProcessingResult:
@@ -70,16 +68,10 @@ def process_raw_upload(
     # ----------------------
     # Extract `git ls-files`
     # ----------------------
-    if reports.has_toc():
-        toc = reports.get_toc()
-    if reports.has_env():
-        env = reports.get_env()
-
-    # --------------------
-    # Create Master Report
-    # --------------------
-    if not original_report:
-        original_report = Report()
+    if raw_reports.has_toc():
+        toc = raw_reports.get_toc()
+    if raw_reports.has_env():
+        env = raw_reports.get_env()
 
     path_fixer = PathFixer.init_from_user_yaml(
         commit_yaml=commit_yaml, toc=toc, flags=flags
@@ -88,13 +80,12 @@ def process_raw_upload(
     # ------------------
     # Extract bash fixes
     # ------------------
-    if reports.has_report_fixes():
-        ignored_file_lines = reports.get_report_fixes(path_fixer)
+    if raw_reports.has_report_fixes():
+        ignored_file_lines = raw_reports.get_report_fixes(path_fixer)
     else:
         ignored_file_lines = None
 
-    session = session or Session()
-    # Get a sesisonid to merge into
+    # Get a sessionid to merge into
     # anything merged into the original_report
     # will take on this sessionid
     # But we don't actually merge yet in case the report is empty.
@@ -103,7 +94,7 @@ def process_raw_upload(
     if parallel_idx is not None:
         sessionid = parallel_idx
     else:
-        sessionid = original_report.next_session_number()
+        sessionid = report.next_session_number()
     session.id = sessionid
     if env:
         session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
@@ -120,7 +111,7 @@ def process_raw_upload(
         )
     )
     # [javascript] check for both coverage.json and coverage/coverage.lcov
-    for report_file in reports.get_uploaded_files():
+    for report_file in raw_reports.get_uploaded_files():
         if report_file.filename == "coverage/coverage.json":
             skip_files.add("coverage/coverage.lcov")
     temporary_report = Report()
@@ -139,7 +130,7 @@ def process_raw_upload(
     # Process reports
     # ---------------
     ignored_lines = ignored_file_lines or {}
-    for report_file in reports.get_uploaded_files():
+    for report_file in raw_reports.get_uploaded_files():
         current_filename = report_file.filename
         if report_file.contents:
             if current_filename in skip_files:
@@ -156,18 +147,18 @@ def process_raw_upload(
                 should_use_encoded_labels,
             )
             try:
-                report = process_report(
+                report_from_file = process_report(
                     report=report_file, report_builder=report_builder_to_use
                 )
             except ReportExpiredException as r:
                 r.filename = current_filename
                 raise
-            if report:
+            if report_from_file:
                 if should_use_encoded_labels:
                     # Copies the labels from report into temporary_report
                     # If needed
-                    make_sure_label_indexes_match(temporary_report, report)
-                temporary_report.merge(report, joined=True)
+                    make_sure_label_indexes_match(temporary_report, report_from_file)
+                temporary_report.merge(report_from_file, joined=True)
             path_fixer_to_use.log_abnormalities()
 
     actual_path_fixes = {
@@ -197,34 +188,22 @@ def process_raw_upload(
         temporary_report.labels_index = None
     # Now we actually add the session to the original_report
     # Because we know that the processing was successful
-    sessionid, session = original_report.add_session(
+    sessionid, session = report.add_session(
         session, use_id_from_session=parallel_idx is not None
     )
     # Adjust sessions removed carryforward sessions that are being replaced
-    session_manipulation_result = _adjust_sessions(
-        original_report,
+    session_adjustment = _adjust_sessions(
+        report,
         temporary_report,
         to_merge_session=session,
         current_yaml=commit_yaml,
         upload=upload,
     )
-    original_report.merge(temporary_report, joined=joined)
+    report.merge(temporary_report, joined=joined)
     session.totals = temporary_report.totals
-    return UploadProcessingResult(
-        report=original_report,
-        fully_deleted_sessions=session_manipulation_result.fully_deleted_sessions,
-        partially_deleted_sessions=session_manipulation_result.partially_deleted_sessions,
-        raw_report=reports,
-    )
+    return UploadProcessingResult(report=report, session_adjustment=session_adjustment)
 
 
-@dataclass
-class SessionAdjustmentResult(object):
-    fully_deleted_sessions: set
-    partially_deleted_sessions: set
-
-
-# RUSTIFYME
 @sentry_sdk.trace
 def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool:
     """Makes sure that the original_report (that was pulled from DB)
@@ -275,7 +254,6 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
                 report_line.datapoints.sort(key=lambda x: x.key_sorting_tuple())
 
 
-# RUSTIFYME
 @sentry_sdk.trace
 def make_sure_label_indexes_match(
     original_report: Report, to_merge_report: Report
@@ -329,15 +307,13 @@ def make_sure_label_indexes_match(
                     ]
 
 
-# RUSTIFYME
 @sentry_sdk.trace
 def _adjust_sessions(
     original_report: Report,
     to_merge_report: Report,
     to_merge_session,
     current_yaml,
-    *,
-    upload: Upload = None,
+    upload: Upload | None = None,
 ):
     session_ids_to_fully_delete = []
     session_ids_to_partially_delete = []
@@ -417,7 +393,7 @@ def _adjust_sessions(
     )
 
 
-def _possibly_log_pathfixer_unusual_results(path_fixer, sessionid):
+def _possibly_log_pathfixer_unusual_results(path_fixer: PathFixer, sessionid: int):
     if path_fixer.calculated_paths.get(None):
         ignored_files = sorted(path_fixer.calculated_paths.pop(None))
         log.info(

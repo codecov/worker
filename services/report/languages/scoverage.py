@@ -2,14 +2,10 @@ from xml.etree.ElementTree import Element
 
 import sentry_sdk
 from shared.helpers.numeric import maxint
-from shared.reports.resources import Report
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 
 
 class SCoverageProcessor(BaseLanguageProcessor):
@@ -18,22 +14,18 @@ class SCoverageProcessor(BaseLanguageProcessor):
 
     @sentry_sdk.trace
     def process(
-        self, name: str, content: Element, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_xml(content, report_builder_session)
 
 
-def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
+    path_fixer = report_builder_session.path_fixer
 
     ignore = []
     cache_fixes = {}
     _cur_file_name = None
-    files = {}
+    files: dict[str, ReportFile] = {}
     for statement in xml.iter("statement"):
         # Determine the path
         unfixed_path = next(statement.iter("source")).text
@@ -58,12 +50,12 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
         # Get the file
         if filename != _cur_file_name:
             _cur_file_name = filename
-            _file = files.get(filename)
-            if not _file:
-                _file = report_builder_session.file_class(
-                    name=filename, ignore=ignored_lines.get(filename)
+            if filename not in files:
+                _file = report_builder_session.create_coverage_file(
+                    filename, do_fix_path=False
                 )
                 files[filename] = _file
+            _file = files[filename]
 
         # Add the line
         ln = int(next(statement.iter("line")).text)
@@ -76,20 +68,21 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> Repo
 
         if next(statement.iter("branch")).text == "true":
             cov = "%s/2" % hits
-            _file[ln] = report_builder_session.create_coverage_line(
-                filename=filename,
-                coverage=cov,
-                coverage_type=CoverageType.branch,
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    cov,
+                    CoverageType.branch,
+                ),
             )
         else:
             cov = maxint(hits)
-            _file[ln] = report_builder_session.create_coverage_line(
-                filename=filename,
-                coverage=cov,
-                coverage_type=CoverageType.line,
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    cov,
+                ),
             )
 
-    for v in files.values():
-        report_builder_session.append(v)
-
-    return report_builder_session.output_report()
+    for _file in files.values():
+        report_builder_session.append(_file)

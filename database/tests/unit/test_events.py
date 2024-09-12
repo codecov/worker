@@ -22,7 +22,7 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
     publish = mocker.patch("google.cloud.pubsub_v1.PublisherClient.publish")
 
     # this triggers the publish via SQLAlchemy events (after_insert)
-    repo = RepositoryFactory(repoid=91728376)
+    repo = RepositoryFactory(repoid=91728376, name="test-123")
     dbsession.add(repo)
     dbsession.commit()
 
@@ -33,8 +33,15 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
 
     publish = mocker.patch("google.cloud.pubsub_v1.PublisherClient.publish")
 
+    # Synchronize object flush for history.deleted to be perceived by sqlalchemy
+    dbsession.refresh(repo)
+
     # this triggers the publish via SQLAlchemy events (after_update)
-    repo.name = "testing"
+    repo.name = "test-456"
+    dbsession.commit()
+
+    # same name shouldn't trigger (after_update)
+    repo.name = "test-456"
     dbsession.commit()
 
     # this wouldn't trigger the publish via SQLAlchemy events (after_update) since it's an unimportant attribute

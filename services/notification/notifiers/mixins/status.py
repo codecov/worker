@@ -9,7 +9,9 @@ log = logging.getLogger(__name__)
 
 
 class StatusPatchMixin(object):
-    async def get_patch_status(self, comparison) -> Tuple[str, str]:
+    async def get_patch_status(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> Tuple[str, str]:
         threshold = self.notifier_yaml_settings.get("threshold", "0.0")
 
         # check if user has erroneously added a % to this input and fix
@@ -21,8 +23,7 @@ class StatusPatchMixin(object):
         except (InvalidOperation, TypeError):
             threshold = Decimal("0.0")
 
-        diff = await comparison.get_diff(use_original_base=True)
-        totals = comparison.head.report.apply_diff(diff)
+        totals = await comparison.get_patch_totals()
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
             target_coverage = Decimal(
                 str(self.notifier_yaml_settings.get("target")).replace("%", "")

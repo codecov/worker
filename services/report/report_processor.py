@@ -209,11 +209,14 @@ def process_report(
             processor=processor_name
         ).time():
             try:
-                res = processor.process(report_filename, parsed_report, report_builder)
+                report_builder_session = report_builder.create_report_builder_session(
+                    report_filename
+                )
+                processor.process(parsed_report, report_builder_session)
                 RAW_REPORT_PROCESSOR_COUNTER.labels(
                     processor=processor_name, result="success"
                 ).inc()
-                return res
+                return report_builder_session.output_report()
             except CorruptRawReportError as e:
                 log.warning(
                     "Processor matched file but later a problem with file was discovered",

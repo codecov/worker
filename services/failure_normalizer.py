@@ -46,7 +46,7 @@ class FailureNormalizer:
     Usage:
 
     dict_of_regex_strings = [
-        "DATE": r"(\d{4}-\d{2}-\d{2})",
+        "DATE": r"(\\d{4}-\\d{2}-\\d{2})",
     ]
 
     f = FailureNormalizer(dict_of_regex_strings)

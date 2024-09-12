@@ -3,9 +3,9 @@ import os.path
 import random
 from collections import defaultdict
 from pathlib import PurePath
-from typing import Optional, Sequence
 
 import sentry_sdk
+from shared.yaml import UserYaml
 
 from helpers.pathmap import Tree
 from services.path_fixer.fixpaths import remove_known_bad_paths
@@ -29,32 +29,40 @@ class PathFixer(object):
     Also applies any "ignore" and "paths" yaml fields to determine which files to include in the report.
     """
 
+    tree: Tree | None
+
     @classmethod
     @sentry_sdk.trace
     def init_from_user_yaml(
-        cls, commit_yaml: dict, toc: Sequence[str], flags: Sequence, extra_fixes=None
+        cls,
+        commit_yaml: UserYaml,
+        toc: list[str],
+        flags: list[str] | None = None,
+        extra_fixes: list[str] | None = None,
     ):
         """
         :param commit_yaml: Codecov yaml file in effect for this commit.
         :param toc: List of files prepended to the uploaded report. Not all report formats provide this.
         :param flags: Coverage flags specified by the user, if any.
         """
-        path_patterns = list(
-            map(invert_pattern, read_yaml_field(commit_yaml, ("ignore",)) or [])
-        )
-        if flags:
-            for flag in flags:
-                flag_configuration = commit_yaml.get_flag_configuration(flag) or {}
-                path_patterns.extend(
-                    list(map(invert_pattern, flag_configuration.get("ignore") or []))
-                )
-                path_patterns.extend(flag_configuration.get("paths") or [])
+        ignore = read_yaml_field(commit_yaml, ("ignore",)) or []
+        path_patterns = [invert_pattern(p) for p in ignore]
+
+        for flag in flags or []:
+            flag_configuration = commit_yaml.get_flag_configuration(flag) or {}
+            path_patterns.extend(
+                invert_pattern(p) for p in flag_configuration.get("ignore") or []
+            )
+            path_patterns.extend(flag_configuration.get("paths") or [])
+
         disable_default_path_fixes = read_yaml_field(
             commit_yaml, ("codecov", "disable_default_path_fixes")
         )
         yaml_fixes = read_yaml_field(commit_yaml, ("fixes",)) or []
+
         if extra_fixes:
             yaml_fixes.extend(extra_fixes)
+
         return cls(
             yaml_fixes=yaml_fixes,
             path_patterns=path_patterns,
@@ -63,9 +71,13 @@ class PathFixer(object):
         )
 
     def __init__(
-        self, yaml_fixes, path_patterns, toc, should_disable_default_pathfixes=False
+        self,
+        yaml_fixes: list[str],
+        path_patterns: list[str],
+        toc: list[str],
+        should_disable_default_pathfixes=False,
     ) -> None:
-        self.calculated_paths = defaultdict(set)
+        self.calculated_paths: dict[str | None, set[str]] = defaultdict(set)
         self.toc = toc or []
 
         self.yaml_fixes = yaml_fixes or []
@@ -80,7 +92,7 @@ class PathFixer(object):
         else:
             self.tree = None
 
-    def clean_path(self, path: str) -> Optional[str]:
+    def clean_path(self, path: str | None) -> str | None:
         if not path:
             return None
         path = os.path.relpath(path.replace("\\", "/").lstrip("./").lstrip("../"))
@@ -101,7 +113,7 @@ class PathFixer(object):
             return None
         return path
 
-    def __call__(self, path: str, bases_to_try=None) -> str:
+    def __call__(self, path: str, bases_to_try=None) -> str | None:
         res = self.clean_path(path)
         self.calculated_paths[res].add(path)
         return res
@@ -113,14 +125,14 @@ class PathFixer(object):
 class BasePathAwarePathFixer(PathFixer):
     def __init__(self, original_path_fixer, base_path) -> None:
         self.original_path_fixer = original_path_fixer
-        self.unexpected_results = []
+        self.unexpected_results: list[dict] = []
 
         # base_path argument is the file path after the "# path=" in the report containing report location, if provided.
         # to get the base path we use, strip the coverage report from the path to get the base path
         # e.g.: "path/to/coverage.xml" --> "path/to/"
-        self.base_path = PurePath(base_path).parent if base_path is not None else None
+        self.base_path = [PurePath(base_path).parent] if base_path is not None else []
 
-    def __call__(self, path: str, *, bases_to_try: Sequence[str] = None) -> str:
+    def __call__(self, path: str, bases_to_try: list[str] | None = None) -> str | None:
         original_path_fixer_result = self.original_path_fixer(path)
         if (
             original_path_fixer_result is not None
@@ -129,7 +141,7 @@ class BasePathAwarePathFixer(PathFixer):
         ):
             return original_path_fixer_result
         if not os.path.isabs(path):
-            all_base_paths_to_try = [self.base_path] + (
+            all_base_paths_to_try = self.base_path + (
                 bases_to_try if bases_to_try is not None else []
             )
             for base_path in all_base_paths_to_try:

@@ -3,7 +3,9 @@ import xml.etree.cElementTree as etree
 from services.report.languages import vb
 from test_utils.base import BaseTestCase
 
-txt = """<?xml version="1.0" encoding="UTF-8" ?>
+from . import create_report_builder_session
+
+txt = """<?xml version="1.0" encoding="UTF-8"?>
 <results>
   <modules>
     <module name="riosock.dll" path="riosock.dll" id="A8980752D35C194D988F77B70FC7950101000000" block_coverage="59.29" line_coverage="66.67" blocks_covered="166" blocks_not_covered="114" lines_covered="186" lines_partially_covered="4" lines_not_covered="89">
@@ -29,9 +31,9 @@ txt = """<?xml version="1.0" encoding="UTF-8" ?>
         </function>
       </functions>
       <source_files>
-        <source_file id="0" path="Source\Mobius\csharp\Tests.Common\RowHelper.cs">
+        <source_file id="0" path="Source\\Mobius\\csharp\\Tests.Common\\RowHelper.cs">
         </source_file>
-        <source_file id="1" path="Source\Mobius\csharp\Tests.Common\Picklers.cs">
+        <source_file id="1" path="Source\\Mobius\\csharp\\Tests.Common\\Picklers.cs">
         </source_file>
       </source_files>
     </module>
@@ -42,11 +44,11 @@ txt = """<?xml version="1.0" encoding="UTF-8" ?>
 
 class TestVBOne(BaseTestCase):
     def test_report(self):
-        report = vb.from_xml(etree.fromstring(txt), str, {}, 0)
+        report_builder_session = create_report_builder_session()
+        vb.from_xml(etree.fromstring(txt), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "Source/Mobius/csharp/Tests.Common/Picklers.cs": [
                 (42, 1, None, [[0, 1, None, None, None]], None, None),

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from asgiref.sync import async_to_sync
@@ -7,6 +7,7 @@ from shared.typings.torngit import TorngitInstanceData
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from database.tests.factories.core import PullFactory
 from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
     get_enriched_pull_setting_up_mocks,
@@ -14,12 +15,14 @@ from services.bundle_analysis.notify.conftest import (
     save_mock_bundle_analysis_report,
 )
 from services.bundle_analysis.notify.contexts.commit_status import (
+    CommitStatusNotificationContext,
     CommitStatusNotificationContextBuilder,
 )
 from services.bundle_analysis.notify.messages.commit_status import (
     CommitStatusMessageStrategy,
 )
 from services.notification.notifiers.base import NotificationResult
+from services.seats import SeatActivationInfo, ShouldActivateSeat
 
 
 class FakeRedis(object):
@@ -181,6 +184,12 @@ class TestCommitStatusMessage:
             "services.bundle_analysis.notify.contexts.commit_status.fetch_and_update_pull_request_information_from_commit",
             return_value=None,
         )
+        mocker.patch(
+            "services.bundle_analysis.notify.contexts.commit_status.determine_seat_activation",
+            return_value=SeatActivationInfo(
+                should_activate_seat=ShouldActivateSeat.NO_ACTIVATE
+            ),
+        )
         user_yaml = UserYaml.from_dict({})
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
@@ -263,4 +272,23 @@ class TestCommitStatusMessage:
             notification_attempted=False,
             notification_successful=False,
             explanation="payload_unchanged",
+        )
+
+
+class TestCommitStatusUpgradeMessage:
+    def test_build_upgrade_message(self, dbsession):
+        head_commit, _ = get_commit_pair(dbsession)
+        context = CommitStatusNotificationContext(
+            head_commit, GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        context.should_use_upgrade_comment = True
+        context.pull = MagicMock(
+            name="fake_pull",
+            database_pull=PullFactory(),
+            provider_pull={"author": {"username": "PR_author_username"}},
+        )
+        message = CommitStatusMessageStrategy().build_message(context)
+        assert (
+            message
+            == "Please activate user PR_author_username to display a detailed status check"
         )

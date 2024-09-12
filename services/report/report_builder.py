@@ -1,7 +1,7 @@
 import dataclasses
 import logging
 from enum import Enum
-from typing import List, Union
+from typing import Any, List, Sequence
 
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import CoverageDatapoint
@@ -9,6 +9,7 @@ from shared.yaml.user_yaml import UserYaml
 
 from helpers.labels import SpecialLabelsEnum
 from services.path_fixer import PathFixer
+from services.yaml.reader import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -33,47 +34,27 @@ class ReportBuilderSession(object):
         report_filepath: str,
         should_use_label_index: bool = False,
     ):
+        self.filepath = report_filepath
         self._report_builder = report_builder
-        self._report_filepath = report_filepath
         self._report = Report()
         self.label_index = {}
         self._present_labels = set()
         self.should_use_label_index = should_use_label_index
 
     @property
-    def file_class(self):
-        return self._report.file_class
-
-    @property
-    def filepath(self):
-        return self._report_filepath
-
-    @property
     def path_fixer(self):
         return self._report_builder.path_fixer
-
-    @property
-    def sessionid(self):
-        return self._report_builder.sessionid
-
-    @property
-    def current_yaml(self):
-        return self._report_builder.current_yaml
-
-    @property
-    def ignored_lines(self):
-        return self._report_builder.ignored_lines
-
-    def ignore_lines(self, *args, **kwargs):
-        return self._report.ignore_lines(*args, **kwargs)
 
     def resolve_paths(self, paths):
         return self._report.resolve_paths(paths)
 
-    def get_file(self, filename):
+    def yaml_field(self, keys: Sequence[str], default: Any = None) -> Any:
+        return read_yaml_field(self._report_builder.current_yaml, keys, default)
+
+    def get_file(self, filename: str) -> ReportFile | None:
         return self._report.get(filename)
 
-    def append(self, file):
+    def append(self, file: ReportFile):
         if not self.should_use_label_index:
             # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
             if file is not None:
@@ -190,24 +171,32 @@ class ReportBuilderSession(object):
             ]
         return [datapoint]
 
+    def create_coverage_file(
+        self, path: str, do_fix_path: bool = True
+    ) -> ReportFile | None:
+        fixed_path = self._report_builder.path_fixer(path) if do_fix_path else path
+        if not fixed_path:
+            return None
+
+        return ReportFile(
+            fixed_path, ignore=self._report_builder.ignored_lines.get(fixed_path)
+        )
+
     def create_coverage_line(
         self,
-        filename,
-        coverage,
-        *,
-        coverage_type: CoverageType,
-        labels_list_of_lists: Union[
-            List[Union[str, SpecialLabelsEnum]], List[int]
-        ] = None,
+        coverage: int | str,
+        coverage_type: CoverageType | None = None,
+        labels_list_of_lists: list[str | SpecialLabelsEnum] | list[int] | None = None,
         partials=None,
         missing_branches=None,
         complexity=None,
     ) -> ReportLine:
-        coverage_type_str = coverage_type.map_to_string()
+        sessionid = self._report_builder.sessionid
+        coverage_type_str = coverage_type.map_to_string() if coverage_type else None
         datapoints = (
             [
                 CoverageDatapoint(
-                    sessionid=self.sessionid,
+                    sessionid=sessionid,
                     coverage=coverage,
                     coverage_type=coverage_type_str,
                     label_ids=label_ids,
@@ -225,7 +214,7 @@ class ReportBuilderSession(object):
             sessions=[
                 (
                     LineSession(
-                        id=self.sessionid,
+                        id=sessionid,
                         coverage=coverage,
                         branches=missing_branches,
                         partials=partials,
@@ -252,11 +241,6 @@ class ReportBuilder(object):
         self.ignored_lines = ignored_lines
         self.path_fixer = path_fixer
         self.should_use_label_index = should_use_label_index
-
-    @property
-    def repo_yaml(self) -> UserYaml:
-        # small alias for compat purposes
-        return self.current_yaml
 
     def create_report_builder_session(self, filepath) -> ReportBuilderSession:
         return ReportBuilderSession(self, filepath, self.should_use_label_index)

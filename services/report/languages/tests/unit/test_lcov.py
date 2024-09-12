@@ -1,6 +1,7 @@
 from services.report.languages import lcov
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 txt = b"""TN:
 SF:file.js
@@ -85,29 +86,6 @@ BRDA:77,4,1,0
 end_of_record
 """
 
-result = {
-    "files": {
-        "file.js": {"l": {"1": {"c": 1, "s": [[0, 1, None, None, None]]}}},
-        "file.ts": {"l": {"2": {"c": 1, "s": [[0, 1, None, None, None]]}}},
-        "file.cpp": {
-            "l": {
-                "1": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "5": {"c": "2/2", "t": "b", "s": [[0, "2/2", None, None, None]]},
-                "2": {
-                    "c": "1/3",
-                    "t": "m",
-                    "s": [[0, "1/3", ["1:1", "1:3"], None, None]],
-                },
-                "77": {
-                    "c": "0/4",
-                    "t": "b",
-                    "s": [[0, "0/4", ["4:1", "4:0", "3:0", "3:1"], None, None]],
-                },
-            }
-        },
-    }
-}
-
 
 class TestLcov(BaseTestCase):
     def test_report(self):
@@ -117,17 +95,11 @@ class TestLcov(BaseTestCase):
             assert path in ("file.js", "file.ts", "file.cpp", "empty.js")
             return path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filepath"
-        )
-        report = lcov.from_txt(txt, report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        lcov.from_txt(txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "file.cpp": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
@@ -149,7 +121,7 @@ class TestLcov(BaseTestCase):
                     None,
                     None,
                 ),
-                # TODO (Thiago): This is out f order compared to the original, verify what happened
+                # TODO (Thiago): This is out of order compared to the original, verify what happened
             ],
             "file.js": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
@@ -181,14 +153,11 @@ class TestLcov(BaseTestCase):
                 "end_of_record",
             ]
         ).encode()
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=lambda x: x, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filepath"
-        )
-        report = lcov.from_txt(text, report_builder_session)
+        report_builder_session = create_report_builder_session()
+        lcov.from_txt(text, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
+
         assert processed_report["archive"] == {
             "file.js": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),

@@ -3,8 +3,9 @@ from shared.reports.types import ReportTotals
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages import go
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 txt = b"""mode: atomic
 source:1.1,1.10 1 1
@@ -119,17 +120,11 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = go.from_txt(txt, report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        go.from_txt(txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "source": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
@@ -149,15 +144,12 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = go.from_txt(huge_txt, report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        go.from_txt(huge_txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        expected_result_archive = {
+
+        assert processed_report["archive"] == {
             "path/file.go": [
                 (18, 0, None, [[0, 0, None, None, None]], None, None),
                 (19, 0, None, [[0, 0, None, None, None]], None, None),
@@ -358,7 +350,6 @@ class TestGo(BaseTestCase):
             ]
         }
 
-        assert expected_result_archive == processed_report["archive"]
         assert report.totals == ReportTotals(
             files=1,
             lines=196,
@@ -379,19 +370,15 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report_builder = ReportBuilder(
-            current_yaml={"parsers": {"go": {"partials_as_hits": True}}},
-            sessionid=0,
+        report_builder_session = create_report_builder_session(
             path_fixer=fixes,
-            ignored_lines={},
+            current_yaml={"parsers": {"go": {"partials_as_hits": True}}},
         )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = go.from_txt(huge_txt, report_builder_session)
+        go.from_txt(huge_txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        print(processed_report["archive"])
-        expected_result_archive = {
+
+        assert processed_report["archive"] == {
             "path/file.go": [
                 (18, 0, None, [[0, 0, None, None, None]], None, None),
                 (19, 0, None, [[0, 0, None, None, None]], None, None),
@@ -592,8 +579,6 @@ class TestGo(BaseTestCase):
             ]
         }
 
-        assert expected_result_archive == processed_report["archive"]
-        print(report.totals)
         assert report.totals == ReportTotals(
             files=1,
             lines=196,
@@ -661,14 +646,9 @@ class TestGo(BaseTestCase):
             return None if "ignore" in path else path
 
         line = b"path/file.go:242.63,244.3path/file.go:242.63,244.3 1 0"
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
 
         with pytest.raises(CorruptRawReportError) as ex:
-            report_builder = ReportBuilder(
-                current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-            )
-            report_builder_session = report_builder.create_report_builder_session(
-                "filename"
-            )
             go.from_txt(line, report_builder_session)
 
         assert (

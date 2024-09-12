@@ -59,6 +59,7 @@ class ComparisonProxy(object):
         self._repository_service = None
         self._adjusted_base_diff = None
         self._original_base_diff = None
+        self._patch_totals = None
         self._changes = None
         self._existing_statuses = None
         self._behind_by = None
@@ -209,9 +210,11 @@ class ComparisonProxy(object):
 
         Patch coverage refers to looking at the coverage in HEAD report filtered by the git diff HEAD..BASE.
         """
+        if self._patch_totals:
+            return self._patch_totals
         diff = await self.get_diff(use_original_base=True)
-        totals = self.head.report.apply_diff(diff)
-        return totals
+        self._patch_totals = self.head.report.apply_diff(diff)
+        return self._patch_totals
 
     async def get_behind_by(self):
         async with self._behind_by_lock:
@@ -371,6 +374,7 @@ class FilteredComparison(object):
         self.flags = flags
         self.path_patterns = path_patterns
         self.real_comparison = real_comparison
+        self._patch_totals = None
         self._changes = None
         self.project_coverage_base = FullCommit(
             commit=real_comparison.project_coverage_base.commit,
@@ -393,6 +397,18 @@ class FilteredComparison(object):
 
     async def get_diff(self, use_original_base=False):
         return await self.real_comparison.get_diff(use_original_base=use_original_base)
+
+    @sentry_sdk.trace
+    async def get_patch_totals(self) -> ReportTotals | None:
+        """Returns the patch coverage for the comparison.
+
+        Patch coverage refers to looking at the coverage in HEAD report filtered by the git diff HEAD..BASE.
+        """
+        if self._patch_totals:
+            return self._patch_totals
+        diff = await self.get_diff(use_original_base=True)
+        self._patch_totals = self.head.report.apply_diff(diff)
+        return self._patch_totals
 
     async def get_existing_statuses(self):
         return await self.real_comparison.get_existing_statuses()

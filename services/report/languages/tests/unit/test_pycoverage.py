@@ -4,8 +4,9 @@ For the tests with encoded labels see services/report/languages/tests/unit/test_
 """
 
 from services.report.languages.pycoverage import PyCoverageProcessor
-from services.report.report_processor import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 SAMPLE = {
     "meta": {
@@ -194,7 +195,7 @@ class TestPyCoverageProcessor(BaseTestCase):
     def test_process_pycoverage(self):
         content = SAMPLE
         p = PyCoverageProcessor()
-        report_builder = ReportBuilder(
+        report_builder_session = create_report_builder_session(
             current_yaml={
                 "flag_management": {
                     "default_rules": {
@@ -203,12 +204,11 @@ class TestPyCoverageProcessor(BaseTestCase):
                     }
                 }
             },
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
         )
-        report = p.process("name", content, report_builder)
+        p.process(content, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
+
         assert processed_report["archive"]["source.py"][0] == (
             1,
             1,
@@ -464,7 +464,7 @@ class TestPyCoverageProcessor(BaseTestCase):
     def test_process_compressed_report(self):
         content = COMPRESSED_SAMPLE
         p = PyCoverageProcessor()
-        report_builder = ReportBuilder(
+        report_builder_session = create_report_builder_session(
             current_yaml={
                 "flag_management": {
                     "default_rules": {
@@ -473,13 +473,11 @@ class TestPyCoverageProcessor(BaseTestCase):
                     }
                 }
             },
-            sessionid=0,
-            ignored_lines={},
-            path_fixer=str,
         )
-        report = p.process("name", content, report_builder)
+        p.process(content, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        print(processed_report)
+
         assert processed_report == {
             "archive": {
                 "awesome.py": [
