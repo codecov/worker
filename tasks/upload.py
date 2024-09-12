@@ -596,6 +596,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     ):
         checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
 
+        do_parallel_processing = PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
+            identifier=commit.repository.repoid
+        ) and not delete_archive_setting(commit_yaml)
+
         processing_tasks = [
             upload_processor_task.s(
                 repoid=commit.repoid,
@@ -609,7 +613,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             for chunk in itertools.batched(argument_list, CHUNK_SIZE)
         ]
         processing_tasks[0].args = ({},)  # this is the first `previous_results`
-        processing_tasks[-1].kwargs.update(is_final=True)
+        if do_parallel_processing:
+            processing_tasks[-1].kwargs.update(is_final=True)
 
         processing_tasks.append(
             upload_finisher_task.signature(
@@ -625,10 +630,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
 
         serial_tasks = chain(processing_tasks)
-
-        do_parallel_processing = PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-            identifier=commit.repository.repoid
-        ) and not delete_archive_setting(commit_yaml)
 
         if not do_parallel_processing:
             return serial_tasks.apply_async()
