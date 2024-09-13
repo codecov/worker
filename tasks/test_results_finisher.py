@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict
 
-import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
@@ -13,6 +12,7 @@ from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingEr
 from database.models import Commit, Flake, Repository, TestResultReportTotals
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
+from helpers.metrics import metrics
 from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.activation import activate_user
@@ -133,17 +133,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         checkpoints.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
 
-        # TODO: remove this later, we can do this now because there aren't many users using this
-        sentry_sdk.metrics.distribution(
-            "test_results_processing_time",
-            checkpoints._subflow_duration(
-                TestResultsFlow.TEST_RESULTS_BEGIN,
-                TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN,
-            ),
-            unit="millisecond",
-            tags={"repoid": repoid},
-        )
-
         commit: Commit = (
             db_session.query(Commit).filter_by(repoid=repoid, commitid=commitid).first()
         )
@@ -175,18 +164,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             db_session.add(totals)
             db_session.flush()
 
-        with sentry_sdk.metrics.timing(
-            "test_results.finisher.fetch_latest_test_instances"
-        ):
+        with metrics.timer("test_results.finisher.fetch_latest_test_instances"):
             test_instances = latest_test_instances_for_a_given_commit(
                 db_session, commit.id_
             )
 
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
-            sentry_sdk.metrics.incr(
-                "test_results.finisher",
-                tags={"status": "failure", "reason": "no_successful_processing"},
+            metrics.incr(
+                "test_results.finisher.failure.no_successful_processing",
             )
 
             queue_notify = False
@@ -201,9 +187,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 # also make attempt to make coverage comment
                 queue_notify = True
 
-                sentry_sdk.metrics.incr(
-                    "test_results.finisher.test_result_notifier_error_comment",
-                    tags={"status": success, "reason": reason},
+                metrics.incr(
+                    f"test_results.finisher.test_result_notifier_error_comment.{"successful" if success else "failure"}.{reason}",
                 )
 
             return {
@@ -267,9 +252,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         db_session.flush()
 
         if failed_tests == 0:
-            sentry_sdk.metrics.incr(
-                "test_results.finisher",
-                tags={"status": "normal_notify_called", "reason": "all_tests_passed"},
+            metrics.incr(
+                "test_results.finisher.normal_notify_called.all_tests_passed",
             )
             self.app.tasks[notify_task_name].apply_async(
                 args=None,
@@ -283,9 +267,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 QUEUE_NOTIFY_KEY: True,
             }
 
-        sentry_sdk.metrics.incr(
-            "test_results.finisher",
-            tags={"status": "success", "reason": "tests_failed"},
+        metrics.incr(
+            "test_results.finisher.success.tests_failed",
         )
         repo_service = get_repo_provider_service(repo)
         pull = async_to_sync(fetch_and_update_pull_request_information_from_commit)(
@@ -321,9 +304,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
                 success, reason = async_to_sync(notifier.upgrade_comment)()
 
-                sentry_sdk.metrics.incr(
-                    "test_results.finisher.test_result_notifier_upgrade_comment",
-                    tags={"status": success, "reason": reason},
+                metrics.incr(
+                    f"test_results.finisher.test_result_notifier_upgrade_comment.{"success" if success else "failure"}.{reason}",
                 )
 
                 self.extra_dict["success"] = success
@@ -351,21 +333,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         notifier = TestResultsNotifier(commit, commit_yaml, payload=payload)
 
-        with sentry_sdk.metrics.timing("test_results.finisher.notification"):
+        with metrics.timer("test_results.finisher.notification"):
             checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
-            # TODO: remove this later, we can do this now because there aren't many users using this
-            sentry_sdk.metrics.distribution(
-                "test_results_notif_latency",
-                checkpoints._subflow_duration(
-                    TestResultsFlow.TEST_RESULTS_BEGIN,
-                    TestResultsFlow.TEST_RESULTS_NOTIFY,
-                ),
-                unit="millisecond",
-                tags={
-                    "repoid": repoid,
-                    "flake_detection": should_read_flaky_detection(repoid, commit_yaml),
-                },
-            )
+
+            if begin_to_notify := checkpoints._subflow_duration(
+                TestResultsFlow.TEST_RESULTS_BEGIN,
+                TestResultsFlow.TEST_RESULTS_NOTIFY,
+            ):
+                metrics.timing(
+                    f"test_results_notif_latency.{"flaky" if should_read_flaky_detection(repoid, commit_yaml) else "non_flaky"}",
+                    begin_to_notify,
+                )
             notifier_result: NotifierResult = async_to_sync(notifier.notify)()
 
         match notifier_result:
@@ -374,6 +352,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             case _:
                 success = False
 
+        if flaky_tests is not None:
+            log.info(
+                "Detected failure on test that has been identified as flaky",
+                extra=dict(
+                    success=success,
+                    repoid=repoid,
+                    commitid=commit.commitid,
+                    test_ids=list(flaky_tests.keys()),
+                ),
+            )
+
         self.extra_dict["success"] = success
         log.info(
             "Finished test results notify",
@@ -381,9 +370,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         )
 
         # using a var as a tag here will be fine as it's a boolean
-        sentry_sdk.metrics.incr(
-            "test_results.finisher.test_result_notifier",
-            tags={"status": success, "reason": notifier_result.value},
+        metrics.incr(
+            f"test_results.finisher.test_result_notifier.{"success" if success else "failure"}.{notifier_result.value}",
         )
 
         return {
@@ -412,13 +400,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 )
                 .limit(100)
                 .all()
-            )
-
-            # want to know how often we are hitting the limit
-            sentry_sdk.metrics.distribution(
-                "flake_detection_matching_flakes_len",
-                len(matching_flakes),
-                tags={"repoid": repoid},
             )
 
             for flake in matching_flakes:
