@@ -114,27 +114,28 @@ class ReportBuilderSession(object):
                 need to set the new line back into the files
             line (ReportLine): The original line
         """
-        new_datapoints = []
-        if line.datapoints:
-            new_datapoints = [
-                self._possibly_convert_datapoints(datapoint)
-                for datapoint in line.datapoints
-            ]
-            new_datapoints = [item for dp_list in new_datapoints for item in dp_list]
-            if new_datapoints and new_datapoints != line.datapoints:
-                # A check to avoid unnecessary replacement
-                file[line_number] = dataclasses.replace(
-                    line,
-                    datapoints=sorted(
-                        new_datapoints,
-                        key=lambda x: (
-                            x.sessionid,
-                            x.coverage,
-                            x.coverage_type,
-                        ),
+        if not line.datapoints:
+            return
+
+        new_datapoints = [
+            item
+            for datapoint in line.datapoints
+            for item in self._possibly_convert_datapoints(datapoint)
+        ]
+        if new_datapoints and new_datapoints != line.datapoints:
+            # A check to avoid unnecessary replacement
+            file[line_number] = dataclasses.replace(
+                line,
+                datapoints=sorted(
+                    new_datapoints,
+                    key=lambda x: (
+                        x.sessionid,
+                        x.coverage,
+                        x.coverage_type,
                     ),
-                )
-                file._totals = None
+                ),
+            )
+            file._totals = None
 
     # TODO: This can be removed after label indexing is rolled out for all customers
     def _possibly_convert_datapoints(
@@ -186,7 +187,9 @@ class ReportBuilderSession(object):
         self,
         coverage: int | str,
         coverage_type: CoverageType | None = None,
-        labels_list_of_lists: list[str | SpecialLabelsEnum] | list[int] | None = None,
+        labels_list_of_lists: list[list[str | SpecialLabelsEnum]]
+        | list[list[int]]
+        | None = None,
         partials=None,
         missing_branches=None,
         complexity=None,

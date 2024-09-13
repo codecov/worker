@@ -33,14 +33,13 @@ def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> No
 
 def _process_file(
     doc: bytes, report_builder_session: ReportBuilderSession
-) -> ReportFile:
+) -> ReportFile | None:
     _already_informed_of_negative_execution_count = False
-    lines = {}
-    branches = defaultdict(dict)
+    branches: dict[str, dict[str, int]] = defaultdict(dict)
     fln, fh = {}, {}
     JS = False
     CPP = False
-    skip_lines = []
+    skip_lines: list[str] = []
     _file = None
 
     for encoded_line in BytesIO(doc):
@@ -60,7 +59,7 @@ def _process_file(
             # BRH: branches hit
             continue
 
-        elif method == "SF":
+        if method == "SF":
             """
             For each source file referenced in the .da file, there is a section
             containing filename and coverage data:
@@ -69,13 +68,14 @@ def _process_file(
             """
             # file name
             _file = report_builder_session.create_coverage_file(content)
-            if _file is None:
-                return None
-
             JS = content[-3:] == ".js"
             CPP = content[-4:] == ".cpp"
+            continue
 
-        elif method == "DA":
+        if _file is None:
+            return None
+
+        if method == "DA":
             """
             Then there is a list of execution counts for each instrumented line
             (i.e. a line which resulted in executable code):
@@ -86,9 +86,9 @@ def _process_file(
             if line.startswith("undefined,"):
                 continue
 
-            splited_content = content.split(",")
-            line = splited_content[0]
-            hit = splited_content[1]
+            splitted_content = content.split(",")
+            line = splitted_content[0]
+            hit = splitted_content[1]
             if line[0] in ("0", "n") or hit[0] in ("=", "s"):
                 continue
 
@@ -163,10 +163,12 @@ def _process_file(
                     0 if taken in ("-", "0") else 1
                 )
 
+    if _file is None:
+        return None
+
     # remove skipped
     for sl in skip_lines:
         branches.pop(sl, None)
-        lines.pop(sl, None)
 
     methods = fln.values()
 
@@ -174,13 +176,13 @@ def _process_file(
     for ln, br in branches.items():
         s, li = sum(br.values()), len(br.values())
         mb = [bid for bid, cov in br.items() if cov == 0]
-        cov = "%s/%s" % (s, li)
-
+        coverage = f"{s}/{li}"
         coverage_type = CoverageType.method if ln in methods else CoverageType.branch
+
         _file.append(
             int(ln),
             report_builder_session.create_coverage_line(
-                cov,
+                coverage,
                 coverage_type,
                 missing_branches=(mb if mb != [] else None),
             ),

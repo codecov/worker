@@ -48,4 +48,4 @@ class TestDLST(BaseTestCase):
             "   1|test",
             "name",
         )
-        return dlst.DLSTProcessor().matches_content(content, first_line, name)
+        assert dlst.DLSTProcessor().matches_content(content, first_line, name)

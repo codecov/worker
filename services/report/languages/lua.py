@@ -20,18 +20,18 @@ class LuaProcessor(BaseLanguageProcessor):
 docs = re.compile(r"^=+\n", re.M).split
 
 
-def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> None:
+def from_txt(input: bytes, report_builder_session: ReportBuilderSession) -> None:
     _file = None
-    for string in docs(string.decode(errors="replace").replace("\t", " ")):
-        string = string.rstrip()
-        if string == "Summary":
+    for line in docs(input.decode(errors="replace").replace("\t", " ")):
+        line = line.rstrip()
+        if line == "Summary":
             _file = None
 
-        elif string.endswith((".lua", ".lisp")):
-            _file = report_builder_session.create_coverage_file(string)
+        elif line.endswith((".lua", ".lisp")):
+            _file = report_builder_session.create_coverage_file(line)
 
         elif _file is not None:
-            for ln, source in enumerate(string.splitlines(), start=1):
+            for ln, source in enumerate(line.splitlines(), start=1):
                 try:
                     cov = source.strip().split(" ")[0]
                     cov = 0 if cov[-2:] in ("*0", "0") else int(cov)

@@ -70,7 +70,9 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
     for package in xml.iter("package"):
         base_name = package.attrib["name"]
 
-        file_method_complixity = defaultdict(dict)
+        file_method_complixity: dict[str, dict[int, tuple[int, int]]] = defaultdict(
+            dict
+        )
         # Classes complexity
         for _class in package.iter("class"):
             class_name = _class.attrib["name"]
@@ -99,19 +101,23 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
             _file = report_builder_session.create_coverage_file(
                 filename, do_fix_path=False
             )
+            assert (
+                _file is not None
+            ), "`create_coverage_file` with pre-fixed path is infallible"
 
             for line in source.iter("line"):
-                line = line.attrib
-                if line["mb"] != "0":
-                    cov = "%s/%s" % (line["cb"], int(line["mb"]) + int(line["cb"]))
+                attr = line.attrib
+                cov: int | str
+                if attr["mb"] != "0":
+                    cov = "%s/%s" % (attr["cb"], int(attr["mb"]) + int(attr["cb"]))
                     coverage_type = CoverageType.branch
 
-                elif line["cb"] != "0":
-                    cov = "%s/%s" % (line["cb"], line["cb"])
+                elif attr["cb"] != "0":
+                    cov = "%s/%s" % (attr["cb"], attr["cb"])
                     coverage_type = CoverageType.branch
 
                 else:
-                    cov = int(line["ci"])
+                    cov = int(attr["ci"])
                     coverage_type = CoverageType.line
 
                 if (
@@ -121,7 +127,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
                 ):
                     cov = 1
 
-                ln = int(line["nr"])
+                ln = int(attr["nr"])
                 if ln > 0:
                     complexity = method_complixity.get(ln)
                     if complexity:
