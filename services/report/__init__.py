@@ -6,19 +6,17 @@ import uuid
 from dataclasses import dataclass
 from json import loads
 from time import time
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Mapping, Sequence
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
-from shared.config import get_config
 from shared.django_apps.reports.models import ReportType
 from shared.metrics import metrics
 from shared.reports.carryforward import generate_carryforward_report
 from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
-from shared.reports.types import ReportFileSummary, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitError
@@ -29,21 +27,18 @@ from shared.yaml import UserYaml
 
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
-    AbstractTotals,
     CommitReport,
     ReportDetails,
     ReportLevelTotals,
     RepositoryFlag,
     UploadLevelTotals,
 )
-from helpers.environment import Environment, get_current_env
 from helpers.exceptions import (
     OwnerWithoutValidBotError,
     ReportEmptyError,
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from helpers.labels import get_labels_per_session
 from helpers.telemetry import MetricContext
 from rollouts import (
     CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER,
@@ -103,7 +98,7 @@ class BaseReportService:
             It's always the user yaml, but might have different uses on different places
     """
 
-    def __init__(self, current_yaml: UserYaml):
+    def __init__(self, current_yaml: UserYaml | dict):
         if isinstance(current_yaml, dict):
             current_yaml = UserYaml(current_yaml)
         self.current_yaml = current_yaml
@@ -177,20 +172,15 @@ class ReportService(BaseReportService):
     metrics_prefix = "services.report"
 
     def __init__(
-        self, current_yaml: UserYaml, gh_app_installation_name: str | None = None
+        self, current_yaml: UserYaml | dict, gh_app_installation_name: str | None = None
     ):
         super().__init__(current_yaml)
-        self.flag_dict = None
+        self.flag_dict: dict[str, RepositoryFlag] | None = None
         self.gh_app_installation_name = gh_app_installation_name
 
     def has_initialized_report(self, commit: Commit) -> bool:
-        """Says whether a commit has already initialized its report or not
-
-        Args:
-            commit (Commit): The commit we want to know about
-
-        Returns:
-            bool: Whether the commit already has initialized a report
+        """
+        Says whether a commit has already initialized its report or not
         """
         return (
             commit._report_json is not None
@@ -254,7 +244,7 @@ class ReportService(BaseReportService):
                 db_session.add(report_details)
                 db_session.flush()
 
-            actual_report = self.get_existing_report_for_commit_from_legacy_data(
+            actual_report = self.get_existing_report_for_commit(
                 commit, report_code=report_code
             )
             if actual_report is not None:
@@ -294,7 +284,8 @@ class ReportService(BaseReportService):
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
         upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags = normalized_arguments.get("flags", "").split(",")
+        flags_str = normalized_arguments.get("flags")
+        flags = flags_str.split(",") if flags_str else []
         self._attach_flags_to_upload(upload, flags)
 
         # Insert entry in user measurements table only
@@ -329,128 +320,30 @@ class ReportService(BaseReportService):
         all_flags = []
         db_session = upload.get_db_session()
         repoid = upload.report.commit.repoid
-
-        if self.flag_dict is None:
-            self.fetch_repo_flags(db_session, repoid)
+        flag_dict = self.fetch_repo_flags(db_session, repoid)
 
         for individual_flag in flag_names:
-            flag_obj = self.flag_dict.get(individual_flag, None)
+            flag_obj = flag_dict.get(individual_flag, None)
             if flag_obj is None:
                 flag_obj = RepositoryFlag(
                     repository_id=repoid, flag_name=individual_flag
                 )
                 db_session.add(flag_obj)
                 db_session.flush()
-                self.flag_dict[individual_flag] = flag_obj
+                flag_dict[individual_flag] = flag_obj
             all_flags.append(flag_obj)
+
         upload.flags = all_flags
         db_session.flush()
         return all_flags
 
-    def fetch_repo_flags(self, db_session, repoid):
-        existing_flags_on_repo = (
-            db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
-        )
-        self.flag_dict = {flag.flag_name: flag for flag in existing_flags_on_repo}
-
-    def build_files(
-        self, report_details: ReportDetails
-    ) -> dict[str, ReportFileSummary]:
-        return {
-            file["filename"]: ReportFileSummary(
-                file_index=file["file_index"],
-                file_totals=ReportTotals(*file["file_totals"]),
-                diff_totals=file["diff_totals"],
+    def fetch_repo_flags(self, db_session, repoid: int) -> dict[str, RepositoryFlag]:
+        if self.flag_dict is None:
+            existing_flags_on_repo = (
+                db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
             )
-            for file in report_details.files_array
-        }
-
-    def build_totals(self, totals: AbstractTotals) -> ReportTotals:
-        """
-        Build a `shared.reports.types.ReportTotals` instance from one of the
-        various database totals records.
-        """
-        return ReportTotals(
-            files=totals.files,
-            lines=totals.lines,
-            hits=totals.hits,
-            misses=totals.misses,
-            partials=totals.partials,
-            coverage=totals.coverage,
-            branches=totals.branches,
-            methods=totals.methods,
-        )
-
-    def build_session(self, upload: Upload):
-        """
-        Build a `shared.utils.sessions.Session` from a database `reports_upload` record.
-        """
-        totals = self.build_totals(upload.totals) if upload.totals is not None else None
-
-        return Session(
-            id=upload.order_number,
-            totals=totals,
-            time=int(upload.created_at.timestamp()),
-            archive=upload.storage_path,
-            flags=upload.flag_names,
-            provider=upload.provider,
-            build=upload.build_code,
-            job=upload.job_code,
-            url=upload.build_url,
-            state=upload.state,
-            env=upload.env,
-            name=upload.name,
-            session_type=SessionType.get_from_string(upload.upload_type),
-            session_extras=upload.upload_extras,
-        )
-
-    def build_sessions(self, commit: Commit) -> dict[int, Session]:
-        """
-        Build mapping of report number -> session that can be passed to the report class.
-        Does not include CF sessions if there is also an upload session with the same
-        flag name.
-        """
-        sessions: dict[int, Session] = {}
-
-        carryforward_sessions = {}
-        uploaded_flags = set()
-
-        commit_report = commit.report
-        if not commit_report:
-            log.warning("Missing commit report", extra=dict(commit=commit.commitid))
-            return sessions
-
-        db_session = commit.get_db_session()
-        report_uploads = db_session.query(Upload).filter(
-            (Upload.report_id == commit_report.id_)
-            & ((Upload.state == "processed") | (Upload.state == "complete"))
-        )
-
-        for upload in report_uploads:
-            session = self.build_session(upload)
-            if session.session_type == SessionType.carriedforward:
-                carryforward_sessions[session.id] = session
-            else:
-                sessions[session.id] = session
-                uploaded_flags |= set(session.flags)
-
-        for sid, session in carryforward_sessions.items():
-            overlapping_flags = uploaded_flags & set(session.flags)
-            if len(overlapping_flags) == 0 or self._is_labels_flags(overlapping_flags):
-                # we can include this CF session since there are no direct uploads
-                # with the same flag name OR we're carrying forward labels
-                sessions[sid] = session
-
-        log.info(
-            "Building report sessions from upload records",
-            extra=dict(
-                commit=commit.commitid,
-                upload_count=report_uploads.count(),
-                session_ids=list(sessions.keys()),
-            ),
-        )
-
-        return sessions
+            self.flag_dict = {flag.flag_name: flag for flag in existing_flags_on_repo}
+        return self.flag_dict
 
     @sentry_sdk.trace
     def build_report(
@@ -466,6 +359,7 @@ class ReportService(BaseReportService):
                     # sess is an encoded dict
                     if sess.get("st") == "carriedforward":
                         report_class = EditableReport
+
         return report_class.from_chunks(
             chunks=chunks, files=files, sessions=sessions, totals=totals
         )
@@ -473,18 +367,14 @@ class ReportService(BaseReportService):
     def get_archive_service(self, repository: Repository) -> ArchiveService:
         return ArchiveService(repository)
 
-    def build_report_from_commit(self, commit) -> Report:
-        report = self.get_existing_report_for_commit(commit)
-        if report is not None:
-            return report
-        return self.create_new_report_for_commit(commit)
-
-    def get_existing_report_for_commit_from_legacy_data(
-        self, commit: Commit, report_class=None, *, report_code=None
-    ) -> Optional[Report]:
+    @sentry_sdk.trace
+    def get_existing_report_for_commit(
+        self, commit: Commit, report_class=None, report_code=None
+    ) -> Report | None:
         commitid = commit.commitid
-        if commit._report_json is None and commit._report_json_storage_path is None:
+        if not self.has_initialized_report(commit):
             return None
+
         try:
             archive_service = self.get_archive_service(commit.repository)
             chunks = archive_service.read_chunks(commitid, report_code)
@@ -496,8 +386,10 @@ class ReportService(BaseReportService):
                 ),
             )
             return None
+
         if chunks is None:
             return None
+
         files = commit.report_json["files"]
         sessions = commit.report_json["sessions"]
         totals = commit.totals
@@ -506,104 +398,9 @@ class ReportService(BaseReportService):
         )
         return res
 
-    def _is_labels_flags(self, flags: Sequence[str]) -> bool:
-        return len(flags) > 0 and all(
-            [
-                (self.current_yaml.get_flag_configuration(flag) or {}).get(
-                    "carryforward_mode"
-                )
-                == "labels"
-                for flag in flags
-            ]
-        )
-
-    @sentry_sdk.trace
-    def get_existing_report_for_commit(
-        self, commit: Commit, report_class=None, *, report_code=None
-    ) -> Optional[Report]:
-        commit_report = commit.report
-        if commit_report is None:
-            log.warning(
-                "Building report from legacy data",
-                extra=dict(commitid=commit.commitid),
-            )
-            return self.get_existing_report_for_commit_from_legacy_data(
-                commit, report_class=report_class, report_code=report_code
-            )
-
-        # TODO: this can be removed once confirmed working well on prod
-        report_builder_repo_ids = get_config(
-            "setup", "report_builder", "repo_ids", default=[]
-        )
-        new_report_builder_enabled = (
-            get_current_env() == Environment.local
-            or commit.repoid in report_builder_repo_ids
-        )
-        if not new_report_builder_enabled:
-            return self.get_existing_report_for_commit_from_legacy_data(
-                commit, report_class=report_class, report_code=report_code
-            )
-
-        commitid = commit.commitid
-        totals = None
-        files = {}
-        sessions = self.build_sessions(commit)
-        if commit_report.details:
-            files = self.build_files(commit_report.details)
-        if commit_report.totals:
-            totals = self.build_totals(commit_report.totals)
-        try:
-            archive_service = self.get_archive_service(commit.repository)
-            chunks = archive_service.read_chunks(commitid, report_code)
-        except FileNotInStorageError:
-            log.warning(
-                "File for chunks not found in storage",
-                extra=dict(
-                    commit=commitid, repo=commit.repoid, report_code=report_code
-                ),
-            )
-            return None
-        if chunks is None:
-            return None
-
-        report = self.build_report(
-            chunks, files, sessions, totals, report_class=report_class
-        )
-
-        sessions_to_delete = []
-        for sid, session in report.sessions.items():
-            # this mimics behavior in the `adjust_sessions` function from
-            # `services/report/raw_upload_processor.py` - we need to delete
-            # label sessions for which there are no labels
-            # TODO: ultimately use `reports_upload.state` once the
-            # `PARTIALLY_OVERWRITTEN` and `FULLY_OVERWRITTEN` states are being saved
-            labels_session = self._is_labels_flags(session.flags)
-            if labels_session:
-                labels = get_labels_per_session(report, sid)
-                if not labels:
-                    sessions_to_delete.append(sid)
-
-        if len(sessions_to_delete) > 0:
-            log.info(
-                "Deleting empty labels sessions",
-                extra=dict(commit=commit.commitid, session_ids=sessions_to_delete),
-            )
-            for sid in sessions_to_delete:
-                del sessions[sid]
-
-            # rebuild the report since we deleted some sessions
-            report = self.build_report(
-                chunks, files, sessions, totals, report_class=report_class
-            )
-
-        return report
-
-    @metrics.timer(
-        "services.report.ReportService.get_appropriate_commit_to_carryforward_from"
-    )
     def get_appropriate_commit_to_carryforward_from(
         self, commit: Commit, max_parenthood_deepness: int = 10
-    ) -> Optional[Commit]:
+    ) -> Commit | None:
         parent_commit = commit.get_parent_commit()
         parent_commit_tracking = []
         count = 1  # `parent_commit` is already the first parent
