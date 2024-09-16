@@ -61,9 +61,7 @@ from services.report.prometheus_metrics import (
     RAW_UPLOAD_RAW_REPORT_COUNT,
     RAW_UPLOAD_SIZE,
 )
-from services.report.raw_upload_processor import (
-    process_raw_upload,
-)
+from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
@@ -840,7 +838,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(
-        self, repo: Repository, upload: Upload, is_parallel=False
+        self, repo: Repository, upload: Upload
     ) -> ParsedRawReport:
         """Pulls the raw uploaded report from storage and parses it so it's
         easier to access different parts of the raw upload.
@@ -851,51 +849,16 @@ class ReportService(BaseReportService):
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
 
-        # TODO: For the parallel experiment, can remove once finished
         log.info(
             "Parsing the raw report from storage",
             extra=dict(
                 commit=upload.report.commit_id,
                 repoid=repo.repoid,
                 archive_url=archive_url,
-                is_parallel=is_parallel,
             ),
         )
 
-        # For the parallel upload verification experiment, we need to make a copy of the raw uploaded reports
-        # so that the parallel pipeline can use those to parse. The serial pipeline rewrites the raw uploaded
-        # reports to a human readable version that doesn't include file fixes, so that's why copying is necessary.
-        if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-            identifier=repo.repoid, default=False
-        ):
-            parallel_url = archive_url.removesuffix(".txt") + "_PARALLEL.txt"
-            log.info(
-                "In the parallel experiment for parsing raw report in storage",
-                extra=dict(
-                    commit=upload.report.commit_id,
-                    repoid=repo.repoid,
-                    parallel_url=parallel_url,
-                    archive_url=archive_url,
-                ),
-            )
-            if not is_parallel:
-                archive_file = archive_service.read_file(archive_url)
-                archive_service.write_file(parallel_url, archive_file)
-                log.info(
-                    "Copied raw report file for parallel experiment to: "
-                    + str(parallel_url),
-                    extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
-                )
-            else:
-                archive_url = parallel_url
-                archive_file = archive_service.read_file(archive_url)
-                log.info(
-                    "Read raw report file for parallel experiment from: "
-                    + str(archive_url),
-                    extra=dict(commit=upload.report.commit_id, repoid=repo.repoid),
-                )
-        else:
-            archive_file = archive_service.read_file(archive_url)
+        archive_file = archive_service.read_file(archive_url)
 
         parser = get_proper_parser(upload, archive_file)
         upload_version = (
@@ -964,9 +927,7 @@ class ReportService(BaseReportService):
         raw_report_info.upload = upload.external_id
 
         try:
-            raw_report = self.parse_raw_report_from_storage(
-                commit.repository, upload, is_parallel=parallel_idx is not None
-            )
+            raw_report = self.parse_raw_report_from_storage(commit.repository, upload)
             raw_report_info.raw_report = raw_report
         except FileNotInStorageError:
             log.info(
