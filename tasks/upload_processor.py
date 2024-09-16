@@ -8,7 +8,6 @@ from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from redis.exceptions import LockError
 from shared.celery_config import upload_processor_task_name
 from shared.config import get_config
-from shared.reports.enums import UploadState
 from shared.torngit.exceptions import TorngitError
 from shared.yaml import UserYaml
 from sqlalchemy.exc import SQLAlchemyError
@@ -270,27 +269,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                             report = processing_result.report
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
                     raise
-                except Exception:
-                    log.exception(
-                        "Unable to process report %s",
-                        arguments.get("reportid"),
-                        extra=dict(
-                            commit_yaml=commit_yaml,
-                            repoid=repoid,
-                            commit=commitid,
-                            arguments=arguments,
-                            parent_task=self.request.parent_id,
-                        ),
-                    )
-                    upload_obj.state_id = UploadState.ERROR.db_id
-                    upload_obj.state = "error"
-                    if raw_report_info.raw_report:
-                        self._rewrite_raw_report_readable(
-                            report_service.get_archive_service(commit.repository),
-                            commit,
-                            raw_report_info,
-                        )
-                    raise
 
                 if error := processing_result.error:
                     n_failed += 1
@@ -445,11 +423,13 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit: Commit,
         reports: list[RawReportInfo],
     ):
-        should_delete_archive = delete_archive_setting(report_service.current_yaml)
+        should_delete_archive_setting = delete_archive_setting(
+            report_service.current_yaml
+        )
         archive_service = report_service.get_archive_service(commit.repository)
 
-        if should_delete_archive:
-            for report_info in reports:
+        for report_info in reports:
+            if should_delete_archive_setting and not report_info.error:
                 archive_url = report_info.archive_url
                 if not archive_url.startswith("http"):
                     log.info(
@@ -463,8 +443,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     )
                     archive_service.delete_file(archive_url)
 
-        else:
-            for report_info in reports:
+            else:
                 self._rewrite_raw_report_readable(archive_service, commit, report_info)
 
     def _rewrite_raw_report_readable(

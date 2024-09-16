@@ -9,8 +9,9 @@ from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitObjectNotFoundError
+from shared.upload.constants import UploadErrorCode
 
-from database.models import CommitReport, ReportDetails
+from database.models import CommitReport, ReportDetails, UploadError
 from database.tests.factories import CommitFactory, UploadFactory
 from helpers.exceptions import (
     ReportEmptyError,
@@ -19,7 +20,11 @@ from helpers.exceptions import (
 )
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
-from services.report import RawReportInfo, ReportService
+from services.report import (
+    ProcessingError,
+    RawReportInfo,
+    ReportService,
+)
 from services.report.parser.legacy import LegacyReportParser
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
@@ -501,21 +506,6 @@ class TestUploadProcessorTask(object):
         mock_redis,
         celery_app,
     ):
-        mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
-        mocked_1.return_value = None
-        mocked_2 = mocker.patch(
-            "services.report.process_raw_upload",
-            side_effect=Exception("first", "aruba", "digimon"),
-        )
-        # Mocking retry to also raise the exception so we can see how it is called
-        mocked_3 = mocker.patch.object(UploadProcessorTask, "retry")
-        mocked_3.side_effect = celery.exceptions.Retry()
-        mocked_4 = mocker.patch.object(ReportService, "parse_raw_report_from_storage")
-        mocked_4.return_value = "ParsedRawReport()"
-        mocked_5 = mocker.patch.object(
-            UploadProcessorTask, "_rewrite_raw_report_readable"
-        )
-        mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -530,23 +520,71 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(upload)
         dbsession.flush()
+
+        mocker.patch(
+            "services.report.process_raw_upload",
+            side_effect=Exception("first", "aruba", "digimon"),
+        )
+        mocker.patch.object(
+            ReportService,
+            "parse_raw_report_from_storage",
+            return_value="ParsedRawReport()",
+        )
+        mocker.patch.object(UploadProcessorTask, "save_report_results")
+
+        mocked_rewrite_report = mocker.patch.object(
+            UploadProcessorTask, "_rewrite_raw_report_readable"
+        )
+
         redis_queue = [{"url": "url", "upload_pk": upload.id_}]
-        with pytest.raises(Exception) as exc:
-            UploadProcessorTask().run_impl(
-                dbsession,
-                {},
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml={},
-                arguments_list=redis_queue,
-            )
-        assert exc.value.args == ("first", "aruba", "digimon")
-        mocked_2.assert_called()
+        result = UploadProcessorTask().run_impl(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            arguments_list=redis_queue,
+        )
+
+        expected_result = {
+            "processings_so_far": [
+                {
+                    "arguments": {"upload_pk": upload.id, "url": "url"},
+                    "error": {
+                        "code": UploadErrorCode.UNKNOWN_PROCESSING,
+                        "params": {"location": "url"},
+                    },
+                    "successful": False,
+                }
+            ]
+        }
+
+        assert result == expected_result
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
-        assert not mocked_3.called
-        mocked_4.assert_called_with(commit.repository, upload)
-        mocked_5.assert_called()
+
+        error_obj = (
+            dbsession.query(UploadError)
+            .filter(UploadError.upload_id == upload.id)
+            .first()
+        )
+        assert error_obj is not None
+        assert error_obj.error_code == UploadErrorCode.UNKNOWN_PROCESSING
+
+        mocked_rewrite_report.assert_called()
+        expected_raw_report_info = RawReportInfo(
+            raw_report="ParsedRawReport()",
+            archive_url="url",
+            upload=upload.external_id,
+            error=ProcessingError(
+                code=UploadErrorCode.UNKNOWN_PROCESSING,
+                params={"location": "url"},
+                is_retryable=False,
+            ),
+        )
+        # Third argument of the first call. We don't care about the other arguments
+        actual_raw_report_info = mocked_rewrite_report.call_args[0][2]
+        assert actual_raw_report_info == expected_raw_report_info
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_redis_lock_unobtainable(

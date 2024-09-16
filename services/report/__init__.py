@@ -22,6 +22,7 @@ from shared.reports.types import ReportFileSummary, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitError
+from shared.upload.constants import UploadErrorCode
 from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
@@ -68,7 +69,7 @@ from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
 @dataclass
 class ProcessingError:
-    code: str
+    code: UploadErrorCode
     params: dict[str, Any]
     is_retryable: bool = False
 
@@ -88,6 +89,7 @@ class RawReportInfo:
     raw_report: ParsedRawReport | None = None
     archive_url: str = ""
     upload: str = ""
+    error: ProcessingError | None = None
 
 
 log = logging.getLogger(__name__)
@@ -942,10 +944,27 @@ class ReportService(BaseReportService):
                 ),
             )
             result.error = ProcessingError(
-                code="file_not_in_storage",
+                code=UploadErrorCode.FILE_NOT_IN_STORAGE,
                 params={"location": archive_url},
                 is_retryable=True,
             )
+            raw_report_info.error = result.error
+            return result
+        except Exception as e:
+            log.exception(
+                "Unknown error when fetching raw report from storage",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    archive_path=archive_url,
+                ),
+            )
+            result.error = ProcessingError(
+                code=UploadErrorCode.UNKNOWN_STORAGE,
+                params={"location": archive_url},
+                is_retryable=False,
+            )
+            raw_report_info.error = result.error
             return result
 
         log.debug("Retrieved report for processing from url %s", archive_url)
@@ -987,7 +1006,10 @@ class ReportService(BaseReportService):
                     file_name=r.filename,
                 ),
             )
-            result.error = ProcessingError(code="report_expired", params={})
+            result.error = ProcessingError(
+                code=UploadErrorCode.REPORT_EXPIRED, params={}
+            )
+            raw_report_info.error = result.error
             return result
         except ReportEmptyError:
             log.warning(
@@ -995,7 +1017,24 @@ class ReportService(BaseReportService):
                 reportid,
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            result.error = ProcessingError(code="report_empty", params={})
+            result.error = ProcessingError(code=UploadErrorCode.REPORT_EMPTY, params={})
+            raw_report_info.error = result.error
+            return result
+        except Exception as e:
+            log.exception(
+                "Unknown error when processing raw upload",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    archive_path=archive_url,
+                ),
+            )
+            result.error = ProcessingError(
+                code=UploadErrorCode.UNKNOWN_PROCESSING,
+                params={"location": archive_url},
+                is_retryable=False,
+            )
+            raw_report_info.error = result.error
             return result
 
     def update_upload_with_processing_result(
