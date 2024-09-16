@@ -1,3 +1,4 @@
+from typing import Any, Coroutine
 from unittest.mock import MagicMock
 
 import pytest
@@ -523,6 +524,66 @@ class TestBaseStatusNotifier(object):
         send_notification = mocker.patch.object(TestNotifier, "send_notification")
         await notifier.notify(comparison)
         send_notification.assert_called_once
+
+    @pytest.mark.asyncio
+    async def test_notify_multiple_shas(
+        self,
+        sample_comparison,
+        mocker,
+    ):
+        comparison = sample_comparison
+        comparison.context.gitlab_extra_shas = set(["extra_sha"])
+        payload = {
+            "message": "something to say",
+            "state": "success",
+            "url": get_pull_url(comparison.pull),
+        }
+
+        async def set_status_side_effect(commit, *args, **kwargs):
+            return {"id": f"{commit}-status-set"}
+
+        class TestNotifier(StatusNotifier):
+            async def build_payload(self, comparison):
+                return payload
+
+            def get_github_app_used(self) -> None:
+                return None
+
+            async def status_already_exists(
+                self, comparison: ComparisonProxy, title, state, description
+            ) -> Coroutine[Any, Any, bool]:
+                return False
+
+        notifier = TestNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        notifier.context = "fake"
+
+        fake_repo_service = MagicMock(
+            name="fake_repo_provider",
+            set_commit_status=MagicMock(side_effect=set_status_side_effect),
+        )
+        mocker.patch.object(
+            TestNotifier, "repository_service", return_value=fake_repo_service
+        )
+        result = await notifier.notify(comparison)
+        assert result == NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent={
+                "message": payload["message"],
+                "state": payload["state"],
+                "title": "codecov/fake/title",
+            },
+            data_received={"id": f"{comparison.head.commit.commitid}-status-set"},
+            github_app_used=None,
+        )
+        assert fake_repo_service.set_commit_status.call_count == 2
 
     @pytest.mark.asyncio
     async def test_notify_cached(
