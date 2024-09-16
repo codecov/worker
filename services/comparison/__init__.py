@@ -31,6 +31,11 @@ class ComparisonContext(object):
     test_results_error: TestResultsProcessingError | None = None
     gh_app_installation_name: str | None = None
     gh_is_using_codecov_commenter: bool = False
+    # GitLab has a "merge results pipeline" (see https://docs.gitlab.com/ee/ci/pipelines/merged_results_pipelines.html)
+    # This runs on an "internal" commit that is the merge from the PR HEAD and the target branch. This commit only exists in GitLab.
+    # We need to send commit statuses to this other commit, to guarantee that the check is not ignored.
+    # See https://docs.gitlab.com/ee/ci/pipelines/merged_results_pipelines.html#successful-merged-results-pipeline-overrides-a-failed-branch-pipeline
+    gitlab_extra_shas: set[str] | None = None
 
 
 class ComparisonProxy(object):

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Optional
 
@@ -378,6 +379,14 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     "notifications": None,
                     "reason": "no_head_report",
                 }
+
+            if commit.repository.service == "gitlab":
+                gitlab_extra_shas_to_notify = async_to_sync(
+                    self.get_gitlab_extra_shas_to_notify
+                )(commit, repository_service)
+            else:
+                gitlab_extra_shas_to_notify = None
+
             log.info(
                 "We are going to be sending notifications",
                 extra=dict(
@@ -409,6 +418,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 gh_is_using_codecov_commenter=self.is_using_codecov_commenter(
                     repository_service
                 ),
+                gitlab_extra_shas_to_notify=gitlab_extra_shas_to_notify,
             )
             self.log_checkpoint(kwargs, UploadFlow.NOTIFIED)
             log.info(
@@ -529,6 +539,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             return
         head_commit = comparison.head.commit
         db_session = head_commit.get_db_session()
+        if db_session is None:
+            log.warning("Failed to save patch_totals. dbsession is None")
+            return
         patch_coverage = async_to_sync(comparison.get_patch_totals)()
         if (
             comparison.project_coverage_base is not None
@@ -570,6 +583,41 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 compare_commit.patch_totals = minimal_totals(patch_coverage)
 
     @sentry_sdk.trace
+    async def get_gitlab_extra_shas_to_notify(
+        self, commit: Commit, repository_service: TorngitBaseAdapter
+    ) -> set[str]:
+        """ "
+        Fetches extra commit SHAs we should send statuses too for GitLab.
+
+        GitLab has a "merge results pipeline" (see https://docs.gitlab.com/ee/ci/pipelines/merged_results_pipelines.html)
+        This runs on an "internal" commit that is the merge from the PR HEAD and the target branch. This commit only exists in GitLab.
+        We need to send commit statuses to this other commit, to guarantee that the check is not ignored (see https://docs.gitlab.com/ee/ci/pipelines/merged_results_pipelines.html#successful-merged-results-pipeline-overrides-a-failed-branch-pipeline)
+        """
+        log.info(
+            "Checking if we need to send notification to more commits",
+            extra=dict(commit=commit.commitid),
+        )
+        report = commit.commit_report(ReportType.COVERAGE)
+        if report is None:
+            log.info(
+                "No coverage report found. Skipping extra shas for GitLab",
+                extra=dict(commit=commit.commitid),
+            )
+            return set()
+        project_id = commit.repository.service_id
+        job_ids = [
+            upload.job_code for upload in report.uploads if upload.job_code is not None
+        ]
+        tasks = [
+            repository_service.get_pipeline_details(project_id, job_id)
+            for job_id in job_ids
+        ]
+        results = await asyncio.gather(*tasks)
+        return set(
+            filter(lambda sha: sha is not None and sha != commit.commitid, results)
+        )
+
+    @sentry_sdk.trace
     def submit_third_party_notifications(
         self,
         current_yaml: UserYaml,
@@ -585,6 +633,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         test_results_error: bool = False,
         installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
         gh_is_using_codecov_commenter: bool = False,
+        gitlab_extra_shas_to_notify: set[str] | None = None,
     ):
         # base_commit is an "adjusted" base commit; for project coverage, we
         # compare a PR head's report against its base's report, or if the base
@@ -618,6 +667,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 test_results_error=test_results_error,
                 gh_app_installation_name=installation_name_to_use,
                 gh_is_using_codecov_commenter=gh_is_using_codecov_commenter,
+                gitlab_extra_shas=gitlab_extra_shas_to_notify,
             ),
         )
 
