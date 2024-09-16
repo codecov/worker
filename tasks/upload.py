@@ -168,8 +168,9 @@ class UploadContext:
         """
         uploads_list_key = self.upload_location
         log.debug("Fetching arguments from redis %s", uploads_list_key)
-        while arguments := self.redis_connection.lpop(uploads_list_key):
-            yield loads(arguments)
+        while arguments := self.redis_connection.lpop(uploads_list_key, count=50):
+            for arg in arguments:
+                yield loads(arg)
 
     def normalize_arguments(self, commit: Commit, arguments: dict[str, Any]):
         """
@@ -495,15 +496,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         for arguments in upload_context.arguments_list():
             normalized_arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" in normalized_arguments:
-                upload = report_service.fetch_report_upload(
-                    commit_report, normalized_arguments["upload_id"]
-                )
+                normalized_arguments["upload_pk"] = normalized_arguments["upload_id"]
             else:
                 upload = report_service.create_report_upload(
                     normalized_arguments, commit_report
                 )
 
-            normalized_arguments["upload_pk"] = upload.id_
+                normalized_arguments["upload_pk"] = upload.id_
             argument_list.append(normalized_arguments)
 
         if argument_list:

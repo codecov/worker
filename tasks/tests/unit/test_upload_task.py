@@ -85,14 +85,24 @@ class FakeRedis(object):
             return res.encode()
         return res
 
-    def lpop(self, key):
+    def lpop(self, key, count=None):
         list = self.lists.get(key)
         if not list:
             return None
 
-        res = list.pop(0)
-        if list == []:
-            del self.lists[key]
+        res = None
+        if count:
+            res = []
+            for _ in range(count):
+                res.append(list.pop(0))
+                if list == []:
+                    del self.lists[key]
+                    break
+        else:
+            res = list.pop(0)
+            if list == []:
+                del self.lists[key]
+
         return res
 
     def delete(self, key):
