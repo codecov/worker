@@ -585,7 +585,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
     @sentry_sdk.trace
     async def get_gitlab_extra_shas_to_notify(
         self, commit: Commit, repository_service: TorngitBaseAdapter
-    ) -> set[str] | None:
+    ) -> set[str]:
         """ "
         Fetches extra commit SHAs we should send statuses too for GitLab.
 
@@ -598,6 +598,12 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             extra=dict(commit=commit.commitid),
         )
         report = commit.commit_report(ReportType.COVERAGE)
+        if report is None:
+            log.info(
+                "No coverage report found. Skipping extra shas for GitLab",
+                extra=dict(commit=commit.commitid),
+            )
+            return set()
         project_id = commit.repository.service_id
         job_ids = [
             upload.job_code for upload in report.uploads if upload.job_code is not None
