@@ -350,3 +350,31 @@ class Flake(CodecovBaseModel, MixinBaseClassNoExternalID):
     fail_count = Column(types.Integer)
     start_date = Column(types.DateTime)
     end_date = Column(types.DateTime, nullable=True)
+
+
+class DailyTestRollup(CodecovBaseModel, MixinBaseClassNoExternalID):
+    __tablename__ = "reports_dailytestrollups"
+
+    test_id = Column(types.Text, ForeignKey("reports_test.id"))
+    test = relationship(Test, backref=backref("dailytestrollups"))
+    date = Column(types.Date)
+    repoid = Column(types.Integer)
+    branch = Column(types.Text)
+
+    fail_count = Column(types.Integer)
+    skip_count = Column(types.Integer)
+    pass_count = Column(types.Integer)
+    last_duration_seconds = Column(types.Float)
+    avg_duration_seconds = Column(types.Float)
+    latest_run = Column(types.DateTime)
+    commits_where_fail = Column(types.ARRAY(types.Text))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "repoid",
+            "date",
+            "branch",
+            "test_id",
+            name="reports_dailytestrollups_repoid_date_branch_test",
+        ),
+    )

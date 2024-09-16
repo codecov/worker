@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import zlib
+from datetime import date, datetime
 from io import BytesIO
 from sys import getsizeof
 from typing import List
@@ -13,6 +14,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from test_results_parser import (
+    Outcome,
     ParserError,
     Testrun,
     parse_junit_xml,
@@ -21,7 +23,7 @@ from test_results_parser import (
 )
 
 from app import celery_app
-from database.models import Repository, Test, TestInstance, Upload
+from database.models import DailyTestRollup, Repository, Test, TestInstance, Upload
 from services.archive import ArchiveService
 from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
@@ -110,6 +112,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         with sentry_sdk.metrics.timing(key="test_results.processor.write_to_db"):
             test_data = []
             test_instance_data = []
+            daily_totals = dict()
             for testrun in parsed_testruns:
                 # Build up the data for bulk insert
                 name = testrun.name
@@ -143,12 +146,105 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     )
                 )
 
+                def update_daily_total():
+                    daily_totals[test_id]["last_duration_seconds"] = duration_seconds
+                    daily_totals[test_id]["avg_duration_seconds"] = (
+                        daily_totals[test_id]["avg_duration_seconds"]
+                        * (
+                            daily_totals[test_id]["pass_count"]
+                            + daily_totals[test_id]["fail_count"]
+                        )
+                        + duration_seconds
+                    ) / (
+                        daily_totals[test_id]["pass_count"]
+                        + daily_totals[test_id]["fail_count"]
+                        + 1
+                    )
+
+                    if outcome == str(Outcome.Pass):
+                        daily_totals[test_id]["pass_count"] += 1
+                    elif outcome == str(Outcome.Failure) or outcome == str(
+                        Outcome.Error
+                    ):
+                        daily_totals[test_id]["fail_count"] += 1
+                    elif outcome == str(Outcome.Skip):
+                        daily_totals[test_id]["skip_count"] += 1
+
+                def create_daily_total():
+                    daily_totals[test_id] = {
+                        "test_id": test_id,
+                        "repoid": repoid,
+                        "last_duration_seconds": duration_seconds,
+                        "avg_duration_seconds": duration_seconds,
+                        "pass_count": 1 if outcome == str(Outcome.Pass) else 0,
+                        "fail_count": 1
+                        if outcome == str(Outcome.Failure)
+                        or outcome == str(Outcome.Error)
+                        else 0,
+                        "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
+                        "branch": branch,
+                        "date": date.today(),
+                        "latest_run": datetime.now(),
+                        "commits_where_fail": [commitid]
+                        if (
+                            outcome == str(Outcome.Failure)
+                            or outcome == str(Outcome.Error)
+                        )
+                        else [],
+                    }
+
+                if outcome != str(Outcome.Skip):
+                    if test_id in daily_totals:
+                        update_daily_total()
+                    else:
+                        create_daily_total()
+
             # Save Tests
             insert_on_conflict_do_nothing = (
                 insert(Test.__table__).values(test_data).on_conflict_do_nothing()
             )
             db_session.execute(insert_on_conflict_do_nothing)
             db_session.flush()
+
+            # Upsert Daily Test Totals
+            stmt = insert(DailyTestRollup.__table__).values(list(daily_totals.values()))
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[
+                    "repoid",
+                    "branch",
+                    "test_id",
+                    "date",
+                ],
+                set_={
+                    "last_duration_seconds": stmt.excluded.last_duration_seconds,
+                    "avg_duration_seconds": (
+                        DailyTestRollup.__table__.c.avg_duration_seconds
+                        * (
+                            DailyTestRollup.__table__.c.pass_count
+                            + DailyTestRollup.__table__.c.fail_count
+                        )
+                        + stmt.excluded.avg_duration_seconds
+                    )
+                    / (
+                        DailyTestRollup.__table__.c.pass_count
+                        + DailyTestRollup.__table__.c.fail_count
+                        + 1
+                    ),
+                    "latest_run": stmt.excluded.latest_run,
+                    "pass_count": DailyTestRollup.__table__.c.pass_count
+                    + stmt.excluded.pass_count,
+                    "skip_count": DailyTestRollup.__table__.c.skip_count
+                    + stmt.excluded.skip_count,
+                    "fail_count": DailyTestRollup.__table__.c.fail_count
+                    + stmt.excluded.fail_count,
+                    "commits_where_fail": DailyTestRollup.__table__.c.commits_where_fail
+                    + stmt.excluded.commits_where_fail,
+                },
+            )
+
+            db_session.execute(stmt)
+            db_session.flush()
+
             # Save TestInstances
             insert_test_instances = insert(TestInstance.__table__).values(
                 test_instance_data
