@@ -1,4 +1,4 @@
-from services.report.languages.pycoverage import PyCoverageProcessor
+from services.report.languages.pycoverage import LabelsTable, PyCoverageProcessor
 from services.report.report_builder import SpecialLabelsEnum
 from test_utils.base import BaseTestCase
 
@@ -189,9 +189,7 @@ class TestPyCoverageProcessor(BaseTestCase):
         assert not p.matches_content({"meta": {}}, "", "coverage.json")
 
     def test__get_list_of_label_ids(self):
-        p = PyCoverageProcessor()
-        p.are_labels_already_encoded = False
-        p.reverse_table = {}
+        p = LabelsTable(None, {})
         current_label_idx = {}
         assert p._get_list_of_label_ids(current_label_idx, [""]) == [1]
         assert current_label_idx == {
@@ -213,7 +211,7 @@ class TestPyCoverageProcessor(BaseTestCase):
         }
 
     def test__get_list_of_label_ids_already_encoded(self):
-        p = PyCoverageProcessor()
+        p = LabelsTable(None, {})
         p.are_labels_already_encoded = True
         assert p._get_list_of_label_ids({}, ["2"]) == [2]
         assert p._get_list_of_label_ids({}, ["2", "3", "1"]) == [1, 2, 3]

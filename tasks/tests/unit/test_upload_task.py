@@ -179,7 +179,7 @@ class TestUploadTaskIntegration(object):
             ],
             report_code=None,
             in_parallel=False,
-            is_final=True,
+            is_final=False,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -659,7 +659,7 @@ class TestUploadTaskIntegration(object):
             ],
             report_code=None,
             in_parallel=False,
-            is_final=True,
+            is_final=False,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -1164,7 +1164,7 @@ class TestUploadTaskUnit(object):
             arguments_list=argument_list,
             report_code=None,
             in_parallel=False,
-            is_final=True,
+            is_final=False,
         )
         t2 = upload_finisher_task.signature(
             kwargs={

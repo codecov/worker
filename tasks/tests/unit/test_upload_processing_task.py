@@ -545,7 +545,7 @@ class TestUploadProcessorTask(object):
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
         assert not mocked_3.called
-        mocked_4.assert_called_with(commit.repository, upload, is_parallel=False)
+        mocked_4.assert_called_with(commit.repository, upload)
         mocked_5.assert_called()
 
     @pytest.mark.django_db(databases={"default"})

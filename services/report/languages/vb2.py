@@ -3,8 +3,10 @@ from xml.etree.ElementTree import Element
 import sentry_sdk
 from shared.reports.resources import ReportFile
 
-from services.report.languages.base import BaseLanguageProcessor
 from services.report.report_builder import ReportBuilderSession
+
+from .base import BaseLanguageProcessor
+from .helpers import child_text
 
 
 class VbTwoProcessor(BaseLanguageProcessor):
@@ -20,23 +22,24 @@ class VbTwoProcessor(BaseLanguageProcessor):
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     files: dict[str, ReportFile] = {}
-    for source in xml.iter("SourceFileNames"):
+    for source in xml.iterfind("SourceFileNames"):
         _file = report_builder_session.create_coverage_file(
-            source.find("SourceFileName").text.replace("\\", "/")
+            child_text(source, "SourceFileName").replace("\\", "/")
         )
         if _file is not None:
-            files[source.find("SourceFileID").text] = _file
+            files[child_text(source, "SourceFileID")] = _file
 
-    for line in xml.iter("Lines"):
-        _file = files.get(line.find("SourceFileID").text)
+    for line in xml.iterfind("Lines"):
+        _file = files.get(child_text(line, "SourceFileID"))
         if _file is None:
             continue
 
         # 0 == hit, 1 == partial, 2 == miss
-        cov = line.find("Coverage").text
-        cov = 1 if cov == "0" else 0 if cov == "2" else True
+        cov_txt = child_text(line, "Coverage")
+        cov = 1 if cov_txt == "0" else 0 if cov_txt == "2" else True
         for ln in range(
-            int(line.find("LnStart").text), int(line.find("LnEnd").text) + 1
+            int(child_text(line, "LnStart")),
+            int(child_text(line, "LnEnd")) + 1,
         ):
             _file.append(
                 ln,

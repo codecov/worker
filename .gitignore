@@ -81,11 +81,6 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
-.python-version
-
-# vscode/
-.vscode
 # celery beat schedule file
 celerybeat-schedule
 
@@ -101,7 +96,6 @@ ENV/
 env.bak/
 venv.bak/
 .testenv
-.envrc
 
 # Spyder project settings
 .spyderproject

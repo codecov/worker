@@ -61,12 +61,10 @@ class TestSCoverage(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "source.scala": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
                 (2, "0/2", "b", [[0, "0/2", None, None, None]], None, None),
                 (3, 0, None, [[0, 0, None, None, None]], None, None),
             ]
         }
-
-        assert expected_result_archive == processed_report["archive"]
