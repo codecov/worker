@@ -37,11 +37,7 @@ from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
-from services.redis import (
-    download_archive_from_redis,
-    get_parallel_upload_processing_session_counter_redis_key,
-    get_redis_connection,
-)
+from services.redis import download_archive_from_redis, get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
 from services.repository import (
     create_webhook_on_provider,
@@ -637,35 +633,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         report_service = ReportService(commit_yaml)
         sessions = report_service.build_sessions(commit=commit)
 
-        # if session count expired due to TTL (which is unlikely for most cases), recalculate the
-        # session ids used and set it in redis.
-        redis_key = get_parallel_upload_processing_session_counter_redis_key(
-            repoid=commit.repository.repoid, commitid=commit.commitid
-        )
-        if not upload_context.redis_connection.exists(redis_key):
-            upload_context.redis_connection.set(
-                redis_key,
-                max(sessions.keys()) + 1 if sessions.keys() else 0,
-            )
-
-        # https://github.com/codecov/worker/commit/7d9c1984b8bc075c9fa002ee15cab3419684f2d6
-        # try to scrap the redis counter idea to fully mimic how session ids are allocated in the
-        # serial flow. This change is technically less performant, and would not allow for concurrent
-        # chords to be running at the same time. For now this is just a temporary change, just for
-        # verifying correctness.
-        #
-        # # increment redis to claim session ids
-        # parallel_session_id = (
-        #     upload_context.redis_connection.incrby(
-        #         name=redis_key,
-        #         amount=num_sessions,
-        #     )
-        #     - num_sessions
-        # )
-        # upload_context.redis_connection.expire(
-        #     name=redis_key,
-        #     time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
-        # )
         original_session_ids = list(sessions.keys())
         parallel_session_ids = get_parallel_session_ids(
             sessions,

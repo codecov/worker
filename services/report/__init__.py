@@ -49,11 +49,6 @@ from rollouts import (
     PARALLEL_UPLOAD_PROCESSING_BY_REPO,
 )
 from services.archive import ArchiveService
-from services.redis import (
-    PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
-    get_parallel_upload_processing_session_counter_redis_key,
-    get_redis_connection,
-)
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.parser.version_one import VersionOneReportParser
@@ -286,27 +281,11 @@ class ReportService(BaseReportService):
                 self.save_full_report(commit, report, report_code)
 
                 # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
-                # finisher can build off of it later. Makes the assumption that the CFFs occupy the first
-                # j to i session ids where i is the max id of the CFFs and j is some integer less than i.
+                # finisher can build off of it later.
                 if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
                     identifier=commit.repository.repoid
                 ):
                     self.save_parallel_report_to_archive(commit, report, report_code)
-                    highest_session_id = max(
-                        report.sessions.keys()
-                    )  # the largest id among the CFFs
-                    get_redis_connection().incrby(
-                        name=get_parallel_upload_processing_session_counter_redis_key(
-                            commit.repository.repoid, commit.commitid
-                        ),
-                        amount=highest_session_id + 1,
-                    )
-                    get_redis_connection().expire(
-                        name=get_parallel_upload_processing_session_counter_redis_key(
-                            commit.repository.repoid, commit.commitid
-                        ),
-                        time=PARALLEL_UPLOAD_PROCESSING_SESSION_COUNTER_TTL,
-                    )
 
         return current_report_row
 
