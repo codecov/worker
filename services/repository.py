@@ -32,6 +32,7 @@ from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Query
 
 from database.enums import CommitErrorTypes
 from database.models import Commit, Owner, Pull, Repository
@@ -163,13 +164,7 @@ async def fetch_appropriate_parent_for_commit(
             ~Commit.message.is_(None),
             ~Commit.deleted.is_(True),
         )
-        if possible_commit_query.count() <= 1:
-            possible_commit = possible_commit_query.first()
-        else:
-            possible_commit = possible_commit_query.filter(
-                Commit.branch == commit.branch,
-            )
-            possible_commit = possible_commit_query.first()
+        possible_commit = possibly_filter_out_branch(commit, possible_commit_query)
         if possible_commit:
             return possible_commit.commitid
     ancestors_tree = await repository_service.get_ancestors_tree(commitid)
@@ -183,12 +178,7 @@ async def fetch_appropriate_parent_for_commit(
             ~Commit.message.is_(None),
             ~Commit.deleted.is_(True),
         )
-        if closest_parent_query.count() <= 1:
-            closest_parent = closest_parent_query.first()
-        else:
-            closest_parent = closest_parent_query.filter(
-                Commit.branch == commit.branch,
-            ).first()
+        closest_parent = possibly_filter_out_branch(commit, closest_parent_query)
         if closest_parent:
             return closest_parent.commitid
         if closest_parent_without_message is None:
@@ -197,12 +187,7 @@ async def fetch_appropriate_parent_for_commit(
                 Commit.repoid == commit.repoid,
                 ~Commit.deleted.is_(True),
             )
-            if res.count() <= 1:
-                res = res.first()
-            else:
-                res = res.filter(
-                    Commit.branch == commit.branch,
-                ).first()
+            res = possibly_filter_out_branch(commit, res)
             if res:
                 closest_parent_without_message = res[0]
         elements = parents
@@ -211,6 +196,16 @@ async def fetch_appropriate_parent_for_commit(
         extra=dict(commit=commit.commitid, repoid=commit.repoid),
     )
     return closest_parent_without_message
+
+
+def possibly_filter_out_branch(commit: Commit, query: Query) -> Commit | None:
+    if query.count() <= 1:
+        query = query.first()
+    else:
+        query = query.filter(
+            Commit.branch == commit.branch,
+        ).first()
+    return query
 
 
 async def possibly_update_commit_from_provider_info(commit, repository_service):
