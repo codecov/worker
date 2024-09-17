@@ -9,12 +9,10 @@ from shared.config import ConfigHelper
 from shared.storage.memory import MemoryStorageService
 from shared.torngit import Github as GithubHandler
 from sqlalchemy import event
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
-from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy_utils import database_exists
 
 from celery_config import initialize_logging
-from database.base import Base
 from database.engine import json_dumps
 from helpers.environment import _get_cached_current_env
 
@@ -76,21 +74,16 @@ def engine(request, sqlalchemy_connect_url, app_config):
 
 
 @pytest.fixture(scope="session")
-def db(engine, sqlalchemy_connect_url):
+def db(engine, sqlalchemy_connect_url, django_db_setup):
+    # Bootstrap the DB by running the Django bootstrap version.
     database_url = sqlalchemy_connect_url
-    try:
-        if not database_exists(database_url):
-            create_database(database_url)
-    except OperationalError:
-        pytest.skip("No available db")
-    connection = engine.connect()
-    connection.execute("DROP SCHEMA IF EXISTS public CASCADE;")
-    connection.execute("CREATE SCHEMA public;")
-    Base.metadata.create_all(engine)
+    if not database_exists(database_url):
+        raise RuntimeError(f"SQLAlchemy cannot connect to DB at {database_url}")
 
 
 @pytest.fixture
 def dbsession(db, engine):
+    """Sets up the SQLAlchemy dbsession."""
     connection = engine.connect()
 
     connection_transaction = connection.begin()
