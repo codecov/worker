@@ -202,7 +202,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def initialize_and_save_report(
-        self, commit: Commit, report_code: str = None
+        self, commit: Commit, report_code: str | None = None
     ) -> CommitReport:
         """
             Initializes the commit report
@@ -873,7 +873,6 @@ class ReportService(BaseReportService):
         report: Report,
         raw_report_info: RawReportInfo,
         upload: Upload,
-        parallel_idx=None,
     ) -> ProcessingResult:
         """
         Processes an upload on top of an existing report `master` and returns
@@ -893,6 +892,7 @@ class ReportService(BaseReportService):
         reportid = upload.external_id
 
         session = Session(
+            id=upload.id,
             provider=service,
             build=build,
             job=job,
@@ -919,7 +919,6 @@ class ReportService(BaseReportService):
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     archive_url=archive_url,
-                    in_parallel=parallel_idx is not None,
                 ),
             )
             result.error = ProcessingError(
@@ -955,13 +954,11 @@ class ReportService(BaseReportService):
                     raw_report,
                     flags,
                     session,
-                    upload=upload,
-                    parallel_idx=parallel_idx,
+                    upload,
                 )
                 result.report = process_result.report
             log.info(
-                "Successfully processed report"
-                + (" (in parallel)" if parallel_idx is not None else ""),
+                "Successfully processed report",
                 extra=dict(
                     session=session.id,
                     ci=f"{session.provider}:{session.build}:{session.job}",

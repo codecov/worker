@@ -22,23 +22,9 @@ from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
-GLOBAL_LEVEL_LABEL = (
-    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
-)
-
-
-# This is a lambda function to return different objects
-def DEFAULT_LABEL_INDEX():
-    return {
-        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
-    }
-
-
-def invert_pattern(string: str) -> str:
-    if string.startswith("!"):
-        return string[1:]
-    else:
-        return "!%s" % string
+DEFAULT_LABEL_INDEX = {
+    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
+}
 
 
 @dataclass
@@ -60,8 +46,7 @@ def process_raw_upload(
     raw_reports: ParsedRawReport,
     flags,
     session: Session,
-    upload: Upload = None,
-    parallel_idx=None,
+    upload: Upload | None = None,
 ) -> UploadProcessingResult:
     toc, env = None, None
 
@@ -85,17 +70,6 @@ def process_raw_upload(
     else:
         ignored_file_lines = None
 
-    # Get a sessionid to merge into
-    # anything merged into the original_report
-    # will take on this sessionid
-    # But we don't actually merge yet in case the report is empty.
-    # This is done to avoid garbage sessions to build up in the report
-    # How can you be sure this will be the sessionid used when you actually merge it? Remember that this piece of code runs inside a lock u.u
-    if parallel_idx is not None:
-        sessionid = parallel_idx
-    else:
-        sessionid = report.next_session_number()
-    session.id = sessionid
     if env:
         session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
 
@@ -103,6 +77,12 @@ def process_raw_upload(
         session.flags = flags
 
     skip_files = set()
+    # [javascript] check for both coverage.json and coverage/coverage.lcov
+    for report_file in raw_reports.get_uploaded_files():
+        if report_file.filename == "coverage/coverage.json":
+            skip_files.add("coverage/coverage.lcov")
+
+    temporary_report = Report()
 
     should_use_encoded_labels = (
         upload
@@ -110,15 +90,11 @@ def process_raw_upload(
             identifier=upload.report.commit.repository.repoid, default=False
         )
     )
-    # [javascript] check for both coverage.json and coverage/coverage.lcov
-    for report_file in raw_reports.get_uploaded_files():
-        if report_file.filename == "coverage/coverage.json":
-            skip_files.add("coverage/coverage.lcov")
-    temporary_report = Report()
     if should_use_encoded_labels:
         # We initialize the labels_index (which defaults to {}) to force the special label
         # to always be index 0
-        temporary_report.labels_index = DEFAULT_LABEL_INDEX()
+        temporary_report.labels_index = DEFAULT_LABEL_INDEX
+
     joined = True
     for flag in flags or []:
         if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
@@ -126,6 +102,7 @@ def process_raw_upload(
                 "Customer is using joined=False feature", extra=dict(flag_used=flag)
             )
             joined = False  # TODO: ensure this works for parallel
+
     # ---------------
     # Process reports
     # ---------------
@@ -139,9 +116,10 @@ def process_raw_upload(
             path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
                 current_filename
             )
+
             report_builder_to_use = ReportBuilder(
                 commit_yaml,
-                sessionid,
+                session.id,
                 ignored_lines,
                 path_fixer_to_use,
                 should_use_encoded_labels,
@@ -152,7 +130,10 @@ def process_raw_upload(
                 )
             except ReportExpiredException as r:
                 r.filename = current_filename
+                # FIXME: this will raise/abort processing *all* the files within an upload,
+                # even though maybe just one of those files is expired.
                 raise
+
             if report_from_file:
                 if should_use_encoded_labels:
                     # Copies the labels from report into temporary_report
@@ -161,36 +142,23 @@ def process_raw_upload(
                 temporary_report.merge(report_from_file, joined=True)
             path_fixer_to_use.log_abnormalities()
 
-    actual_path_fixes = {
-        after: before
-        for (after, before) in path_fixer.calculated_paths.items()
-        if after is not None
-    }
-    if len(actual_path_fixes) > 0:
-        log.info(
-            "Example path fixes for this raw upload",
-            extra={
-                "fixes": list(itertools.islice(actual_path_fixes.items(), 10)),
-                "disable_default_pathfixes": path_fixer.should_disable_default_pathfixes,
-            },
-        )
-    _possibly_log_pathfixer_unusual_results(path_fixer, sessionid)
+    _possibly_log_pathfixer_unusual_results(path_fixer, session.id)
+
     if not temporary_report:
         raise ReportEmptyError("No files found in report.")
 
     if (
         should_use_encoded_labels
-        and temporary_report.labels_index == DEFAULT_LABEL_INDEX()
+        and temporary_report.labels_index == DEFAULT_LABEL_INDEX
     ):
         # This means that, even though this report _could_ use encoded labels,
         # none of the reports processed contributed any new labels to it.
         # So we assume there are no labels and just reset the _labels_index of temporary_report
         temporary_report.labels_index = None
+
     # Now we actually add the session to the original_report
     # Because we know that the processing was successful
-    sessionid, session = report.add_session(
-        session, use_id_from_session=parallel_idx is not None
-    )
+    _sessionid, session = report.add_session(session, use_id_from_session=True)
     # Adjust sessions removed carryforward sessions that are being replaced
     session_adjustment = _adjust_sessions(
         report,
@@ -199,13 +167,14 @@ def process_raw_upload(
         current_yaml=commit_yaml,
         upload=upload,
     )
+
     report.merge(temporary_report, joined=joined)
     session.totals = temporary_report.totals
     return UploadProcessingResult(report=report, session_adjustment=session_adjustment)
 
 
 @sentry_sdk.trace
-def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool:
+def make_sure_orginal_report_is_using_label_ids(original_report: Report):
     """Makes sure that the original_report (that was pulled from DB)
     has CoverageDatapoints that encode label_ids and not actual labels.
     """
@@ -215,12 +184,13 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
     }
     if original_report.labels_index is None:
         original_report.labels_index = {}
+    labels_index = original_report.labels_index
 
     if (
         SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
-        not in original_report.labels_index
+        not in labels_index
     ):
-        original_report.labels_index[
+        labels_index[
             SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
         ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
 
@@ -230,17 +200,17 @@ def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool
         if label_or_id in reverse_index_cache:
             return reverse_index_cache[label_or_id]
         # Search for label in the report index
-        for idx, label in original_report.labels_index.items():
+        for idx, label in labels_index.items():
             if label == label_or_id:
                 reverse_index_cache[label] = idx
                 return idx
         # Label is not present. Add to index.
         # Notice that this never picks index 0, that is reserved for the special label
-        new_index = max(original_report.labels_index.keys()) + 1
+        new_index = max(labels_index.keys()) + 1
         reverse_index_cache[label_or_id] = new_index
         # It's OK to update this here because it's inside the
         # UploadProcessing lock, so it's exclusive access
-        original_report.labels_index[new_index] = label_or_id
+        labels_index[new_index] = label_or_id
         return new_index
 
     for report_file in original_report:
@@ -262,7 +232,7 @@ def make_sure_label_indexes_match(
     Uses the original_report as reference, and fixes the to_merge_report as needed
     it also extendes the original_report.labels_index with new labels as needed.
     """
-    if to_merge_report.labels_index is None:
+    if to_merge_report.labels_index is None or original_report.labels_index is None:
         # The new report doesn't have labels to fix
         return
 
@@ -335,6 +305,7 @@ def _adjust_sessions(
         commit_id = upload.report.commit_id
     if upload is None and to_partially_overwrite_flags:
         log.warning("Upload is None, but there are partial_overwrite_flags present")
+
     if (
         upload
         and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
@@ -345,6 +316,7 @@ def _adjust_sessions(
         # Make sure that the labels in the reports are in a good state to merge them
         make_sure_orginal_report_is_using_label_ids(original_report)
         make_sure_label_indexes_match(original_report, to_merge_report)
+
     if to_fully_overwrite_flags or to_partially_overwrite_flags:
         for sess_id, curr_sess in original_report.sessions.items():
             if curr_sess.session_type == SessionType.carriedforward:
@@ -353,6 +325,7 @@ def _adjust_sessions(
                         session_ids_to_fully_delete.append(sess_id)
                     if any(f in to_partially_overwrite_flags for f in curr_sess.flags):
                         session_ids_to_partially_delete.append(sess_id)
+
     actually_fully_deleted_sessions = set()
     if session_ids_to_fully_delete:
         extra = dict(
@@ -366,6 +339,7 @@ def _adjust_sessions(
         )
         original_report.delete_multiple_sessions(session_ids_to_fully_delete)
         actually_fully_deleted_sessions.update(session_ids_to_fully_delete)
+
     if session_ids_to_partially_delete:
         extra = dict(
             deleted_sessions=session_ids_to_partially_delete,
@@ -387,6 +361,7 @@ def _adjust_sessions(
                 )
                 actually_fully_deleted_sessions.add(s)
                 original_report.delete_session(s)
+
     return SessionAdjustmentResult(
         sorted(actually_fully_deleted_sessions),
         sorted(set(session_ids_to_partially_delete) - actually_fully_deleted_sessions),
@@ -394,6 +369,20 @@ def _adjust_sessions(
 
 
 def _possibly_log_pathfixer_unusual_results(path_fixer: PathFixer, sessionid: int):
+    actual_path_fixes = {
+        after: before
+        for (after, before) in path_fixer.calculated_paths.items()
+        if after is not None
+    }
+    if len(actual_path_fixes) > 0:
+        log.info(
+            "Example path fixes for this raw upload",
+            extra={
+                "fixes": list(itertools.islice(actual_path_fixes.items(), 10)),
+                "disable_default_pathfixes": path_fixer.should_disable_default_pathfixes,
+            },
+        )
+
     if path_fixer.calculated_paths.get(None):
         ignored_files = sorted(path_fixer.calculated_paths.pop(None))
         log.info(

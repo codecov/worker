@@ -21,6 +21,7 @@ from shared.yaml import UserYaml
 from app import celery_app
 from celery_config import notify_error_task_name
 from database.models import Commit, Pull
+from database.models.core import Repository
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -131,23 +132,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repository.repoid)
             and in_parallel
         ):
-            actual_processing_results = {
-                "processings_so_far": [],
-                "parallel_incremental_result": [],
+            processing_results = {
+                "processings_so_far": [
+                    task["processings_so_far"][0] for task in processing_results
+                ],
+                "parallel_incremental_result": [
+                    task["parallel_incremental_result"] for task in processing_results
+                ],
             }
-            pr = None
-
-            # need to transform processing_results produced by chord to get it into the
-            # same format as the processing_results produced from chain
-            for task in processing_results:
-                pr = task["processings_so_far"][0].get("pr") or pr
-                actual_processing_results["processings_so_far"].append(
-                    task["processings_so_far"][0]
-                )
-                actual_processing_results["parallel_incremental_result"].append(
-                    task["parallel_incremental_result"]
-                )
-            processing_results = actual_processing_results
 
             report_service = ReportService(commit_yaml)
             report = self.merge_incremental_reports(
@@ -477,10 +469,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     def merge_incremental_reports(
         self,
         commit_yaml: dict,
-        repository,
+        repository: Repository,
         commit: Commit,
         report_service: ReportService,
-        processing_results,
+        processing_results: dict,
     ):
         archive_service = report_service.get_archive_service(repository)
         repoid = repository.repoid
@@ -547,8 +539,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 "upload_pk": partial_report["upload_pk"],
             }
 
-        def merge_report(cumulative_report, obj):
-            incremental_report = obj["report"]
+        def merge_report(cumulative_report: Report, obj):
+            incremental_report: Report = obj["report"]
             parallel_idx = obj["parallel_idx"]
 
             if len(incremental_report.sessions) != 1:
@@ -562,13 +554,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     ),
                 )
 
-            sessionid = next(iter(incremental_report.sessions))
-            incremental_report.sessions[sessionid].id = sessionid
-
-            session_id, session = cumulative_report.add_session(
+            _session_id, session = cumulative_report.add_session(
                 incremental_report.sessions[parallel_idx], use_id_from_session=True
             )
-            session.id = session_id
 
             _adjust_sessions(
                 cumulative_report, incremental_report, session, UserYaml(commit_yaml)

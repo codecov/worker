@@ -31,7 +31,6 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.parallel_upload_processing import get_parallel_session_ids
 from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
@@ -506,7 +505,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             scheduled_tasks = self.schedule_task(
                 db_session,
                 commit,
-                commit_yaml,
+                commit_yaml.to_dict(),
                 argument_list,
                 commit_report,
                 upload_context,
@@ -536,14 +535,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         db_session: Session,
         commit: Commit,
-        commit_yaml: UserYaml,
+        commit_yaml: dict,
         argument_list: list[dict],
         commit_report: CommitReport,
         upload_context: UploadContext,
         checkpoints: CheckpointLogger | None,
     ):
-        commit_yaml = commit_yaml.to_dict()
-
         # Carryforward the parent BA report for the current commit's BA report when handling uploads
         # that's not bundle analysis type.
         self.possibly_carryforward_bundle_report(
@@ -629,26 +626,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         if not do_parallel_processing:
             return serial_tasks.apply_async()
 
-        report_service = ReportService(commit_yaml)
-        sessions = report_service.build_sessions(commit=commit)
-
-        original_session_ids = list(sessions.keys())
-        parallel_session_ids = get_parallel_session_ids(
-            sessions,
-            argument_list,
-            db_session,
-            report_service,
-            UserYaml(commit_yaml),
-        )
-
-        log.info(
-            "Allocated the following session ids for parallel upload processing: "
-            + " ".join(str(id) for id in parallel_session_ids),
-            extra=upload_context.log_extra(
-                original_session_ids=original_session_ids,
-            ),
-        )
-
         parallel_processing_tasks = [
             upload_processor_task.s(
                 repoid=commit.repoid,
@@ -656,13 +633,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_yaml=commit_yaml,
                 arguments_list=[arguments],
                 report_code=commit_report.code,
-                parallel_idx=parallel_session_id,
+                parallel_idx=arguments["upload_pk"],
                 in_parallel=True,
                 is_final=False,
             )
-            for arguments, parallel_session_id in zip(
-                argument_list, parallel_session_ids
-            )
+            for arguments in argument_list
         ]
 
         finish_parallel_sig = upload_finisher_task.signature(
@@ -746,7 +721,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         commit: Commit,
         commit_report: CommitReport,
-        commit_yaml: UserYaml,
+        commit_yaml: dict,
         argument_list: List[Dict],
     ):
         """

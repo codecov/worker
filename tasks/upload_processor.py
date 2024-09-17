@@ -191,7 +191,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
-        processings_so_far = previous_results.get("processings_so_far", [])
+        processings_so_far: list[dict] = previous_results.get("processings_so_far", [])
         n_processed = 0
         n_failed = 0
 
@@ -260,7 +260,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                             report,
                             upload_obj,
                             raw_report_info,
-                            parallel_idx=parallel_idx,
                             in_parallel=in_parallel,
                         )
                         # NOTE: this is only used because test mocking messes with the return value here.
@@ -356,15 +355,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
-            processing_result = {
+            processing_results: dict = {
                 "processings_so_far": processings_so_far,
             }
             if in_parallel:
-                processing_result["parallel_incremental_result"] = (
+                processing_results["parallel_incremental_result"] = (
                     parallel_incremental_result
                 )
 
-            return processing_result
+            return processing_results
         except CeleryError:
             raise
         except Exception:
@@ -383,11 +382,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report: Report,
         upload: Upload,
         raw_report_info: RawReportInfo,
-        parallel_idx=None,
         in_parallel=False,
     ) -> ProcessingResult:
         processing_result = report_service.build_report_from_raw_content(
-            report, raw_report_info, upload=upload, parallel_idx=parallel_idx
+            report, raw_report_info, upload=upload
         )
         if (
             processing_result.error is not None
