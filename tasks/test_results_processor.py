@@ -242,8 +242,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 },
             )
 
-            # db_session.execute(stmt)
-            # db_session.flush()
+            db_session.execute(stmt)
+            db_session.flush()
 
             # Save TestInstances
             insert_test_instances = insert(TestInstance.__table__).values(
