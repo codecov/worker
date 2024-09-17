@@ -629,7 +629,6 @@ class TestUploadTestProcessorTask(object):
         assert expected_result == result
         assert commit.message == "hello world"
 
-    @pytest.mark.skip
     @pytest.mark.integration
     def test_upload_processor_task_call_daily_test_totals(
         self,
