@@ -93,7 +93,7 @@ def process_raw_upload(
     if should_use_encoded_labels:
         # We initialize the labels_index (which defaults to {}) to force the special label
         # to always be index 0
-        temporary_report.labels_index = DEFAULT_LABEL_INDEX
+        temporary_report.labels_index = dict(DEFAULT_LABEL_INDEX)
 
     joined = True
     for flag in flags or []:
