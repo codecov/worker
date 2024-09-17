@@ -352,7 +352,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             case _:
                 success = False
 
-        if flaky_tests is not None:
+        if len(flaky_tests):
             log.info(
                 "Detected failure on test that has been identified as flaky",
                 extra=dict(
@@ -362,6 +362,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     test_ids=list(flaky_tests.keys()),
                 ),
             )
+            metrics.incr("test_results.finisher.detected_flaky_test")
 
         self.extra_dict["success"] = success
         log.info(
