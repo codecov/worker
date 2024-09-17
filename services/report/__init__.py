@@ -412,7 +412,7 @@ class ReportService(BaseReportService):
         Does not include CF sessions if there is also an upload session with the same
         flag name.
         """
-        sessions = {}
+        sessions: dict[int, Session] = {}
 
         carryforward_sessions = {}
         uploaded_flags = set()
