@@ -41,7 +41,14 @@ def test_bundle_analysis_save_measurements_task_success(
         commitid=commit.commitid,
         uploadid=upload.id_,
         commit_yaml={},
-        previous_result=[{"upload_id": upload.id_, "session_id": 28, "error": None}],
+        previous_result=[
+            {
+                "upload_id": upload.id_,
+                "session_id": 28,
+                "error": None,
+                "bundle_name": "BundleA",
+            }
+        ],
     )
     assert result == {"successful": True}
 

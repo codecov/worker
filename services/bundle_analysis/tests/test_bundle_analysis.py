@@ -416,11 +416,8 @@ async def test_bundle_analysis_save_measurements_report_size(
             return self.size
 
     class MockBundleAnalysisReport:
-        def bundle_reports(self):
-            return [
-                MockBundleReport("BundleA", 1111),
-                MockBundleReport("BundleB", 2222),
-            ]
+        def bundle_report(self, bundle_name):
+            return MockBundleReport("BundleA", 1111)
 
     mocker.patch(
         "shared.bundle_analysis.BundleAnalysisReportLoader.load",
@@ -428,7 +425,9 @@ async def test_bundle_analysis_save_measurements_report_size(
     )
 
     report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
-    result: ProcessingResult = report_service.save_measurements(commit, upload)
+    result: ProcessingResult = report_service.save_measurements(
+        commit, upload, "BundleA"
+    )
 
     assert result.error is None
 
@@ -457,8 +456,7 @@ async def test_bundle_analysis_save_measurements_report_size(
         .all()
     )
 
-    assert len(measurements) == 1
-    assert measurements[0].value == 2222
+    assert len(measurements) == 0
 
 
 @pytest.mark.asyncio
@@ -528,8 +526,8 @@ async def test_bundle_analysis_save_measurements_asset_size(
             ]
 
     class MockBundleAnalysisReport:
-        def bundle_reports(self):
-            return [MockBundleReport("BundleA", 1111)]
+        def bundle_report(self, bundle_name):
+            return MockBundleReport("BundleA", 1111)
 
     mocker.patch(
         "shared.bundle_analysis.BundleAnalysisReportLoader.load",
@@ -537,7 +535,9 @@ async def test_bundle_analysis_save_measurements_asset_size(
     )
 
     report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
-    result: ProcessingResult = report_service.save_measurements(commit, upload)
+    result: ProcessingResult = report_service.save_measurements(
+        commit, upload, "BundleA"
+    )
 
     assert result.error is None
 
@@ -646,8 +646,8 @@ async def test_bundle_analysis_save_measurements_asset_type_sizes(
             ]
 
     class MockBundleAnalysisReport:
-        def bundle_reports(self):
-            return [MockBundleReport("BundleA", 1111)]
+        def bundle_report(self, bundle_name):
+            return MockBundleReport("BundleA", 1111)
 
     mocker.patch(
         "shared.bundle_analysis.BundleAnalysisReportLoader.load",
@@ -655,7 +655,9 @@ async def test_bundle_analysis_save_measurements_asset_type_sizes(
     )
 
     report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
-    result: ProcessingResult = report_service.save_measurements(commit, upload)
+    result: ProcessingResult = report_service.save_measurements(
+        commit, upload, "BundleA"
+    )
 
     assert result.error is None
 
@@ -750,6 +752,8 @@ async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_s
     )
 
     report_service = BundleAnalysisReportService(UserYaml.from_dict({}))
-    result: ProcessingResult = report_service.save_measurements(commit, upload)
+    result: ProcessingResult = report_service.save_measurements(
+        commit, upload, "BundleA"
+    )
 
     assert result.error is not None
