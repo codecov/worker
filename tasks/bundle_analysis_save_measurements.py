@@ -69,7 +69,9 @@ class BundleAnalysisSaveMeasurementsTask(
             report_service = BundleAnalysisReportService(
                 UserYaml.from_dict(commit_yaml)
             )
-            result: ProcessingResult = report_service.save_measurements(commit, upload)
+            result: ProcessingResult = report_service.save_measurements(
+                commit, upload, previous_result["bundle_name"]
+            )
             save_measurements = result.error is None
 
         log.info(
