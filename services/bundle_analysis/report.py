@@ -4,10 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import sentry_sdk
-from shared.bundle_analysis import (
-    BundleAnalysisReport,
-    BundleAnalysisReportLoader,
-)
+from shared.bundle_analysis import BundleAnalysisReport, BundleAnalysisReportLoader
 from shared.bundle_analysis.models import AssetType, MetadataKey
 from shared.bundle_analysis.storage import get_bucket_name
 from shared.django_apps.bundle_analysis.models import CacheConfig
@@ -99,7 +96,7 @@ class ProcessingResult:
 
 class BundleAnalysisReportService(BaseReportService):
     def initialize_and_save_report(
-        self, commit: Commit, report_code: str = None
+        self, commit: Commit, report_code: str | None = None
     ) -> CommitReport:
         db_session = commit.get_db_session()
 
