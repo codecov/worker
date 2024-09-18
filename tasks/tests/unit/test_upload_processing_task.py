@@ -20,7 +20,11 @@ from helpers.exceptions import (
 )
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
-from services.report import ProcessingError, RawReportInfo, ReportService
+from services.report import (
+    ProcessingError,
+    RawReportInfo,
+    ReportService,
+)
 from services.report.parser.legacy import LegacyReportParser
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
@@ -129,7 +133,7 @@ class TestUploadProcessorTask(object):
                 ],
             },
             "sessions": {
-                str(upload.id_): {
+                "0": {
                     "N": None,
                     "a": url,
                     "c": None,
@@ -140,12 +144,16 @@ class TestUploadProcessorTask(object):
                     "p": None,
                     "t": [3, 24, 19, 5, 0, "79.16667", 0, 0, 0, 0, 0, 0, 0],
                     "u": None,
-                    "d": commit.report_json["sessions"][str(upload.id_)]["d"],
+                    "d": commit.report_json["sessions"]["0"]["d"],
                     "st": "uploaded",
                     "se": {},
                 }
             },
         }
+        assert (
+            commit.report_json["sessions"]["0"]
+            == expected_generated_report["sessions"]["0"]
+        )
         assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid, None)
         # mocked_3.send_task.assert_called_with(
@@ -257,7 +265,7 @@ class TestUploadProcessorTask(object):
                 ],
             },
             "sessions": {
-                str(upload.id_): {
+                "0": {
                     "N": None,
                     "a": url,
                     "c": None,
@@ -268,12 +276,16 @@ class TestUploadProcessorTask(object):
                     "p": None,
                     "t": [3, 24, 19, 5, 0, "79.16667", 0, 0, 0, 0, 0, 0, 0],
                     "u": None,
-                    "d": commit.report_json["sessions"][str(upload.id_)]["d"],
+                    "d": commit.report_json["sessions"]["0"]["d"],
                     "st": "uploaded",
                     "se": {},
                 }
             },
         }
+        assert (
+            commit.report_json["sessions"]["0"]
+            == expected_generated_report["sessions"]["0"]
+        )
         assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid, None)
         # mocked_3.send_task.assert_called_with(
@@ -373,7 +385,7 @@ class TestUploadProcessorTask(object):
                 ],
             },
             "sessions": {
-                str(upload.id_): {
+                "0": {
                     "N": None,
                     "a": url,
                     "c": None,
@@ -384,12 +396,18 @@ class TestUploadProcessorTask(object):
                     "p": None,
                     "t": [3, 24, 19, 5, 0, "79.16667", 0, 0, 0, 0, 0, 0, 0],
                     "u": None,
-                    "d": commit.report_json["sessions"][str(upload.id_)]["d"],
+                    "d": commit.report_json["sessions"]["0"]["d"],
                     "st": "uploaded",
                     "se": {},
                 }
             },
         }
+        assert (
+            commit.report_json["files"]["awesome/__init__.py"]
+            == expected_generated_report["files"]["awesome/__init__.py"]
+        )
+        assert commit.report_json["files"] == expected_generated_report["files"]
+        assert commit.report_json["sessions"] == expected_generated_report["sessions"]
         assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid, None)
 

@@ -13,6 +13,7 @@ from shared.torngit import GitlabEnterprise
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.torngit.gitlab import Gitlab
 from shared.utils.sessions import SessionType
+from shared.yaml import UserYaml
 
 from database.enums import ReportType
 from database.models import Upload
@@ -800,7 +801,7 @@ class TestUploadTaskIntegration(object):
         mocked_1.assert_called_with(
             mocker.ANY,
             commit,
-            {"codecov": {"max_report_age": "764y ago"}},
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
                 {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
@@ -856,7 +857,7 @@ class TestUploadTaskIntegration(object):
         mocked_1.assert_called_with(
             mocker.ANY,
             commit,
-            {"codecov": {"max_report_age": "764y ago"}},
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
                 {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
                 {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
@@ -933,7 +934,7 @@ class TestUploadTaskIntegration(object):
         mocked_schedule_task.assert_called_with(
             mocker.ANY,
             commit,
-            {"codecov": {"max_report_age": "764y ago"}},
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
                 {"build": "part1", "url": "url1", "upload_pk": first_session.id},
                 {"build": "part2", "url": "url2", "upload_pk": second_session.id},
@@ -1024,7 +1025,7 @@ class TestUploadTaskIntegration(object):
         mocked_schedule_task.assert_called_with(
             mocker.ANY,
             commit,
-            {"codecov": {"max_report_age": "764y ago"}},
+            UserYaml({"codecov": {"max_report_age": "764y ago"}}),
             [
                 {
                     "build": "part1",
@@ -1144,7 +1145,7 @@ class TestUploadTaskUnit(object):
     def test_schedule_task_with_one_task(self, dbsession, mocker):
         mocked_chain = mocker.patch("tasks.upload.chain")
         commit = CommitFactory.create()
-        commit_yaml = {"codecov": {"max_report_age": "100y ago"}}
+        commit_yaml = UserYaml({"codecov": {"max_report_age": "100y ago"}})
         argument_dict = {"argument_dict": 1}
         argument_list = [argument_dict]
         dbsession.add(commit)
@@ -1169,7 +1170,7 @@ class TestUploadTaskUnit(object):
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
-            commit_yaml=commit_yaml,
+            commit_yaml=commit_yaml.to_dict(),
             arguments_list=argument_list,
             report_code=None,
             in_parallel=False,
@@ -1179,7 +1180,7 @@ class TestUploadTaskUnit(object):
             kwargs={
                 "repoid": commit.repoid,
                 "commitid": commit.commitid,
-                "commit_yaml": commit_yaml,
+                "commit_yaml": commit_yaml.to_dict(),
                 "report_code": None,
                 "in_parallel": False,
                 _kwargs_key(UploadFlow): mocker.ANY,
