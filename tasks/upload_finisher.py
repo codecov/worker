@@ -14,6 +14,7 @@ from shared.celery_config import (
     upload_finisher_task_name,
 )
 from shared.metrics import Histogram
+from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
 from shared.yaml import UserYaml
@@ -21,6 +22,7 @@ from shared.yaml import UserYaml
 from app import celery_app
 from celery_config import notify_error_task_name
 from database.models import Commit, Pull
+from database.models.core import Repository
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
@@ -131,23 +133,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repository.repoid)
             and in_parallel
         ):
-            actual_processing_results = {
-                "processings_so_far": [],
-                "parallel_incremental_result": [],
+            processing_results = {
+                "processings_so_far": [
+                    task["processings_so_far"][0] for task in processing_results
+                ],
+                "parallel_incremental_result": [
+                    task["parallel_incremental_result"] for task in processing_results
+                ],
             }
-            pr = None
-
-            # need to transform processing_results produced by chord to get it into the
-            # same format as the processing_results produced from chain
-            for task in processing_results:
-                pr = task["processings_so_far"][0].get("pr") or pr
-                actual_processing_results["processings_so_far"].append(
-                    task["processings_so_far"][0]
-                )
-                actual_processing_results["parallel_incremental_result"].append(
-                    task["parallel_incremental_result"]
-                )
-            processing_results = actual_processing_results
 
             report_service = ReportService(commit_yaml)
             report = self.merge_incremental_reports(
@@ -476,10 +469,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     def merge_incremental_reports(
         self,
         commit_yaml: dict,
-        repository,
+        repository: Repository,
         commit: Commit,
         report_service: ReportService,
-        processing_results,
+        processing_results: dict,
     ):
         archive_service = report_service.get_archive_service(repository)
         repoid = repository.repoid
@@ -539,6 +532,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 files_and_sessions["files"],
                 files_and_sessions["sessions"],
                 None,
+                report_class=EditableReport,
             )
             return {
                 "parallel_idx": partial_report["parallel_idx"],
@@ -546,13 +540,12 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 "upload_pk": partial_report["upload_pk"],
             }
 
-        def merge_report(cumulative_report, obj):
-            incremental_report = obj["report"]
-            parallel_idx = obj["parallel_idx"]
+        def merge_report(cumulative_report: Report, obj):
+            incremental_report: Report = obj["report"]
 
             if len(incremental_report.sessions) != 1:
-                log.warn(
-                    f"Incremental report does not have 1 session, it has {len(incremental_report.sessions)}",
+                log.warning(
+                    "Incremental report does not have expected session",
                     extra=dict(
                         repoid=repoid,
                         commit=commitid,
@@ -561,8 +554,12 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     ),
                 )
 
-            session = incremental_report.sessions[parallel_idx]
-            session.id = parallel_idx
+            old_sessionid = next(iter(incremental_report.sessions))
+            new_sessionid = cumulative_report.next_session_number()
+            change_sessionid(incremental_report, old_sessionid, new_sessionid)
+
+            session = incremental_report.sessions[new_sessionid]
+
             _session_id, session = cumulative_report.add_session(
                 session, use_id_from_session=True
             )
@@ -604,3 +601,42 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())
 upload_finisher_task = celery_app.tasks[RegisteredUploadTask.name]
+
+
+# TODO: maybe move this to `shared` if it turns out to be a better place for this
+def change_sessionid(report: Report, old_id: int, new_id: int):
+    """
+    Modifies the `Report`, changing the session with `old_id` to have `new_id` instead.
+    This patches up all the references to that session across all files and line records.
+
+    In particular, it changes the id in all the `LineSession`s and `CoverageDatapoint`s,
+    and does the equivalent of `calculate_present_sessions`.
+    """
+    session = report.sessions[new_id] = report.sessions.pop(old_id)
+    session.id = new_id
+
+    report_file: EditableReportFile
+    for report_file in report._chunks:
+        if report_file is None:
+            continue
+
+        all_sessions = set()
+
+        for idx, _line in enumerate(report_file._lines):
+            if not _line:
+                continue
+
+            # this turns the line into an actual `ReportLine`
+            line = report_file._lines[idx] = report_file._line(_line)
+
+            for session in line.sessions:
+                if session.id == old_id:
+                    session.id = new_id
+                all_sessions.add(session.id)
+
+            if line.datapoints:
+                for point in line.datapoints:
+                    if point.sessionid == old_id:
+                        point.sessionid = new_id
+
+        report_file._details["present_sessions"] = all_sessions

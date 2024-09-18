@@ -1,6 +1,5 @@
 import logging
 import random
-from copy import deepcopy
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -138,14 +137,23 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 timeout=max(60 * 5, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
-                actual_arguments_list = deepcopy(arguments_list)
+                log.info(
+                    "Obtained upload processing lock, starting",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        parent_task=self.request.parent_id,
+                        report_code=report_code,
+                    ),
+                )
+
                 return self.process_impl_within_lock(
                     db_session=db_session,
                     previous_results=previous_results,
                     repoid=repoid,
                     commitid=commitid,
                     commit_yaml=commit_yaml,
-                    arguments_list=actual_arguments_list,
+                    arguments_list=arguments_list,
                     report_code=report_code,
                     parallel_idx=parallel_idx,
                     in_parallel=in_parallel,
@@ -180,18 +188,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         in_parallel=False,
         is_final=False,
     ):
-        if in_parallel:
-            log.info(
-                "Obtained upload processing lock, starting",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    parent_task=self.request.parent_id,
-                    report_code=report_code,
-                ),
-            )
-
-        processings_so_far = previous_results.get("processings_so_far", [])
+        processings_so_far: list[dict] = previous_results.get("processings_so_far", [])
         n_processed = 0
         n_failed = 0
 
@@ -245,11 +242,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         in_parallel=in_parallel,
                     ),
                 )
-                individual_info = {"arguments": arguments.copy()}
+                individual_info = {"arguments": arguments}
                 try:
-                    arguments_commitid = arguments.pop("commit", None)
-                    if arguments_commitid:
-                        assert arguments_commitid == commit.commitid
                     with metrics.timer(
                         f"{self.metrics_prefix}.process_individual_report"
                     ):
@@ -260,7 +254,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                             report,
                             upload_obj,
                             raw_report_info,
-                            parallel_idx=parallel_idx,
                             in_parallel=in_parallel,
                         )
                         # NOTE: this is only used because test mocking messes with the return value here.
@@ -356,15 +349,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
-            processing_result = {
+            processing_results: dict = {
                 "processings_so_far": processings_so_far,
             }
             if in_parallel:
-                processing_result["parallel_incremental_result"] = (
+                processing_results["parallel_incremental_result"] = (
                     parallel_incremental_result
                 )
 
-            return processing_result
+            return processing_results
         except CeleryError:
             raise
         except Exception:
@@ -383,11 +376,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report: Report,
         upload: Upload,
         raw_report_info: RawReportInfo,
-        parallel_idx=None,
         in_parallel=False,
     ) -> ProcessingResult:
         processing_result = report_service.build_report_from_raw_content(
-            report, raw_report_info, upload=upload, parallel_idx=parallel_idx
+            report, raw_report_info, upload=upload
         )
         if (
             processing_result.error is not None

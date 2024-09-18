@@ -199,7 +199,7 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def initialize_and_save_report(
-        self, commit: Commit, report_code: str = None
+        self, commit: Commit, report_code: str | None = None
     ) -> CommitReport:
         """
             Initializes the commit report
@@ -410,7 +410,7 @@ class ReportService(BaseReportService):
         Does not include CF sessions if there is also an upload session with the same
         flag name.
         """
-        sessions = {}
+        sessions: dict[int, Session] = {}
 
         carryforward_sessions = {}
         uploaded_flags = set()
@@ -429,9 +429,9 @@ class ReportService(BaseReportService):
         for upload in report_uploads:
             session = self.build_session(upload)
             if session.session_type == SessionType.carriedforward:
-                carryforward_sessions[upload.order_number] = session
+                carryforward_sessions[session.id] = session
             else:
-                sessions[upload.order_number] = session
+                sessions[session.id] = session
                 uploaded_flags |= set(session.flags)
 
         for sid, session in carryforward_sessions.items():
@@ -861,7 +861,6 @@ class ReportService(BaseReportService):
         report: Report,
         raw_report_info: RawReportInfo,
         upload: Upload,
-        parallel_idx=None,
     ) -> ProcessingResult:
         """
         Processes an upload on top of an existing report `master` and returns
@@ -872,23 +871,18 @@ class ReportService(BaseReportService):
         """
         commit = upload.report.commit
         flags = upload.flag_names
-        service = upload.provider
-        build_url = upload.build_url
-        build = upload.build_code
-        job = upload.job_code
-        name = upload.name
         archive_url = upload.storage_path
         reportid = upload.external_id
 
         session = Session(
-            provider=service,
-            build=build,
-            job=job,
-            name=name,
+            provider=upload.provider,
+            build=upload.build_code,
+            job=upload.job_code,
+            name=upload.name,
             time=int(time()),
             flags=flags,
             archive=archive_url,
-            url=build_url,
+            url=upload.build_url,
         )
         result = ProcessingResult(session=session)
 
@@ -907,7 +901,6 @@ class ReportService(BaseReportService):
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     archive_url=archive_url,
-                    in_parallel=parallel_idx is not None,
                 ),
             )
             result.error = ProcessingError(
@@ -943,13 +936,11 @@ class ReportService(BaseReportService):
                     raw_report,
                     flags,
                     session,
-                    upload=upload,
-                    parallel_idx=parallel_idx,
+                    upload,
                 )
                 result.report = process_result.report
             log.info(
-                "Successfully processed report"
-                + (" (in parallel)" if parallel_idx is not None else ""),
+                "Successfully processed report",
                 extra=dict(
                     session=session.id,
                     ci=f"{session.provider}:{session.build}:{session.job}",
@@ -1054,7 +1045,7 @@ class ReportService(BaseReportService):
                 error_params=error.params,
             )
             db_session.add(error_obj)
-            db_session.flush()
+        db_session.flush()
 
     @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):
@@ -1189,6 +1180,8 @@ class ReportService(BaseReportService):
                 upload_totals.update_from_totals(
                     session.totals, precision=precision, rounding=rounding
                 )
+                db_session.flush()
+
         return res
 
     @sentry_sdk.trace
