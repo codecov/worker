@@ -76,7 +76,7 @@ class TestProcessRawUpload(BaseTestCase):
             report=master,
             raw_reports=parsed_report,
             flags=[],
-            session=Session(),
+            session=Session(id=3 if "M" in keys else 0),
         )
         master = result.report
 
@@ -203,7 +203,7 @@ class TestProcessRawUpload(BaseTestCase):
                 raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                     "\n".join(report_data).encode()
                 ),
-                session=Session(flags=["fruits"]),
+                session=Session(id=1, flags=["fruits"]),
                 flags=[],
             )
         assert len(original_report.sessions) == 1
@@ -282,7 +282,7 @@ class TestProcessRawUpload(BaseTestCase):
                 Report(),
                 LegacyReportParser().parse_raw_report_from_bytes(b""),
                 [],
-                Session(),
+                Session(id=0),
             )
 
 
@@ -307,7 +307,7 @@ class TestProcessRawUploadFixed(BaseTestCase):
                 reports.encode()
             ),
             flags=[],
-            session=Session(),
+            session=Session(id=0),
         )
         report = result.report
         assert 2 not in report["file.go"], "2 never existed"
@@ -347,7 +347,7 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
                         b"a<<<<<< EOF"
                     ),
                     flags=[flag],
-                    session=Session(),
+                    session=Session(id=1),
                 )
             merge.assert_called_with(mocker.ANY, joined=joined)
             call_args, call_kwargs = merge.call_args
@@ -363,7 +363,7 @@ class TestProcessRawUploadFlags(BaseTestCase):
         result = process.process_raw_upload(
             commit_yaml=UserYaml({"flags": {"docker": flag}}),
             report=Report(),
-            session=Session(),
+            session=Session(id=0),
             raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                 b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
             ),
@@ -380,7 +380,7 @@ class TestProcessSessions(BaseTestCase):
         process.process_raw_upload(
             commit_yaml={},
             report=report,
-            session=Session(),
+            session=Session(id=0),
             raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                 b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
             ),
@@ -389,7 +389,7 @@ class TestProcessSessions(BaseTestCase):
         process.process_raw_upload(
             commit_yaml={},
             report=report,
-            session=Session(),
+            session=Session(id=1),
             raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                 b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
             ),
@@ -914,7 +914,7 @@ class TestProcessReport(BaseTestCase):
                 third_raw_report_result,
             ],
         )
-        session = Session()
+        session = Session(id=1)
         result = process.process_raw_upload(
             UserYaml({}),
             original_report,
@@ -1092,7 +1092,7 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
                 ),
             ],
         )
-        session = Session(flags=upload_flags)
+        session = Session(id=2, flags=upload_flags)
         result = process.process_raw_upload(
             UserYaml(
                 {
