@@ -62,13 +62,22 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345
+                    "added-bundle",
+                    BundleChange.ChangeType.ADDED,
+                    size_delta=12345,
+                    percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "changed-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
+                    "changed-bundle",
+                    BundleChange.ChangeType.CHANGED,
+                    size_delta=3456,
+                    percentage_delta=0.35,
                 ),
                 BundleChange(
-                    "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
+                    "removed-bundle",
+                    BundleChange.ChangeType.REMOVED,
+                    size_delta=-1234,
+                    percentage_delta=-1.23,
                 ),
             ],
             5.56,
@@ -93,13 +102,22 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345
+                    "added-bundle",
+                    BundleChange.ChangeType.ADDED,
+                    size_delta=12345,
+                    percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "changed-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
+                    "changed-bundle",
+                    BundleChange.ChangeType.CHANGED,
+                    size_delta=3456,
+                    percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
+                    "removed-bundle",
+                    BundleChange.ChangeType.REMOVED,
+                    size_delta=-1234,
+                    percentage_delta=2.56,
                 ),
             ],
             5.56,
@@ -124,13 +142,22 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "added-bundle", BundleChange.ChangeType.ADDED, size_delta=12345
+                    "added-bundle",
+                    BundleChange.ChangeType.ADDED,
+                    size_delta=12345,
+                    percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "cached-bundle", BundleChange.ChangeType.CHANGED, size_delta=3456
+                    "cached-bundle",
+                    BundleChange.ChangeType.CHANGED,
+                    size_delta=3456,
+                    percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "removed-bundle", BundleChange.ChangeType.REMOVED, size_delta=-1234
+                    "removed-bundle",
+                    BundleChange.ChangeType.REMOVED,
+                    size_delta=-1234,
+                    percentage_delta=2.56,
                 ),
             ],
             3.46,
@@ -162,7 +189,10 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "test-bundle", BundleChange.ChangeType.CHANGED, size_delta=-3456
+                    "test-bundle",
+                    BundleChange.ChangeType.CHANGED,
+                    size_delta=-3456,
+                    percentage_delta=-2.56,
                 ),
             ],
             -0.52,
@@ -189,7 +219,10 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "test-bundle", BundleChange.ChangeType.CHANGED, size_delta=0
+                    "test-bundle",
+                    BundleChange.ChangeType.CHANGED,
+                    size_delta=0,
+                    percentage_delta=0.0,
                 ),
             ],
             0,
