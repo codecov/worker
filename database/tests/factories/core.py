@@ -234,21 +234,6 @@ class UploadFactory(Factory):
     created_at = datetime.now()
 
 
-class UploadLevelTotalsFactory(Factory):
-    class Meta:
-        model = models.UploadLevelTotals
-
-    upload = factory.SubFactory(UploadFactory)
-    branches = 0
-    coverage = 0.00
-    hits = 0
-    lines = 0
-    methods = 0
-    misses = 0
-    partials = 0
-    files = 0
-
-
 class RepositoryFlagFactory(Factory):
     class Meta:
         model = models.RepositoryFlag
