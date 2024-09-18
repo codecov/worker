@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Dict
 
@@ -16,9 +17,7 @@ from services.notification.notifiers.base import (
     Comparison,
     NotificationResult,
 )
-from services.repository import (
-    get_repo_provider_service_for_specific_commit,
-)
+from services.repository import get_repo_provider_service_for_specific_commit
 from services.urls import get_commit_url, get_pull_url
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_paths_from_flags
@@ -160,7 +159,7 @@ class StatusNotifier(AbstractBaseNotifier):
         )
         return selected_installation_id
 
-    async def notify(self, comparison: Comparison):
+    async def notify(self, comparison: ComparisonProxy):
         payload = None
         if not self.can_we_set_this_status(comparison):
             return NotificationResult(
@@ -273,7 +272,7 @@ class StatusNotifier(AbstractBaseNotifier):
         return f"codecov/{self.context}{status_piece}"
 
     async def maybe_send_notification(
-        self, comparison: Comparison, payload: dict
+        self, comparison: ComparisonProxy, payload: dict
     ) -> NotificationResult:
         base_commit = (
             comparison.project_coverage_base.commit
@@ -318,10 +317,32 @@ class StatusNotifier(AbstractBaseNotifier):
                 data_sent=None,
             )
 
-    async def send_notification(self, comparison: Comparison, payload):
+    async def _send_notification_with_metrics(
+        self,
+        repo_service: TorngitBaseAdapter,
+        commit_sha: str,
+        state: str,
+        title: str,
+        coverage: float,
+        description: str,
+        url: str,
+    ):
+        with metrics.timer(
+            "worker.services.notifications.notifiers.status.set_commit_status"
+        ):
+            return await repo_service.set_commit_status(
+                commit=commit_sha,
+                status=state,
+                context=title,
+                coverage=coverage,
+                description=description,
+                url=url,
+            )
+
+    async def send_notification(self, comparison: ComparisonProxy, payload):
         title = self.get_status_external_name()
-        head = comparison.head.commit
-        repository_service = self.repository_service(head)
+        head_commit_sha = comparison.head.commit.commitid
+        repository_service = self.repository_service(comparison.head.commit)
         head_report = comparison.head.report
         state = payload["state"]
         message = payload["message"]
@@ -336,26 +357,37 @@ class StatusNotifier(AbstractBaseNotifier):
                 "state": state,
                 "message": message,
             }
+
+            all_shas_to_notify = [head_commit_sha] + list(
+                comparison.context.gitlab_extra_shas or set()
+            )
+            if len(all_shas_to_notify) > 1:
+                log.info(
+                    "Notifying multiple SHAs",
+                    extra=dict(all_shas=all_shas_to_notify, commit=head_commit_sha),
+                )
+            all_notify_tasks = [
+                self._send_notification_with_metrics(
+                    repo_service=repository_service,
+                    commit_sha=commitid,
+                    state=state,
+                    title=title,
+                    coverage=(float(head_report.totals.coverage) if head_report else 0),
+                    description=message,
+                    url=url,
+                )
+                for commitid in all_shas_to_notify
+            ]
             try:
-                with metrics.timer(
-                    "worker.services.notifications.notifiers.status.set_commit_status"
-                ):
-                    res = await repository_service.set_commit_status(
-                        commit=head.commitid,
-                        status=state,
-                        context=title,
-                        coverage=(
-                            float(head_report.totals.coverage) if head_report else 0
-                        ),
-                        description=message,
-                        url=url,
-                    )
+                all_results = await asyncio.gather(*all_notify_tasks)
+                res = all_results[0]
+
             except TorngitClientError:
                 log.warning(
                     "Status not posted because this user can see but not set statuses on this repo",
                     extra=dict(
                         data_sent=notification_result_data_sent,
-                        commit=comparison.head.commit.commitid,
+                        commit=head_commit_sha,
                         repoid=comparison.head.commit.repoid,
                     ),
                 )
