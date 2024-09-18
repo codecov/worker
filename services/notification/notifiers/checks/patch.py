@@ -45,7 +45,7 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
             checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
 
             should_annotate = (
-                checks_yaml_field.get("annotations", True)
+                checks_yaml_field.get("annotations", False)
                 if checks_yaml_field is not None
                 else True
             )
