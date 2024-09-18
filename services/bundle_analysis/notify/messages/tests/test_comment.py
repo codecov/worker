@@ -61,11 +61,11 @@ class TestCommentMesage:
 
                 | Bundle name | Size | Change |
                 | ----------- | ---- | ------ |
-                | @codecov/sveltekit-plugin-esm | 1.1kB | 188 bytes :arrow_up: |
-                | @codecov/rollup-plugin-esm | 1.32kB | 1.01kB :arrow_down: |
-                | @codecov/bundler-plugin-core-esm | 8.2kB | 30.02kB :arrow_down: |
-                | @codecov/bundler-plugin-core-cjs | 43.32kB | 611 bytes :arrow_up: |
-                | @codecov/example-next-app-server-cjs | (removed) | 342.32kB :arrow_down: |
+                | @codecov/sveltekit-plugin-esm | 1.1kB | 188 bytes (20.68%) :arrow_up: |
+                | @codecov/rollup-plugin-esm | 1.32kB | 1.01kB (-43.37%) :arrow_down: |
+                | @codecov/bundler-plugin-core-esm | 8.2kB | 30.02kB (-78.55%) :arrow_down: |
+                | @codecov/bundler-plugin-core-cjs | 43.32kB | 611 bytes (1.43%) :arrow_up: |
+                | @codecov/example-next-app-server-cjs | (removed) | 342.32kB (-100.0%) :arrow_down: |
 
                 </details>""").format(
             pullid=enriched_pull.database_pull.pullid,
