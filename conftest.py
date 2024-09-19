@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy_utils import database_exists
 
 from celery_config import initialize_logging
+from database.base import Base
 from database.engine import json_dumps
 from helpers.environment import _get_cached_current_env
 
@@ -79,6 +80,29 @@ def db(engine, sqlalchemy_connect_url, django_db_setup):
     database_url = sqlalchemy_connect_url
     if not database_exists(database_url):
         raise RuntimeError(f"SQLAlchemy cannot connect to DB at {database_url}")
+
+    # Create the unmigrated models as a stopgap
+    Base.metadata.tables["profiling_profilingcommit"].create(bind=engine)
+    Base.metadata.tables["profiling_profilingupload"].create(bind=engine)
+    Base.metadata.tables["timeseries_measurement"].create(bind=engine)
+    Base.metadata.tables["timeseries_dataset"].create(bind=engine)
+
+    Base.metadata.tables["compare_commitcomparison"].create(bind=engine)
+    Base.metadata.tables["compare_flagcomparison"].create(bind=engine)
+    Base.metadata.tables["compare_componentcomparison"].create(bind=engine)
+
+    Base.metadata.tables["labelanalysis_labelanalysisrequest"].create(bind=engine)
+    Base.metadata.tables["labelanalysis_labelanalysisprocessingerror"].create(
+        bind=engine
+    )
+
+    Base.metadata.tables["staticanalysis_staticanalysissuite"].create(bind=engine)
+    Base.metadata.tables["staticanalysis_staticanalysissinglefilesnapshot"].create(
+        bind=engine
+    )
+    Base.metadata.tables["staticanalysis_staticanalysissuitefilepath"].create(
+        bind=engine
+    )
 
 
 @pytest.fixture
@@ -232,7 +256,7 @@ def mock_owner_provider(mocker):
 @pytest.fixture
 def with_sql_functions(dbsession):
     dbsession.execute(
-        """CREATE FUNCTION array_append_unique(anyarray, anyelement) RETURNS anyarray
+        """CREATE OR REPLACE FUNCTION array_append_unique(anyarray, anyelement) RETURNS anyarray
                 LANGUAGE sql IMMUTABLE
                 AS $_$
             select case when $2 is null
