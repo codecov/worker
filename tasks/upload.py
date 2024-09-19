@@ -59,6 +59,10 @@ log = logging.getLogger(__name__)
 
 CHUNK_SIZE = 3
 
+# Making the upload lock name a constant so it can be shared between the preprocess and
+# the upload task, as they have overlapping logic that collides in some cases
+UPLOAD_LOCK_NAME = lambda repoid, commitid: f"upload_lock_{repoid}_{commitid}"
+
 
 class UploadContext:
     """
@@ -109,7 +113,7 @@ class UploadContext:
             if lock_type == "upload_processing":
                 return UPLOAD_PROCESSING_LOCK_NAME(self.repoid, self.commitid)
             else:
-                return f"{lock_type}_lock_{self.repoid}_{self.commitid}"
+                return UPLOAD_LOCK_NAME(self.repoid, self.commitid)
         else:
             return f"{lock_type}_lock_{self.repoid}_{self.commitid}_{self.report_type.value}"
 
