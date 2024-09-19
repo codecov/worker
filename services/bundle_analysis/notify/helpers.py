@@ -1,9 +1,7 @@
 import numbers
 from typing import Iterable, Literal
 
-from shared.bundle_analysis import (
-    BundleAnalysisComparison,
-)
+from shared.bundle_analysis import BundleAnalysisComparison, BundleChange
 from shared.django_apps.codecov_auth.models import Service
 from shared.torngit.base import TorngitBaseAdapter
 from shared.validation.types import BundleThreshold
@@ -89,7 +87,7 @@ def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
     raise TypeError(f"Can't parse {value} into BundleThreshold")
 
 
-def is_bundle_change_within_bundle_threshold(
+def is_bundle_comparison_change_within_configured_threshold(
     comparison: BundleAnalysisComparison,
     threshold: BundleThreshold,
     compare_non_negative_numbers: bool = False,
@@ -103,3 +101,12 @@ def is_bundle_change_within_bundle_threshold(
         return total_size_delta <= threshold.threshold
     else:
         return comparison.percentage_delta <= threshold.threshold
+
+
+def is_bundle_change_within_configured_threshold(
+    bundle_change: BundleChange, threshold: BundleThreshold
+) -> bool:
+    if threshold.type == "absolute":
+        return bundle_change.size_delta <= threshold.threshold
+    else:
+        return bundle_change.percentage_delta <= threshold.threshold

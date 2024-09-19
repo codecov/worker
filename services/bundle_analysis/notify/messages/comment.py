@@ -8,6 +8,7 @@ from shared.bundle_analysis import (
     BundleChange,
 )
 from shared.torngit.exceptions import TorngitClientError
+from shared.validation.types import BundleThreshold
 
 from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentNotificationContext,
@@ -15,6 +16,7 @@ from services.bundle_analysis.notify.contexts.comment import (
 from services.bundle_analysis.notify.helpers import (
     bytes_readable,
     get_github_app_used,
+    is_bundle_change_within_configured_threshold,
 )
 from services.bundle_analysis.notify.messages import MessageStrategyInterface
 from services.license import requires_license
@@ -28,8 +30,10 @@ class BundleRow(TypedDict):
     bundle_name: str
     bundle_size: str
     change_size_readable: str
+    percentage_change_readable: str
     change_icon: str
     has_cached: bool
+    is_change_outside_threshold: bool
 
 
 class BundleCommentTemplateContext(TypedDict):
@@ -64,8 +68,10 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
     ) -> str:
         template = loader.get_template("bundle_analysis_notify/bundle_comment.md")
         total_size_delta = context.bundle_analysis_comparison.total_size_delta
-        bundle_rows = self._create_bundle_rows(context.bundle_analysis_comparison)
         warning_threshold = context.user_config.warning_threshold
+        bundle_rows = self._create_bundle_rows(
+            context.bundle_analysis_comparison, warning_threshold
+        )
         if warning_threshold.type == "absolute":
             warning_threshold_readable = bytes_readable(warning_threshold.threshold)
         else:
@@ -133,6 +139,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
     def _create_bundle_rows(
         self,
         comparison: BundleAnalysisComparison,
+        configured_threshold: BundleThreshold,
     ) -> list[BundleRow]:
         bundle_rows = []
         bundle_changes = comparison.bundle_changes()
@@ -165,6 +172,12 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
                     change_size_readable=bytes_readable(change_size),
                     change_icon=icon,
                     is_cached=is_cached,
+                    percentage_change_readable=f"{bundle_change.percentage_delta}%",
+                    is_change_outside_threshold=(
+                        not is_bundle_change_within_configured_threshold(
+                            bundle_change, configured_threshold
+                        )
+                    ),
                 )
             )
 
