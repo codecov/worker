@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 import sentry_sdk
@@ -34,13 +34,13 @@ def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> No
 def _process_file(
     doc: bytes, report_builder_session: ReportBuilderSession
 ) -> ReportFile | None:
-    _already_informed_of_negative_execution_count = False
     branches: dict[str, dict[str, int]] = defaultdict(dict)
-    fln, fh = {}, {}
+    fn_lines: set[str] = set()  # lines of function definitions
+
     JS = False
     CPP = False
     skip_lines: list[str] = []
-    _file = None
+    _file: ReportFile | None = None
 
     for encoded_line in BytesIO(doc):
         line = encoded_line.decode(errors="replace").rstrip("\n")
@@ -49,7 +49,7 @@ def _process_file(
 
         method, content = line.split(":", 1)
         content = content.strip()
-        if method in ("TN", "LF", "LH", "BRF", "BRH"):
+        if method in ("TN", "LF", "LH", "FNF", "FNH", "BRF", "BRH", "FNDA"):
             # TN: test title
             # LF: lines found
             # LH: lines hit
@@ -57,6 +57,7 @@ def _process_file(
             # FNH: functions hit
             # BRF: branches found
             # BRH: branches hit
+            # FNDA: function data
             continue
 
         if method == "SF":
@@ -86,35 +87,27 @@ def _process_file(
             if line.startswith("undefined,"):
                 continue
 
-            splitted_content = content.split(",")
-            line = splitted_content[0]
-            hit = splitted_content[1]
-            if line[0] in ("0", "n") or hit[0] in ("=", "s"):
+            split = content.split(",", 2)
+            if len(split) < 2:
+                continue
+            line_str = split[0]
+            hit = split[1]
+
+            if line_str in ("", "undefined") or hit in ("", "undefined"):
+                continue
+            if line_str[0] in ("0", "n") or hit[0] in ("=", "s"):
                 continue
 
-            if hit == "undefined" or line == "undefined":
+            try:
+                ln = int(line_str)
+                cov = parse_int(hit)
+            except (ValueError, InvalidOperation):
                 continue
 
-            if hit.isnumeric():
-                cov = int(hit)
-            else:
-                # Huge ints may be expressed in scientific notation.
-                # int(float(hit)) may lose precision, but Decimal shouldn't.
-                cov = int(Decimal(hit))
+            cov = max(cov, 0)  # clamp to 0
 
-            if cov < -1:
-                # https://github.com/linux-test-project/lcov/commit/dfec606f3b30e1ac0f4114cfb98b29f91e9edb21
-                if not _already_informed_of_negative_execution_count:
-                    log.warning(
-                        "At least one occurrence of negative execution counts on Lcov",
-                        extra=dict(
-                            execution_count=cov, lcov_report_filename=_file.name
-                        ),
-                    )
-                    _already_informed_of_negative_execution_count = True
-                cov = 0
-            coverage_line = report_builder_session.create_coverage_line(cov)
-            _file.append(int(line), coverage_line)
+            _line = report_builder_session.create_coverage_line(cov)
+            _file.append(ln, _line)
 
         elif method == "FN" and not JS:
             """
@@ -123,69 +116,79 @@ def _process_file(
 
             FN:<line number of function start>,<function name>
             """
-            line, name = content.split(",", 1)
+
+            split = content.split(",", 1)
+            if len(split) < 2:
+                continue
+            line_str, name = split
+
             if CPP and name[:2] in ("_Z", "_G"):
-                skip_lines.append(line)
+                skip_lines.append(line_str)
                 continue
 
-            fln[name] = line
-
-        elif method == "FNDA" and not JS:
-            #  FNDA:<execution count>,<function name>
-            hit, name = content.split(",", 1)
-            if CPP and name[0] == "_":
-                skip_lines.append(line)
-                continue
-
-            if hit:
-                if hit.isnumeric():
-                    fh[name] = int(hit)
-                else:
-                    fh[name] = int(Decimal(hit))
+            fn_lines.add(line_str)
 
         elif method == "BRDA" and not JS:
             """
-            Branch coverage information is stored which one line per branch:
+            Branch coverage information is stored with one line per branch:
 
               BRDA:<line number>,<block number>,<branch number>,<taken>
 
-            Block  number  and  branch  number are gcc internal IDs for the branch.
-            Taken is either "-" if the basic block containing the branch was  never
+            Block number and branch number are gcc internal IDs for the branch.
+            Taken is either "-" if the basic block containing the branch was never
             executed or a number indicating how often that branch was taken.
             """
             # BRDA:<line number>,<block number>,<branch number>,<taken>
-            ln, block, branch, taken = content.split(",", 3)
-            if ln == "1" and _file.name.endswith(".ts"):
+            split = content.split(",", 3)
+            if len(split) < 4:
+                continue
+            line_str, block, branch, taken = split
+
+            if line_str == "1" and _file.name.endswith(".ts"):
                 continue
 
-            elif ln not in ("0", ""):
-                branches[ln]["%s:%s" % (block, branch)] = (
+            elif line_str not in ("0", ""):
+                branches[line_str]["%s:%s" % (block, branch)] = (
                     0 if taken in ("-", "0") else 1
                 )
 
     if _file is None:
         return None
 
-    # remove skipped
+    # remove skipped branches
     for sl in skip_lines:
         branches.pop(sl, None)
 
-    methods = fln.values()
-
     # work branches
-    for ln, br in branches.items():
-        s, li = sum(br.values()), len(br.values())
-        mb = [bid for bid, cov in br.items() if cov == 0]
-        coverage = f"{s}/{li}"
-        coverage_type = CoverageType.method if ln in methods else CoverageType.branch
+    for line_str, br in branches.items():
+        try:
+            ln = int(line_str)
+        except ValueError:
+            continue
 
-        _file.append(
-            int(ln),
-            report_builder_session.create_coverage_line(
-                coverage,
-                coverage_type,
-                missing_branches=(mb if mb != [] else None),
-            ),
+        branch_num = len(br.values())
+        branch_sum = sum(br.values())
+        missing_branches = [bid for bid, cov in br.items() if cov == 0]
+
+        coverage = f"{branch_sum}/{branch_num}"
+        coverage_type = (
+            CoverageType.method if line_str in fn_lines else CoverageType.branch
         )
 
+        _line = report_builder_session.create_coverage_line(
+            coverage,
+            coverage_type,
+            missing_branches=(missing_branches if missing_branches != [] else None),
+        )
+        _file.append(ln, _line)
+
     return _file
+
+
+def parse_int(n: str) -> int:
+    if n.isnumeric():
+        return int(n)
+
+    # Huge ints may be expressed in scientific notation.
+    # int(float(hit)) may lose precision, but Decimal shouldn't.
+    return int(Decimal(n))

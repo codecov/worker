@@ -3,7 +3,8 @@ from test_utils.base import BaseTestCase
 
 from . import create_report_builder_session
 
-txt = b"""TN:
+txt = b"""
+TN:
 SF:file.js
 FNDA:76,jsx
 FN:76,(anonymous_1)
@@ -86,6 +87,36 @@ BRDA:77,4,1,0
 end_of_record
 """
 
+negative_count = b"""
+TN:
+SF:file.js
+DA:1,1
+DA:2,2
+DA:3,0
+DA:4,-1
+DA:5,-5
+DA:6,-20
+end_of_record
+"""
+
+corrupt_txt = b"""
+TN:
+SF:foo.cpp
+
+DA:1,1
+
+DA:DA:130,0
+DA:0,
+DA:,0
+DA:
+DA:not_int,123
+DA:123,not_decimal
+
+FN:just_a_name_no_line
+
+end_of_record
+"""
+
 
 class TestLcov(BaseTestCase):
     def test_report(self):
@@ -100,7 +131,7 @@ class TestLcov(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "file.cpp": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
                 (2, "1/3", "m", [[0, "1/3", ["1:1", "1:3"], None, None]], None, None),
@@ -121,7 +152,6 @@ class TestLcov(BaseTestCase):
                     None,
                     None,
                 ),
-                # TODO (Thiago): This is out of order compared to the original, verify what happened
             ],
             "file.js": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
@@ -129,8 +159,6 @@ class TestLcov(BaseTestCase):
             ],
             "file.ts": [(2, 1, None, [[0, 1, None, None, None]], None, None)],
         }
-
-        assert expected_result_archive == processed_report["archive"]
 
     def test_detect(self):
         processor = lcov.LcovProcessor()
@@ -140,21 +168,8 @@ class TestLcov(BaseTestCase):
         assert processor.matches_content(b"", "", "") is False
 
     def test_negative_execution_count(self):
-        text = "\n".join(
-            [
-                "TN:",
-                "SF:file.js",
-                "DA:1,1",
-                "DA:2,2",
-                "DA:3,0",
-                "DA:4,-1",
-                "DA:5,-5",
-                "DA:6,-20",
-                "end_of_record",
-            ]
-        ).encode()
         report_builder_session = create_report_builder_session()
-        lcov.from_txt(text, report_builder_session)
+        lcov.from_txt(negative_count, report_builder_session)
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
@@ -163,8 +178,20 @@ class TestLcov(BaseTestCase):
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
                 (2, 2, None, [[0, 2, None, None, None]], None, None),
                 (3, 0, None, [[0, 0, None, None, None]], None, None),
-                (4, -1, None, [[0, -1, None, None, None]], None, None),
+                (4, 0, None, [[0, 0, None, None, None]], None, None),
                 (5, 0, None, [[0, 0, None, None, None]], None, None),
                 (6, 0, None, [[0, 0, None, None, None]], None, None),
+            ]
+        }
+
+    def test_skips_corrupted_lines(self):
+        report_builder_session = create_report_builder_session()
+        lcov.from_txt(corrupt_txt, report_builder_session)
+        report = report_builder_session.output_report()
+        processed_report = self.convert_report_to_better_readable(report)
+
+        assert processed_report["archive"] == {
+            "foo.cpp": [
+                (1, 1, None, [[0, 1, None, None, None]], None, None),
             ]
         }
