@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from xml.etree.ElementTree import Element
 
 
@@ -17,3 +18,16 @@ def child_text(parent: Element, element: str) -> str:
     if child is None:
         return ""
     return child.text or ""
+
+
+@dataclass
+class SourceLocation:
+    line: int
+    column: int
+
+
+@dataclass
+class Region:
+    start: SourceLocation
+    end: SourceLocation
+    hits: int

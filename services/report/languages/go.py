@@ -7,8 +7,8 @@ from shared.utils import merge
 from shared.utils.merge import LineType, line_type, partials_to_line
 
 from helpers.exceptions import CorruptRawReportError
-from services.path_fixer import PathFixer
 from services.report.languages.base import BaseLanguageProcessor
+from services.report.languages.helpers import Region, SourceLocation
 from services.report.report_builder import ReportBuilderSession
 
 
@@ -30,11 +30,13 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Non
     )
 
     # Process the bytes from uploaded report to intermediary representation
-    # files: {new_name: <lines defaultdict(list)>}
-    files = process_bytes_into_files(string, report_builder_session.path_fixer)
-    # create a file
+    files = process_bytes_into_files(string)
+
     for filename, lines in files.items():
-        _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
+        _file = report_builder_session.create_coverage_file(filename)
+        if _file is None:
+            continue
+
         for ln, partials in lines.items():
             best_in_partials = max(map(lambda p: p[2], partials))
             partials = combine_partials(partials)
@@ -45,18 +47,14 @@ def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Non
                 cov_to_use = best_in_partials
             if partials_as_hits and line_type(cov_to_use) == LineType.partial:
                 cov_to_use = 1
-            _file.append(
-                ln,
-                report_builder_session.create_coverage_line(
-                    cov_to_use,
-                ),
-            )
+
+            _line = report_builder_session.create_coverage_line(cov_to_use)
+            _file.append(ln, _line)
+
         report_builder_session.append(_file)
 
 
-def process_bytes_into_files(
-    string: bytes, path_fixer: PathFixer
-) -> dict[str, dict[str, list]]:
+def process_bytes_into_files(string: bytes) -> dict[str, dict[int, set]]:
     """
     mode: count
     github.com/codecov/sample_go/sample_go.go:7.14,9.2 1 1
@@ -69,7 +67,7 @@ def process_bytes_into_files(
     All other continuation > .2 should continue
     github.com/codecov/sample_go/sample_go.go:15.19,17.9 1 0
 
-    Need to be concious of customers whom have reports merged in the following way:
+    Need to be cautious of customers who have reports merged in the following way:
     FILE:1.0,2.0 1 0
     ...
     FILE:1.0,2.0 1 1
@@ -80,71 +78,66 @@ def process_bytes_into_files(
     Line format explanation:
         - https://github.com/golang/go/blob/0104a31b8fbcbe52728a08867b26415d282c35d2/src/cmd/cover/profile.go#L56
         - `name.go:line.column,line.column numberOfStatements count`
-
     """
-    _cur_file = None
-    lines = None
-    ignored_files = []
-    file_name_replacement = {}  # {old_name: new_name}
-    files = {}  # {new_name: <lines defaultdict(list)>}
+
+    files: dict[str, dict[int, set]] = {}
+
     for encoded_line in BytesIO(string):
         line = encoded_line.decode(errors="replace").rstrip("\n")
         if not line or line.startswith("mode: "):
             continue
 
-        # prepare data
-        filename, data = line.split(":", 1)
-        if data.endswith("%"):
-            # File outline e.g., "github.com/nfisher/rsqf/rsqf.go:19: calcP 100.0%"
+        split = line.split(":", 1)
+        # File outline e.g., "github.com/nfisher/rsqf/rsqf.go:19: calcP 100.0%"
+        if len(split) < 2 or not split[1] or split[1].endswith("%"):
             continue
 
-        # if we are on the same file name we can pass this
-        if filename in ignored_files:
-            continue
-
-        if _cur_file != filename:
-            _cur_file = filename
-            if filename in file_name_replacement:
-                filename = file_name_replacement[filename]
-            else:
-                fixed = path_fixer(filename)
-                file_name_replacement[filename] = fixed
-                filename = fixed
-                if filename is None:
-                    ignored_files.append(_cur_file)
-                    _cur_file = None
-                    continue
-
-            lines = files.setdefault(filename, defaultdict(set))
-
-        columns, _, hits = data.split(" ", 2)
-        hits = int(hits)
-        line_start, line_end = columns.split(",", 1)
-        line_start, sc = list(map(int, line_start.split(".", 1)))
+        filename = split[0]
         try:
-            line_end, ec = list(map(int, line_end.split(".", 1)))
+            region = parse_coverage(split[1])
         except ValueError:
+            # FIXME: do we actually want to raise an error here?
+            # Why not just skip over invalid lines, as the coverage file likely
+            # contains other valid lines we can use.
             raise CorruptRawReportError(
-                "name.go:line.column,line.column numberOfStatements count",
-                "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format",
+                "name.go:line.column,line.column numberOfStatements hits",
+                "Go coverage line does not match expected format",
             )
 
+        lines = files.setdefault(filename, defaultdict(set))
+
         # add start of line
-        if line_start == line_end:
-            lines[line_start].add((sc, ec, hits))
+        if region.start.line == region.end.line:
+            lines[region.start.line].add(
+                (region.start.column, region.end.column, region.hits)
+            )
         else:
-            lines[line_start].add((sc, None, hits))
+            lines[region.start.line].add((region.start.column, None, region.hits))
             # add middles
-            [lines[ln].add((0, None, hits)) for ln in range(line_start + 1, line_end)]
-            if ec > 2:
+            for ln in range(region.start.line + 1, region.end.line):
+                lines[ln].add((0, None, region.hits))
+            if region.end.column > 2:
                 # add end of line
-                lines[line_end].add((None, ec, hits))
+                lines[region.end.line].add((None, region.end.column, region.hits))
+
     return files
+
+
+def parse_coverage(line: str) -> Region:
+    region_str, _num_statements, hits = line.split(" ", 2)
+    start, end = region_str.split(",", 1)
+    start_line, start_column = start.split(".", 1)
+    end_line, end_column = end.split(".", 1)
+    return Region(
+        start=SourceLocation(line=int(start_line), column=int(start_column)),
+        end=SourceLocation(line=int(end_line), column=int(end_column)),
+        hits=int(hits),
+    )
 
 
 def combine_partials(partials):
     """
-        [(INCLUSIVE, EXCLUSICE, HITS), ...]
+        [(INCLUSIVE, EXCLUSIVE, HITS), ...]
         | . . . . . |
      in:    0+         (2, None, 0)
      in:  1   1        (1, 3, 1)
@@ -157,11 +150,10 @@ def combine_partials(partials):
 
     columns = defaultdict(list)
     # fill in the partials WITH end values: (_, X, _)
-    [
-        [columns[c].append(cov) for c in range(sc or 0, ec)]
-        for (sc, ec, cov) in partials
-        if ec is not None
-    ]
+    for sc, ec, cov in partials:
+        if ec is not None:
+            for c in range(sc or 0, ec):
+                columns[c].append(cov)
 
     # get the last column number (+1 for exclusiveness)
     lc = (
@@ -171,11 +163,11 @@ def combine_partials(partials):
     eol = []
 
     # fill in the partials WITHOUT end values: (_, None, _)
-    [
-        ([columns[c].append(cov) for c in range(sc or 0, lc)], eol.append(cov))
-        for (sc, ec, cov) in partials
-        if ec is None
-    ]
+    for sc, ec, cov in partials:
+        if ec is None:
+            for c in range(sc or 0, lc):
+                columns[c].append(cov)
+            eol.append(cov)
 
     columns = [(c, merge.merge_all(cov)) for c, cov in columns.items()]
 
