@@ -74,8 +74,8 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
 uploadflagmembership = Table(
     "reports_uploadflagmembership",
     CodecovBaseModel.metadata,
-    Column("upload_id", types.Integer, ForeignKey("reports_upload.id")),
-    Column("flag_id", types.Integer, ForeignKey("reports_repositoryflag.id")),
+    Column("upload_id", types.BigInteger, ForeignKey("reports_upload.id")),
+    Column("flag_id", types.BigInteger, ForeignKey("reports_repositoryflag.id")),
 )
 
 
@@ -84,7 +84,7 @@ class ReportResults(MixinBaseClass, CodecovBaseModel):
     state = Column(types.Text)
     completed_at = Column(types.DateTime(timezone=True), nullable=True)
     result = Column(postgresql.JSON)
-    report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
+    report_id = Column(types.BigInteger, ForeignKey("reports_commitreport.id"))
     report = relationship("CommitReport", foreign_keys=[report_id])
 
 
@@ -131,7 +131,7 @@ class UploadError(CodecovBaseModel, MixinBaseClass):
 
 class ReportDetails(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_reportdetails"
-    report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
+    report_id = Column(types.BigInteger, ForeignKey("reports_commitreport.id"))
     report: CommitReport = relationship(
         "CommitReport", foreign_keys=[report_id], back_populates="details"
     )
@@ -218,13 +218,13 @@ class AbstractTotals(MixinBaseClass):
 
 class ReportLevelTotals(CodecovBaseModel, AbstractTotals):
     __tablename__ = "reports_reportleveltotals"
-    report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
+    report_id = Column(types.BigInteger, ForeignKey("reports_commitreport.id"))
     report = relationship("CommitReport", foreign_keys=[report_id])
 
 
 class UploadLevelTotals(CodecovBaseModel, AbstractTotals):
     __tablename__ = "reports_uploadleveltotals"
-    upload_id = Column("upload_id", types.Integer, ForeignKey("reports_upload.id"))
+    upload_id = Column("upload_id", types.BigInteger, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", foreign_keys=[upload_id])
 
 
@@ -234,7 +234,9 @@ class CompareFlag(MixinBaseClass, CodecovBaseModel):
     commit_comparison_id = Column(
         types.BigInteger, ForeignKey("compare_commitcomparison.id")
     )
-    repositoryflag_id = Column(types.Integer, ForeignKey("reports_repositoryflag.id"))
+    repositoryflag_id = Column(
+        types.BigInteger, ForeignKey("reports_repositoryflag.id")
+    )
     head_totals = Column(postgresql.JSON)
     base_totals = Column(postgresql.JSON)
     patch_totals = Column(postgresql.JSON)
@@ -304,7 +306,7 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     test = relationship(Test, backref=backref("testinstances"))
     duration_seconds = Column(types.Float, nullable=False)
     outcome = Column(types.String(100), nullable=False)
-    upload_id = Column(types.Integer, ForeignKey("reports_upload.id"))
+    upload_id = Column(types.BigInteger, ForeignKey("reports_upload.id"))
     upload = relationship("Upload", backref=backref("testinstances"))
     failure_message = Column(types.Text)
     branch = Column(types.Text, nullable=True)
@@ -312,14 +314,14 @@ class TestInstance(CodecovBaseModel, MixinBaseClass):
     repoid = Column(types.Integer, nullable=True)
 
     reduced_error_id = Column(
-        types.Integer, ForeignKey("reports_reducederror.id"), nullable=True
+        types.BigInteger, ForeignKey("reports_reducederror.id"), nullable=True
     )
     reduced_error = relationship("ReducedError", backref=backref("testinstances"))
 
 
 class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "reports_testresultreporttotals"
-    report_id = Column(types.Integer, ForeignKey("reports_commitreport.id"))
+    report_id = Column(types.BigInteger, ForeignKey("reports_commitreport.id"))
     report = relationship("CommitReport", foreign_keys=[report_id])
     passed = Column(types.Integer)
     skipped = Column(types.Integer)
@@ -341,7 +343,7 @@ class Flake(CodecovBaseModel, MixinBaseClassNoExternalID):
     test = relationship(Test, backref=backref("flakes"))
 
     reduced_error_id = Column(
-        types.Integer, ForeignKey("reports_reducederror.id"), nullable=True
+        types.BigInteger, ForeignKey("reports_reducederror.id"), nullable=True
     )
     reduced_error = relationship(ReducedError, backref=backref("flakes"))
 
