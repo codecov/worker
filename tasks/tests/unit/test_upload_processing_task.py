@@ -745,6 +745,7 @@ class TestUploadProcessorTask(object):
             report__commit=commit, storage_path="locationlocation"
         )
         dbsession.add(upload)
+        dbsession.flush()
         task = UploadProcessorTask()
         task.request.retries = 1
         result = task.process_individual_report(
