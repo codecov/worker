@@ -1,3 +1,5 @@
+import json
+
 import sentry_sdk
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -21,12 +23,14 @@ def from_json(report: dict, report_builder_session: ReportBuilderSession) -> Non
         if _file is None:
             continue
 
-        for ln, coverage in enumerate(file["coverage"], start=1):
-            if coverage is not None:
-                _file.append(
-                    ln,
-                    report_builder_session.create_coverage_line(
-                        coverage,
-                    ),
-                )
+        # for some reason, the `coverage` field is either a list directly,
+        # or a string with a json-encoded list.
+        coverage: str | list = file["coverage"]
+        if isinstance(coverage, str):
+            coverage = json.loads(coverage)
+
+        for ln, cov in enumerate(coverage, start=1):
+            if cov is not None:
+                _line = report_builder_session.create_coverage_line(cov)
+                _file.append(ln, _line)
         report_builder_session.append(_file)

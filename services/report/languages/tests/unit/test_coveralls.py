@@ -10,6 +10,15 @@ json = {
     ]
 }
 
+nested_json = {
+    "source_files": [
+        {
+            "name": "foobar",
+            "coverage": "[null,null,1,null,1]",
+        }
+    ]
+}
+
 
 class TestCoveralls(BaseTestCase):
     def test_detect(self):
@@ -27,7 +36,7 @@ class TestCoveralls(BaseTestCase):
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
-        expected_result = {
+        assert processed_report == {
             "archive": {
                 "file": [
                     (1, 0, None, [[0, 0, None, None, None]], None, None),
@@ -62,4 +71,15 @@ class TestCoveralls(BaseTestCase):
             },
         }
 
-        assert processed_report == expected_result
+    def test_nested_json(self):
+        report_builder_session = create_report_builder_session()
+        coveralls.from_json(nested_json, report_builder_session)
+        report = report_builder_session.output_report()
+        processed_report = self.convert_report_to_better_readable(report)
+
+        assert processed_report["archive"] == {
+            "foobar": [
+                (3, 1, None, [[0, 1, None, None, None]], None, None),
+                (5, 1, None, [[0, 1, None, None, None]], None, None),
+            ]
+        }
