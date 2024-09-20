@@ -9,6 +9,7 @@ from time_machine import travel
 from database.models import CommitReport
 from database.models.reports import DailyTestRollup, Test, TestInstance
 from database.tests.factories import CommitFactory, UploadFactory
+from database.tests.factories.reports import FlakeFactory
 from services.test_results import generate_test_id
 from tasks.test_results_processor import (
     ParserError,
@@ -722,6 +723,11 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(upload)
         dbsession.flush()
 
+        first_test = dbsession.query(Test).first()
+        flake = FlakeFactory.create(test=first_test)
+        dbsession.add(flake)
+        dbsession.flush()
+
         redis_queue = [{"url": second_url, "upload_pk": upload.id_}]
 
         result = TestResultsProcessorTask().run_impl(
@@ -758,6 +764,7 @@ class TestUploadTestProcessorTask(object):
         assert [r.fail_count for r in rollups] == [1, 0, 0, 1]
         assert [r.pass_count for r in rollups] == [1, 1, 2, 0]
         assert [r.skip_count for r in rollups] == [0, 0, 0, 0]
+        assert [r.flaky_fail_count for r in rollups] == [0, 0, 1, 0]
 
         assert [r.commits_where_fail for r in rollups] == [
             ["cd76b0821854a780b60012aed85af0a8263004ad"],
@@ -774,5 +781,4 @@ class TestUploadTestProcessorTask(object):
         ]
         assert [r.avg_duration_seconds for r in rollups] == [0.001, 7.2, 0.002, 3.6]
         assert [r.last_duration_seconds for r in rollups] == [0.001, 7.2, 0.002, 3.6]
-
         traveller.stop()
