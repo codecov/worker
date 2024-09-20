@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from database.tests.factories import OwnerFactory
-from services.billing import is_pr_billing_plan
+from services.billing import BillingPlan, is_pr_billing_plan
 
 
 class TestBillingServiceTestCase(object):
@@ -34,7 +34,9 @@ class TestBillingServiceTestCase(object):
     def test_plan_not_pr_author(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions
     ):
-        owner = OwnerFactory.create(service="github")
+        owner = OwnerFactory.create(
+            service="github", plan=BillingPlan.users_monthly.value
+        )
         dbsession.add(owner)
         dbsession.flush()
 
