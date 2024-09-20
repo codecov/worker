@@ -364,6 +364,7 @@ class DailyTestRollup(CodecovBaseModel, MixinBaseClassNoExternalID):
     branch = Column(types.Text)
 
     fail_count = Column(types.Integer)
+    flaky_fail_count = Column(types.Integer)
     skip_count = Column(types.Integer)
     pass_count = Column(types.Integer)
     last_duration_seconds = Column(types.Float)
