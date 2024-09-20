@@ -1,6 +1,8 @@
+import datetime as dt
+
 import factory
 
-from database.models.reports import CompareFlag, RepositoryFlag, Test
+from database.models.reports import CompareFlag, Flake, RepositoryFlag, Test
 from database.tests.factories.core import CompareCommitFactory, RepositoryFactory
 
 
@@ -29,3 +31,19 @@ class TestFactory(factory.Factory):
     flags_hash = "flags_hash"
     id_ = factory.Sequence(lambda n: f"id_{n}")
     repository = factory.SubFactory(RepositoryFactory)
+
+
+class FlakeFactory(factory.Factory):
+    class Meta:
+        model = Flake
+
+    test = factory.SubFactory(TestFactory)
+    repository = factory.SelfAttribute("test.repository")
+    reduced_error = None
+
+    count = 0
+    fail_count = 0
+    recent_passes_count = 0
+
+    start_date = dt.datetime.now()
+    end_date = None
