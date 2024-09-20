@@ -109,7 +109,7 @@ class BaseReportService:
         self.current_yaml = current_yaml
 
     def initialize_and_save_report(
-        self, commit: Commit, report_code: str = None
+        self, commit: Commit, report_code: str | None = None
     ) -> CommitReport:
         raise NotImplementedError()
 
@@ -150,6 +150,7 @@ class BaseReportService:
             Upload
         """
         db_session = commit_report.get_db_session()
+        name = normalized_arguments.get("name")
         upload = Upload(
             external_id=normalized_arguments.get("reportid"),
             build_code=normalized_arguments.get("build"),
@@ -157,11 +158,7 @@ class BaseReportService:
             env=None,
             report_id=commit_report.id_,
             job_code=normalized_arguments.get("job"),
-            name=(
-                normalized_arguments.get("name")[:100]
-                if normalized_arguments.get("name")
-                else None
-            ),
+            name=(name[:100] if name else None),
             provider=normalized_arguments.get("service"),
             state="started",
             storage_path=normalized_arguments.get("url"),
@@ -295,8 +292,7 @@ class ReportService(BaseReportService):
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
         upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags = normalized_arguments.get("flags")
-        flags = flags.split(",") if flags else []
+        flags = normalized_arguments.get("flags", "").split(",")
         self._attach_flags_to_upload(upload, flags)
 
         # Insert entry in user measurements table only
