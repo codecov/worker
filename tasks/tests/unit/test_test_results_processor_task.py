@@ -723,10 +723,11 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(upload)
         dbsession.flush()
 
-        first_test = dbsession.query(Test).first()
-        flake = FlakeFactory.create(test=first_test)
-        dbsession.add(flake)
-        dbsession.flush()
+        tests = dbsession.query(Test).all()
+        for test in tests:
+            flake = FlakeFactory.create(test=test)
+            dbsession.add(flake)
+            dbsession.flush()
 
         redis_queue = [{"url": second_url, "upload_pk": upload.id_}]
 
@@ -764,7 +765,7 @@ class TestUploadTestProcessorTask(object):
         assert [r.fail_count for r in rollups] == [1, 0, 0, 1]
         assert [r.pass_count for r in rollups] == [1, 1, 2, 0]
         assert [r.skip_count for r in rollups] == [0, 0, 0, 0]
-        assert [r.flaky_fail_count for r in rollups] == [0, 0, 1, 0]
+        assert [r.flaky_fail_count for r in rollups] == [0, 0, 0, 1]
 
         assert [r.commits_where_fail for r in rollups] == [
             ["cd76b0821854a780b60012aed85af0a8263004ad"],

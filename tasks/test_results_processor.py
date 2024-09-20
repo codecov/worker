@@ -197,7 +197,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     if outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
                     else 0,
                     "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
-                    "flaky_fail_count": 1 if test_id in flaky_test_set else 0,
+                    "flaky_fail_count": 1
+                    if test_id in flaky_test_set and outcome == str(Outcome.Failure)
+                    else 0,
                     "branch": branch,
                     "date": date.today(),
                     "latest_run": datetime.now(),
