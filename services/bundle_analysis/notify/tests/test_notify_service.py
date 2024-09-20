@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from shared.yaml import UserYaml
@@ -39,7 +39,7 @@ def override_comment_builder_and_message_strategy(mocker):
         "services.bundle_analysis.notify.BundleAnalysisPRCommentContextBuilder",
         return_value=mock_comment_builder,
     )
-    mock_markdown_strategy = AsyncMock(name="fake_markdown_strategy")
+    mock_markdown_strategy = MagicMock(name="fake_markdown_strategy")
     mock_markdown_strategy = mocker.patch(
         "services.bundle_analysis.notify.BundleAnalysisCommentMarkdownStrategy",
         return_value=mock_markdown_strategy,
@@ -67,7 +67,7 @@ def override_commit_status_builder_and_message_strategy(mocker):
         "services.bundle_analysis.notify.CommitStatusNotificationContextBuilder",
         return_value=mock_commit_status_builder,
     )
-    commit_status_message_strategy = AsyncMock(name="fake_markdown_strategy")
+    commit_status_message_strategy = MagicMock(name="fake_markdown_strategy")
     commit_status_message_strategy = mocker.patch(
         "services.bundle_analysis.notify.CommitStatusMessageStrategy",
         return_value=commit_status_message_strategy,

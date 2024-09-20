@@ -2,6 +2,7 @@ import logging
 from typing import TypedDict
 
 import sentry_sdk
+from asgiref.sync import async_to_sync
 from django.template import loader
 from shared.helpers.cache import make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError
@@ -11,10 +12,7 @@ from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusLevel,
     CommitStatusNotificationContext,
 )
-from services.bundle_analysis.notify.helpers import (
-    bytes_readable,
-    get_github_app_used,
-)
+from services.bundle_analysis.notify.helpers import bytes_readable, get_github_app_used
 from services.bundle_analysis.notify.messages import MessageStrategyInterface
 from services.notification.notifiers.base import NotificationResult
 
@@ -89,7 +87,7 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
         )
 
     @sentry_sdk.trace
-    async def send_message(
+    def send_message(
         self, context: CommitStatusNotificationContext, message: str | bytes
     ) -> NotificationResult:
         repository_service = context.repository_service
@@ -102,12 +100,12 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
                 explanation="payload_unchanged",
             )
         try:
-            await repository_service.set_commit_status(
-                commit=context.commit.commitid,
-                status=context.commit_status_level.to_str(),
-                context="codecov/bundles",
-                description=message,
-                url=context.commit_status_url,
+            async_to_sync(repository_service.set_commit_status)(
+                context.commit.commitid,
+                context.commit_status_level.to_str(),
+                "codecov/bundles",
+                message,
+                context.commit_status_url,
             )
             # Update the recently-sent messages cache
             cache.get_backend().set(

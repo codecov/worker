@@ -432,8 +432,7 @@ class TestCommentNotifierHelpers(object):
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifier(object):
-    @pytest.mark.asyncio
-    async def test_is_enabled_settings_individual_settings_false(self, dbsession):
+    def test_is_enabled_settings_individual_settings_false(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -446,8 +445,7 @@ class TestCommentNotifier(object):
         )
         assert not notifier.is_enabled()
 
-    @pytest.mark.asyncio
-    async def test_is_enabled_settings_individual_settings_none(self, dbsession):
+    def test_is_enabled_settings_individual_settings_none(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -460,8 +458,7 @@ class TestCommentNotifier(object):
         )
         assert not notifier.is_enabled()
 
-    @pytest.mark.asyncio
-    async def test_is_enabled_settings_individual_settings_true(self, dbsession):
+    def test_is_enabled_settings_individual_settings_true(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -474,8 +471,7 @@ class TestCommentNotifier(object):
         )
         assert not notifier.is_enabled()
 
-    @pytest.mark.asyncio
-    async def test_is_enabled_settings_individual_settings_dict(self, dbsession):
+    def test_is_enabled_settings_individual_settings_dict(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -488,8 +484,7 @@ class TestCommentNotifier(object):
         )
         assert notifier.is_enabled()
 
-    @pytest.mark.asyncio
-    async def test_create_message_files_section(
+    def test_create_message_files_section(
         self,
         dbsession,
         mock_configuration,
@@ -635,12 +630,11 @@ class TestCommentNotifier(object):
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             "",
         ]
-        res = await notifier.create_message(comparison, pull_dict, {"layout": "files"})
+        res = notifier.create_message(comparison, pull_dict, {"layout": "files"})
         for expected, res in zip(expected_result, res):
             assert expected == res
 
-    @pytest.mark.asyncio
-    async def test_create_message_files_section_with_critical_files(
+    def test_create_message_files_section_with_critical_files(
         self,
         dbsession,
         mock_configuration,
@@ -794,7 +788,7 @@ class TestCommentNotifier(object):
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             "",
         ]
-        res = await notifier.build_message(comparison)
+        res = notifier.build_message(comparison)
         assert expected_result == res
         mocked_search_files_for_critical_changes.assert_called_with(
             {"file_2.py", "file_1.go"}
@@ -803,8 +797,7 @@ class TestCommentNotifier(object):
             mocked_search_files_for_critical_changes.call_count == 3
         )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
-    @pytest.mark.asyncio
-    async def test_create_message_with_github_app_comment(
+    def test_create_message_with_github_app_comment(
         self,
         dbsession,
         mock_configuration,
@@ -823,14 +816,13 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        res = await notifier.build_message(comparison)
+        res = notifier.build_message(comparison)
         assert (
             res[0]
             == ":warning: Please install the !['codecov app svg image'](https://github.com/codecov/engineering-team/assets/152432831/e90313f4-9d3a-4b63-8b54-cfe14e7ec20d) to ensure uploads and comments are reliably processed by Codecov."
         )
 
-    @pytest.mark.asyncio
-    async def test_build_message(
+    def test_build_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -844,7 +836,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -903,8 +895,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_flags_empty_coverage(
+    def test_build_message_flags_empty_coverage(
         self,
         dbsession,
         mock_configuration,
@@ -922,7 +913,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -948,8 +939,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_more_sections(
+    def test_build_message_more_sections(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -973,7 +963,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -1032,8 +1022,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_message(
+    def test_build_upgrade_message(
         self,
         request,
         dbsession,
@@ -1055,7 +1044,7 @@ class TestCommentNotifier(object):
             current_yaml={},
             decoration_type=Decoration.upgrade,
         )
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         provider_pull = comparison.enriched_pull.provider_pull
         expected_result = [
             f"The author of this PR, {provider_pull['author']['username']}, is not an activated member of this organization on Codecov.",
@@ -1069,8 +1058,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_limited_upload_message(
+    def test_build_limited_upload_message(
         self,
         request,
         dbsession,
@@ -1094,7 +1082,7 @@ class TestCommentNotifier(object):
             current_yaml={},
             decoration_type=Decoration.upload_limit,
         )
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/plan/gh/{pull.repository.owner.username}) upload limit reached :warning:",
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
@@ -1109,8 +1097,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_passing_empty_upload(
+    def test_build_passing_empty_upload(
         self,
         request,
         dbsession,
@@ -1134,7 +1121,7 @@ class TestCommentNotifier(object):
             current_yaml={},
             decoration_type=Decoration.passing_empty_upload,
         )
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             "## Codecov Report",
             ":heavy_check_mark: **No coverage data to report**, because files changed do not require tests or are set to [ignore](https://docs.codecov.com/docs/ignoring-paths#:~:text=You%20can%20use%20the%20top,will%20be%20skipped%20during%20processing.) ",
@@ -1143,8 +1130,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_failing_empty_upload(
+    def test_build_failing_empty_upload(
         self,
         request,
         dbsession,
@@ -1168,7 +1154,7 @@ class TestCommentNotifier(object):
             current_yaml={},
             decoration_type=Decoration.failing_empty_upload,
         )
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             "## Codecov Report",
             "This is an empty upload",
@@ -1178,8 +1164,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_processing_upload(
+    def test_processing_upload(
         self,
         request,
         dbsession,
@@ -1203,7 +1188,7 @@ class TestCommentNotifier(object):
             current_yaml={},
             decoration_type=Decoration.processing_upload,
         )
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             "We're currently processing your upload.  This comment will be updated when the results are available.",
         ]
@@ -1211,8 +1196,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_message_enterprise(
+    def test_build_upgrade_message_enterprise(
         self,
         request,
         dbsession,
@@ -1240,7 +1224,7 @@ class TestCommentNotifier(object):
             current_yaml={},
             decoration_type=Decoration.upgrade,
         )
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         provider_pull = comparison.enriched_pull.provider_pull
         expected_result = [
             f"The author of this PR, {provider_pull['author']['username']}, is not activated in your Codecov Self-Hosted installation.",
@@ -1254,8 +1238,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_hide_complexity(
+    def test_build_message_hide_complexity(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1269,7 +1252,7 @@ class TestCommentNotifier(object):
             current_yaml={"codecov": {"ui": {"hide_complexity": True}}},
         )
         repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -1328,8 +1311,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_base_report(
+    def test_build_message_no_base_report(
         self,
         dbsession,
         mock_configuration,
@@ -1347,7 +1329,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -1403,8 +1385,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_base_commit(
+    def test_build_message_no_base_commit(
         self,
         dbsession,
         mock_configuration,
@@ -1422,7 +1403,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -1478,8 +1459,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_change(
+    def test_build_message_no_change(
         self,
         dbsession,
         mock_configuration,
@@ -1498,7 +1478,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
 
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
@@ -1557,8 +1537,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_negative_change(
+    def test_build_message_negative_change(
         self,
         dbsession,
         mock_configuration,
@@ -1576,7 +1555,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -1631,8 +1610,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_negative_change_tricky_rounding(
+    def test_build_message_negative_change_tricky_rounding(
         self,
         dbsession,
         mock_configuration,
@@ -1672,7 +1650,7 @@ class TestCommentNotifier(object):
             new_head_file.append(i, ReportLine.create(coverage=0))
         new_head_report.append(new_head_file)
         comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -1698,8 +1676,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_negative_change_tricky_rounding_newheader(
+    def test_build_message_negative_change_tricky_rounding_newheader(
         self,
         dbsession,
         mock_configuration,
@@ -1739,7 +1716,7 @@ class TestCommentNotifier(object):
             new_head_file.append(i, ReportLine.create(coverage=0))
         new_head_report.append(new_head_file)
         comparison.head.report = ReadOnlyReport.create_from_report(new_head_report)
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -1752,8 +1729,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_show_carriedforward_flags_no_cf_coverage(
+    def test_build_message_show_carriedforward_flags_no_cf_coverage(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1770,7 +1746,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -1827,8 +1803,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_with_without_flags(
+    def test_build_message_with_without_flags(
         self,
         dbsession,
         mock_configuration,
@@ -1850,7 +1825,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -1905,7 +1880,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -1956,8 +1931,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_show_carriedforward_flags_has_cf_coverage(
+    def test_build_message_show_carriedforward_flags_has_cf_coverage(
         self,
         dbsession,
         mock_configuration,
@@ -1978,7 +1952,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -2029,8 +2003,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_hide_carriedforward_flags_has_cf_coverage(
+    def test_build_message_hide_carriedforward_flags_has_cf_coverage(
         self,
         dbsession,
         mock_configuration,
@@ -2051,7 +2024,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -2100,8 +2073,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_spammy(
+    def test_send_actual_notification_spammy(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2116,7 +2088,7 @@ class TestCommentNotifier(object):
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2126,8 +2098,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.edit_comment.called
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_flags(
+    def test_build_message_no_flags(
         self,
         dbsession,
         mock_configuration,
@@ -2149,7 +2120,7 @@ class TestCommentNotifier(object):
         )
         comparison = sample_comparison
         repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -2207,8 +2178,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_new_no_permissions(
+    def test_send_actual_notification_new_no_permissions(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2226,7 +2196,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.delete_comment.side_effect = TorngitClientError(
             "code", "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert not result.notification_successful
         assert result.explanation == "no_permissions"
@@ -2236,8 +2206,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.post_comment.called
         assert not mock_repo_provider.edit_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_new(
+    def test_send_actual_notification_new(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2253,7 +2222,7 @@ class TestCommentNotifier(object):
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
         mock_repo_provider.delete_comment.return_value = True
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2263,8 +2232,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.edit_comment.called
         mock_repo_provider.delete_comment.assert_called_with(98, "12345")
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_new_no_permissions_post(
+    def test_send_actual_notification_new_no_permissions_post(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2284,7 +2252,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.side_effect = TorngitClientError(
             "code", "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert not result.notification_successful
         assert result.explanation == "comment_posting_permissions"
@@ -2294,8 +2262,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.delete_comment.called
         assert not mock_repo_provider.edit_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_new_deleted_comment(
+    def test_send_actual_notification_new_deleted_comment(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2313,7 +2280,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.delete_comment.side_effect = TorngitObjectNotFoundError(
             "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2323,8 +2290,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.edit_comment.called
         mock_repo_provider.delete_comment.assert_called_with(98, "12345")
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_once_deleted_comment(
+    def test_send_actual_notification_once_deleted_comment(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2342,7 +2308,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.side_effect = TorngitObjectNotFoundError(
             "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted is False
         assert result.notification_successful is None
         assert result.explanation == "comment_deleted"
@@ -2352,8 +2318,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_once_non_existing_comment(
+    def test_send_actual_notification_once_non_existing_comment(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2371,7 +2336,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.side_effect = TorngitObjectNotFoundError(
             "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2381,8 +2346,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.delete_comment.called
         assert not mock_repo_provider.edit_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_once(
+    def test_send_actual_notification_once(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2398,7 +2362,7 @@ class TestCommentNotifier(object):
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
         mock_repo_provider.edit_comment.return_value = {"id": "49"}
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2408,8 +2372,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_once_no_permissions(
+    def test_send_actual_notification_once_no_permissions(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2427,7 +2390,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.side_effect = TorngitClientError(
             "code", "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert not result.notification_successful
         assert result.explanation == "no_permissions"
@@ -2437,8 +2400,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_default(
+    def test_send_actual_notification_default(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2454,7 +2416,7 @@ class TestCommentNotifier(object):
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
         mock_repo_provider.edit_comment.return_value = {"id": "49"}
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2464,8 +2426,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_default_no_permissions_edit(
+    def test_send_actual_notification_default_no_permissions_edit(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2483,7 +2444,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.side_effect = TorngitClientError(
             "code", "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2493,8 +2454,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_default_no_permissions_twice(
+    def test_send_actual_notification_default_no_permissions_twice(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2514,7 +2474,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.side_effect = TorngitClientError(
             "code", "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert not result.notification_successful
         assert result.explanation == "comment_posting_permissions"
@@ -2524,8 +2484,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_send_actual_notification_default_comment_not_found(
+    def test_send_actual_notification_default_comment_not_found(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         notifier = CommentNotifier(
@@ -2543,7 +2502,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.side_effect = TorngitObjectNotFoundError(
             "response", "message"
         )
-        result = await notifier.send_actual_notification(data)
+        result = notifier.send_actual_notification(data)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2553,10 +2512,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.post_comment.assert_called_with(98, "message")
         assert not mock_repo_provider.delete_comment.called
 
-    @pytest.mark.asyncio
-    async def test_notify_no_pull_request(
-        self, dbsession, sample_comparison_without_pull
-    ):
+    def test_notify_no_pull_request(self, dbsession, sample_comparison_without_pull):
         notifier = CommentNotifier(
             repository=sample_comparison_without_pull.head.commit.repository,
             title="title",
@@ -2567,15 +2523,14 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(sample_comparison_without_pull)
+        result = notifier.notify(sample_comparison_without_pull)
         assert not result.notification_attempted
         assert result.notification_successful == False
         assert result.explanation == "no_pull_request"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_pull_head_doesnt_match(self, dbsession, sample_comparison):
+    def test_notify_pull_head_doesnt_match(self, dbsession, sample_comparison):
         sample_comparison.pull.head = "aaaaaaaaaa"
         dbsession.flush()
         notifier = CommentNotifier(
@@ -2588,15 +2543,14 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
         assert result.notification_successful is False
         assert result.explanation == "pull_head_does_not_match"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_pull_request_not_in_provider(
+    def test_notify_pull_request_not_in_provider(
         self, dbsession, sample_comparison_database_pull_without_provider
     ):
         notifier = CommentNotifier(
@@ -2609,17 +2563,14 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(sample_comparison_database_pull_without_provider)
+        result = notifier.notify(sample_comparison_database_pull_without_provider)
         assert not result.notification_attempted
         assert result.notification_successful is False
         assert result.explanation == "pull_request_not_in_provider"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_server_unreachable(
-        self, mocker, dbsession, sample_comparison
-    ):
+    def test_notify_server_unreachable(self, mocker, dbsession, sample_comparison):
         mocked_send_actual_notification = mocker.patch.object(
             CommentNotifier,
             "send_actual_notification",
@@ -2638,7 +2589,7 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_attempted
         assert not result.notification_successful
         assert result.explanation == "provider_issue"
@@ -2649,8 +2600,7 @@ class TestCommentNotifier(object):
         }
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_store_results(self, dbsession, sample_comparison):
+    def test_store_results(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -2675,8 +2625,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         assert sample_comparison.pull.commentid == "578263422"
 
-    @pytest.mark.asyncio
-    async def test_store_results_deleted_comment(self, dbsession, sample_comparison):
+    def test_store_results_deleted_comment(self, dbsession, sample_comparison):
         sample_comparison.pull.commentid = 12
         dbsession.flush()
         notifier = CommentNotifier(
@@ -2703,10 +2652,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         assert sample_comparison.pull.commentid is None
 
-    @pytest.mark.asyncio
-    async def test_store_results_no_succesfull_result(
-        self, dbsession, sample_comparison
-    ):
+    def test_store_results_no_succesfull_result(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -2731,10 +2677,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         assert sample_comparison.pull.commentid is None
 
-    @pytest.mark.asyncio
-    async def test_notify_unable_to_fetch_info(
-        self, dbsession, mocker, sample_comparison
-    ):
+    def test_notify_unable_to_fetch_info(self, dbsession, mocker, sample_comparison):
         mocked_build_message = mocker.patch.object(
             CommentNotifier,
             "build_message",
@@ -2750,15 +2693,14 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
         assert result.notification_successful is False
         assert result.explanation == "unable_build_message"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_not_enough_builds(self, dbsession, sample_comparison):
+    def test_notify_not_enough_builds(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -2770,7 +2712,7 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
         assert result.notification_successful is False
         assert result.explanation == "not_enough_builds"
@@ -2814,7 +2756,7 @@ class TestCommentNotifier(object):
         sample_comparison.pull.state = pull_state
         dbsession.flush()
         dbsession.refresh(sample_comparison.pull)
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -2825,8 +2767,7 @@ class TestCommentNotifier(object):
         }
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_exact_same_report_diff_unrelated_report(
+    def test_notify_exact_same_report_diff_unrelated_report(
         self, sample_comparison_no_change, mock_repo_provider
     ):
         compare_result = {
@@ -2879,15 +2820,14 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        res = await notifier.notify(sample_comparison_no_change)
+        res = notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
         assert res.notification_successful is False
         assert res.explanation == "changes_required"
         assert res.data_sent is None
         assert res.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_exact_same_report_diff_unrelated_report_update_comment(
+    def test_notify_exact_same_report_diff_unrelated_report_update_comment(
         self, sample_comparison_no_change, mock_repo_provider
     ):
         compare_result = {
@@ -2942,13 +2882,12 @@ class TestCommentNotifier(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        res = await notifier.notify(sample_comparison_no_change)
+        res = notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is True
         assert res.notification_successful is True
         mock_repo_provider.edit_comment.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_message_hide_details_github(
+    def test_message_hide_details_github(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2963,7 +2902,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -2981,8 +2920,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_message_announcements_only(
+    def test_message_announcements_only(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2997,7 +2935,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -3018,8 +2956,7 @@ class TestCommentNotifier(object):
                 assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_message_hide_details_bitbucket(
+    def test_message_hide_details_bitbucket(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -3034,7 +2971,7 @@ class TestCommentNotifier(object):
             current_yaml={},
         )
         repository = sample_comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -3051,8 +2988,7 @@ class TestCommentNotifier(object):
 
 
 class TestFileSectionWriter(object):
-    @pytest.mark.asyncio
-    async def test_filesection_no_extra_settings(self, sample_comparison, mocker):
+    def test_filesection_no_extra_settings(self, sample_comparison, mocker):
         section_writer = FileSectionWriter(
             sample_comparison.head.commit.repository,
             "layout",
@@ -3102,7 +3038,7 @@ class TestFileSectionWriter(object):
             Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
         ]
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3160,8 +3096,7 @@ class TestFileSectionWriter(object):
             == f"| [path/to/test\\_file.go](pull.link?src=pr&el=tree&filepath=path%2Fto%2Ftest_file.go#diff-cGF0aC90by90ZXN0X2ZpbGUuZ28=) **Critical** {metrics}"
         )
 
-    @pytest.mark.asyncio
-    async def test_file_with_critical(self, sample_comparison, mocker):
+    def test_file_with_critical(self, sample_comparison, mocker):
         critical_path_report = mocker.MagicMock(
             get_critical_files_filenames=mocker.MagicMock(
                 return_value=["file_1.go", "added.py"]
@@ -3220,7 +3155,7 @@ class TestFileSectionWriter(object):
             Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
         ]
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3254,8 +3189,7 @@ class TestFileSectionWriter(object):
             "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
 
-    @pytest.mark.asyncio
-    async def test_filesection_hide_project_cov(self, sample_comparison, mocker):
+    def test_filesection_hide_project_cov(self, sample_comparison, mocker):
         section_writer = NewFilesSectionWriter(
             sample_comparison.head.commit.repository,
             "layout",
@@ -3286,7 +3220,7 @@ class TestFileSectionWriter(object):
             Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
         ]
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3336,8 +3270,7 @@ class TestFileSectionWriter(object):
             "| [file\\_1.go](pull.link?src=pr&el=tree&filepath=file_1.go#diff-ZmlsZV8xLmdv) | 66.66% | [1 Missing :warning: ](pull.link?src=pr&el=tree) |",
         ]
 
-    @pytest.mark.asyncio
-    async def test_filesection_hide_project_cov_with_changed_files_but_no_missing_lines(
+    def test_filesection_hide_project_cov_with_changed_files_but_no_missing_lines(
         self, sample_comparison, mocker
     ):
         section_writer = NewFilesSectionWriter(
@@ -3370,7 +3303,7 @@ class TestFileSectionWriter(object):
             Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
         ]
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3415,8 +3348,7 @@ class TestFileSectionWriter(object):
         )
         assert lines == []
 
-    @pytest.mark.asyncio
-    async def test_filesection_hide_project_cov_no_files_changed(
+    def test_filesection_hide_project_cov_no_files_changed(
         self, sample_comparison, mocker
     ):
         section_writer = NewFilesSectionWriter(
@@ -3449,7 +3381,7 @@ class TestFileSectionWriter(object):
             Change(path="added.py", new=True, in_diff=None, old_path=None, totals=None),
         ]
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {"files": {}},
                 changes,
@@ -3460,8 +3392,7 @@ class TestFileSectionWriter(object):
 
 
 class TestImpactedEndpointWriter(object):
-    @pytest.mark.asyncio
-    async def test_impacted_endpoints_table(
+    def test_impacted_endpoints_table(
         self, sample_comparison, mocker, mock_repo_provider
     ):
         mock_repo_provider.get_compare.return_value = {
@@ -3522,7 +3453,7 @@ class TestImpactedEndpointWriter(object):
             current_yaml={},
         )
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3550,8 +3481,7 @@ class TestImpactedEndpointWriter(object):
         )
         assert lines == ["| Related Entrypoints |", "|---|", "|banana|", "|GET /apple|"]
 
-    @pytest.mark.asyncio
-    async def test_impacted_endpoints_table_empty_list_result(
+    def test_impacted_endpoints_table_empty_list_result(
         self, sample_comparison, mocker, mock_repo_provider
     ):
         mocker.patch.object(
@@ -3570,7 +3500,7 @@ class TestImpactedEndpointWriter(object):
             current_yaml={},
         )
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3600,8 +3530,7 @@ class TestImpactedEndpointWriter(object):
             "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
         ]
 
-    @pytest.mark.asyncio
-    async def test_impacted_endpoints_table_none_result(
+    def test_impacted_endpoints_table_none_result(
         self, sample_comparison, mocker, mock_repo_provider
     ):
         mocker.patch.object(
@@ -3620,7 +3549,7 @@ class TestImpactedEndpointWriter(object):
             current_yaml={},
         )
         lines = list(
-            await section_writer.write_section(
+            section_writer.write_section(
                 sample_comparison,
                 {
                     "files": {
@@ -3650,8 +3579,7 @@ class TestImpactedEndpointWriter(object):
 
 
 class TestNewHeaderSectionWriter(object):
-    @pytest.mark.asyncio
-    async def test_new_header_section_writer(self, mocker, sample_comparison):
+    def test_new_header_section_writer(self, mocker, sample_comparison):
         writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -3664,7 +3592,7 @@ class TestNewHeaderSectionWriter(object):
             return_value=Decimal(0),
         )
         res = list(
-            await writer.write_section(
+            writer.write_section(
                 sample_comparison,
                 None,
                 None,
@@ -3676,10 +3604,7 @@ class TestNewHeaderSectionWriter(object):
             f"> Project coverage is 0%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](urlurl?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](headurl?dropdown=coverage&el=desc).",
         ]
 
-    @pytest.mark.asyncio
-    async def test_new_header_section_writer_with_behind_by(
-        self, mocker, sample_comparison
-    ):
+    def test_new_header_section_writer_with_behind_by(self, mocker, sample_comparison):
         writer = HeaderSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -3692,7 +3617,7 @@ class TestNewHeaderSectionWriter(object):
             return_value=Decimal(0),
         )
         res = list(
-            await writer.write_section(
+            writer.write_section(
                 sample_comparison,
                 None,
                 None,
@@ -3706,8 +3631,7 @@ class TestNewHeaderSectionWriter(object):
             "> Report is 3 commits behind head on master.",
         ]
 
-    @pytest.mark.asyncio
-    async def test_new_header_section_writer_test_results_setup(
+    def test_new_header_section_writer_test_results_setup(
         self, mocker, sample_comparison
     ):
         sample_comparison.context = ComparisonContext(all_tests_passed=True)
@@ -3723,7 +3647,7 @@ class TestNewHeaderSectionWriter(object):
             return_value=Decimal(0),
         )
         res = list(
-            await writer.write_section(
+            writer.write_section(
                 sample_comparison,
                 None,
                 None,
@@ -3737,8 +3661,7 @@ class TestNewHeaderSectionWriter(object):
             ":white_check_mark: All tests successful. No failed tests found.",
         ]
 
-    @pytest.mark.asyncio
-    async def test_new_header_section_writer_test_results_error(
+    def test_new_header_section_writer_test_results_error(
         self, mocker, sample_comparison
     ):
         sample_comparison.context = ComparisonContext(
@@ -3757,7 +3680,7 @@ class TestNewHeaderSectionWriter(object):
             return_value=Decimal(0),
         )
         res = list(
-            await writer.write_section(
+            writer.write_section(
                 sample_comparison,
                 None,
                 None,
@@ -3771,8 +3694,7 @@ class TestNewHeaderSectionWriter(object):
             ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         ]
 
-    @pytest.mark.asyncio
-    async def test_new_header_section_writer_no_project_coverage(
+    def test_new_header_section_writer_no_project_coverage(
         self, mocker, sample_comparison
     ):
         writer = HeaderSectionWriter(
@@ -3787,7 +3709,7 @@ class TestNewHeaderSectionWriter(object):
             return_value=Decimal(0),
         )
         res = list(
-            await writer.write_section(
+            writer.write_section(
                 sample_comparison,
                 None,
                 None,
@@ -3798,8 +3720,7 @@ class TestNewHeaderSectionWriter(object):
             "All modified and coverable lines are covered by tests :white_check_mark:",
         ]
 
-    @pytest.mark.asyncio
-    async def test_new_header_section_writer_no_project_coverage_test_results_setup(
+    def test_new_header_section_writer_no_project_coverage_test_results_setup(
         self, mocker, sample_comparison
     ):
         sample_comparison.context = ComparisonContext(all_tests_passed=True)
@@ -3815,7 +3736,7 @@ class TestNewHeaderSectionWriter(object):
             return_value=Decimal(0),
         )
         res = list(
-            await writer.write_section(
+            writer.write_section(
                 sample_comparison,
                 None,
                 None,
@@ -3828,8 +3749,7 @@ class TestNewHeaderSectionWriter(object):
             ":white_check_mark: All tests successful. No failed tests found.",
         ]
 
-    @pytest.mark.asyncio
-    async def test_new_header_section_writer_no_project_coverage_test_results_error(
+    def test_new_header_section_writer_no_project_coverage_test_results_error(
         self, mocker, sample_comparison
     ):
         sample_comparison.context = ComparisonContext(
@@ -3848,7 +3768,7 @@ class TestNewHeaderSectionWriter(object):
             return_value=Decimal(0),
         )
         res = list(
-            await writer.write_section(
+            writer.write_section(
                 sample_comparison,
                 None,
                 None,
@@ -3863,8 +3783,7 @@ class TestNewHeaderSectionWriter(object):
 
 
 class TestAnnouncementsSectionWriter(object):
-    @pytest.mark.asyncio
-    async def test_announcement_section_writer(self, mocker):
+    def test_announcement_section_writer(self, mocker):
         writer = AnnouncementSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -3872,17 +3791,14 @@ class TestAnnouncementsSectionWriter(object):
             mocker.MagicMock(),
             mocker.MagicMock(),
         )
-        res = list(await writer.write_section(mocker.MagicMock()))
+        res = list(writer.write_section(mocker.MagicMock()))
         assert len(res) == 1
         line = res[0]
         assert line.startswith(":mega: ")
         message = line[7:]
         assert message in AnnouncementSectionWriter.current_active_messages
 
-    @pytest.mark.asyncio
-    async def test_announcement_section_writer_ats(
-        self, mocker, create_sample_comparison
-    ):
+    def test_announcement_section_writer_ats(self, mocker, create_sample_comparison):
         comparison = create_sample_comparison()
         current_yaml = UserYaml({})
 
@@ -3896,7 +3812,7 @@ class TestAnnouncementsSectionWriter(object):
         writer.repository.language = "python"
         comparison.head.report._chunks = ["xx"] * 80_000_000
 
-        res = list(await writer.write_section(comparison))
+        res = list(writer.write_section(comparison))
         assert len(res) == 1
         line = res[0]
         assert line.startswith(":mega: ")
@@ -3904,8 +3820,7 @@ class TestAnnouncementsSectionWriter(object):
 
 
 class TestNewFooterSectionWriter(object):
-    @pytest.mark.asyncio
-    async def test_footer_section_writer_in_github(self, mocker):
+    def test_footer_section_writer_in_github(self, mocker):
         writer = NewFooterSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -3916,9 +3831,7 @@ class TestNewFooterSectionWriter(object):
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "github"
         res = list(
-            await writer.write_section(
-                mock_comparison, {}, [], links={"pull": "pull.link"}
-            )
+            writer.write_section(mock_comparison, {}, [], links={"pull": "pull.link"})
         )
         assert res == [
             "",
@@ -3926,8 +3839,7 @@ class TestNewFooterSectionWriter(object):
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
         ]
 
-    @pytest.mark.asyncio
-    async def test_footer_section_writer_in_gitlab(self, mocker):
+    def test_footer_section_writer_in_gitlab(self, mocker):
         writer = NewFooterSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -3938,9 +3850,7 @@ class TestNewFooterSectionWriter(object):
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "gitlab"
         res = list(
-            await writer.write_section(
-                mock_comparison, {}, [], links={"pull": "pull.link"}
-            )
+            writer.write_section(mock_comparison, {}, [], links={"pull": "pull.link"})
         )
         assert res == [
             "",
@@ -3948,8 +3858,7 @@ class TestNewFooterSectionWriter(object):
             ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
-    @pytest.mark.asyncio
-    async def test_footer_section_writer_in_bitbucket(self, mocker):
+    def test_footer_section_writer_in_bitbucket(self, mocker):
         writer = NewFooterSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -3960,9 +3869,7 @@ class TestNewFooterSectionWriter(object):
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "bitbucket"
         res = list(
-            await writer.write_section(
-                mock_comparison, {}, [], links={"pull": "pull.link"}
-            )
+            writer.write_section(mock_comparison, {}, [], links={"pull": "pull.link"})
         )
         assert res == [
             "",
@@ -3970,8 +3877,7 @@ class TestNewFooterSectionWriter(object):
             ":loudspeaker: Have feedback on the report? [Share it here](https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4).",
         ]
 
-    @pytest.mark.asyncio
-    async def test_footer_section_writer_with_project_cov_hidden(self, mocker):
+    def test_footer_section_writer_with_project_cov_hidden(self, mocker):
         writer = NewFooterSectionWriter(
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -3985,9 +3891,7 @@ class TestNewFooterSectionWriter(object):
         mock_comparison = mocker.MagicMock()
         mock_comparison.repository_service.service = "bitbucket"
         res = list(
-            await writer.write_section(
-                mock_comparison, {}, [], links={"pull": "pull.link"}
-            )
+            writer.write_section(mock_comparison, {}, [], links={"pull": "pull.link"})
         )
         assert res == [
             "",
@@ -3997,8 +3901,7 @@ class TestNewFooterSectionWriter(object):
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierInNewLayout(object):
-    @pytest.mark.asyncio
-    async def test_create_message_files_section_with_critical_files_new_layout(
+    def test_create_message_files_section_with_critical_files_new_layout(
         self,
         dbsession,
         mock_configuration,
@@ -4152,7 +4055,7 @@ class TestCommentNotifierInNewLayout(object):
             f"| [file\\_2.py](https://app.codecov.io/gh/{repository.slug}/pull/{pull.pullid}?src=pr&el=tree&filepath=file_2.py#diff-ZmlsZV8yLnB5) **Critical** | `50.00% <ø> (ø)` | `0.00 <0.00> (ø)` | |",
             "",
         ]
-        res = await notifier.build_message(comparison)
+        res = notifier.build_message(comparison)
         assert expected_result == res
         mocked_search_files_for_critical_changes.assert_called_with(
             {"file_2.py", "file_1.go"}
@@ -4161,8 +4064,7 @@ class TestCommentNotifierInNewLayout(object):
             mocked_search_files_for_critical_changes.call_count == 3
         )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_base_commit_new_layout(
+    def test_build_message_no_base_commit_new_layout(
         self,
         dbsession,
         mock_configuration,
@@ -4183,7 +4085,7 @@ class TestCommentNotifierInNewLayout(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -4230,8 +4132,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_base_report_new_layout(
+    def test_build_message_no_base_report_new_layout(
         self,
         dbsession,
         mock_configuration,
@@ -4253,7 +4154,7 @@ class TestCommentNotifierInNewLayout(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -4303,8 +4204,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_project_coverage(
+    def test_build_message_no_project_coverage(
         self,
         dbsession,
         mock_configuration,
@@ -4326,7 +4226,7 @@ class TestCommentNotifierInNewLayout(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
             f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
@@ -4344,8 +4244,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_project_coverage_files(
+    def test_build_message_no_project_coverage_files(
         self,
         dbsession,
         mock_configuration,
@@ -4367,7 +4266,7 @@ class TestCommentNotifierInNewLayout(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
             f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
@@ -4391,8 +4290,7 @@ class TestCommentNotifierInNewLayout(object):
         for exp, res in zip(expected_result, result):
             assert exp == res
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_project_coverage_condensed_yaml_configs(
+    def test_build_message_no_project_coverage_condensed_yaml_configs(
         self,
         dbsession,
         mock_configuration,
@@ -4414,7 +4312,7 @@ class TestCommentNotifierInNewLayout(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         pull_url = f"test.example.br/gh/{repository.slug}/pull/{pull.pullid}"
         expected_result = [
             f"## [Codecov]({pull_url}?dropdown=coverage&src=pr&el=h1) Report",
@@ -4432,8 +4330,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_head_and_pull_head_differ_new_layout(
+    def test_build_message_head_and_pull_head_differ_new_layout(
         self,
         dbsession,
         mock_configuration,
@@ -4455,7 +4352,7 @@ class TestCommentNotifierInNewLayout(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -4502,8 +4399,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_head_and_pull_head_differ_with_components(
+    def test_build_message_head_and_pull_head_differ_with_components(
         self,
         dbsession,
         mock_configuration,
@@ -4532,7 +4428,7 @@ class TestCommentNotifierInNewLayout(object):
             },
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -4584,8 +4480,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_team_plan_customer_missing_lines(
+    def test_build_message_team_plan_customer_missing_lines(
         self,
         dbsession,
         mock_configuration,
@@ -4619,7 +4514,7 @@ class TestCommentNotifierInNewLayout(object):
 
         pull = comparison.pull
         repository = sample_comparison_head_and_pull_head_differ.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
@@ -4631,8 +4526,7 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_team_plan_customer_all_lines_covered(
+    def test_build_message_team_plan_customer_all_lines_covered(
         self,
         dbsession,
         mock_configuration,
@@ -4660,7 +4554,7 @@ class TestCommentNotifierInNewLayout(object):
         )
         pull = comparison.pull
         repository = sample_comparison_coverage_carriedforward.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
 
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
@@ -4672,8 +4566,7 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_team_plan_customer_all_lines_covered_test_results_error(
+    def test_build_message_team_plan_customer_all_lines_covered_test_results_error(
         self,
         dbsession,
         mock_configuration,
@@ -4702,7 +4595,7 @@ class TestCommentNotifierInNewLayout(object):
         )
         pull = comparison.pull
         repository = sample_comparison_coverage_carriedforward.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
 
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
@@ -4714,8 +4607,7 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_team_plan_customer_all_lines_covered_no_third_line(
+    def test_build_message_team_plan_customer_all_lines_covered_no_third_line(
         self,
         dbsession,
         mock_configuration,
@@ -4744,7 +4636,7 @@ class TestCommentNotifierInNewLayout(object):
         )
         pull = comparison.pull
         repository = sample_comparison_coverage_carriedforward.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
 
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
@@ -4754,8 +4646,7 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_no_patch_or_proj_change(
+    def test_build_message_no_patch_or_proj_change(
         self,
         dbsession,
         mock_configuration,
@@ -4775,7 +4666,7 @@ class TestCommentNotifierInNewLayout(object):
             current_yaml={},
         )
         repository = comparison.head.commit.repository
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
         expected_result = [
             f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
@@ -4825,8 +4716,7 @@ class TestCommentNotifierInNewLayout(object):
 
 
 class TestComponentWriterSection(object):
-    @pytest.mark.asyncio
-    async def test_write_message_component_section_empty(
+    def test_write_message_component_section_empty(
         self,
         dbsession,
         mock_configuration,
@@ -4841,14 +4731,13 @@ class TestComponentWriterSection(object):
             settings={},
             current_yaml={},
         )
-        message = await section_writer.write_section(
+        message = section_writer.write_section(
             comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
         )
         expected = []
         assert message == expected
 
-    @pytest.mark.asyncio
-    async def test_get_component_data_for_table(
+    def test_get_component_data_for_table(
         self,
         dbsession,
         mock_configuration,
@@ -4872,7 +4761,7 @@ class TestComponentWriterSection(object):
         )
         all_components = get_components_from_yaml(section_writer.current_yaml)
         comparison = sample_comparison
-        component_data = await section_writer._get_table_data_for_components(
+        component_data = section_writer._get_table_data_for_components(
             all_components, comparison
         )
         expected_result = [
@@ -4975,8 +4864,7 @@ class TestComponentWriterSection(object):
         ]
         assert component_data == expected_result
 
-    @pytest.mark.asyncio
-    async def test_get_component_data_for_table_no_base(
+    def test_get_component_data_for_table_no_base(
         self,
         dbsession,
         mock_configuration,
@@ -5002,7 +4890,7 @@ class TestComponentWriterSection(object):
         )
         all_components = get_components_from_yaml(section_writer.current_yaml)
         comparison = sample_comparison
-        component_data = await section_writer._get_table_data_for_components(
+        component_data = section_writer._get_table_data_for_components(
             all_components, comparison
         )
         expected_result = [
@@ -5049,8 +4937,7 @@ class TestComponentWriterSection(object):
         ]
         assert component_data == expected_result
 
-    @pytest.mark.asyncio
-    async def test_write_message_component_section(
+    def test_write_message_component_section(
         self,
         dbsession,
         mock_configuration,
@@ -5072,7 +4959,7 @@ class TestComponentWriterSection(object):
                 }
             },
         )
-        message = await section_writer.write_section(
+        message = section_writer.write_section(
             comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
         )
         expected = [
@@ -5083,8 +4970,7 @@ class TestComponentWriterSection(object):
         ]
         assert message == expected
 
-    @pytest.mark.asyncio
-    async def test_write_message_component_section_no_base(
+    def test_write_message_component_section_no_base(
         self,
         dbsession,
         mock_configuration,
@@ -5108,7 +4994,7 @@ class TestComponentWriterSection(object):
                 }
             },
         )
-        message = await section_writer.write_section(
+        message = section_writer.write_section(
             comparison=comparison, diff=None, changes=None, links={"pull": "urlurl"}
         )
         expected = [
@@ -5124,8 +5010,7 @@ PROJECT_COVERAGE_CTA = ":information_source: You can also turn on [project cover
 
 
 class TestCommentNotifierWelcome:
-    @pytest.mark.asyncio
-    async def test_build_message(
+    def test_build_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -5137,7 +5022,7 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         expected_result = [
             "## Welcome to [Codecov](https://codecov.io) :tada:",
             "",
@@ -5149,8 +5034,7 @@ class TestCommentNotifierWelcome:
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_build_message_with_preexisting_bundle_pulls(
+    def test_build_message_with_preexisting_bundle_pulls(
         self, dbsession, mock_configuration, mock_repo_provider
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -5240,7 +5124,7 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(comparison)
+        result = notifier.build_message(comparison)
 
         expected_result = [
             "## Welcome to [Codecov](https://codecov.io) :tada:",
@@ -5256,8 +5140,7 @@ class TestCommentNotifierWelcome:
         pulls_in_db = dbsession.query(Pull).all()
         assert len(pulls_in_db) == 3
 
-    @pytest.mark.asyncio
-    async def test_should_see_project_coverage_cta_public_repo(
+    def test_should_see_project_coverage_cta_public_repo(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -5286,7 +5169,7 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA not in result
 
         after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
@@ -5306,11 +5189,10 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
 
-    @pytest.mark.asyncio
-    async def test_should_see_project_coverage_cta_introduction_date(
+    def test_should_see_project_coverage_cta_introduction_date(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -5339,7 +5221,7 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA not in result
 
         after_introduction_date = datetime(2024, 6, 1, 0, 0, 0).replace(
@@ -5359,11 +5241,10 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
 
-    @pytest.mark.asyncio
-    async def test_should_see_project_coverage_cta_team_plan(
+    def test_should_see_project_coverage_cta_team_plan(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -5396,7 +5277,7 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA not in result
 
         sample_comparison.head.commit.repository.owner.plan = (
@@ -5413,7 +5294,7 @@ class TestCommentNotifierWelcome:
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.build_message(sample_comparison)
+        result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
 
 

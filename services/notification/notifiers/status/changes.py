@@ -1,5 +1,4 @@
 import logging
-from typing import Dict
 
 from database.enums import Notification
 from services.notification.notifiers.mixins.status import StatusChangesMixin
@@ -27,11 +26,11 @@ class ChangesStatusNotifier(StatusChangesMixin, StatusNotifier):
     def notification_type(self) -> Notification:
         return Notification.status_changes
 
-    async def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(self, comparison) -> dict[str, str]:
         if self.is_empty_upload():
             state, message = self.get_status_check_for_empty_upload()
             return {"state": state, "message": message}
-        state, message = await self.get_changes_status(comparison)
+        state, message = self.get_changes_status(comparison)
         if self.should_use_upgrade_decoration():
             message = self.get_upgrade_message()
 

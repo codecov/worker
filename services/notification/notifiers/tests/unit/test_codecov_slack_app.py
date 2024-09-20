@@ -1,7 +1,5 @@
 from unittest.mock import patch
 
-import pytest
-
 from database.enums import Notification
 from services.notification.notifiers.codecov_slack_app import CodecovSlackAppNotifier
 
@@ -39,8 +37,7 @@ class TestCodecovSlackAppNotifier(object):
         assert notifier.notification_type == Notification.codecov_slack_app
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_notify(
+    def test_notify(
         self, mock_requests_post, dbsession, mock_configuration, sample_comparison
     ):
         mock_requests_post.return_value.status_code = 200
@@ -51,13 +48,12 @@ class TestCodecovSlackAppNotifier(object):
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert result.explanation == "Successfully notified slack app"
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_notify_failure(
+    def test_notify_failure(
         self, mock_requests_post, dbsession, mock_configuration, sample_comparison
     ):
         mock_requests_post.return_value.status_code = 500
@@ -69,7 +65,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == False
         assert (
             result.explanation
@@ -77,8 +73,7 @@ class TestCodecovSlackAppNotifier(object):
         )
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_notify_request_being_called(
+    def test_notify_request_being_called(
         self, mock_requests_post, dbsession, mock_configuration, sample_comparison
     ):
         mock_requests_post.return_value.status_code = 200
@@ -89,7 +84,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert mock_requests_post.call_count == 1
         assert mock_requests_post.is_called_with(

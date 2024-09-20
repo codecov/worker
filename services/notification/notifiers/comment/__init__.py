@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, List, Mapping
 
 import sentry_sdk
+from asgiref.sync import async_to_sync
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -11,7 +12,6 @@ from shared.torngit.exceptions import (
 )
 
 from database.enums import Notification
-from helpers.metrics import metrics
 from services.billing import BillingPlan
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
@@ -75,12 +75,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     def notification_type(self) -> Notification:
         return Notification.comment
 
-    async def get_diff(self, comparison: Comparison):
-        return await comparison.get_diff()
+    def get_diff(self, comparison: Comparison):
+        return comparison.get_diff()
 
-    async def notify(
-        self, comparison: ComparisonProxy, **extra_data
-    ) -> NotificationResult:
+    def notify(self, comparison: ComparisonProxy, **extra_data) -> NotificationResult:
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
         if comparison.pull is not None and comparison.pull.state != "open":
@@ -94,17 +92,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             )
 
         for condition in self.notify_conditions:
-            condition_result = (
-                await condition.check_condition(notifier=self, comparison=comparison)
-                if condition.is_async_condition
-                else condition.check_condition(notifier=self, comparison=comparison)
+            condition_result = condition.check_condition(
+                notifier=self, comparison=comparison
             )
             if condition_result == False:
-                side_effect_result = (
-                    condition.on_failure_side_effect(self, comparison)
-                    if condition.is_async_condition is False
-                    else (await condition.on_failure_side_effect(self, comparison))
-                )
+                side_effect_result = condition.on_failure_side_effect(self, comparison)
                 default_result = NotificationResult(
                     notification_attempted=False,
                     explanation=condition.failure_explanation,
@@ -114,10 +106,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 return default_result.merge(side_effect_result)
         pull = comparison.pull
         try:
-            with metrics.timer(
-                "worker.services.notifications.notifiers.comment.build_message"
-            ):
-                message = await self.build_message(comparison)
+            message = self.build_message(comparison)
         except TorngitClientError:
             log.warning(
                 "Unable to fetch enough information to build message for comment",
@@ -135,10 +124,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             )
         data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
         try:
-            with metrics.timer(
-                "worker.services.notifications.notifiers.comment.send_notifications"
-            ):
-                return await self.send_actual_notification(data)
+            return self.send_actual_notification(data)
         except TorngitServerFailureError:
             log.warning(
                 "Unable to send comments because the provider server was not reachable or errored",
@@ -153,7 +139,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 data_received=None,
             )
 
-    async def send_actual_notification(self, data: Mapping[str, Any]):
+    def send_actual_notification(self, data: Mapping[str, Any]):
         message = "\n".join(data["message"])
 
         # Append tracking parameters to any codecov urls in the message
@@ -166,19 +152,19 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
         behavior = self.notifier_yaml_settings.get("behavior", "default")
         if behavior == "default":
-            res = await self.send_comment_default_behavior(
+            res = self.send_comment_default_behavior(
                 data["pullid"], data["commentid"], message
             )
         elif behavior == "once":
-            res = await self.send_comment_once_behavior(
+            res = self.send_comment_once_behavior(
                 data["pullid"], data["commentid"], message
             )
         elif behavior == "new":
-            res = await self.send_comment_new_behavior(
+            res = self.send_comment_new_behavior(
                 data["pullid"], data["commentid"], message
             )
         elif behavior == "spammy":
-            res = await self.send_comment_spammy_behavior(
+            res = self.send_comment_spammy_behavior(
                 data["pullid"], data["commentid"], message
             )
         return NotificationResult(
@@ -189,10 +175,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             data_received=res["data_received"],
         )
 
-    async def send_comment_default_behavior(self, pullid, commentid, message):
+    def send_comment_default_behavior(self, pullid, commentid, message):
         if commentid:
             try:
-                res = await self.repository_service.edit_comment(
+                res = async_to_sync(self.repository_service.edit_comment)(
                     pullid, commentid, message
                 )
                 return {
@@ -210,7 +196,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     extra=dict(pullid=pullid, commentid=commentid),
                 )
         try:
-            res = await self.repository_service.post_comment(pullid, message)
+            res = async_to_sync(self.repository_service.post_comment)(pullid, message)
             return {
                 "notification_attempted": True,
                 "notification_successful": True,
@@ -230,10 +216,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 "data_received": None,
             }
 
-    async def send_comment_once_behavior(self, pullid, commentid, message):
+    def send_comment_once_behavior(self, pullid, commentid, message):
         if commentid:
             try:
-                res = await self.repository_service.edit_comment(
+                res = async_to_sync(self.repository_service.edit_comment)(
                     pullid, commentid, message
                 )
                 return {
@@ -261,7 +247,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     "explanation": "no_permissions",
                     "data_received": None,
                 }
-        res = await self.repository_service.post_comment(pullid, message)
+        res = async_to_sync(self.repository_service.post_comment)(pullid, message)
         return {
             "notification_attempted": True,
             "notification_successful": True,
@@ -269,10 +255,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             "data_received": {"id": res["id"]},
         }
 
-    async def send_comment_new_behavior(self, pullid, commentid, message):
+    def send_comment_new_behavior(self, pullid, commentid, message):
         if commentid:
             try:
-                await self.repository_service.delete_comment(pullid, commentid)
+                async_to_sync(self.repository_service.delete_comment)(pullid, commentid)
             except TorngitObjectNotFoundError:
                 log.info("Comment was already deleted")
             except TorngitClientError:
@@ -292,7 +278,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     "data_received": None,
                 }
         try:
-            res = await self.repository_service.post_comment(pullid, message)
+            res = async_to_sync(self.repository_service.post_comment)(pullid, message)
             return {
                 "notification_attempted": True,
                 "notification_successful": True,
@@ -314,8 +300,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 "data_received": None,
             }
 
-    async def send_comment_spammy_behavior(self, pullid, commentid, message):
-        res = await self.repository_service.post_comment(pullid, message)
+    def send_comment_spammy_behavior(self, pullid, commentid, message):
+        res = async_to_sync(self.repository_service.post_comment)(pullid, message)
         return {
             "notification_attempted": True,
             "notification_successful": True,
@@ -328,7 +314,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             self.notifier_yaml_settings, dict
         )
 
-    async def build_message(self, comparison: Comparison) -> List[str]:
+    def build_message(self, comparison: Comparison) -> list[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
         if self.is_processing_upload():
@@ -340,9 +326,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         if comparison.pull.is_first_coverage_pull:
             return self._create_welcome_message()
         pull_dict = comparison.enriched_pull.provider_pull
-        return await self.create_message(
-            comparison, pull_dict, self.notifier_yaml_settings
-        )
+        return self.create_message(comparison, pull_dict, self.notifier_yaml_settings)
 
     def should_see_project_coverage_cta(self):
         """

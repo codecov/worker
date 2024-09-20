@@ -224,11 +224,11 @@ class TestSetPendingTaskUnit(object):
         )
         if branch == "master" and not cc_status_exists:
             repo.set_commit_status.assert_called_with(
-                commit=commitid,
-                status="pending",
-                context="codecov/" + context + "/custom",
-                description="Collecting reports and waiting for CI to complete",
-                url=f"https://codecov.io/gh/owner/repo/commit/{commitid}",
+                commitid,
+                "pending",
+                "codecov/" + context + "/custom",
+                "Collecting reports and waiting for CI to complete",
+                f"https://codecov.io/gh/owner/repo/commit/{commitid}",
             )
         else:
             assert not repo.set_commit_status.called

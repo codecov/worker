@@ -1,7 +1,8 @@
 from textwrap import dedent
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
+from mock import AsyncMock
 from shared.torngit.exceptions import TorngitClientError
 from shared.typings.torngit import TorngitInstanceData
 from shared.validation.types import BundleThreshold
@@ -76,9 +77,11 @@ class TestCommentMesage:
     def _setup_send_message_tests(
         self, dbsession, mocker, torngit_ghapp_data, bundle_analysis_commentid
     ):
-        fake_repo_provider = AsyncMock(
+        fake_repo_provider = MagicMock(
             name="fake_repo_provider",
             data=TorngitInstanceData(installation=torngit_ghapp_data),
+            post_comment=AsyncMock(),
+            edit_comment=AsyncMock(),
         )
         fake_repo_provider.post_comment.return_value = {"id": 1000}
         fake_repo_provider.edit_comment.return_value = {"id": 1000}
@@ -125,8 +128,7 @@ class TestCommentMesage:
             ),
         ],
     )
-    @pytest.mark.asyncio
-    async def test_send_message_no_exising_comment(
+    def test_send_message_no_exising_comment(
         self, dbsession, mocker, torngit_ghapp_data
     ):
         fake_repo_provider, mock_pull, context, message = (
@@ -135,7 +137,7 @@ class TestCommentMesage:
             )
         )
         strategy = BundleAnalysisCommentMarkdownStrategy()
-        result = await strategy.send_message(context, message)
+        result = strategy.send_message(context, message)
         expected_app = torngit_ghapp_data.get("id") if torngit_ghapp_data else None
         assert result == NotificationResult(
             notification_attempted=True,
@@ -161,15 +163,12 @@ class TestCommentMesage:
             ),
         ],
     )
-    @pytest.mark.asyncio
-    async def test_send_message_exising_comment(
-        self, dbsession, mocker, torngit_ghapp_data
-    ):
+    def test_send_message_exising_comment(self, dbsession, mocker, torngit_ghapp_data):
         fake_repo_provider, _, context, message = self._setup_send_message_tests(
             dbsession, mocker, torngit_ghapp_data, bundle_analysis_commentid=1000
         )
         strategy = BundleAnalysisCommentMarkdownStrategy()
-        result = await strategy.send_message(context, message)
+        result = strategy.send_message(context, message)
         expected_app = torngit_ghapp_data.get("id") if torngit_ghapp_data else None
         assert result == NotificationResult(
             notification_attempted=True,
@@ -179,8 +178,7 @@ class TestCommentMesage:
         fake_repo_provider.edit_comment.assert_called_with(12, 1000, message)
         fake_repo_provider.post_comment.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_send_message_fail(self, dbsession, mocker):
+    def test_send_message_fail(self, dbsession, mocker):
         fake_repo_provider, _, context, message = self._setup_send_message_tests(
             dbsession, mocker, None, bundle_analysis_commentid=None
         )
@@ -189,7 +187,7 @@ class TestCommentMesage:
             name="fake_commit_report", external_id="some_UUID4"
         )
         strategy = BundleAnalysisCommentMarkdownStrategy()
-        result = await strategy.send_message(context, message)
+        result = strategy.send_message(context, message)
         assert result == NotificationResult(
             notification_attempted=True,
             notification_successful=False,

@@ -25,9 +25,7 @@ log = logging.getLogger(__name__)
 
 
 class MessageMixin(object):
-    async def create_message(
-        self, comparison: ComparisonProxy, pull_dict, yaml_settings
-    ):
+    def create_message(self, comparison: ComparisonProxy, pull_dict, yaml_settings):
         """
         Assemble the various components of the PR comments message in accordance with their YAML configuration.
         See https://docs.codecov.io/docs/pull-request-comments for more context on the different parts of a PR comment.
@@ -41,9 +39,9 @@ class MessageMixin(object):
                       Thus, the comment block of the codecov YAML is passed as the "yaml_settings" parameter for these Notifiers.
 
         """
-        changes = await comparison.get_changes()
-        diff = await comparison.get_diff(use_original_base=True)
-        behind_by = await comparison.get_behind_by()
+        changes = comparison.get_changes()
+        diff = comparison.get_diff(use_original_base=True)
+        behind_by = comparison.get_behind_by()
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         pull = comparison.pull
@@ -75,7 +73,7 @@ class MessageMixin(object):
         # note: since we're using append, calling write("") will add a newline to the message
         write = message.append
 
-        await self._possibly_write_install_app(comparison, write)
+        self._possibly_write_install_app(comparison, write)
 
         # Write Header
         write(f'## [Codecov]({links["pull"]}?dropdown=coverage&src=pr&el=h1) Report')
@@ -112,7 +110,7 @@ class MessageMixin(object):
                 current_yaml,
             )
 
-            await self.write_section_to_msg(
+            self.write_section_to_msg(
                 comparison, changes, diff, links, write, section_writer, behind_by
             )
 
@@ -145,7 +143,7 @@ class MessageMixin(object):
                         self.repository, layout, show_complexity, settings, current_yaml
                     )
 
-                await self.write_section_to_msg(
+                self.write_section_to_msg(
                     comparison,
                     changes,
                     diff,
@@ -170,7 +168,7 @@ class MessageMixin(object):
                         settings,
                         current_yaml,
                     )
-                    await self.write_section_to_msg(
+                    self.write_section_to_msg(
                         comparison,
                         changes,
                         diff,
@@ -181,7 +179,7 @@ class MessageMixin(object):
 
         return [m for m in message if m is not None]
 
-    async def _possibly_write_install_app(
+    def _possibly_write_install_app(
         self, comparison: ComparisonProxy, write: Callable
     ) -> None:
         """Write a message if the user does not have any GH installations
@@ -233,14 +231,14 @@ class MessageMixin(object):
 
             return message
 
-    async def write_section_to_msg(
+    def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer, behind_by=None
     ):
         wrote_something: bool = False
         with metrics.timer(
             f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
         ):
-            for line in await section_writer.write_section(
+            for line in section_writer.write_section(
                 comparison, diff, changes, links, behind_by=behind_by
             ):
                 wrote_something |= line is not None

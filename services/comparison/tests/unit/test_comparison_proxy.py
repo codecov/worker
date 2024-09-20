@@ -1,4 +1,3 @@
-import pytest
 from mock import call, patch
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
@@ -44,12 +43,11 @@ def make_sample_comparison(adjusted_base=False):
 class TestComparisonProxy(object):
     compare_url = "https://api.github.com/repos/{}/compare/{}...{}"
 
-    @pytest.mark.asyncio
     @patch("shared.torngit.github.Github.get_compare")
-    async def test_get_diff_adjusted_base(self, mock_get_compare):
+    def test_get_diff_adjusted_base(self, mock_get_compare):
         comparison = make_sample_comparison(adjusted_base=True)
         mock_get_compare.return_value = {"diff": "magic string"}
-        result = await comparison.get_diff(use_original_base=False)
+        result = comparison.get_diff(use_original_base=False)
 
         assert result == "magic string"
         assert comparison._adjusted_base_diff == "magic string"
@@ -67,12 +65,11 @@ class TestComparisonProxy(object):
             ),
         ]
 
-    @pytest.mark.asyncio
     @patch("shared.torngit.github.Github.get_compare")
-    async def test_get_diff_original_base(self, mock_get_compare):
+    def test_get_diff_original_base(self, mock_get_compare):
         comparison = make_sample_comparison(adjusted_base=True)
         mock_get_compare.return_value = {"diff": "magic string"}
-        result = await comparison.get_diff(use_original_base=True)
+        result = comparison.get_diff(use_original_base=True)
 
         assert result == "magic string"
         assert comparison._original_base_diff == "magic string"
@@ -90,12 +87,11 @@ class TestComparisonProxy(object):
             ),
         ]
 
-    @pytest.mark.asyncio
     @patch("shared.torngit.github.Github.get_compare")
-    async def test_get_diff_bases_match_original_base(self, mock_get_compare):
+    def test_get_diff_bases_match_original_base(self, mock_get_compare):
         comparison = make_sample_comparison(adjusted_base=False)
         mock_get_compare.return_value = {"diff": "magic string"}
-        result = await comparison.get_diff(use_original_base=True)
+        result = comparison.get_diff(use_original_base=True)
 
         assert result == "magic string"
         assert comparison._original_base_diff == "magic string"
@@ -106,7 +102,7 @@ class TestComparisonProxy(object):
 
         # In this test case, the adjusted and original base commits are the
         # same. If we get one, we should set the cache for the other.
-        adjusted_base_result = await comparison.get_diff(use_original_base=False)
+        adjusted_base_result = comparison.get_diff(use_original_base=False)
         assert comparison._adjusted_base_diff == "magic string"
 
         # Make sure we only called the Git provider API once
@@ -118,12 +114,11 @@ class TestComparisonProxy(object):
             ),
         ]
 
-    @pytest.mark.asyncio
     @patch("shared.torngit.github.Github.get_compare")
-    async def test_get_diff_bases_match_adjusted_base(self, mock_get_compare):
+    def test_get_diff_bases_match_adjusted_base(self, mock_get_compare):
         comparison = make_sample_comparison(adjusted_base=False)
         mock_get_compare.return_value = {"diff": "magic string"}
-        result = await comparison.get_diff(use_original_base=False)
+        result = comparison.get_diff(use_original_base=False)
 
         assert result == "magic string"
         assert comparison._adjusted_base_diff == "magic string"
@@ -134,7 +129,7 @@ class TestComparisonProxy(object):
 
         # In this test case, the adjusted and original base commits are the
         # same. If we get one, we should set the cache for the other.
-        adjusted_base_result = await comparison.get_diff(use_original_base=True)
+        adjusted_base_result = comparison.get_diff(use_original_base=True)
         assert comparison._adjusted_base_diff == "magic string"
 
         # Make sure we only called the Git provider API once

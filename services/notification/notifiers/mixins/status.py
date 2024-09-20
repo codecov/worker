@@ -1,17 +1,17 @@
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Any, Callable, List, Optional, Tuple, Union
 
 from services.comparison import ComparisonProxy, FilteredComparison
+from services.comparison.types import Comparison
 from services.yaml.reader import round_number
 
 log = logging.getLogger(__name__)
 
 
 class StatusPatchMixin(object):
-    async def get_patch_status(
+    def get_patch_status(
         self, comparison: ComparisonProxy | FilteredComparison
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         threshold = self.notifier_yaml_settings.get("threshold", "0.0")
 
         # check if user has erroneously added a % to this input and fix
@@ -23,7 +23,8 @@ class StatusPatchMixin(object):
         except (InvalidOperation, TypeError):
             threshold = Decimal("0.0")
 
-        totals = await comparison.get_patch_totals()
+        target_coverage: Decimal | None
+        totals = comparison.get_patch_totals()
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
             target_coverage = Decimal(
                 str(self.notifier_yaml_settings.get("target")).replace("%", "")
@@ -78,7 +79,7 @@ class StatusChangesMixin(object):
                 return (t.misses + t.partials) > 0
         return False
 
-    async def get_changes_status(self, comparison) -> Tuple[str, str]:
+    def get_changes_status(self, comparison: Comparison) -> tuple[str, str]:
         pull = comparison.pull
         if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
             if not comparison.has_project_coverage_base_report():
@@ -89,7 +90,7 @@ class StatusChangesMixin(object):
                 return (state, description)
 
         # filter changes
-        changes = await comparison.get_changes()
+        changes = comparison.get_changes()
         if changes:
             changes = list(filter(self.is_a_change_worth_noting, changes))
 
@@ -114,9 +115,9 @@ class StatusChangesMixin(object):
 class StatusProjectMixin(object):
     DEFAULT_REMOVED_CODE_BEHAVIOR = "adjust_base"
 
-    async def _apply_removals_only_behavior(
-        self, comparison: Union[ComparisonProxy, FilteredComparison]
-    ) -> Optional[Tuple[str, str]]:
+    def _apply_removals_only_behavior(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str] | None:
         """
         Rule for passing project status on removals_only behavior:
         Pass if code was _only removed_ (i.e. no addition, no unexpected changes)
@@ -125,30 +126,22 @@ class StatusProjectMixin(object):
             "Applying removals_only behavior to project status",
             extra=dict(commit=comparison.head.commit.commitid),
         )
-        impacted_files_dict = await comparison.get_impacted_files()
-        impacted_files = impacted_files_dict.get("files", [])
+        impacted_files = comparison.get_impacted_files().get("files", [])
+
         no_added_no_unexpected_change = all(
-            map(
-                lambda file_dict: (
-                    file_dict.get("added_diff_coverage", []) == []
-                    and file_dict.get("unexpected_line_changes") == []
-                ),
-                impacted_files,
-            )
+            not file.get("added_diff_coverage")
+            and not file.get("unexpected_line_changes")
+            for file in impacted_files
         )
-        some_removed = any(
-            map(
-                lambda file_dict: (file_dict.get("removed_diff_coverage", []) != []),
-                impacted_files,
-            )
-        )
+        some_removed = any(file.get("removed_diff_coverage") for file in impacted_files)
+
         if no_added_no_unexpected_change and some_removed:
             return ("success", ", passed because this change only removed code")
         return None
 
-    async def _apply_adjust_base_behavior(
-        self, comparison: ComparisonProxy
-    ) -> Optional[Tuple[str, str]]:
+    def _apply_adjust_base_behavior(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str] | None:
         """
         Rule for passing project status on adjust_base behavior:
         We adjust the BASE of the comparison by removing from it lines that were removed in HEAD
@@ -168,28 +161,23 @@ class StatusProjectMixin(object):
             )
             return None
 
-        impacted_files_dict = await comparison.get_impacted_files()
-        impacted_files = impacted_files_dict.get("files", [])
-
-        def get_sum_from_lists(
-            coverage_diff_info: List[Any], comparison_fn: Callable[[Any], int]
-        ):
-            return sum(map(comparison_fn, coverage_diff_info))
+        impacted_files = comparison.get_impacted_files().get("files", [])
 
         hits_removed = 0
         misses_removed = 0
         partials_removed = 0
+
         for file_dict in impacted_files:
-            removed_diff_coverage_list = file_dict.get("removed_diff_coverage", [])
-            if removed_diff_coverage_list is not None:
-                hits_removed += get_sum_from_lists(
-                    removed_diff_coverage_list, lambda item: 1 if item[1] == "h" else 0
+            removed_diff_coverage_list = file_dict.get("removed_diff_coverage")
+            if removed_diff_coverage_list:
+                hits_removed += sum(
+                    1 if item[1] == "h" else 0 for item in removed_diff_coverage_list
                 )
-                misses_removed += get_sum_from_lists(
-                    removed_diff_coverage_list, lambda item: 1 if item[1] == "m" else 0
+                misses_removed += sum(
+                    1 if item[1] == "m" else 0 for item in removed_diff_coverage_list
                 )
-                partials_removed += get_sum_from_lists(
-                    removed_diff_coverage_list, lambda item: 1 if item[1] == "p" else 0
+                partials_removed += sum(
+                    1 if item[1] == "p" else 0 for item in removed_diff_coverage_list
                 )
 
         base_totals = comparison.project_coverage_base.report.totals
@@ -235,9 +223,9 @@ class StatusProjectMixin(object):
             )
         return None
 
-    async def _apply_fully_covered_patch_behavior(
-        self, comparison: ComparisonProxy
-    ) -> Optional[Tuple[str, str]]:
+    def _apply_fully_covered_patch_behavior(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str] | None:
         """
         Rule for passing project status on fully_covered_patch behavior:
         Pass if patch coverage is 100% and there are no unexpected changes
@@ -246,21 +234,20 @@ class StatusProjectMixin(object):
             "Applying fully_covered_patch behavior to project status",
             extra=dict(commit=comparison.head.commit.commitid),
         )
-        impacted_files_dict = await comparison.get_impacted_files()
-        impacted_files = impacted_files_dict.get("files", [])
+        impacted_files = comparison.get_impacted_files().get("files", [])
+
         no_unexpected_changes = all(
-            map(
-                lambda file_dict: file_dict.get("unexpected_line_changes") == [],
-                impacted_files,
-            )
+            not file.get("unexpected_line_changes") for file in impacted_files
         )
+
         if not no_unexpected_changes:
             log.info(
                 "Unexpected changes when applying patch_100 behavior",
                 extra=dict(commit=comparison.head.commit.commitid),
             )
             return None
-        diff = await comparison.get_diff(use_original_base=True)
+
+        diff = comparison.get_diff(use_original_base=True)
         patch_totals = comparison.head.report.apply_diff(diff)
         if patch_totals is None or patch_totals.lines == 0:
             # Coverage was not changed by patch
@@ -273,9 +260,9 @@ class StatusProjectMixin(object):
             )
         return None
 
-    async def get_project_status(
-        self, comparison: Union[ComparisonProxy, FilteredComparison]
-    ) -> Tuple[str, str]:
+    def get_project_status(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str]:
         state, message = self._get_project_status(comparison)
         if state == "success":
             return (state, message)
@@ -289,13 +276,11 @@ class StatusProjectMixin(object):
             # Apply removed_code_behavior
             removed_code_result = None
             if removed_code_behavior == "removals_only":
-                removed_code_result = await self._apply_removals_only_behavior(
-                    comparison
-                )
+                removed_code_result = self._apply_removals_only_behavior(comparison)
             elif removed_code_behavior == "adjust_base":
-                removed_code_result = await self._apply_adjust_base_behavior(comparison)
+                removed_code_result = self._apply_adjust_base_behavior(comparison)
             elif removed_code_behavior == "fully_covered_patch":
-                removed_code_result = await self._apply_fully_covered_patch_behavior(
+                removed_code_result = self._apply_fully_covered_patch_behavior(
                     comparison
                 )
             else:
@@ -313,7 +298,9 @@ class StatusProjectMixin(object):
                 return (removed_code_state, message + removed_code_message)
         return (state, message)
 
-    def _get_project_status(self, comparison) -> Tuple[str, str]:
+    def _get_project_status(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str]:
         if comparison.head.report.totals.coverage is None:
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No coverage information found on head"
