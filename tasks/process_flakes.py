@@ -42,12 +42,10 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
             flaky_tests = list(flake_dict.keys())
 
             for commit_id in commit_id_list:
-                print(commit_id)
                 test_instances = get_test_instances(
                     commit_id, repo_id, branch, flaky_tests
                 )
                 for test_instance in test_instances:
-                    print(test_instance.created_at)
                     if test_instance.outcome == TestInstance.Outcome.PASS.value:
                         flake = flake_dict.get(
                             (test_instance.test_id, test_instance.reduced_error_id)
@@ -125,33 +123,6 @@ def update_passed_flakes(
     if flake.recent_passes_count == FLAKE_EXPIRY_COUNT:
         flake.end_date = test_instance.created_at
 
-        # it's possible that while this commit was not yet flake processed there were test instances that were processed
-        # and added to the tally of flaky failures in their respective daily rollups
-        # this code below undoes those erroneous increments to the flaky fail count
-        instances = TestInstance.objects.filter(
-            Q(repoid=repo_id)
-            & Q(created_at__gt=flake.end_date)
-            & (
-                Q(outcome=TestInstance.Outcome.FAILURE.value)
-                | Q(outcome=TestInstance.Outcome.ERROR.value)
-            )
-            & Q(test_id=flake.test_id)
-        )
-
-        for instance in instances:
-            rollup = DailyTestRollup.objects.filter(
-                repoid=repo_id,
-                date=instance.created_at.date(),
-                branch=instance.branch,
-                test_id=instance.test_id,
-            ).first()
-
-            if not rollup:
-                continue
-
-            rollup.flaky_fail_count -= 1
-            rollup.save()
-
     flake.save()
 
 
@@ -172,30 +143,27 @@ def upsert_failed_flake(
         )
         flake.save()
 
-        # go through all test instances since the day that the test instance ran
-        instances = TestInstance.objects.filter(
-            Q(repoid=repo_id)
-            & Q(created_at__gte=flake.start_date)
-            & (
-                Q(outcome=TestInstance.Outcome.FAILURE.value)
-                | Q(outcome=TestInstance.Outcome.ERROR.value)
-            )
-            & Q(test_id=test_instance.test_id)
-        )
+        # retroactively mark newly caught flake as flaky failure in its rollup
+        rollup = DailyTestRollup.objects.filter(
+            repoid=repo_id,
+            date=test_instance.created_at.date(),
+            branch=test_instance.branch,
+            test_id=test_instance.test_id,
+        ).first()
 
-        for instance in instances:
-            rollup = DailyTestRollup.objects.filter(
-                repoid=repo_id,
-                date=instance.created_at.date(),
-                branch=instance.branch,
-                test_id=instance.test_id,
-            ).first()
-
-            if rollup is None:
-                continue
-
+        if rollup:
             rollup.flaky_fail_count += 1
             rollup.save()
+        else:
+            log.warning(
+                "Could not find rollup when trying to update its flaky fail count",
+                extra=dict(
+                    repoid=repo_id,
+                    testid=test_instance.test_id,
+                    branch=test_instance.branch,
+                    date=test_instance.created_at.date(),
+                ),
+            )
     else:
         flake.count += 1
         flake.fail_count += 1
