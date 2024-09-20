@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import time_machine
 from shared.django_apps.core.tests.factories import CommitFactory, RepositoryFactory
-from shared.django_apps.reports.models import Flake, TestInstance
+from shared.django_apps.reports.models import DailyTestRollup, Flake, TestInstance
 from shared.django_apps.reports.tests.factories import (
     FlakeFactory,
     TestFactory,
@@ -51,9 +51,50 @@ class RepoSimulator:
             outcome=outcome,
             test=self.test_map[self.test_count],
         )
-        print(self.test_map[self.test_count].id)
         ti.save()
+
+        rollup, _ = DailyTestRollup.objects.get_or_create(
+            repoid=self.repo.repoid,
+            date=dt.date.today(),
+            test=self.test_map[self.test_count],
+            branch=c.branch,
+            defaults={
+                "pass_count": 0,
+                "skip_count": 0,
+                "fail_count": 0,
+                "flaky_fail_count": 0,
+                "avg_duration_seconds": 0.0,
+                "last_duration_seconds": 0.0,
+                "latest_run": dt.datetime.now(),
+                "commits_where_fail": [],
+            },
+        )
+
+        match outcome:
+            case TestInstance.Outcome.PASS.value:
+                rollup.pass_count += 1
+            case TestInstance.Outcome.SKIP.value:
+                rollup.skip_count += 1
+            case _:
+                rollup.fail_count += 1
+
+                s = set(rollup.commits_where_fail)
+                s.add(c.commitid)
+                rollup.commits_where_fail = list(s)
+
+                flake = Flake.objects.filter(
+                    repository_id=self.repo.repoid,
+                    test=self.test_map[self.test_count],
+                ).first()
+
+                if flake:
+                    rollup.flaky_fail_count += 1
+
+        rollup.save()
+
         self.test_count += 1
+
+        return ti
 
     def reset(self):
         self.repo = RepositoryFactory()
@@ -148,15 +189,16 @@ def test_get_test_instances_when_instance_is_pass(transactional_db):
 
 
 def test_update_passed_flakes(transactional_db):
-    repo = RepositoryFactory()
-    test = TestFactory()
+    rs = RepoSimulator()
+    c = rs.create_commit()
+    ti = rs.add_test_instance(c, outcome=TestInstance.Outcome.FAILURE.value)
 
-    f = FlakeFactory(test=test, repository=repo)
+    f = FlakeFactory(test=ti.test, repository=rs.repo)
     f.save()
     assert f.count == 0
     assert f.recent_passes_count == 0
 
-    update_passed_flakes(f)
+    update_passed_flakes(ti, f, rs.repo.repoid)
 
     assert f.count == 1
     assert f.recent_passes_count == 1
@@ -362,8 +404,6 @@ def test_it_creates_flakes_expires(transactional_db):
         traveller.shift(dt.timedelta(seconds=100))
         new_time = dt.datetime.now(dt.UTC)
 
-        print(old_time, new_time)
-
         for _ in range(0, 29):
             c = rs.create_commit()
             rs.merge(c)
@@ -400,3 +440,184 @@ def test_it_creates_flakes_expires(transactional_db):
         assert flake.fail_count == 1
         assert flake.start_date == old_time
         assert flake.end_date == new_time
+
+
+def test_it_creates_rollups(transactional_db):
+    traveller = time_machine.travel("1970-1-1T00:00:00Z")
+    traveller.start()
+    rs = RepoSimulator()
+    commits = []
+    c1 = rs.create_commit()
+    rs.merge(c1)
+    rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
+    rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
+
+    ProcessFlakesTask().run_impl(
+        None,
+        repo_id=rs.repo.repoid,
+        commit_id_list=[c1.commitid],
+        branch=rs.repo.branch,
+    )
+
+    traveller.stop()
+
+    traveller = time_machine.travel("1970-1-2T00:00:00Z")
+    traveller.start()
+
+    c2 = rs.create_commit()
+    rs.merge(c2)
+    rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
+    rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
+
+    ProcessFlakesTask().run_impl(
+        None,
+        repo_id=rs.repo.repoid,
+        commit_id_list=[c2.commitid],
+        branch=rs.repo.branch,
+    )
+
+    rollups = DailyTestRollup.objects.all()
+
+    assert len(rollups) == 4
+
+    assert rollups[0].fail_count == 1
+    assert rollups[0].flaky_fail_count == 1
+    assert rollups[0].date == dt.date.today() - dt.timedelta(days=1)
+
+    assert rollups[1].fail_count == 1
+    assert rollups[1].flaky_fail_count == 1
+    assert rollups[1].date == dt.date.today() - dt.timedelta(days=1)
+
+    assert rollups[2].fail_count == 1
+    assert rollups[2].flaky_fail_count == 1
+    assert rollups[2].date == dt.date.today()
+
+    assert rollups[3].fail_count == 1
+    assert rollups[3].flaky_fail_count == 1
+    assert rollups[3].date == dt.date.today()
+
+    traveller.stop()
+
+
+def test_it_backfills_rollups(transactional_db):
+    traveller = time_machine.travel("1970-1-1T00:00:00Z")
+    traveller.start()
+    rs = RepoSimulator()
+    commits = []
+    c1 = rs.create_commit()
+    rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
+    rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
+
+    traveller.stop()
+    traveller = time_machine.travel("1970-1-2T00:00:00Z")
+    traveller.start()
+
+    c2 = rs.create_commit()
+    rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
+    rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
+    traveller.stop()
+
+    rollups = DailyTestRollup.objects.all()
+
+    assert len(rollups) == 4
+
+    assert [r.fail_count for r in rollups] == [1, 1, 1, 1]
+    assert [r.flaky_fail_count for r in rollups] == [0, 0, 0, 0]
+
+    old_branch = c1.branch
+    rs.merge(c1)
+
+    traveller.start()
+    traveller = time_machine.travel("1970-1-3T00:00:00Z")
+
+    ProcessFlakesTask().run_impl(
+        None,
+        repo_id=rs.repo.repoid,
+        commit_id_list=[c1.commitid],
+        branch=old_branch,
+    )
+
+    traveller.stop()
+
+    rollups = DailyTestRollup.objects.all()
+
+    assert [r.fail_count for r in rollups] == [1, 1, 1, 1]
+    assert [r.flaky_fail_count for r in rollups] == [1, 1, 1, 1]
+
+
+def test_it_corrects_rollups(transactional_db):
+    traveller = time_machine.travel("1970-1-1T00:00:00Z")
+    traveller.start()
+    rs = RepoSimulator()
+    commits = []
+    c1 = rs.create_commit()
+    rs.merge(c1)
+    rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
+
+    ProcessFlakesTask().run_impl(
+        None,
+        repo_id=rs.repo.repoid,
+        commit_id_list=[c1.commitid],
+        branch=rs.repo.branch,
+    )
+
+    traveller.stop()
+    traveller = time_machine.travel("1970-1-2T00:00:00Z")
+    traveller.start()
+
+    for _ in range(0, 29):
+        c = rs.create_commit()
+        rs.merge(c)
+        rs.add_test_instance(c, outcome=TestInstance.Outcome.PASS.value)
+        commits.append(c.commitid)
+
+    ProcessFlakesTask().run_impl(
+        None, repo_id=rs.repo.repoid, commit_id_list=commits, branch=rs.repo.branch
+    )
+    rollups = DailyTestRollup.objects.all()
+
+    assert len(rollups) == 2
+
+    assert [r.pass_count for r in rollups] == [0, 29]
+    assert [r.fail_count for r in rollups] == [1, 0]
+    assert [r.flaky_fail_count for r in rollups] == [1, 0]
+
+    old_c = rs.create_commit()
+    rs.merge(old_c)
+    rs.add_test_instance(old_c, outcome=TestInstance.Outcome.PASS.value)
+
+    traveller.stop()
+
+    traveller = time_machine.travel("1970-1-3T00:00:00Z")
+    traveller.start()
+
+    for _ in range(0, 29):
+        c = rs.create_commit()
+        rs.merge(c)
+        rs.add_test_instance(c, outcome=TestInstance.Outcome.FAILURE.value)
+
+    rollups = DailyTestRollup.objects.order_by("date").all()
+
+    assert len(rollups) == 3
+
+    assert [r.fail_count for r in rollups] == [1, 0, 29]
+    assert [r.flaky_fail_count for r in rollups] == [1, 0, 29]
+
+    traveller.stop()
+    traveller = time_machine.travel("1970-1-4T00:00:00Z")
+    traveller.start()
+    ProcessFlakesTask().run_impl(
+        None,
+        repo_id=rs.repo.repoid,
+        commit_id_list=[old_c.commitid],
+        branch=rs.repo.branch,
+    )
+
+    rollups = DailyTestRollup.objects.order_by("date").all()
+
+    assert len(rollups) == 3
+
+    assert [r.fail_count for r in rollups] == [1, 0, 29]
+    assert [r.flaky_fail_count for r in rollups] == [1, 0, 0]
+
+    traveller.stop()
