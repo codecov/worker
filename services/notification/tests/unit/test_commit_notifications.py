@@ -86,7 +86,7 @@ class TestCommitNotificationsServiceTestCase(object):
     ):
         comparison.enriched_pull = None
         commit = comparison.head.commit
-        app = GithubAppInstallation(owner=commit.repository.owner)
+        app = GithubAppInstallation(owner=commit.repository.owner, installation_id=1234)
         dbsession.add(app)
         dbsession.flush()
         notifier = CommentNotifier(
