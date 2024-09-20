@@ -55,7 +55,7 @@ class TestResultsReportService(BaseReportService):
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
         upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags = normalized_arguments.get("flags", "").split(",")
+        flags = normalized_arguments.get("flags") or []
         self._attach_flags_to_upload(upload, flags)
         return upload
 
