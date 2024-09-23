@@ -372,49 +372,49 @@ class BundleAnalysisReportService(BaseReportService):
 
             db_session = commit.get_db_session()
             bundle_report = bundle_analysis_report.bundle_report(bundle_name)
-
-            # For overall bundle size
-            if MeasurementName.bundle_analysis_report_size.value in dataset_names:
-                self._save_to_timeseries(
-                    db_session,
-                    commit,
-                    MeasurementName.bundle_analysis_report_size.value,
-                    bundle_report.name,
-                    bundle_report.total_size(),
-                )
-
-            # For individual javascript associated assets using UUID
-            if MeasurementName.bundle_analysis_asset_size.value in dataset_names:
-                for asset in bundle_report.asset_reports():
-                    if asset.asset_type == AssetType.JAVASCRIPT:
-                        self._save_to_timeseries(
-                            db_session,
-                            commit,
-                            MeasurementName.bundle_analysis_asset_size.value,
-                            asset.uuid,
-                            asset.size,
-                        )
-
-            # For asset types sizes
-            asset_type_map = {
-                MeasurementName.bundle_analysis_font_size: AssetType.FONT,
-                MeasurementName.bundle_analysis_image_size: AssetType.IMAGE,
-                MeasurementName.bundle_analysis_stylesheet_size: AssetType.STYLESHEET,
-                MeasurementName.bundle_analysis_javascript_size: AssetType.JAVASCRIPT,
-            }
-            for measurement_name, asset_type in asset_type_map.items():
-                if measurement_name.value in dataset_names:
-                    total_size = 0
-                    for asset in bundle_report.asset_reports():
-                        if asset.asset_type == asset_type:
-                            total_size += asset.size
+            if bundle_report:
+                # For overall bundle size
+                if MeasurementName.bundle_analysis_report_size.value in dataset_names:
                     self._save_to_timeseries(
                         db_session,
                         commit,
-                        measurement_name.value,
+                        MeasurementName.bundle_analysis_report_size.value,
                         bundle_report.name,
-                        total_size,
+                        bundle_report.total_size(),
                     )
+
+                # For individual javascript associated assets using UUID
+                if MeasurementName.bundle_analysis_asset_size.value in dataset_names:
+                    for asset in bundle_report.asset_reports():
+                        if asset.asset_type == AssetType.JAVASCRIPT:
+                            self._save_to_timeseries(
+                                db_session,
+                                commit,
+                                MeasurementName.bundle_analysis_asset_size.value,
+                                asset.uuid,
+                                asset.size,
+                            )
+
+                # For asset types sizes
+                asset_type_map = {
+                    MeasurementName.bundle_analysis_font_size: AssetType.FONT,
+                    MeasurementName.bundle_analysis_image_size: AssetType.IMAGE,
+                    MeasurementName.bundle_analysis_stylesheet_size: AssetType.STYLESHEET,
+                    MeasurementName.bundle_analysis_javascript_size: AssetType.JAVASCRIPT,
+                }
+                for measurement_name, asset_type in asset_type_map.items():
+                    if measurement_name.value in dataset_names:
+                        total_size = 0
+                        for asset in bundle_report.asset_reports():
+                            if asset.asset_type == asset_type:
+                                total_size += asset.size
+                        self._save_to_timeseries(
+                            db_session,
+                            commit,
+                            measurement_name.value,
+                            bundle_report.name,
+                            total_size,
+                        )
 
             return ProcessingResult(
                 upload=upload,
