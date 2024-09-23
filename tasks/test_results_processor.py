@@ -51,6 +51,10 @@ class ParserFailureError(Exception):
 class ParserNotSupportedError(Exception): ...
 
 
+def get_existing_tests(db_session: Session, repoid: int) -> set[Test]:
+    return set(db_session.query(Test.id_).filter(Test.repoid == repoid).all())
+
+
 def get_repo_flags(
     db_session: Session, repoid: int, flags: list[str]
 ) -> dict[str, int]:
@@ -156,6 +160,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         repo_flags: dict[str, int] = get_repo_flags(db_session, repoid, flags)
 
+        existing_tests: set[Test] = get_existing_tests(db_session, repoid)
+
         for testrun in parsed_testruns:
             # Build up the data for bulk insert
             name = testrun.name
@@ -178,6 +184,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             test_flag_bridge_data += [
                 {"test_id": test_id, "repoid": repoid, "flag_id": repo_flags[flag]}
                 for flag in flags
+                if test_id not in existing_tests
             ]
 
             test_instance_data.append(
