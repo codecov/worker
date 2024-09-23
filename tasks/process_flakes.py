@@ -114,9 +114,7 @@ def generate_flake_dict(repo_id: int) -> FlakeDict:
     return flake_dict
 
 
-def update_passed_flakes(
-    test_instance: TestInstance, flake: Flake, repo_id: int
-) -> None:
+def update_passed_flakes(test_instance: TestInstance, flake: Flake) -> None:
     flake.count += 1
     flake.recent_passes_count += 1
 
