@@ -357,6 +357,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "Detected failure on test that has been identified as flaky",
                 extra=dict(
                     success=success,
+                    notifier_result=notifier_result.value,
                     repoid=repoid,
                     commitid=commit.commitid,
                     test_ids=list(flaky_tests.keys()),

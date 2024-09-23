@@ -14,7 +14,7 @@ from services.bundle_analysis.notify.helpers import (
     bytes_readable,
     get_github_app_used,
     get_notification_types_configured,
-    is_bundle_change_within_bundle_threshold,
+    is_bundle_comparison_change_within_configured_threshold,
     to_BundleThreshold,
 )
 from services.bundle_analysis.notify.types import NotificationType
@@ -175,4 +175,7 @@ def test_is_bundle_change_within_bundle_threshold(threshold, expected):
         name="fake_comparison", total_size_delta=10000, percentage_delta=12.5
     )
     assert comparison.total_size_delta == 10000
-    assert is_bundle_change_within_bundle_threshold(comparison, threshold) == expected
+    assert (
+        is_bundle_comparison_change_within_configured_threshold(comparison, threshold)
+        == expected
+    )

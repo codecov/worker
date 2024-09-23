@@ -25,7 +25,7 @@ from services.bundle_analysis.notify.contexts import (
     NotificationContextField,
 )
 from services.bundle_analysis.notify.helpers import (
-    is_bundle_change_within_bundle_threshold,
+    is_bundle_comparison_change_within_configured_threshold,
 )
 from services.bundle_analysis.notify.types import NotificationType
 from services.repository import (
@@ -146,14 +146,14 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         comparison = self._notification_context.bundle_analysis_comparison
         should_continue = {
             False: True,
-            True: not is_bundle_change_within_bundle_threshold(
+            True: not is_bundle_comparison_change_within_configured_threshold(
                 comparison,
                 required_changes_threshold,
                 compare_non_negative_numbers=True,
             ),
             "bundle_increase": (
                 comparison.total_size_delta > 0
-                and not is_bundle_change_within_bundle_threshold(
+                and not is_bundle_comparison_change_within_configured_threshold(
                     comparison,
                     required_changes_threshold,
                     compare_non_negative_numbers=True,
@@ -194,7 +194,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         )
         user_config = self._notification_context.user_config
 
-        if is_bundle_change_within_bundle_threshold(
+        if is_bundle_comparison_change_within_configured_threshold(
             bundle_analysis_comparison, user_config.warning_threshold
         ):
             self._notification_context.commit_status_level = CommitStatusLevel.INFO

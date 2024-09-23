@@ -81,6 +81,7 @@ RAW_REPORT_PROCESSOR_COUNTER = Counter(
 )
 
 
+@sentry_sdk.trace
 def report_type_matching(
     report: ParsedUploadedReportFile, first_line: str
 ) -> (
@@ -200,10 +201,6 @@ def process_report(
             continue
         processor_name = type(processor).__name__
 
-        sentry_sdk.metrics.incr(
-            "services.report.report_processor.parser",
-            tags={"type": processor_name},
-        )
         RAW_REPORT_SIZE.labels(processor=processor_name).observe(report.size)
         with RAW_REPORT_PROCESSOR_RUNTIME_SECONDS.labels(
             processor=processor_name

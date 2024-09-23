@@ -65,7 +65,7 @@ def hook_mock_pull(mocker, mock_pull):
                     "added-bundle",
                     BundleChange.ChangeType.ADDED,
                     size_delta=12345,
-                    percentage_delta=2.56,
+                    percentage_delta=5.56,
                 ),
                 BundleChange(
                     "changed-bundle",
@@ -94,9 +94,9 @@ def hook_mock_pull(mocker, mock_pull):
 
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
-            | added-bundle | 123.46kB | 12.35kB :arrow_up: |
-            | changed-bundle | 123.46kB | 3.46kB :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB :arrow_down: |"""),
+            | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::warning: |
+            | changed-bundle | 123.46kB | 3.46kB (0.35%) :arrow_up: |
+            | removed-bundle | (removed) | 1.23kB (-1.23%) :arrow_down: |"""),
             id="comment_increase_size_warning",
         ),
         pytest.param(
@@ -105,7 +105,7 @@ def hook_mock_pull(mocker, mock_pull):
                     "added-bundle",
                     BundleChange.ChangeType.ADDED,
                     size_delta=12345,
-                    percentage_delta=2.56,
+                    percentage_delta=5.56,
                 ),
                 BundleChange(
                     "changed-bundle",
@@ -117,7 +117,7 @@ def hook_mock_pull(mocker, mock_pull):
                     "removed-bundle",
                     BundleChange.ChangeType.REMOVED,
                     size_delta=-1234,
-                    percentage_delta=2.56,
+                    percentage_delta=-100.0,
                 ),
             ],
             5.56,
@@ -134,9 +134,9 @@ def hook_mock_pull(mocker, mock_pull):
 
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
-            | added-bundle | 123.46kB | 12.35kB :arrow_up: |
-            | changed-bundle | 123.46kB | 3.46kB :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB :arrow_down: |"""),
+            | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::x: |
+            | changed-bundle | 123.46kB | 3.46kB (2.56%) :arrow_up: |
+            | removed-bundle | (removed) | 1.23kB (-100.0%) :arrow_down: |"""),
             id="comment_increase_size_error",
         ),
         pytest.param(
@@ -176,9 +176,9 @@ def hook_mock_pull(mocker, mock_pull):
                    
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
-            | added-bundle | 123.46kB | 12.35kB :arrow_up: |
-            | cached-bundle* | 123.46kB | 3.46kB :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB :arrow_down: |
+            | added-bundle | 123.46kB | 12.35kB (2.56%) :arrow_up: |
+            | cached-bundle* | 123.46kB | 3.46kB (2.56%) :arrow_up: |
+            | removed-bundle | (removed) | 1.23kB (2.56%) :arrow_down: |
                    
             </details>
 
@@ -211,7 +211,7 @@ def hook_mock_pull(mocker, mock_pull):
             
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
-            | test-bundle | 123.46kB | 3.46kB :arrow_down: |
+            | test-bundle | 123.46kB | 3.46kB (-2.56%) :arrow_down: |
             
             </details>"""),
             id="comment_decrease_size",

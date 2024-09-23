@@ -7,20 +7,12 @@ from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
-from database.models import (
-    Commit,
-    CommitReport,
-    RepositoryFlag,
-    TestInstance,
-    Upload,
-)
+from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.report import BaseReportService
-from services.repository import (
-    get_repo_provider_service,
-)
+from services.repository import get_repo_provider_service
 from services.urls import get_members_url, get_test_analytics_url
 from services.yaml import read_yaml_field
 
@@ -33,7 +25,7 @@ class TestResultsReportService(BaseReportService):
         self.flag_dict = None
 
     def initialize_and_save_report(
-        self, commit: Commit, report_code: str = None
+        self, commit: Commit, report_code: str | None = None
     ) -> CommitReport:
         db_session = commit.get_db_session()
         current_report_row = (
@@ -63,8 +55,7 @@ class TestResultsReportService(BaseReportService):
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
         upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags = normalized_arguments.get("flags")
-        flags = flags or []
+        flags = normalized_arguments.get("flags") or []
         self._attach_flags_to_upload(upload, flags)
         return upload
 
