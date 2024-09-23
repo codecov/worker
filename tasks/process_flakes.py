@@ -128,8 +128,8 @@ def update_passed_flakes(
 
 def upsert_failed_flake(
     test_instance: TestInstance,
-    repo_id: int,
     flake: Flake | None,
+    repo_id: int,
 ) -> Flake:
     if flake is None:
         flake = Flake(
