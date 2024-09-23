@@ -198,7 +198,7 @@ def test_update_passed_flakes(transactional_db):
     assert f.count == 0
     assert f.recent_passes_count == 0
 
-    update_passed_flakes(ti, f, rs.repo.repoid)
+    update_passed_flakes(ti, f)
 
     assert f.count == 1
     assert f.recent_passes_count == 1
@@ -218,7 +218,7 @@ def test_upsert_failed_flakes(transactional_db):
     f = FlakeFactory()
     f.save()
 
-    upsert_failed_flake(ti, repo.repoid, f)
+    upsert_failed_flake(ti, f, repo.repoid)
 
 
 def test_it_does_not_detect_unmerged_tests(transactional_db):
