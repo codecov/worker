@@ -351,7 +351,9 @@ class BundleAnalysisReportService(BaseReportService):
         db_session.flush()
 
     @sentry_sdk.trace
-    def save_measurements(self, commit: Commit, upload: Upload) -> ProcessingResult:
+    def save_measurements(
+        self, commit: Commit, upload: Upload, bundle_name: str
+    ) -> ProcessingResult:
         """
         Save timeseries measurements for this bundle analysis report
         """
@@ -369,7 +371,8 @@ class BundleAnalysisReportService(BaseReportService):
             ]
 
             db_session = commit.get_db_session()
-            for bundle_report in bundle_analysis_report.bundle_reports():
+            bundle_report = bundle_analysis_report.bundle_report(bundle_name)
+            if bundle_report:
                 # For overall bundle size
                 if MeasurementName.bundle_analysis_report_size.value in dataset_names:
                     self._save_to_timeseries(
