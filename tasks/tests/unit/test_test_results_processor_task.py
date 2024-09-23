@@ -6,8 +6,8 @@ from shared.storage.exceptions import FileNotInStorageError
 from test_results_parser import Outcome
 from time_machine import travel
 
-from database.models import CommitReport
-from database.models.reports import DailyTestRollup, Test, TestInstance
+from database.models import CommitReport, RepositoryFlag
+from database.models.reports import DailyTestRollup, Test, TestFlagBridge, TestInstance
 from database.tests.factories import CommitFactory, UploadFactory
 from database.tests.factories.reports import FlakeFactory
 from services.test_results import generate_test_id
@@ -562,6 +562,12 @@ class TestUploadTestProcessorTask(object):
         dbsession.add(upload)
         dbsession.flush()
         repoid = upload.report.commit.repoid
+        repo_flag = RepositoryFlag(
+            repository=upload.report.commit.repository, flag_name="hello_world"
+        )
+        upload.flags = [repo_flag]
+        dbsession.flush()
+
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
@@ -614,6 +620,18 @@ class TestUploadTestProcessorTask(object):
             .filter(TestInstance.outcome == str(Outcome.Failure))
             .all()
         )
+
+        test_flag_bridges = dbsession.query(TestFlagBridge).all()
+
+        assert [bridge.test_id for bridge in test_flag_bridges] == [
+            tests[1].id,
+            tests[2].id,
+            tests[3].id,
+            tests[4].id,
+        ]
+        for bridge in test_flag_bridges:
+            assert bridge.flag == repo_flag
+            assert bridge.repoid == repoid
 
         assert len(tests) == 5
         assert len(test_instances) == 4
