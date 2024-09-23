@@ -166,6 +166,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
             def update_daily_total():
                 daily_totals[test_id]["last_duration_seconds"] = duration_seconds
+
+                # logic below is a little complicated but we're basically doing:
+
+                # (old_avg * num of values used to compute old avg) + new value
+                # -------------------------------------------------------------
+                #          num of values used to compute old avg + 1
                 daily_totals[test_id]["avg_duration_seconds"] = (
                     daily_totals[test_id]["avg_duration_seconds"]
                     * (
@@ -198,7 +204,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     else 0,
                     "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
                     "flaky_fail_count": 1
-                    if test_id in flaky_test_set and outcome == str(Outcome.Failure)
+                    if test_id in flaky_test_set
+                    and (
+                        outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
+                    )
                     else 0,
                     "branch": branch,
                     "date": date.today(),
