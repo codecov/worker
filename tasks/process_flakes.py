@@ -39,7 +39,9 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         with metrics.timer("process_flakes"):
             flake_dict = generate_flake_dict(repo_id)
 
-            flaky_tests = list(flake_dict.keys())
+            flaky_tests: list[str] = [
+                test_id for (test_id, _) in list(flake_dict.keys())
+            ]
 
             for commit_id in commit_id_list:
                 test_instances = get_test_instances(
@@ -51,7 +53,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                             (test_instance.test_id, test_instance.reduced_error_id)
                         )
                         if flake is not None:
-                            update_passed_flakes(test_instance, flake, repo_id)
+                            update_passed_flakes(test_instance, flake)
                     elif test_instance.outcome in (
                         TestInstance.Outcome.FAILURE.value,
                         TestInstance.Outcome.ERROR.value,
@@ -60,7 +62,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                             (test_instance.test_id, test_instance.reduced_error_id)
                         )
                         upserted_flake = upsert_failed_flake(
-                            test_instance, repo_id, flake
+                            test_instance, flake, repo_id
                         )
                         if flake is None:
                             flake_dict[
