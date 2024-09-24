@@ -1,7 +1,7 @@
 from mock import call, patch
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.comparison import ComparisonProxy
+from services.comparison import NOT_RESOLVED, ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.repository import EnrichedPull
 
@@ -51,7 +51,7 @@ class TestComparisonProxy(object):
 
         assert result == "magic string"
         assert comparison._adjusted_base_diff == "magic string"
-        assert not comparison._original_base_diff
+        assert comparison._original_base_diff is NOT_RESOLVED
         assert (
             comparison.comparison.patch_coverage_base_commitid
             != comparison.project_coverage_base.commit.commitid
@@ -73,7 +73,7 @@ class TestComparisonProxy(object):
 
         assert result == "magic string"
         assert comparison._original_base_diff == "magic string"
-        assert not comparison._adjusted_base_diff
+        assert comparison._adjusted_base_diff is NOT_RESOLVED
         assert (
             comparison.comparison.patch_coverage_base_commitid
             != comparison.project_coverage_base.commit.commitid

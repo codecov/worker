@@ -1,6 +1,6 @@
-import asyncio
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -35,6 +35,9 @@ class ComparisonContext(object):
     gitlab_extra_shas: set[str] | None = None
 
 
+NOT_RESOLVED: Any = object()
+
+
 class ComparisonProxy(object):
     """The idea of this class is to produce a wrapper around Comparison with functionalities that
         are useful to the notifications context.
@@ -59,14 +62,13 @@ class ComparisonProxy(object):
     ):
         self.comparison = comparison
         self._repository_service = None
-        self._adjusted_base_diff = None
-        self._original_base_diff = None
-        self._patch_totals = None
-        self._changes = None
+        self._adjusted_base_diff = NOT_RESOLVED
+        self._original_base_diff = NOT_RESOLVED
+        self._patch_totals = NOT_RESOLVED
+        self._changes = NOT_RESOLVED
         self._existing_statuses = None
         self._behind_by = None
         self._branch = None
-        self._behind_by_lock = asyncio.Lock()
         self._archive_service = None
         self._overlays = {}
         self.context = context or ComparisonContext()
@@ -115,7 +117,7 @@ class ComparisonProxy(object):
     def pull(self):
         return self.comparison.pull
 
-    def get_diff(self, use_original_base=False):
+    def get_diff(self, use_original_base=False) -> dict | None:
         head = self.comparison.head.commit
         base = self.comparison.project_coverage_base.commit
         patch_coverage_base_commitid = self.comparison.patch_coverage_base_commitid
@@ -125,13 +127,13 @@ class ComparisonProxy(object):
         bases_match = patch_coverage_base_commitid == (base.commitid if base else "")
 
         populate_original_base_diff = use_original_base and (
-            not self._original_base_diff
+            self._original_base_diff is NOT_RESOLVED
         )
         populate_adjusted_base_diff = (not use_original_base) and (
-            not self._adjusted_base_diff
+            self._adjusted_base_diff is NOT_RESOLVED
         )
         if populate_original_base_diff:
-            if bases_match and self._adjusted_base_diff:
+            if bases_match and self._adjusted_base_diff is not NOT_RESOLVED:
                 self._original_base_diff = self._adjusted_base_diff
             elif patch_coverage_base_commitid is not None:
                 pull_diff = async_to_sync(self.repository_service.get_compare)(
@@ -141,7 +143,7 @@ class ComparisonProxy(object):
             else:
                 return None
         elif populate_adjusted_base_diff:
-            if bases_match and self._original_base_diff:
+            if bases_match and self._original_base_diff is not NOT_RESOLVED:
                 self._adjusted_base_diff = self._original_base_diff
             elif base is not None:
                 pull_diff = async_to_sync(self.repository_service.get_compare)(
@@ -157,7 +159,7 @@ class ComparisonProxy(object):
             return self._adjusted_base_diff
 
     def get_changes(self) -> list[Change] | None:
-        if self._changes is None:
+        if self._changes is NOT_RESOLVED:
             diff = self.get_diff()
             self._changes = get_changes(
                 self.comparison.project_coverage_base.report,
@@ -165,7 +167,8 @@ class ComparisonProxy(object):
                 diff,
             )
             if (
-                self.comparison.project_coverage_base.report is not None
+                self._changes
+                and self.comparison.project_coverage_base.report is not None
                 and self.comparison.head.report is not None
                 and self.comparison.project_coverage_base.report.rust_report is not None
                 and self.comparison.head.report.rust_report is not None
@@ -197,10 +200,10 @@ class ComparisonProxy(object):
 
         Patch coverage refers to looking at the coverage in HEAD report filtered by the git diff HEAD..BASE.
         """
-        if self._patch_totals:
-            return self._patch_totals
-        diff = self.get_diff(use_original_base=True)
-        self._patch_totals = self.head.report.apply_diff(diff)
+        if self._patch_totals is NOT_RESOLVED:
+            diff = self.get_diff(use_original_base=True)
+            self._patch_totals = self.head.report.apply_diff(diff)
+
         return self._patch_totals
 
     def get_behind_by(self):

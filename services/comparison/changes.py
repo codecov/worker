@@ -1,14 +1,12 @@
 import dataclasses
 import logging
 from collections import defaultdict
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Tuple, Union
 
 from shared.helpers.numeric import ratio
 from shared.reports.resources import Report
 from shared.reports.types import Change, ReportTotals
 from shared.utils.merge import line_type
-
-from helpers.metrics import metrics
 
 log = logging.getLogger(__name__)
 
@@ -82,10 +80,9 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
     return dict([(k, v) for k, v in offsets.items() if v != 0]), additions, removals
 
 
-@metrics.timer("worker.services.comparison.changes.get_changes")
 def get_changes(
-    base_report: Report, head_report: Report, diff_json: Mapping[str, Any]
-) -> Optional[List[Change]]:
+    base_report: Report, head_report: Report, diff_json: dict[str, Any] | None
+) -> list[Change] | None:
     """
 
     Please bear with me because I didnt write the function, so what I know is from using it
