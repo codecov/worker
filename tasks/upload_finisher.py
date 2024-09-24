@@ -24,7 +24,7 @@ from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.metrics import KiB, MiB, metrics
+from helpers.metrics import KiB, MiB
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService, MinioEndpoints
 from services.comparison import get_or_create_comparison
@@ -168,10 +168,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
-            with metrics.timer(f"{self.metrics_prefix}.save_parallel_report_results"):
-                parallel_paths = report_service.save_parallel_report_to_archive(
-                    commit, report, report_code
-                )
+            parallel_paths = report_service.save_parallel_report_to_archive(
+                commit, report, report_code
+            )
             # now that we've built the report and stored it to GCS, we have what we need to
             # compare the results with the current upload pipeline. We end execution of the
             # finisher task here so that we don't cause any additional side-effects

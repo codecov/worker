@@ -265,6 +265,7 @@ class ReportService(BaseReportService):
                 # This case means the report exists in our system, it was just not saved
                 #   yet into the new models therefore it needs backfilling
                 self.save_full_report(commit, actual_report)
+
         elif current_report_row.details is None:
             report_details = ReportDetails(
                 report_id=current_report_row.id_,
@@ -273,6 +274,7 @@ class ReportService(BaseReportService):
             )
             db_session.add(report_details)
             db_session.flush()
+
         if not self.has_initialized_report(commit):
             report = self.create_new_report_for_commit(commit)
             if not report.is_empty():
@@ -667,154 +669,144 @@ class ReportService(BaseReportService):
     def _possibly_shift_carryforward_report(
         self, carryforward_report: Report, base_commit: Commit, head_commit: Commit
     ) -> Report:
-        with metrics.timer(
-            "services.report.ReportService.possibly_shift_carryforward_report"
-        ):
-            try:
-                provider_service: TorngitBaseAdapter = get_repo_provider_service(
-                    repository=head_commit.repository,
-                    installation_name_to_use=self.gh_app_installation_name,
-                )
-                diff = (
-                    async_to_sync(provider_service.get_compare)(
-                        base=base_commit.commitid, head=head_commit.commitid
-                    )
-                )["diff"]
-                # Volatile function, alters carryforward_report
-                carryforward_report.shift_lines_by_diff(diff)
-            except (RepositoryWithoutValidBotError, OwnerWithoutValidBotError) as exp:
-                log.error(
-                    "Failed to shift carryforward report lines",
-                    extra=dict(
-                        reason="Can't get provider_service",
-                        commit=head_commit.commitid,
-                        error=str(exp),
-                    ),
-                )
-            except TorngitError as exp:
-                log.error(
-                    "Failed to shift carryforward report lines.",
-                    extra=dict(
-                        reason="Can't get diff",
-                        commit=head_commit.commitid,
-                        error=str(exp),
-                        error_type=type(exp),
-                    ),
-                )
-            except SoftTimeLimitExceeded:
-                raise
-            except Exception:
-                log.exception(
-                    "Failed to shift carryforward report lines.",
-                    extra=dict(
-                        reason="Unknown",
-                        commit=head_commit.commitid,
-                    ),
-                )
-            return carryforward_report
+        try:
+            provider_service = get_repo_provider_service(
+                repository=head_commit.repository,
+                installation_name_to_use=self.gh_app_installation_name,
+            )
+            diff = async_to_sync(provider_service.get_compare)(
+                base=base_commit.commitid, head=head_commit.commitid
+            )
+            # Volatile function, alters carryforward_report
+            carryforward_report.shift_lines_by_diff(diff["diff"])
+        except (RepositoryWithoutValidBotError, OwnerWithoutValidBotError) as exp:
+            log.error(
+                "Failed to shift carryforward report lines",
+                extra=dict(
+                    reason="Can't get provider_service",
+                    commit=head_commit.commitid,
+                    error=str(exp),
+                ),
+            )
+        except TorngitError as exp:
+            log.error(
+                "Failed to shift carryforward report lines.",
+                extra=dict(
+                    reason="Can't get diff",
+                    commit=head_commit.commitid,
+                    error=str(exp),
+                    error_type=type(exp),
+                ),
+            )
+        except SoftTimeLimitExceeded:
+            raise
+        except Exception:
+            log.exception(
+                "Failed to shift carryforward report lines.",
+                extra=dict(
+                    reason="Unknown",
+                    commit=head_commit.commitid,
+                ),
+            )
+        return carryforward_report
 
     def create_new_report_for_commit(self, commit: Commit) -> Report:
-        with metrics.timer(
-            "services.report.ReportService.create_new_report_for_commit"
-        ):
-            log.info(
-                "Creating new report for commit",
+        log.info(
+            "Creating new report for commit",
+            extra=dict(commit=commit.commitid, repoid=commit.repoid),
+        )
+        if not self.current_yaml:
+            return Report()
+        if not self.current_yaml.has_any_carryforward():
+            return Report()
+
+        repo = commit.repository
+        metric_context = MetricContext(
+            commit_sha=commit.commitid,
+            commit_id=commit.id,
+            repo_id=commit.repoid,
+            owner_id=repo.ownerid,
+        )
+
+        # This experiment is inactive because the data went back and forth
+        # on whether it was impactful or not. The `Feature` is left here as
+        # a knob to turn for support requests about carryforward flags, and
+        # maybe we'll revisit a general rollout at a later time.
+        max_parenthood_deepness = CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value(
+            identifier=repo.ownerid, default=10
+        )
+
+        parent_commit = self.get_appropriate_commit_to_carryforward_from(
+            commit, max_parenthood_deepness
+        )
+        if parent_commit is None:
+            log.warning(
+                "Could not find parent for possible carryforward",
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
-            if not self.current_yaml:
-                return Report()
-            if not self.current_yaml.has_any_carryforward():
-                return Report()
-
-            repo = commit.repository
-            metric_context = MetricContext(
-                commit_sha=commit.commitid,
-                commit_id=commit.id,
-                repo_id=commit.repoid,
-                owner_id=repo.ownerid,
+            metric_context.log_simple_metric(
+                "worker_service_report_carryforward_base_not_found", 1
             )
+            return Report()
 
-            # This experiment is inactive because the data went back and forth
-            # on whether it was impactful or not. The `Feature` is left here as
-            # a knob to turn for support requests about carryforward flags, and
-            # maybe we'll revisit a general rollout at a later time.
-            max_parenthood_deepness = (
-                CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER.check_value(
-                    identifier=repo.ownerid, default=10
-                )
-            )
-
-            parent_commit = self.get_appropriate_commit_to_carryforward_from(
-                commit, max_parenthood_deepness
-            )
-            if parent_commit is None:
-                log.warning(
-                    "Could not find parent for possible carryforward",
-                    extra=dict(commit=commit.commitid, repoid=commit.repoid),
-                )
-                metric_context.log_simple_metric(
-                    "worker_service_report_carryforward_base_not_found", 1
-                )
-                return Report()
-
-            parent_report = self.get_existing_report_for_commit(parent_commit)
-            if parent_report is None:
-                log.warning(
-                    "Could not carryforward report from another commit because parent has no report",
-                    extra=dict(
-                        commit=commit.commitid,
-                        repoid=commit.repoid,
-                        parent_commit=parent_commit.commitid,
-                    ),
-                )
-                return Report()
-
-            flags_to_carryforward = [
-                flag_name
-                for flag_name in parent_report.get_flag_names()
-                if self.current_yaml.flag_has_carryfoward(flag_name)
-            ]
-            if not flags_to_carryforward:
-                return Report()
-
-            paths_to_carryforward = get_paths_from_flags(
-                self.current_yaml, flags_to_carryforward
-            )
-            log.info(
-                "Generating carriedforward report",
+        parent_report = self.get_existing_report_for_commit(parent_commit)
+        if parent_report is None:
+            log.warning(
+                "Could not carryforward report from another commit because parent has no report",
                 extra=dict(
                     commit=commit.commitid,
                     repoid=commit.repoid,
                     parent_commit=parent_commit.commitid,
-                    flags_to_carryforward=flags_to_carryforward,
-                    paths_to_carryforward=paths_to_carryforward,
-                    parent_sessions=parent_report.sessions,
                 ),
             )
-            carryforward_report = generate_carryforward_report(
-                parent_report,
-                flags_to_carryforward,
-                paths_to_carryforward,
-                session_extras=dict(carriedforward_from=parent_commit.commitid),
-            )
-            # If the parent report has labels we also need to carryforward the label index
-            # Considerations:
-            #   1. It's necessary for labels flags to be carryforward, so it's ok to carryforward the entire index
-            #   2. As tests are renamed the index might start to be filled with stale labels. This is not good.
-            #      but I'm unsure if we should try to clean it up at this point. Cleaning it up requires going through
-            #      all lines of the report. It will be handled by a dedicated task that is encoded by the UploadFinisher
-            #   3. We deepcopy the header so we can change them independently
-            #   4. The parent_commit always uses the default report to carryforward (i.e. report_code for parent_commit is None)
-            # parent_commit and commit should belong to the same repository
-            carryforward_report.header = copy.deepcopy(parent_report.header)
+            return Report()
 
-            self._possibly_shift_carryforward_report(
-                carryforward_report, parent_commit, commit
-            )
-            metric_context.log_simple_metric(
-                "worker_service_report_carryforward_success", 1
-            )
-            return carryforward_report
+        flags_to_carryforward = [
+            flag_name
+            for flag_name in parent_report.get_flag_names()
+            if self.current_yaml.flag_has_carryfoward(flag_name)
+        ]
+        if not flags_to_carryforward:
+            return Report()
+
+        paths_to_carryforward = get_paths_from_flags(
+            self.current_yaml, flags_to_carryforward
+        )
+        log.info(
+            "Generating carriedforward report",
+            extra=dict(
+                commit=commit.commitid,
+                repoid=commit.repoid,
+                parent_commit=parent_commit.commitid,
+                flags_to_carryforward=flags_to_carryforward,
+                paths_to_carryforward=paths_to_carryforward,
+                parent_sessions=parent_report.sessions,
+            ),
+        )
+        carryforward_report = generate_carryforward_report(
+            parent_report,
+            flags_to_carryforward,
+            paths_to_carryforward,
+            session_extras=dict(carriedforward_from=parent_commit.commitid),
+        )
+        # If the parent report has labels we also need to carryforward the label index
+        # Considerations:
+        #   1. It's necessary for labels flags to be carryforward, so it's ok to carryforward the entire index
+        #   2. As tests are renamed the index might start to be filled with stale labels. This is not good.
+        #      but I'm unsure if we should try to clean it up at this point. Cleaning it up requires going through
+        #      all lines of the report. It will be handled by a dedicated task that is encoded by the UploadFinisher
+        #   3. We deepcopy the header so we can change them independently
+        #   4. The parent_commit always uses the default report to carryforward (i.e. report_code for parent_commit is None)
+        # parent_commit and commit should belong to the same repository
+        carryforward_report.header = copy.deepcopy(parent_report.header)
+
+        self._possibly_shift_carryforward_report(
+            carryforward_report, parent_commit, commit
+        )
+        metric_context.log_simple_metric(
+            "worker_service_report_carryforward_success", 1
+        )
+        return carryforward_report
 
     @sentry_sdk.trace
     def parse_raw_report_from_storage(

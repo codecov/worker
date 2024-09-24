@@ -1,14 +1,11 @@
-# -*- coding: utf-8 -*-
-
-import itertools
 import logging
-import random
 import typing
 from dataclasses import dataclass
 
 import sentry_sdk
 from shared.reports.resources import Report
 from shared.utils.sessions import Session, SessionType
+from shared.yaml import UserYaml
 
 from database.models.reports import Upload
 from helpers.exceptions import ReportEmptyError, ReportExpiredException
@@ -22,23 +19,12 @@ from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
-GLOBAL_LEVEL_LABEL = (
-    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
-)
-
 
 # This is a lambda function to return different objects
 def DEFAULT_LABEL_INDEX():
     return {
         SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
     }
-
-
-def invert_pattern(string: str) -> str:
-    if string.startswith("!"):
-        return string[1:]
-    else:
-        return "!%s" % string
 
 
 @dataclass
@@ -60,7 +46,7 @@ def process_raw_upload(
     raw_reports: ParsedRawReport,
     flags,
     session: Session,
-    upload: Upload = None,
+    upload: Upload | None = None,
     parallel_idx=None,
 ) -> UploadProcessingResult:
     toc, env = None, None
@@ -102,7 +88,13 @@ def process_raw_upload(
     if flags:
         session.flags = flags
 
+    # [javascript] check for both coverage.json and coverage/coverage.lcov
     skip_files = set()
+    for report_file in raw_reports.get_uploaded_files():
+        if report_file.filename == "coverage/coverage.json":
+            skip_files.add("coverage/coverage.lcov")
+
+    temporary_report = Report()
 
     should_use_encoded_labels = (
         upload
@@ -110,15 +102,11 @@ def process_raw_upload(
             identifier=upload.report.commit.repository.repoid, default=False
         )
     )
-    # [javascript] check for both coverage.json and coverage/coverage.lcov
-    for report_file in raw_reports.get_uploaded_files():
-        if report_file.filename == "coverage/coverage.json":
-            skip_files.add("coverage/coverage.lcov")
-    temporary_report = Report()
     if should_use_encoded_labels:
         # We initialize the labels_index (which defaults to {}) to force the special label
         # to always be index 0
         temporary_report.labels_index = DEFAULT_LABEL_INDEX()
+
     joined = True
     for flag in flags or []:
         if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
@@ -126,55 +114,41 @@ def process_raw_upload(
                 "Customer is using joined=False feature", extra=dict(flag_used=flag)
             )
             joined = False  # TODO: ensure this works for parallel
+
     # ---------------
     # Process reports
     # ---------------
     ignored_lines = ignored_file_lines or {}
     for report_file in raw_reports.get_uploaded_files():
         current_filename = report_file.filename
-        if report_file.contents:
-            if current_filename in skip_files:
-                log.info("Skipping file %s", current_filename)
-                continue
-            path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
-                current_filename
-            )
-            report_builder_to_use = ReportBuilder(
-                commit_yaml,
-                sessionid,
-                ignored_lines,
-                path_fixer_to_use,
-                should_use_encoded_labels,
-            )
-            try:
-                report_from_file = process_report(
-                    report=report_file, report_builder=report_builder_to_use
-                )
-            except ReportExpiredException as r:
-                r.filename = current_filename
-                raise
-            if report_from_file:
-                if should_use_encoded_labels:
-                    # Copies the labels from report into temporary_report
-                    # If needed
-                    make_sure_label_indexes_match(temporary_report, report_from_file)
-                temporary_report.merge(report_from_file, joined=True)
-            path_fixer_to_use.log_abnormalities()
+        if current_filename in skip_files or not report_file.contents:
+            continue
 
-    actual_path_fixes = {
-        after: before
-        for (after, before) in path_fixer.calculated_paths.items()
-        if after is not None
-    }
-    if len(actual_path_fixes) > 0:
-        log.info(
-            "Example path fixes for this raw upload",
-            extra={
-                "fixes": list(itertools.islice(actual_path_fixes.items(), 10)),
-                "disable_default_pathfixes": path_fixer.should_disable_default_pathfixes,
-            },
+        path_fixer_to_use = path_fixer.get_relative_path_aware_pathfixer(
+            current_filename
         )
-    _possibly_log_pathfixer_unusual_results(path_fixer, sessionid)
+        report_builder_to_use = ReportBuilder(
+            commit_yaml,
+            sessionid,
+            ignored_lines,
+            path_fixer_to_use,
+            should_use_encoded_labels,
+        )
+        try:
+            report_from_file = process_report(
+                report=report_file, report_builder=report_builder_to_use
+            )
+        except ReportExpiredException as r:
+            r.filename = current_filename
+            raise
+
+        if report_from_file:
+            if should_use_encoded_labels:
+                # Copies the labels from report into temporary_report
+                # If needed
+                make_sure_label_indexes_match(temporary_report, report_from_file)
+            temporary_report.merge(report_from_file, joined=True)
+
     if not temporary_report:
         raise ReportEmptyError("No files found in report.")
 
@@ -186,26 +160,28 @@ def process_raw_upload(
         # none of the reports processed contributed any new labels to it.
         # So we assume there are no labels and just reset the _labels_index of temporary_report
         temporary_report.labels_index = None
+
     # Now we actually add the session to the original_report
     # Because we know that the processing was successful
     sessionid, session = report.add_session(
         session, use_id_from_session=parallel_idx is not None
     )
     # Adjust sessions removed carryforward sessions that are being replaced
-    session_adjustment = _adjust_sessions(
-        report,
-        temporary_report,
-        to_merge_session=session,
-        current_yaml=commit_yaml,
-        upload=upload,
-    )
+    if session.flags:
+        session_adjustment = _adjust_sessions(
+            report, temporary_report, session.flags, commit_yaml, upload
+        )
+    else:
+        session_adjustment = SessionAdjustmentResult([], [])
+
     report.merge(temporary_report, joined=joined)
     session.totals = temporary_report.totals
+
     return UploadProcessingResult(report=report, session_adjustment=session_adjustment)
 
 
 @sentry_sdk.trace
-def make_sure_orginal_report_is_using_label_ids(original_report: Report) -> bool:
+def make_sure_orginal_report_is_using_label_ids(original_report: Report):
     """Makes sure that the original_report (that was pulled from DB)
     has CoverageDatapoints that encode label_ids and not actual labels.
     """
@@ -311,30 +287,25 @@ def make_sure_label_indexes_match(
 def _adjust_sessions(
     original_report: Report,
     to_merge_report: Report,
-    to_merge_session,
-    current_yaml,
+    to_merge_flags: list[str],
+    current_yaml: UserYaml,
     upload: Upload | None = None,
 ):
-    session_ids_to_fully_delete = []
-    session_ids_to_partially_delete = []
-    to_merge_flags = to_merge_session.flags or []
-    flags_under_carryforward_rules = [
+    flags_under_carryforward_rules = {
         f for f in to_merge_flags if current_yaml.flag_has_carryfoward(f)
-    ]
-    to_partially_overwrite_flags = [
+    }
+    to_partially_overwrite_flags = {
         f
         for f in flags_under_carryforward_rules
         if current_yaml.get_flag_configuration(f).get("carryforward_mode") == "labels"
-    ]
-    to_fully_overwrite_flags = [
-        f
-        for f in flags_under_carryforward_rules
-        if f not in to_partially_overwrite_flags
-    ]
-    if upload is not None:
-        commit_id = upload.report.commit_id
+    }
+    to_fully_overwrite_flags = flags_under_carryforward_rules.difference(
+        to_partially_overwrite_flags
+    )
+
     if upload is None and to_partially_overwrite_flags:
         log.warning("Upload is None, but there are partial_overwrite_flags present")
+
     if (
         upload
         and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
@@ -345,76 +316,33 @@ def _adjust_sessions(
         # Make sure that the labels in the reports are in a good state to merge them
         make_sure_orginal_report_is_using_label_ids(original_report)
         make_sure_label_indexes_match(original_report, to_merge_report)
+
+    session_ids_to_fully_delete = []
+    session_ids_to_partially_delete = []
+
     if to_fully_overwrite_flags or to_partially_overwrite_flags:
-        for sess_id, curr_sess in original_report.sessions.items():
-            if curr_sess.session_type == SessionType.carriedforward:
-                if curr_sess.flags:
-                    if any(f in to_fully_overwrite_flags for f in curr_sess.flags):
-                        session_ids_to_fully_delete.append(sess_id)
-                    if any(f in to_partially_overwrite_flags for f in curr_sess.flags):
-                        session_ids_to_partially_delete.append(sess_id)
+        for session_id, session in original_report.sessions.items():
+            if session.session_type == SessionType.carriedforward and session.flags:
+                if any(f in to_fully_overwrite_flags for f in session.flags):
+                    session_ids_to_fully_delete.append(session_id)
+                if any(f in to_partially_overwrite_flags for f in session.flags):
+                    session_ids_to_partially_delete.append(session_id)
+
     actually_fully_deleted_sessions = set()
     if session_ids_to_fully_delete:
-        extra = dict(
-            deleted_sessions=session_ids_to_fully_delete,
-        )
-        if upload is not None:
-            extra["commit_id"] = commit_id
-        log.info(
-            "Deleted multiple sessions due to carriedforward overwrite",
-            extra=extra,
-        )
         original_report.delete_multiple_sessions(session_ids_to_fully_delete)
         actually_fully_deleted_sessions.update(session_ids_to_fully_delete)
+
     if session_ids_to_partially_delete:
-        extra = dict(
-            deleted_sessions=session_ids_to_partially_delete,
-        )
-        if upload is not None:
-            extra["commit_id"] = commit_id
-        log.info(
-            "Partially deleting sessions due to label carryforward overwrite",
-            extra=extra,
-        )
         all_labels = get_all_report_labels(to_merge_report)
         original_report.delete_labels(session_ids_to_partially_delete, all_labels)
         for s in session_ids_to_partially_delete:
             labels_now = get_labels_per_session(original_report, s)
             if not labels_now:
-                log.info(
-                    "Session has now no new labels, deleting whole session",
-                    extra=dict(commit_id=commit_id) if upload is not None else dict(),
-                )
                 actually_fully_deleted_sessions.add(s)
                 original_report.delete_session(s)
+
     return SessionAdjustmentResult(
         sorted(actually_fully_deleted_sessions),
         sorted(set(session_ids_to_partially_delete) - actually_fully_deleted_sessions),
     )
-
-
-def _possibly_log_pathfixer_unusual_results(path_fixer: PathFixer, sessionid: int):
-    if path_fixer.calculated_paths.get(None):
-        ignored_files = sorted(path_fixer.calculated_paths.pop(None))
-        log.info(
-            "Some files were ignored",
-            extra=dict(
-                number=len(ignored_files),
-                paths=random.sample(ignored_files, min(100, len(ignored_files))),
-                session=sessionid,
-            ),
-        )
-    path_with_same_results = [
-        (key, len(value), list(value)[:10])
-        for key, value in path_fixer.calculated_paths.items()
-        if len(value) >= 2
-    ]
-    if path_with_same_results:
-        log.info(
-            "Two different files went to the same result",
-            extra=dict(
-                number_of_paths=len(path_with_same_results),
-                paths=path_with_same_results[:50],
-                session=sessionid,
-            ),
-        )
