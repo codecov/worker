@@ -45,9 +45,9 @@ class ChecksWithFallback(AbstractBaseNotifier):
     def store_results(self, comparison, res):
         pass
 
-    async def notify(self, comparison):
+    def notify(self, comparison):
         try:
-            res = await self._checks_notifier.notify(comparison)
+            res = self._checks_notifier.notify(comparison)
             if not res.notification_successful and (
                 res.explanation == "no_pull_request"
                 or res.explanation == "pull_request_not_in_provider"
@@ -63,7 +63,7 @@ class ChecksWithFallback(AbstractBaseNotifier):
                         explanation=res.explanation,
                     ),
                 )
-                res = await self._status_notifier.notify(comparison)
+                res = self._status_notifier.notify(comparison)
             return res
         except TorngitClientError as e:
             if e.code == 403:
@@ -76,5 +76,5 @@ class ChecksWithFallback(AbstractBaseNotifier):
                         commit=comparison.head.commit,
                     ),
                 )
-                return await self._status_notifier.notify(comparison)
+                return self._status_notifier.notify(comparison)
             raise e

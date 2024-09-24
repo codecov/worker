@@ -15,7 +15,7 @@ class MessageStrategyInterface(ABC):
         pass
 
     @abstractmethod
-    async def send_message(
+    def send_message(
         self, context: BaseBundleAnalysisNotificationContext, message: str | bytes
     ) -> NotificationResult:
         pass

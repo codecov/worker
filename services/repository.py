@@ -7,9 +7,7 @@ from typing import Any, Mapping, Optional, Tuple
 import sentry_sdk
 import shared.torngit as torngit
 from asgiref.sync import async_to_sync
-from shared.bots import (
-    get_adapter_auth_information,
-)
+from shared.bots import get_adapter_auth_information
 from shared.bots.github_apps import (
     get_github_app_token,
     get_specific_github_app_details,
@@ -22,11 +20,7 @@ from shared.torngit.exceptions import (
     TorngitError,
     TorngitObjectNotFoundError,
 )
-from shared.typings.torngit import (
-    OwnerInfo,
-    RepoInfo,
-    TorngitInstanceData,
-)
+from shared.typings.torngit import OwnerInfo, RepoInfo, TorngitInstanceData
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
@@ -36,9 +30,7 @@ from sqlalchemy.orm import Query
 
 from database.enums import CommitErrorTypes
 from database.models import Commit, Owner, Pull, Repository
-from database.models.core import (
-    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-)
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.save_commit_error import save_commit_error
 from helpers.token_refresh import get_token_refresh_callback
 from services.github import get_github_app_for_commit
@@ -468,7 +460,7 @@ class EnrichedPull(object):
 
 @sentry_sdk.trace
 async def fetch_and_update_pull_request_information_from_commit(
-    repository_service, commit, current_yaml
+    repository_service: TorngitBaseAdapter, commit, current_yaml
 ) -> Optional[EnrichedPull]:
     db_session = commit.get_db_session()
     pullid = commit.pullid

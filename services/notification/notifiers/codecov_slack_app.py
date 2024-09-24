@@ -101,7 +101,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             "head_totals_c": str(comparison.head.report.totals.coverage),
         }
 
-    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
         request_url = f"{CODECOV_SLACK_APP_URL}/notify"
 
         headers = {

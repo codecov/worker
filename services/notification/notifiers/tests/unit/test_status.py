@@ -1,7 +1,7 @@
-from typing import Any, Coroutine
 from unittest.mock import MagicMock
 
 import pytest
+from mock import AsyncMock
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.torngit.exceptions import (
@@ -364,8 +364,7 @@ class TestBaseStatusNotifier(object):
         )
         assert not exclude_branch_notifier.can_we_set_this_status(comparison)
 
-    @pytest.mark.asyncio
-    async def test_notify_after_n_builds_flags(self, sample_comparison, mocker):
+    def test_notify_after_n_builds_flags(self, sample_comparison, mocker):
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
@@ -391,15 +390,14 @@ class TestBaseStatusNotifier(object):
             ),
         )
         mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
-        result = await no_settings_notifier.notify(comparison)
+        result = no_settings_notifier.notify(comparison)
         assert not result.notification_attempted
         assert result.notification_successful is None
         assert result.explanation == "need_more_builds"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_after_n_builds_flags2(self, sample_comparison, mocker):
+    def test_notify_after_n_builds_flags2(self, sample_comparison, mocker):
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
@@ -424,15 +422,14 @@ class TestBaseStatusNotifier(object):
             ),
         )
         mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
-        result = await no_settings_notifier.notify(comparison)
+        result = no_settings_notifier.notify(comparison)
         assert not result.notification_attempted
         assert result.notification_successful is None
         assert result.explanation == "need_more_builds"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_cannot_set_status(self, sample_comparison, mocker):
+    def test_notify_cannot_set_status(self, sample_comparison, mocker):
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
@@ -444,15 +441,14 @@ class TestBaseStatusNotifier(object):
         mocker.patch.object(
             StatusNotifier, "can_we_set_this_status", return_value=False
         )
-        result = await no_settings_notifier.notify(comparison)
+        result = no_settings_notifier.notify(comparison)
         assert not result.notification_attempted
         assert result.notification_successful is None
         assert result.explanation == "not_fit_criteria"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_no_base(
+    def test_notify_no_base(
         self, sample_comparison_without_base_with_pull, mocker, mock_repo_provider
     ):
         comparison = sample_comparison_without_base_with_pull
@@ -484,7 +480,7 @@ class TestBaseStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await no_settings_notifier.notify(comparison)
+        result = no_settings_notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -495,8 +491,7 @@ class TestBaseStatusNotifier(object):
         }
         assert result.data_received == {"id": "some_id"}
 
-    @pytest.mark.asyncio
-    async def test_notify_uncached(
+    def test_notify_uncached(
         self,
         sample_comparison,
         mocker,
@@ -509,7 +504,7 @@ class TestBaseStatusNotifier(object):
         }
 
         class TestNotifier(StatusNotifier):
-            async def build_payload(self, comparison):
+            def build_payload(self, comparison):
                 return payload
 
         notifier = TestNotifier(
@@ -522,11 +517,10 @@ class TestBaseStatusNotifier(object):
         notifier.context = "fake"
 
         send_notification = mocker.patch.object(TestNotifier, "send_notification")
-        await notifier.notify(comparison)
+        notifier.notify(comparison)
         send_notification.assert_called_once
 
-    @pytest.mark.asyncio
-    async def test_notify_multiple_shas(
+    def test_notify_multiple_shas(
         self,
         sample_comparison,
         mocker,
@@ -539,19 +533,19 @@ class TestBaseStatusNotifier(object):
             "url": get_pull_url(comparison.pull),
         }
 
-        async def set_status_side_effect(commit, *args, **kwargs):
+        def set_status_side_effect(commit, *args, **kwargs):
             return {"id": f"{commit}-status-set"}
 
         class TestNotifier(StatusNotifier):
-            async def build_payload(self, comparison):
+            def build_payload(self, comparison):
                 return payload
 
             def get_github_app_used(self) -> None:
                 return None
 
-            async def status_already_exists(
+            def status_already_exists(
                 self, comparison: ComparisonProxy, title, state, description
-            ) -> Coroutine[Any, Any, bool]:
+            ) -> bool:
                 return False
 
         notifier = TestNotifier(
@@ -565,12 +559,12 @@ class TestBaseStatusNotifier(object):
 
         fake_repo_service = MagicMock(
             name="fake_repo_provider",
-            set_commit_status=MagicMock(side_effect=set_status_side_effect),
+            set_commit_status=AsyncMock(side_effect=set_status_side_effect),
         )
         mocker.patch.object(
             TestNotifier, "repository_service", return_value=fake_repo_service
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result == NotificationResult(
             notification_attempted=True,
             notification_successful=True,
@@ -585,8 +579,7 @@ class TestBaseStatusNotifier(object):
         )
         assert fake_repo_service.set_commit_status.call_count == 2
 
-    @pytest.mark.asyncio
-    async def test_notify_cached(
+    def test_notify_cached(
         self,
         sample_comparison,
         mocker,
@@ -600,7 +593,7 @@ class TestBaseStatusNotifier(object):
         }
 
         class TestNotifier(StatusNotifier):
-            async def build_payload(self, comparison):
+            def build_payload(self, comparison):
                 return payload
 
         notifier = TestNotifier(
@@ -618,7 +611,7 @@ class TestBaseStatusNotifier(object):
         )
 
         send_notification = mocker.patch.object(TestNotifier, "send_notification")
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result == NotificationResult(
             notification_attempted=False,
             notification_successful=None,
@@ -629,10 +622,7 @@ class TestBaseStatusNotifier(object):
         # payload was cached - we do not send the notification
         assert not send_notification.called
 
-    @pytest.mark.asyncio
-    async def test_send_notification(
-        self, sample_comparison, mocker, mock_repo_provider
-    ):
+    def test_send_notification(self, sample_comparison, mocker, mock_repo_provider):
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
             repository=comparison.head.commit.repository,
@@ -650,7 +640,7 @@ class TestBaseStatusNotifier(object):
             403, "response", "message"
         )
         payload = {"message": "something to say", "state": "success", "url": "url"}
-        result = await no_settings_notifier.send_notification(comparison, payload)
+        result = no_settings_notifier.send_notification(comparison, payload)
         assert result.notification_attempted
         assert not result.notification_successful
         assert result.explanation == "no_write_permission"
@@ -662,10 +652,7 @@ class TestBaseStatusNotifier(object):
         assert result.data_sent == expected_data_sent
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_analytics(
-        self, sample_comparison, mocker, mock_repo_provider
-    ):
+    def test_notify_analytics(self, sample_comparison, mocker, mock_repo_provider):
         mocker.patch("helpers.environment.is_enterprise", return_value=False)
         comparison = sample_comparison
         no_settings_notifier = StatusNotifier(
@@ -684,10 +671,9 @@ class TestBaseStatusNotifier(object):
             403, "response", "message"
         )
         payload = {"message": "something to say", "state": "success", "url": "url"}
-        await no_settings_notifier.send_notification(comparison, payload)
+        no_settings_notifier.send_notification(comparison, payload)
 
-    @pytest.mark.asyncio
-    async def test_notify_analytics_enterprise(
+    def test_notify_analytics_enterprise(
         self, sample_comparison, mocker, mock_repo_provider
     ):
         mocker.patch("helpers.environment.is_enterprise", return_value=True)
@@ -708,7 +694,7 @@ class TestBaseStatusNotifier(object):
             403, "response", "message"
         )
         payload = {"message": "something to say", "state": "success", "url": "url"}
-        await no_settings_notifier.send_notification(comparison, payload)
+        no_settings_notifier.send_notification(comparison, payload)
 
     def test_determine_status_check_behavior_to_apply(self, sample_comparison):
         # uses component level setting if provided
@@ -887,8 +873,7 @@ class TestBaseStatusNotifier(object):
 
 
 class TestProjectStatusNotifier(object):
-    @pytest.mark.asyncio
-    async def test_build_payload(
+    def test_build_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -904,11 +889,10 @@ class TestProjectStatusNotifier(object):
             "message": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_passing_empty_upload(
+    def test_build_payload_passing_empty_upload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
@@ -924,11 +908,10 @@ class TestProjectStatusNotifier(object):
             "state": "success",
             "message": "Non-testable files changed.",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_failing_empty_upload(
+    def test_build_payload_failing_empty_upload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
@@ -944,11 +927,10 @@ class TestProjectStatusNotifier(object):
             "state": "failure",
             "message": "Testable files changed",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_payload(
+    def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -965,11 +947,10 @@ class TestProjectStatusNotifier(object):
             "message": "Please activate this user to display a detailed status check",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_not_auto(
+    def test_build_payload_not_auto(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -984,11 +965,10 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_not_auto_not_string(
+    def test_build_payload_not_auto_not_string(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1000,11 +980,10 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_no_base_report(
+    def test_build_payload_no_base_report(
         self,
         sample_comparison_without_base_report,
         mock_repo_provider,
@@ -1025,11 +1004,10 @@ class TestProjectStatusNotifier(object):
             "message": "No report found to compare against",
             "state": "success",
         }
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_status_doesnt_exist(
+    def test_notify_status_doesnt_exist(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1054,11 +1032,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_client_side_exception(
+    def test_notify_client_side_exception(
         self, sample_comparison, mocker, mock_configuration
     ):
         mocker.patch.object(
@@ -1088,11 +1065,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received=None,
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_server_side_exception(
+    def test_notify_server_side_exception(
         self, sample_comparison, mocker, mock_configuration
     ):
         mocker.patch.object(
@@ -1122,12 +1098,11 @@ class TestProjectStatusNotifier(object):
             },
             data_received=None,
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert expected_result.data_sent == result.data_sent
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_pass_behavior_when_coverage_not_uploaded(
+    def test_notify_pass_behavior_when_coverage_not_uploaded(
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1156,11 +1131,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_pass_behavior_when_coverage_uploaded(
+    def test_notify_pass_behavior_when_coverage_uploaded(
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1189,11 +1163,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_include_behavior_when_coverage_not_uploaded(
+    def test_notify_include_behavior_when_coverage_not_uploaded(
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1222,11 +1195,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_when_coverage_not_uploaded(
+    def test_notify_exclude_behavior_when_coverage_not_uploaded(
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1247,11 +1219,10 @@ class TestProjectStatusNotifier(object):
             data_sent=None,
             data_received=None,
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_when_coverage_uploaded(
+    def test_notify_exclude_behavior_when_coverage_uploaded(
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1280,11 +1251,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_when_some_coverage_uploaded(
+    def test_notify_exclude_behavior_when_some_coverage_uploaded(
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1317,11 +1287,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_no_flags(
+    def test_notify_exclude_behavior_no_flags(
         self, sample_comparison_coverage_carriedforward, mock_repo_provider
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -1351,11 +1320,10 @@ class TestProjectStatusNotifier(object):
             },
             data_received={"id": "some_id"},
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_path_filter(
+    def test_notify_path_filter(
         self, sample_comparison, mock_repo_provider, mock_configuration, mocker
     ):
         mocked_send_notification = mocker.patch.object(
@@ -1375,12 +1343,11 @@ class TestProjectStatusNotifier(object):
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
         }
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
         mocked_send_notification.assert_called_with(sample_comparison, expected_result)
 
-    @pytest.mark.asyncio
-    async def test_notify_path_and_flags_filter_nothing_on_base(
+    def test_notify_path_and_flags_filter_nothing_on_base(
         self, sample_comparison, mock_repo_provider, mock_configuration, mocker
     ):
         mocked_send_notification = mocker.patch.object(
@@ -1401,12 +1368,11 @@ class TestProjectStatusNotifier(object):
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
         }
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
         mocked_send_notification.assert_called_with(sample_comparison, expected_result)
 
-    @pytest.mark.asyncio
-    async def test_notify_path_and_flags_filter_something_on_base(
+    def test_notify_path_and_flags_filter_something_on_base(
         self,
         sample_comparison_matching_flags,
         mock_repo_provider,
@@ -1431,14 +1397,13 @@ class TestProjectStatusNotifier(object):
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison_matching_flags.head.commit.repository.slug}/pull/{sample_comparison_matching_flags.pull.pullid}",
         }
-        result = await notifier.notify(sample_comparison_matching_flags)
+        result = notifier.notify(sample_comparison_matching_flags)
         assert result == mocked_send_notification.return_value
         mocked_send_notification.assert_called_with(
             sample_comparison_matching_flags, expected_result
         )
 
-    @pytest.mark.asyncio
-    async def test_notify_pass_via_removals_only_behavior(
+    def test_notify_pass_via_removals_only_behavior(
         self, mock_configuration, sample_comparison, mocker
     ):
         mock_get_impacted_files = mocker.patch.object(
@@ -1479,12 +1444,11 @@ class TestProjectStatusNotifier(object):
             "message": "60.00% (target 80.00%), passed because this change only removed code",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_notify_pass_adjust_base_behavior(
+    def test_notify_pass_adjust_base_behavior(
         slef, mock_configuration, sample_comparison_negative_change, mocker
     ):
         sample_comparison = sample_comparison_negative_change
@@ -1523,12 +1487,11 @@ class TestProjectStatusNotifier(object):
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.00%)",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_notify_removed_code_behavior_fail(
+    def test_notify_removed_code_behavior_fail(
         self, mock_configuration, sample_comparison, mocker
     ):
         mock_get_impacted_files = mocker.patch.object(
@@ -1569,12 +1532,11 @@ class TestProjectStatusNotifier(object):
             "message": "60.00% (target 80.00%)",
             "state": "failure",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_notify_adjust_base_behavior_fail(
+    def test_notify_adjust_base_behavior_fail(
         slef, mock_configuration, sample_comparison_negative_change, mocker
     ):
         sample_comparison = sample_comparison_negative_change
@@ -1613,12 +1575,11 @@ class TestProjectStatusNotifier(object):
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}",
             "state": "failure",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_notify_adjust_base_behavior_skips_if_target_coverage_defined(
+    def test_notify_adjust_base_behavior_skips_if_target_coverage_defined(
         slef, mock_configuration, sample_comparison_negative_change, mocker
     ):
         sample_comparison = sample_comparison_negative_change
@@ -1640,12 +1601,11 @@ class TestProjectStatusNotifier(object):
             "message": "50.00% (target 80.00%)",
             "state": "failure",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert result == expected_result
         mock_get_impacted_files.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_notify_removed_code_behavior_unknown(
+    def test_notify_removed_code_behavior_unknown(
         self, mock_configuration, sample_comparison
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1663,11 +1623,10 @@ class TestProjectStatusNotifier(object):
             "message": "60.00% (target 80.00%)",
             "state": "failure",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_notify_fully_covered_patch_behavior_fail(
+    def test_notify_fully_covered_patch_behavior_fail(
         self,
         comparison_with_multiple_changes,
         mock_repo_provider,
@@ -1715,12 +1674,11 @@ class TestProjectStatusNotifier(object):
             "message": "50.00% (target 70.00%)",
             "state": "failure",
         }
-        result = await notifier.build_payload(comparison_with_multiple_changes)
+        result = notifier.build_payload(comparison_with_multiple_changes)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_notify_fully_covered_patch_behavior_success(
+    def test_notify_fully_covered_patch_behavior_success(
         self,
         comparison_100_percent_patch,
         mock_repo_provider,
@@ -1768,12 +1726,11 @@ class TestProjectStatusNotifier(object):
             "message": "28.57% (target 70.00%), passed because patch was fully covered by tests, and no indirect coverage changes",
             "state": "success",
         }
-        result = await notifier.build_payload(comparison_100_percent_patch)
+        result = notifier.build_payload(comparison_100_percent_patch)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_notify_fully_covered_patch_behavior_no_coverage_change(
+    def test_notify_fully_covered_patch_behavior_no_coverage_change(
         self, mock_configuration, sample_comparison, mocker
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1929,14 +1886,13 @@ class TestProjectStatusNotifier(object):
             "message": "60.00% (target 70.00%), passed because coverage was not affected by patch",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
 
 class TestPatchStatusNotifier(object):
-    @pytest.mark.asyncio
-    async def test_build_payload(
+    def test_build_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1951,11 +1907,10 @@ class TestPatchStatusNotifier(object):
             "message": "66.67% of diff hit (target 50.00%)",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_payload(
+    def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1971,11 +1926,10 @@ class TestPatchStatusNotifier(object):
             "message": "Please activate this user to display a detailed status check",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_target_coverage_failure(
+    def test_build_payload_target_coverage_failure(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1990,11 +1944,10 @@ class TestPatchStatusNotifier(object):
             "message": "66.67% of diff hit (target 70.00%)",
             "state": "failure",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_not_auto_not_string(
+    def test_build_payload_not_auto_not_string(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2009,11 +1962,10 @@ class TestPatchStatusNotifier(object):
             "message": "66.67% of diff hit (target 57.00%)",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_target_coverage_failure_within_threshold(
+    def test_build_payload_target_coverage_failure_within_threshold(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2034,11 +1986,10 @@ class TestPatchStatusNotifier(object):
             "message": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_get_patch_status_bad_threshold(
+    def test_get_patch_status_bad_threshold(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2059,11 +2010,10 @@ class TestPatchStatusNotifier(object):
             "message": "66.67% of diff hit (target 70.00%)",
             "state": "failure",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_get_patch_status_bad_threshold_fixed(
+    def test_get_patch_status_bad_threshold_fixed(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2086,11 +2036,10 @@ class TestPatchStatusNotifier(object):
             "message": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_no_diff(
+    def test_build_payload_no_diff(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_repo_provider.get_compare.return_value = {
@@ -2136,11 +2085,10 @@ class TestPatchStatusNotifier(object):
             "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_no_diff_no_base_report(
+    def test_build_payload_no_diff_no_base_report(
         self,
         sample_comparison_without_base_with_pull,
         mock_repo_provider,
@@ -2185,11 +2133,10 @@ class TestPatchStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {"message": "Coverage not affected", "state": "success"}
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_without_base_report(
+    def test_build_payload_without_base_report(
         self,
         sample_comparison_without_base_report,
         mock_repo_provider,
@@ -2208,11 +2155,10 @@ class TestPatchStatusNotifier(object):
             "message": "No report found to compare against",
             "state": "success",
         }
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_with_multiple_changes(
+    def test_build_payload_with_multiple_changes(
         self,
         comparison_with_multiple_changes,
         mock_repo_provider,
@@ -2234,13 +2180,12 @@ class TestPatchStatusNotifier(object):
             "message": "50.00% of diff hit (target 76.92%)",
             "state": "failure",
         }
-        result = await notifier.build_payload(comparison_with_multiple_changes)
+        result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result
 
 
 class TestChangesStatusNotifier(object):
-    @pytest.mark.asyncio
-    async def test_build_payload(
+    def test_build_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2255,11 +2200,10 @@ class TestChangesStatusNotifier(object):
             "message": "No indirect coverage changes found",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_payload(
+    def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2275,11 +2219,10 @@ class TestChangesStatusNotifier(object):
             "message": "Please activate this user to display a detailed status check",
             "state": "success",
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_with_multiple_changes(
+    def test_build_payload_with_multiple_changes(
         self,
         comparison_with_multiple_changes,
         mock_repo_provider,
@@ -2301,11 +2244,10 @@ class TestChangesStatusNotifier(object):
             "message": "3 files have indirect coverage changes not visible in diff",
             "state": "failure",
         }
-        result = await notifier.build_payload(comparison_with_multiple_changes)
+        result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_without_base_report(
+    def test_build_payload_without_base_report(
         self,
         sample_comparison_without_base_report,
         mock_repo_provider,
@@ -2324,11 +2266,10 @@ class TestChangesStatusNotifier(object):
             "message": "Unable to determine changes, no report found at pull request base",
             "state": "success",
         }
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_path_filter(
+    def test_notify_path_filter(
         self, sample_comparison, mock_repo_provider, mock_configuration, mocker
     ):
         mocked_send_notification = mocker.patch.object(
@@ -2348,12 +2289,11 @@ class TestChangesStatusNotifier(object):
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
         }
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
         mocked_send_notification.assert_called_with(sample_comparison, expected_result)
 
-    @pytest.mark.asyncio
-    async def test_build_passing_empty_upload_payload(
+    def test_build_passing_empty_upload_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_url"] = "test.example.br"
@@ -2366,5 +2306,5 @@ class TestChangesStatusNotifier(object):
             decoration_type=Decoration.passing_empty_upload,
         )
         expected_result = {"state": "success", "message": "Non-testable files changed."}
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result

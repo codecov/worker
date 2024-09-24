@@ -292,10 +292,10 @@ class TestResultsNotifier(BaseNotifier):
         message.append(generate_view_test_analytics_line(self.commit))
         return "\n".join(message)
 
-    async def error_comment(self):
+    def error_comment(self):
         self._repo_service = get_repo_provider_service(self.commit.repository)
 
-        pull = await self.get_pull()
+        pull = self.get_pull()
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
@@ -307,17 +307,17 @@ class TestResultsNotifier(BaseNotifier):
 
         message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
 
-        sent_to_provider = await self.send_to_provider(pull, message)
+        sent_to_provider = self.send_to_provider(pull, message)
         if sent_to_provider == False:
             return (False, "torngit_error")
 
         return (True, "comment_posted")
 
-    async def upgrade_comment(self):
+    def upgrade_comment(self):
         if self._repo_service is None:
             self._repo_service = get_repo_provider_service(self.commit.repository)
 
-        pull = await self.get_pull()
+        pull = self.get_pull()
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
@@ -355,7 +355,7 @@ class TestResultsNotifier(BaseNotifier):
                 ]
             )
 
-        sent_to_provider = await self.send_to_provider(pull, message)
+        sent_to_provider = self.send_to_provider(pull, message)
         if sent_to_provider == False:
             return (False, "torngit_error")
 

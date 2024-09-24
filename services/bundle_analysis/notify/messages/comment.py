@@ -2,11 +2,9 @@ import logging
 from typing import Literal, TypedDict
 
 import sentry_sdk
+from asgiref.sync import async_to_sync
 from django.template import loader
-from shared.bundle_analysis import (
-    BundleAnalysisComparison,
-    BundleChange,
-)
+from shared.bundle_analysis import BundleAnalysisComparison, BundleChange
 from shared.torngit.exceptions import TorngitClientError
 from shared.validation.types import BundleThreshold
 
@@ -104,7 +102,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         return template.render(context)
 
     @sentry_sdk.trace
-    async def send_message(
+    def send_message(
         self, context: BundleAnalysisPRCommentNotificationContext, message: str
     ) -> NotificationResult:
         pull = context.pull.database_pull
@@ -112,9 +110,13 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         try:
             comment_id = pull.bundle_analysis_commentid
             if comment_id:
-                await repository_service.edit_comment(pull.pullid, comment_id, message)
+                async_to_sync(repository_service.edit_comment)(
+                    pull.pullid, comment_id, message
+                )
             else:
-                res = await repository_service.post_comment(pull.pullid, message)
+                res = async_to_sync(repository_service.post_comment)(
+                    pull.pullid, message
+                )
                 pull.bundle_analysis_commentid = res["id"]
             return NotificationResult(
                 notification_attempted=True,

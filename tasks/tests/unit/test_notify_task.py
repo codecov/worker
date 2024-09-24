@@ -352,8 +352,7 @@ class TestNotifyTaskHelpers(object):
         mock_refresh_selection.assert_called_with(commit)
         mock_set_gh_app_for_commit.assert_called_with(12, commit)
 
-    @pytest.mark.asyncio
-    async def test_get_gitlab_extra_shas(self, dbsession):
+    def test_get_gitlab_extra_shas(self, dbsession):
         commit = CommitFactory(
             repository__owner__service="gitlab", repository__service_id=1000
         )
@@ -394,9 +393,7 @@ class TestNotifyTaskHelpers(object):
             )
             repository_service = Gitlab(token={"key": "some_token"})
             task = NotifyTask()
-            assert await task.get_gitlab_extra_shas_to_notify(
-                commit, repository_service
-            ) == {
+            assert task.get_gitlab_extra_shas_to_notify(commit, repository_service) == {
                 "508c25daba5bbc77d8e7cf3c1917d5859153cfd3",
             }
 

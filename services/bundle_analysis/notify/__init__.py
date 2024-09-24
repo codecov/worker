@@ -2,7 +2,6 @@ import logging
 from typing import NamedTuple
 
 import sentry_sdk
-from asgiref.sync import async_to_sync
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Commit, Owner
@@ -17,9 +16,7 @@ from services.bundle_analysis.notify.contexts.comment import (
 from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusNotificationContextBuilder,
 )
-from services.bundle_analysis.notify.helpers import (
-    get_notification_types_configured,
-)
+from services.bundle_analysis.notify.helpers import get_notification_types_configured
 from services.bundle_analysis.notify.messages import MessageStrategyInterface
 from services.bundle_analysis.notify.messages.comment import (
     BundleAnalysisCommentMarkdownStrategy,
@@ -27,10 +24,7 @@ from services.bundle_analysis.notify.messages.comment import (
 from services.bundle_analysis.notify.messages.commit_status import (
     CommitStatusMessageStrategy,
 )
-from services.bundle_analysis.notify.types import (
-    NotificationSuccess,
-    NotificationType,
-)
+from services.bundle_analysis.notify.types import NotificationSuccess, NotificationType
 
 log = logging.getLogger(__name__)
 
@@ -190,9 +184,7 @@ class BundleAnalysisNotifyService:
         notifications_successful = []
         for notification_context, message_strategy in notification_full_contexts:
             message = message_strategy.build_message(notification_context)
-            result = async_to_sync(message_strategy.send_message)(
-                notification_context, message
-            )
+            result = message_strategy.send_message(notification_context, message)
             if result.notification_attempted:
                 notifications_sent.append(notification_context.notification_type)
             if result.notification_successful:

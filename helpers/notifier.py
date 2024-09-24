@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
+from asgiref.sync import async_to_sync
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError
 
@@ -29,23 +30,23 @@ class BaseNotifier:
     _pull: EnrichedPull | None = None
     _repo_service: TorngitBaseAdapter | None = None
 
-    async def get_pull(self):
+    def get_pull(self):
         repo_service = self.get_repo_service()
 
         if self._pull is None:
-            self._pull = await fetch_and_update_pull_request_information_from_commit(
-                repo_service, self.commit, self.commit_yaml
-            )
+            self._pull = async_to_sync(
+                fetch_and_update_pull_request_information_from_commit
+            )(repo_service, self.commit, self.commit_yaml)
 
         return self._pull
 
-    def get_repo_service(self):
+    def get_repo_service(self) -> TorngitBaseAdapter:
         if self._repo_service is None:
             self._repo_service = get_repo_provider_service(self.commit.repository)
 
         return self._repo_service
 
-    async def send_to_provider(self, pull, message):
+    def send_to_provider(self, pull, message):
         repo_service = self.get_repo_service()
         assert repo_service
 
@@ -53,9 +54,9 @@ class BaseNotifier:
         try:
             comment_id = pull.database_pull.commentid
             if comment_id:
-                await repo_service.edit_comment(pullid, comment_id, message)
+                async_to_sync(repo_service.edit_comment)(pullid, comment_id, message)
             else:
-                res = await repo_service.post_comment(pullid, message)
+                res = async_to_sync(repo_service.post_comment)(pullid, message)
                 pull.database_pull.commentid = res["id"]
             return True
         except TorngitClientError:
@@ -71,10 +72,10 @@ class BaseNotifier:
     def build_message(self) -> str:
         raise NotImplementedError
 
-    async def notify(
+    def notify(
         self,
     ) -> NotifierResult:
-        pull = await self.get_pull()
+        pull = self.get_pull()
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
@@ -86,7 +87,7 @@ class BaseNotifier:
 
         message = self.build_message()
 
-        sent_to_provider = await self.send_to_provider(pull, message)
+        sent_to_provider = self.send_to_provider(pull, message)
         if sent_to_provider == False:
             return NotifierResult.TORNGIT_ERROR
 

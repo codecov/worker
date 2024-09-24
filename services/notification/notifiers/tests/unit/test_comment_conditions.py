@@ -57,7 +57,6 @@ def _get_mock_compare_result(file_affected: str, lines_affected: List[str]) -> D
     }
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "comparison_name, condition, expected",
     [
@@ -99,7 +98,7 @@ def _get_mock_compare_result(file_affected: str, lines_affected: List[str]) -> D
         ),
     ],
 )
-async def test_condition_different_comparisons_no_diff(
+def test_condition_different_comparisons_no_diff(
     comparison_name, condition, expected, mock_repo_provider, request
 ):
     comparison = request.getfixturevalue(comparison_name)
@@ -107,12 +106,9 @@ async def test_condition_different_comparisons_no_diff(
     # Any change then needs to be a coverage change
     mock_repo_provider.get_compare.return_value = {"diff": {"files": {}, "commits": []}}
     notifier = _get_notifier(comparison.head.commit.repository, condition)
-    assert (
-        await HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected
-    )
+    assert HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "condition, expected",
     [
@@ -136,7 +132,7 @@ async def test_condition_different_comparisons_no_diff(
         ),
     ],
 )
-async def test_condition_exact_same_report_coverage_not_affected_by_diff(
+def test_condition_exact_same_report_coverage_not_affected_by_diff(
     sample_comparison_no_change, mock_repo_provider, condition, expected
 ):
     mock_repo_provider.get_compare.return_value = _get_mock_compare_result(
@@ -146,14 +142,11 @@ async def test_condition_exact_same_report_coverage_not_affected_by_diff(
         sample_comparison_no_change.head.commit.repository, condition
     )
     assert (
-        await HasEnoughRequiredChanges.check_condition(
-            notifier, sample_comparison_no_change
-        )
+        HasEnoughRequiredChanges.check_condition(notifier, sample_comparison_no_change)
         == expected
     )
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "condition, expected",
     [
@@ -177,7 +170,7 @@ async def test_condition_exact_same_report_coverage_not_affected_by_diff(
         ),
     ],
 )
-async def test_condition_exact_same_report_coverage_affected_by_diff(
+def test_condition_exact_same_report_coverage_affected_by_diff(
     sample_comparison_no_change, mock_repo_provider, condition, expected
 ):
     mock_repo_provider.get_compare.return_value = _get_mock_compare_result(
@@ -187,14 +180,11 @@ async def test_condition_exact_same_report_coverage_affected_by_diff(
         sample_comparison_no_change.head.commit.repository, condition
     )
     assert (
-        await HasEnoughRequiredChanges.check_condition(
-            notifier, sample_comparison_no_change
-        )
+        HasEnoughRequiredChanges.check_condition(notifier, sample_comparison_no_change)
         == expected
     )
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "affected_lines, expected",
     [
@@ -202,7 +192,7 @@ async def test_condition_exact_same_report_coverage_affected_by_diff(
         pytest.param(["1", "8", "1", "8"], True, id="patch_NOT_100%_covered"),
     ],
 )
-async def test_uncovered_patch(
+def test_uncovered_patch(
     sample_comparison_no_change, mock_repo_provider, affected_lines, expected
 ):
     mock_repo_provider.get_compare.return_value = _get_mock_compare_result(
@@ -213,14 +203,11 @@ async def test_uncovered_patch(
         [CoverageCommentRequiredChanges.uncovered_patch.value],
     )
     assert (
-        await HasEnoughRequiredChanges.check_condition(
-            notifier, sample_comparison_no_change
-        )
+        HasEnoughRequiredChanges.check_condition(notifier, sample_comparison_no_change)
         == expected
     )
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "comparison_name, yaml, expected",
     [
@@ -245,7 +232,7 @@ async def test_uncovered_patch(
         ),
     ],
 )
-async def test_coverage_drop_with_different_project_configs(
+def test_coverage_drop_with_different_project_configs(
     comparison_name, yaml, expected, request
 ):
     comparison: ComparisonProxy = request.getfixturevalue(comparison_name)
@@ -254,6 +241,4 @@ async def test_coverage_drop_with_different_project_configs(
         comparison.head.commit.repository,
         [CoverageCommentRequiredChanges.coverage_drop.value],
     )
-    assert (
-        await HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected
-    )
+    assert HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected

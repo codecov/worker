@@ -25,7 +25,6 @@ class NotifyCondition(ABC):
     NotifyCondition can have a side effect that is called when the condition fails.
     """
 
-    is_async_condition: bool = False
     failure_explanation: str
 
     @abstractmethod
@@ -35,23 +34,6 @@ class NotifyCondition(ABC):
         return True
 
     def on_failure_side_effect(
-        notifier: AbstractBaseNotifier, comparison: ComparisonProxy
-    ) -> NotificationResult:
-        return NotificationResult()
-
-
-class AsyncNotifyCondition(NotifyCondition):
-    """Async version of NotifyCondition"""
-
-    is_async_condition: bool = True
-
-    @abstractmethod
-    async def check_condition(
-        notifier: AbstractBaseNotifier, comparison: ComparisonProxy
-    ) -> bool:
-        return True
-
-    async def on_failure_side_effect(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> NotificationResult:
         return NotificationResult()
@@ -107,34 +89,27 @@ class HasEnoughBuilds(NotifyCondition):
         return present_builds >= expected_builds
 
 
-class HasEnoughRequiredChanges(AsyncNotifyCondition):
+class HasEnoughRequiredChanges(NotifyCondition):
     failure_explanation = "changes_required"
 
-    async def _check_unexpected_changes(comparison: ComparisonProxy) -> bool:
+    def _check_unexpected_changes(comparison: ComparisonProxy) -> bool:
         """Returns a bool that indicates wether there are unexpected changes"""
-        changes = await comparison.get_changes()
-        if changes:
-            return True
-        return False
+        return bool(comparison.get_changes())
 
-    async def _check_coverage_change(comparison: ComparisonProxy) -> bool:
+    def _check_coverage_change(comparison: ComparisonProxy) -> bool:
         """Returns a bool that indicates wether there is any change in coverage"""
-        diff = await comparison.get_diff()
+        diff = comparison.get_diff()
         res = comparison.head.report.calculate_diff(diff)
-        if res is not None and res["general"].lines > 0:
-            return True
-        return False
+        return res is not None and res["general"].lines > 0
 
-    async def _check_any_change(comparison: ComparisonProxy) -> bool:
-        unexpected_changes = await HasEnoughRequiredChanges._check_unexpected_changes(
+    def _check_any_change(comparison: ComparisonProxy) -> bool:
+        unexpected_changes = HasEnoughRequiredChanges._check_unexpected_changes(
             comparison
         )
-        coverage_changes = await HasEnoughRequiredChanges._check_coverage_change(
-            comparison
-        )
+        coverage_changes = HasEnoughRequiredChanges._check_coverage_change(comparison)
         return unexpected_changes or coverage_changes
 
-    async def _check_coverage_drop(comparison: ComparisonProxy) -> bool:
+    def _check_coverage_drop(comparison: ComparisonProxy) -> bool:
         no_head_coverage = comparison.head.report.totals.coverage is None
         no_base_report = comparison.project_coverage_base.report is None
         no_base_coverage = (
@@ -162,8 +137,8 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
         # Need to take the project threshold into consideration
         return diff < 0 and abs(diff) >= (threshold + Decimal(0.01))
 
-    async def _check_uncovered_patch(comparison: ComparisonProxy):
-        diff = await comparison.get_diff(use_original_base=True)
+    def _check_uncovered_patch(comparison: ComparisonProxy) -> bool:
+        diff = comparison.get_diff(use_original_base=True)
         totals = comparison.head.report.apply_diff(diff)
         coverage_not_affected_by_patch = totals and totals.lines == 0
         if totals is None or coverage_not_affected_by_patch:
@@ -175,7 +150,7 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
             0.01
         )
 
-    async def check_condition_OR_group(
+    def check_condition_OR_group(
         condition_group: CoverageCommentRequiredChangesORGroup,
         comparison: ComparisonProxy,
     ) -> bool:
@@ -195,13 +170,11 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
             if condition_group & individual_condition.value:
                 if cache_results[individual_condition] is None:
                     function_to_call = functions_lookup[individual_condition]
-                    cache_results[individual_condition] = await function_to_call(
-                        comparison
-                    )
+                    cache_results[individual_condition] = function_to_call(comparison)
                 final_result |= cache_results[individual_condition]
         return final_result
 
-    async def check_condition(
+    def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
         if comparison.pull and comparison.pull.commentid:
@@ -219,10 +192,6 @@ class HasEnoughRequiredChanges(AsyncNotifyCondition):
             # False --> 0 (no_requirements)
             required_changes = [int(required_changes)]
         return all(
-            [
-                await HasEnoughRequiredChanges.check_condition_OR_group(
-                    or_group, comparison
-                )
-                for or_group in required_changes
-            ]
+            HasEnoughRequiredChanges.check_condition_OR_group(or_group, comparison)
+            for or_group in required_changes
         )

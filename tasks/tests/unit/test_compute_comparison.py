@@ -383,9 +383,8 @@ class TestComputeComparisonTask(object):
             "tasks.compute_comparison.ComparisonProxy.get_patch_totals",
             return_value=patch_totals,
         )
-        mocker.patch.object(
-            ComputeComparisonTask,
-            "serialize_impacted_files",
+        mocker.patch(
+            "tasks.compute_comparison.ComparisonProxy.get_impacted_files",
             side_effect=TorngitRateLimitError("response_data", "message", "reset"),
         )
         task = ComputeComparisonTask()

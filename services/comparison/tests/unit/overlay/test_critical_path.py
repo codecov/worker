@@ -143,22 +143,20 @@ def test_load_critical_path_report_yes_commit_no_storage(
     assert _load_full_profiling_analyzer(sample_comparison) is None
 
 
-@pytest.mark.asyncio
-async def test_critical_files_from_yaml_no_paths(mocker, sample_comparison):
+def test_critical_files_from_yaml_no_paths(mocker, sample_comparison):
     sample_comparison.comparison.current_yaml = dict()
     mocked_get_yaml = mocker.patch(
         "services.comparison.overlays.critical_path.get_current_yaml"
     )
     overlay = CriticalPathOverlay(sample_comparison, None)
-    critical_paths_from_yaml = await overlay._get_critical_files_from_yaml(
+    critical_paths_from_yaml = overlay._get_critical_files_from_yaml(
         ["batata.txt", "a.py"]
     )
     assert critical_paths_from_yaml == []
     mocked_get_yaml.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_critical_files_from_yaml_with_paths(mocker, sample_comparison):
+def test_critical_files_from_yaml_with_paths(mocker, sample_comparison):
     sample_comparison.comparison.current_yaml = {
         "profiling": {
             "critical_files_paths": ["src/critical", "important.txt"],
@@ -168,15 +166,14 @@ async def test_critical_files_from_yaml_with_paths(mocker, sample_comparison):
         "services.comparison.overlays.critical_path.get_current_yaml"
     )
     overlay = CriticalPathOverlay(sample_comparison, None)
-    critical_paths_from_yaml = await overlay._get_critical_files_from_yaml(
+    critical_paths_from_yaml = overlay._get_critical_files_from_yaml(
         ["batata.txt", "src/critical/a.py"]
     )
     assert critical_paths_from_yaml == ["src/critical/a.py"]
     mocked_get_yaml.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_critical_files_from_yaml_with_paths_get_yaml_from_provider(
+def test_critical_files_from_yaml_with_paths_get_yaml_from_provider(
     mocker, sample_comparison
 ):
     mocked_get_yaml = mocker.patch(
@@ -188,7 +185,7 @@ async def test_critical_files_from_yaml_with_paths_get_yaml_from_provider(
         },
     )
     overlay = CriticalPathOverlay(sample_comparison, None)
-    critical_paths_from_yaml = await overlay._get_critical_files_from_yaml(
+    critical_paths_from_yaml = overlay._get_critical_files_from_yaml(
         ["batata.txt", "src/critical/a.py"]
     )
     assert critical_paths_from_yaml == ["src/critical/a.py"]
@@ -196,19 +193,12 @@ async def test_critical_files_from_yaml_with_paths_get_yaml_from_provider(
 
 
 class TestCriticalPathOverlay(object):
-    @pytest.mark.asyncio
-    async def test_search_files_for_critical_changes_none_report(
-        self, sample_comparison
-    ):
+    def test_search_files_for_critical_changes_none_report(self, sample_comparison):
         sample_comparison.comparison.current_yaml = dict()
         a = CriticalPathOverlay(sample_comparison, None)
-        assert (
-            await a.search_files_for_critical_changes(["filenames", "to", "search"])
-            == []
-        )
+        assert a.search_files_for_critical_changes(["filenames", "to", "search"]) == []
 
-    @pytest.mark.asyncio
-    async def test_search_files_for_critical_changes_none_report_with_yaml_path(
+    def test_search_files_for_critical_changes_none_report_with_yaml_path(
         self, sample_comparison, mocker
     ):
         sample_comparison.comparison.current_yaml = {
@@ -217,18 +207,16 @@ class TestCriticalPathOverlay(object):
             }
         }
         a = CriticalPathOverlay(sample_comparison, None)
-        assert await a.search_files_for_critical_changes(
+        assert a.search_files_for_critical_changes(
             ["filenames", "to", "search", "important.txt"]
         ) == ["important.txt"]
 
-    @pytest.mark.asyncio
-    async def test_find_impacted_endpoints_no_analyzer(self, sample_comparison):
+    def test_find_impacted_endpoints_no_analyzer(self, sample_comparison):
         a = CriticalPathOverlay(sample_comparison, None)
         a._profiling_analyzer = None
-        await a.find_impacted_endpoints() is None
+        a.find_impacted_endpoints() is None
 
-    @pytest.mark.asyncio
-    async def test_find_impacted_endpoints(
+    def test_find_impacted_endpoints(
         self,
         dbsession,
         sample_comparison,
@@ -288,7 +276,7 @@ class TestCriticalPathOverlay(object):
         a = CriticalPathOverlay(sample_comparison, None)
         print(sample_comparison.head.report.files)
         print(sample_comparison.head.report.files)
-        res = await a.find_impacted_endpoints()
+        res = a.find_impacted_endpoints()
         assert res == [
             {
                 "files": [{"filename": "file_1.go", "impacted_base_lines": [5]}],

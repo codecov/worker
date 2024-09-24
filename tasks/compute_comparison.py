@@ -67,7 +67,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         # At this point we can calculate the patch coverage
         # Because we have a HEAD report and a base commit to get the diff from
         if comparison.patch_totals is None:
-            patch_totals = async_to_sync(comparison_proxy.get_patch_totals)()
+            patch_totals = comparison_proxy.get_patch_totals()
             comparison.patch_totals = minimal_totals(patch_totals)
 
         if not comparison_proxy.has_project_coverage_base_report():
@@ -82,7 +82,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             comparison.error = None
 
         try:
-            impacted_files = self.serialize_impacted_files(comparison_proxy)
+            impacted_files = comparison_proxy.get_impacted_files()
         except TorngitRateLimitError:
             log.warning(
                 "Unable to compute comparison due to rate limit error",
@@ -106,6 +106,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         db_session.commit()
         self.compute_component_comparisons(db_session, comparison, comparison_proxy)
         db_session.commit()
+
         return {"successful": True}
 
     def compute_flag_comparison(self, db_session, comparison, comparison_proxy):
@@ -199,7 +200,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         totals = dict(
             head_totals=head_totals, base_totals=base_totals, patch_totals=None
         )
-        diff = async_to_sync(comparison_proxy.get_diff)()
+        diff = comparison_proxy.get_diff()
         if diff:
             patch_totals = flag_head_report.apply_diff(diff)
             if patch_totals:
@@ -277,7 +278,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             filtered.project_coverage_base.report.totals.asdict()
         )
         component_comparison.head_totals = filtered.head.report.totals.asdict()
-        diff = async_to_sync(comparison_proxy.get_diff)()
+        diff = comparison_proxy.get_diff()
         if diff:
             patch_totals = filtered.head.report.apply_diff(diff)
             if patch_totals:
@@ -317,10 +318,6 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
                 gh_app_installation_name=installation_name_to_use
             ),
         )
-
-    @sentry_sdk.trace
-    def serialize_impacted_files(self, comparison_proxy):
-        return async_to_sync(comparison_proxy.get_impacted_files)()
 
     @sentry_sdk.trace
     def store_results(self, comparison, impacted_files):

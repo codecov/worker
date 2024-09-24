@@ -15,9 +15,9 @@ class FullCommit(object):
 
 
 class ReportUploadedCount(TypedDict):
-    flag: str = ""
-    base_count: int = 0
-    head_count: int = 0
+    flag: str
+    base_count: int
+    head_count: int
 
 
 @dataclass

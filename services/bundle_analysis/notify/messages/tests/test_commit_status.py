@@ -1,7 +1,7 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
-from asgiref.sync import async_to_sync
+from mock import AsyncMock
 from shared.torngit.exceptions import TorngitClientError
 from shared.typings.torngit import TorngitInstanceData
 from shared.yaml import UserYaml
@@ -153,9 +153,10 @@ class TestCommitStatusMessage:
     def _setup_send_message_tests(
         self, dbsession, mocker, torngit_ghapp_data, mock_storage
     ):
-        fake_repo_provider = AsyncMock(
+        fake_repo_provider = MagicMock(
             name="fake_repo_provider",
             data=TorngitInstanceData(installation=torngit_ghapp_data),
+            set_commit_status=AsyncMock(),
         )
         fake_repo_provider.set_commit_status.return_value = {"id": 1000}
         mocker.patch(
@@ -222,13 +223,13 @@ class TestCommitStatusMessage:
             dbsession, mocker, torngit_ghapp_data, mock_storage
         )
         strategy = CommitStatusMessageStrategy()
-        result = async_to_sync(strategy.send_message)(context, message)
+        result = strategy.send_message(context, message)
         fake_repo_provider.set_commit_status.assert_called_with(
-            commit=context.commit.commitid,
-            status="success",
-            context="codecov/bundles",
-            description=message,
-            url=context.commit_status_url,
+            context.commit.commitid,
+            "success",
+            "codecov/bundles",
+            message,
+            context.commit_status_url,
         )
         expected_app = torngit_ghapp_data.get("id") if torngit_ghapp_data else None
         assert result == NotificationResult(
@@ -245,7 +246,7 @@ class TestCommitStatusMessage:
         )
         fake_repo_provider.set_commit_status.side_effect = TorngitClientError()
         strategy = CommitStatusMessageStrategy()
-        result = async_to_sync(strategy.send_message)(context, message)
+        result = strategy.send_message(context, message)
         assert result == NotificationResult(
             notification_attempted=True,
             notification_successful=False,
@@ -258,7 +259,7 @@ class TestCommitStatusMessage:
         )
         strategy = CommitStatusMessageStrategy()
         mock_cache.get_backend().set(strategy._cache_key(context), 600, message)
-        result = async_to_sync(strategy.send_message)(context, message)
+        result = strategy.send_message(context, message)
         fake_repo_provider.set_commit_status.assert_not_called()
         assert result == NotificationResult(
             notification_attempted=False,
@@ -266,9 +267,7 @@ class TestCommitStatusMessage:
             explanation="payload_unchanged",
         )
         # Side effect of sending message is updating the cache
-        assert async_to_sync(strategy.send_message)(
-            context, message
-        ) == NotificationResult(
+        assert strategy.send_message(context, message) == NotificationResult(
             notification_attempted=False,
             notification_successful=False,
             explanation="payload_unchanged",
