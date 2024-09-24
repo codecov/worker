@@ -756,6 +756,7 @@ class ReportService(BaseReportService):
                     "worker_service_report_carryforward_base_not_found", 1
                 )
                 return Report()
+
             parent_report = self.get_existing_report_for_commit(parent_commit)
             if parent_report is None:
                 log.warning(
@@ -767,6 +768,7 @@ class ReportService(BaseReportService):
                     ),
                 )
                 return Report()
+
             flags_to_carryforward = [
                 flag_name
                 for flag_name in parent_report.get_flag_names()
@@ -774,6 +776,7 @@ class ReportService(BaseReportService):
             ]
             if not flags_to_carryforward:
                 return Report()
+
             paths_to_carryforward = get_paths_from_flags(
                 self.current_yaml, flags_to_carryforward
             )
