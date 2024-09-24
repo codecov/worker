@@ -3,9 +3,13 @@ from uuid import uuid4
 from test_results_parser import Outcome
 
 from database.enums import FlakeSymptomType
-from database.models.core import Repository
 from database.models.reports import Test, TestInstance
-from database.tests.factories import CommitFactory, ReportFactory, UploadFactory
+from database.tests.factories import (
+    CommitFactory,
+    ReportFactory,
+    RepositoryFactory,
+    UploadFactory,
+)
 from services.flake_detection import (
     DefaultBranchFailureDetector,
     DiffOutcomeDetector,
@@ -16,7 +20,7 @@ from services.test_results import generate_test_id
 
 
 def create_repo(dbsession):
-    r = Repository()
+    r = RepositoryFactory()
     dbsession.add(r)
     dbsession.flush()
     r.branch = "main"

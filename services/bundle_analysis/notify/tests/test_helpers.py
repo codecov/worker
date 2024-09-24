@@ -53,6 +53,7 @@ def github_owner_with_apps(dbsession) -> Owner:
         ownerid=owner.ownerid,
         owner=owner,
         name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        installation_id=1234,
     )
     dbsession.add_all([owner, ghapp])
     dbsession.commit()

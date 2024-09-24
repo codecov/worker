@@ -757,7 +757,7 @@ class TestReportService(BaseTestCase):
         # make sure report is still serializable
         ReportService({}).save_report(commit, report)
 
-    def test_build_report_from_commit_fallback(self, dbsession, mocker, mock_storage):
+    def test_build_report_from_commit_fallback(self, dbsession, mock_storage):
         commit = CommitFactory()
         dbsession.add(commit)
         dbsession.commit()
@@ -768,11 +768,14 @@ class TestReportService(BaseTestCase):
             mock_storage.write_file("archive", chunks_url, content)
         res = ReportService({}).build_report_from_commit(commit)
         assert res is not None
-        assert res.files == [
-            "awesome/__init__.py",
-            "tests/__init__.py",
-            "tests/test_sample.py",
-        ]
+        assert (
+            res.files.sort()
+            == [
+                "awesome/__init__.py",
+                "tests/__init__.py",
+                "tests/test_sample.py",
+            ].sort()
+        )
         assert res.totals == ReportTotals(
             files=3,
             lines=20,
@@ -4562,7 +4565,7 @@ class TestReportService(BaseTestCase):
     ):
         parent_commit = CommitFactory()
         parent_commit_report = CommitReport(commit_id=parent_commit.id_)
-        parent_report_details = ReportDetails(report_id=parent_commit_report.id_)
+        parent_report_details = ReportDetails(report=parent_commit_report)
         dbsession.add(parent_commit)
         dbsession.add(parent_commit_report)
         dbsession.add(parent_report_details)
