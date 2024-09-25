@@ -561,17 +561,16 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     ),
                 )
 
-            sessionid = next(iter(incremental_report.sessions))
-            incremental_report.sessions[sessionid].id = sessionid
-
-            session_id, session = cumulative_report.add_session(
-                incremental_report.sessions[parallel_idx], use_id_from_session=True
+            session = incremental_report.sessions[parallel_idx]
+            session.id = parallel_idx
+            _session_id, session = cumulative_report.add_session(
+                session, use_id_from_session=True
             )
-            session.id = session_id
 
-            clear_carryforward_sessions(
-                cumulative_report, incremental_report, session, UserYaml(commit_yaml)
-            )
+            if flags := session.flags:
+                clear_carryforward_sessions(
+                    cumulative_report, incremental_report, flags, UserYaml(commit_yaml)
+                )
             # ReportService.update_upload_with_processing_result should use this result
             # to update the state of Upload. Once the experiment is finished, Upload.state should
             # be set to: parallel_processed (instead of processed)

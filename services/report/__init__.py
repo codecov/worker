@@ -466,12 +466,9 @@ class ReportService(BaseReportService):
                     # sess is an encoded dict
                     if sess.get("st") == "carriedforward":
                         report_class = EditableReport
-        with metrics.timer(
-            f"services.report.ReportService.build_report.{report_class.__name__}"
-        ):
-            return report_class.from_chunks(
-                chunks=chunks, files=files, sessions=sessions, totals=totals
-            )
+        return report_class.from_chunks(
+            chunks=chunks, files=files, sessions=sessions, totals=totals
+        )
 
     def get_archive_service(self, repository: Repository) -> ArchiveService:
         return ArchiveService(repository)

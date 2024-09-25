@@ -161,7 +161,9 @@ def test_full_upload(
 
     repoid = repository.repoid
     commitid = uuid4().hex
-    commit = CommitFactory.create(repository=repository, commitid=commitid, pullid=12)
+    commit = CommitFactory.create(
+        repository=repository, commitid=commitid, pullid=12, _report_json=None
+    )
     dbsession.add(commit)
     dbsession.flush()
 
