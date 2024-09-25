@@ -366,6 +366,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             metrics.incr("test_results.finisher.detected_flaky_test")
 
         self.extra_dict["success"] = success
+        self.extra_dict["notifier_result"] = notifier_result.value
         log.info(
             "Finished test results notify",
             extra=self.extra_dict,
