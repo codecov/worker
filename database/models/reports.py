@@ -289,6 +289,11 @@ class Test(CodecovBaseModel):
     # for example: the same test being run on windows vs. mac
     flags_hash = Column(types.String(256), nullable=False)
 
+    framework = Column(types.String(100), nullable=True)
+
+    computed_name = Column(types.Text, nullable=True)
+    filename = Column(types.Text, nullable=True)
+
     __table_args__ = (
         UniqueConstraint(
             "repoid",

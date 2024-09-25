@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import zlib
+from dataclasses import dataclass
 from datetime import date, datetime
 from io import BytesIO
 from typing import List
@@ -12,12 +13,12 @@ from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from test_results_parser import (
+    Framework,
     Outcome,
     ParserError,
+    ParsingInfo,
     Testrun,
     parse_junit_xml,
-    parse_pytest_reportlog,
-    parse_vitest_json,
 )
 
 from app import celery_app
@@ -76,8 +77,48 @@ def get_repo_flags(
     return repo_flag_mapping
 
 
+@dataclass
+class PytestName:
+    actual_class_name: str
+    test_file_path: str
+
+
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
     __test__ = False
+
+    def compute_name(
+        self,
+        framework: Framework,
+        raw_classname: str,
+        raw_name: str,
+        filename: str | None,
+    ) -> str:
+        match framework:
+            case Framework.Jest:
+                name = raw_name
+                return name
+            case Framework.Pytest:
+                split_name = raw_classname.split(".")
+                name_candidates: list[PytestName] = []
+                for i in range(len(split_name)):
+                    test_file_path = "/".join(split_name[: len(split_name) - i]) + ".py"
+                    actual_class_name = "::".join(split_name[len(split_name) - i :])
+
+                    name_candidates.append(
+                        PytestName(actual_class_name, test_file_path)
+                    )
+
+                for candidate in name_candidates:
+                    if candidate.test_file_path == filename or (
+                        self.network is not None
+                        and candidate.test_file_path in self.network
+                    ):
+                        return f"{candidate.test_file_path}::{candidate.actual_class_name}::{raw_name}"
+            case Framework.Vitest:
+                return f"{raw_classname} > {raw_name}"
+            case Framework.PHPUnit:
+                return f"{raw_classname}::{raw_name}"
+        return f"{raw_classname}\x1f{raw_name}"
 
     def run_impl(
         self,
@@ -149,11 +190,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         commitid: str,
         upload_id: int,
         branch: str,
-        parsed_testruns: List[Testrun],
+        parsing_results: List[ParsingInfo],
         flaky_test_set: set[str],
         flags: list[str],
     ):
-        test_data = []
+        test_data = {}
         test_instance_data = []
         test_flag_bridge_data = []
         daily_totals = dict()
@@ -163,111 +204,133 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         existing_tests: dict[str, Test] = get_existing_tests(db_session, repoid)
 
-        for testrun in parsed_testruns:
-            # Build up the data for bulk insert
-            name = testrun.name
-            testsuite = testrun.testsuite
-            outcome = str(testrun.outcome)
-            duration_seconds = testrun.duration
-            failure_message = testrun.failure_message
-            test_id = generate_test_id(repoid, testsuite, name, flags_hash)
+        for p in parsing_results:
+            framework = str(p.framework)
 
-            test_data.append(
-                dict(
+            for testrun in p.testruns:
+                # Build up the data for bulk insert
+                name: str = f"{testrun.classname}\x1f{testrun.name}"
+                testsuite: str = testrun.testsuite
+                outcome: str = str(testrun.outcome)
+                duration_seconds: float = testrun.duration
+                failure_message: str | None = testrun.failure_message
+                test_id: str = generate_test_id(repoid, testsuite, name, flags_hash)
+
+                filename: str | None = testrun.filename
+
+                computed_name: str = self.compute_name(
+                    p.framework, testrun.classname, testrun.name, filename
+                )
+
+                test_data[(repoid, name, testsuite, flags_hash)] = dict(
                     id=test_id,
                     repoid=repoid,
                     name=name,
                     testsuite=testsuite,
                     flags_hash=flags_hash,
+                    framework=framework,
+                    filename=filename,
+                    computed_name=computed_name,
                 )
-            )
 
             if test_id not in existing_tests:
                 test_flag_bridge_data += [
                     {"test_id": test_id, "flag_id": repo_flags[flag]} for flag in flags
                 ]
 
-            test_instance_data.append(
-                dict(
-                    test_id=test_id,
-                    upload_id=upload_id,
-                    duration_seconds=duration_seconds,
-                    outcome=outcome,
-                    failure_message=failure_message,
-                    commitid=commitid,
-                    branch=branch,
-                    reduced_error_id=None,
-                    repoid=repoid,
+                test_instance_data.append(
+                    dict(
+                        test_id=test_id,
+                        upload_id=upload_id,
+                        duration_seconds=duration_seconds,
+                        outcome=outcome,
+                        failure_message=failure_message,
+                        commitid=commitid,
+                        branch=branch,
+                        reduced_error_id=None,
+                        repoid=repoid,
+                    )
                 )
-            )
 
-            def update_daily_total():
-                daily_totals[test_id]["last_duration_seconds"] = duration_seconds
+                def update_daily_total():
+                    daily_totals[test_id]["last_duration_seconds"] = duration_seconds
 
-                # logic below is a little complicated but we're basically doing:
+                    # logic below is a little complicated but we're basically doing:
 
-                # (old_avg * num of values used to compute old avg) + new value
-                # -------------------------------------------------------------
-                #          num of values used to compute old avg + 1
-                daily_totals[test_id]["avg_duration_seconds"] = (
-                    daily_totals[test_id]["avg_duration_seconds"]
-                    * (
+                    # (old_avg * num of values used to compute old avg) + new value
+                    # -------------------------------------------------------------
+                    #          num of values used to compute old avg + 1
+                    daily_totals[test_id]["avg_duration_seconds"] = (
+                        daily_totals[test_id]["avg_duration_seconds"]
+                        * (
+                            daily_totals[test_id]["pass_count"]
+                            + daily_totals[test_id]["fail_count"]
+                        )
+                        + duration_seconds
+                    ) / (
                         daily_totals[test_id]["pass_count"]
                         + daily_totals[test_id]["fail_count"]
+                        + 1
                     )
-                    + duration_seconds
-                ) / (
-                    daily_totals[test_id]["pass_count"]
-                    + daily_totals[test_id]["fail_count"]
-                    + 1
-                )
 
-                if outcome == str(Outcome.Pass):
-                    daily_totals[test_id]["pass_count"] += 1
-                elif outcome == str(Outcome.Failure) or outcome == str(Outcome.Error):
-                    daily_totals[test_id]["fail_count"] += 1
-                elif outcome == str(Outcome.Skip):
-                    daily_totals[test_id]["skip_count"] += 1
+                    if outcome == str(Outcome.Pass):
+                        daily_totals[test_id]["pass_count"] += 1
+                    elif outcome == str(Outcome.Failure) or outcome == str(
+                        Outcome.Error
+                    ):
+                        daily_totals[test_id]["fail_count"] += 1
+                    elif outcome == str(Outcome.Skip):
+                        daily_totals[test_id]["skip_count"] += 1
 
-            def create_daily_total():
-                daily_totals[test_id] = {
-                    "test_id": test_id,
-                    "repoid": repoid,
-                    "last_duration_seconds": duration_seconds,
-                    "avg_duration_seconds": duration_seconds,
-                    "pass_count": 1 if outcome == str(Outcome.Pass) else 0,
-                    "fail_count": 1
-                    if outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
-                    else 0,
-                    "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
-                    "flaky_fail_count": 1
-                    if test_id in flaky_test_set
-                    and (
-                        outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
-                    )
-                    else 0,
-                    "branch": branch,
-                    "date": date.today(),
-                    "latest_run": datetime.now(),
-                    "commits_where_fail": [commitid]
-                    if (
-                        outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
-                    )
-                    else [],
-                }
+                def create_daily_total():
+                    daily_totals[test_id] = {
+                        "test_id": test_id,
+                        "repoid": repoid,
+                        "last_duration_seconds": duration_seconds,
+                        "avg_duration_seconds": duration_seconds,
+                        "pass_count": 1 if outcome == str(Outcome.Pass) else 0,
+                        "fail_count": 1
+                        if outcome == str(Outcome.Failure)
+                        or outcome == str(Outcome.Error)
+                        else 0,
+                        "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
+                        "flaky_fail_count": 1
+                        if test_id in flaky_test_set
+                        and (
+                            outcome == str(Outcome.Failure)
+                            or outcome == str(Outcome.Error)
+                        )
+                        else 0,
+                        "branch": branch,
+                        "date": date.today(),
+                        "latest_run": datetime.now(),
+                        "commits_where_fail": [commitid]
+                        if (
+                            outcome == str(Outcome.Failure)
+                            or outcome == str(Outcome.Error)
+                        )
+                        else [],
+                    }
 
-            if outcome != str(Outcome.Skip):
-                if test_id in daily_totals:
-                    update_daily_total()
-                else:
-                    create_daily_total()
+                if outcome != str(Outcome.Skip):
+                    if test_id in daily_totals:
+                        update_daily_total()
+                    else:
+                        create_daily_total()
 
-        # Save Tests
-        insert_on_conflict_do_nothing = (
-            insert(Test.__table__).values(test_data).on_conflict_do_nothing()
-        )
-        db_session.execute(insert_on_conflict_do_nothing)
-        db_session.flush()
+        # Upsert Tests
+        if len(test_data) > 0:
+            test_insert = insert(Test.__table__).values(list(test_data.values()))
+            insert_on_conflict_do_update = test_insert.on_conflict_do_update(
+                index_elements=["repoid", "name", "testsuite", "flags_hash"],
+                set_={
+                    "framework": test_insert.excluded.framework,
+                    "computed_name": test_insert.excluded.computed_name,
+                    "filename": test_insert.excluded.filename,
+                },
+            )
+            db_session.execute(insert_on_conflict_do_update)
+            db_session.flush()
 
         if len(test_flag_bridge_data):
             insert_on_conflict_do_nothing_flags = (
@@ -279,53 +342,55 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.flush()
 
         # Upsert Daily Test Totals
-        rollup_table = DailyTestRollup.__table__
-        stmt = insert(rollup_table).values(list(daily_totals.values()))
-        stmt = stmt.on_conflict_do_update(
-            index_elements=[
-                "repoid",
-                "branch",
-                "test_id",
-                "date",
-            ],
-            set_={
-                "last_duration_seconds": stmt.excluded.last_duration_seconds,
-                "avg_duration_seconds": (
-                    rollup_table.c.avg_duration_seconds
-                    * (rollup_table.c.pass_count + rollup_table.c.fail_count)
-                    + stmt.excluded.avg_duration_seconds
-                )
-                / (rollup_table.c.pass_count + rollup_table.c.fail_count + 1),
-                "latest_run": stmt.excluded.latest_run,
-                "pass_count": rollup_table.c.pass_count + stmt.excluded.pass_count,
-                "skip_count": rollup_table.c.skip_count + stmt.excluded.skip_count,
-                "fail_count": rollup_table.c.fail_count + stmt.excluded.fail_count,
-                "flaky_fail_count": rollup_table.c.flaky_fail_count
-                + stmt.excluded.flaky_fail_count,
-                "commits_where_fail": rollup_table.c.commits_where_fail
-                + stmt.excluded.commits_where_fail,
-            },
-        )
+        if len(daily_totals) > 0:
+            rollup_table = DailyTestRollup.__table__
+            stmt = insert(rollup_table).values(list(daily_totals.values()))
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[
+                    "repoid",
+                    "branch",
+                    "test_id",
+                    "date",
+                ],
+                set_={
+                    "last_duration_seconds": stmt.excluded.last_duration_seconds,
+                    "avg_duration_seconds": (
+                        rollup_table.c.avg_duration_seconds
+                        * (rollup_table.c.pass_count + rollup_table.c.fail_count)
+                        + stmt.excluded.avg_duration_seconds
+                    )
+                    / (rollup_table.c.pass_count + rollup_table.c.fail_count + 1),
+                    "latest_run": stmt.excluded.latest_run,
+                    "pass_count": rollup_table.c.pass_count + stmt.excluded.pass_count,
+                    "skip_count": rollup_table.c.skip_count + stmt.excluded.skip_count,
+                    "fail_count": rollup_table.c.fail_count + stmt.excluded.fail_count,
+                    "flaky_fail_count": rollup_table.c.flaky_fail_count
+                    + stmt.excluded.flaky_fail_count,
+                    "commits_where_fail": rollup_table.c.commits_where_fail
+                    + stmt.excluded.commits_where_fail,
+                },
+            )
 
-        db_session.execute(stmt)
-        db_session.flush()
+            db_session.execute(stmt)
+            db_session.flush()
 
         # Save TestInstances
-        insert_test_instances = insert(TestInstance.__table__).values(
-            test_instance_data
-        )
-        db_session.execute(insert_test_instances)
-        db_session.flush()
+        if len(test_instance_data) > 0:
+            insert_test_instances = insert(TestInstance.__table__).values(
+                test_instance_data
+            )
+            db_session.execute(insert_test_instances)
+            db_session.flush()
 
     def process_individual_upload(
         self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
     ):
         upload_id = upload_obj.id
         with metrics.timer("test_results.processor.process_individual_arg"):
-            parsed_testruns: List[Testrun] = self.process_individual_arg(
+            parsing_results: list[ParsingInfo] = self.process_individual_arg(
                 upload_obj, upload_obj.report.commit.repository
             )
-        if not parsed_testruns:
+        if all([len(result.testruns) == 0 for result in parsing_results]):
             log.error(
                 "No test result files were successfully parsed for this upload",
                 extra=dict(
@@ -345,7 +410,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             commitid,
             upload_id,
             branch,
-            parsed_testruns,
+            parsing_results,
             flaky_test_set,
             upload_obj.flag_names,
         )
@@ -360,14 +425,16 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         payload_bytes = archive_service.read_file(upload.storage_path)
         data = json.loads(payload_bytes)
 
-        testrun_list = []
+        parsing_results: list[ParsingInfo] = []
+
+        # TODO: this is bad
+        self.network = data.get("network_files")
 
         for file_dict in data["test_results_files"]:
-            filename = file_dict["filename"]
             file = file_dict["data"]
             file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
             try:
-                testrun_list += self.parse_single_file(filename, file_bytes)
+                parsing_results.append(self.parse_single_file(file_bytes))
             except ParserFailureError as exc:
                 log.error(
                     exc.err_msg,
@@ -376,35 +443,23 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         commitid=upload.report.commit_id,
                         uploadid=upload.id,
                         file_content=exc.file_content,
-                        parser=exc.parser,
                         parser_err_msg=exc.parser_err_msg,
                     ),
                 )
 
-        return testrun_list
+        return parsing_results
 
     def parse_single_file(
         self,
-        filename: str,
         file_bytes: BytesIO,
     ):
         try:
-            with metrics.timer("test_results.processor.parser_matching"):
-                parser, parsing_function = self.match_report(filename, file_bytes)
-        except ParserNotSupportedError as e:
-            metrics.incr(
-                "test_results.processor.parsing.failure.match_report_failure",
-            )
-            raise ParserFailureError(
-                err_msg="File did not match any parser format",
-                file_content=file_bytes.read().decode()[:300],
-            ) from e
-
-        try:
             file_content = file_bytes.read()
             with metrics.timer("test_results.processor.file_parsing"):
-                res = parsing_function(file_content)
+                res = parse_junit_xml(file_content)
+                print("BBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
         except ParserError as e:
+            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
             # aware of cardinality issues with using a variable here in the reason field but
             # parser is defined by us and limited to the amount of different parsers we will
             # write, so I don't expect this to be a problem for us
@@ -414,7 +469,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             raise ParserFailureError(
                 err_msg="Error parsing file",
                 file_content=file_content.decode()[:300],
-                parser=parser,
                 parser_err_msg=str(e),
             ) from e
         metrics.incr(
@@ -422,29 +476,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         )
 
         return res
-
-    def match_report(self, filename: str, file_bytes: BytesIO):
-        first_line = file_bytes.readline()
-        second_line = file_bytes.readline()
-        file_bytes.seek(0)
-        first_line = self.remove_space_from_line(first_line)
-        second_line = self.remove_space_from_line(second_line)
-        first_two_lines = first_line + second_line
-
-        parser = "no parser"
-        if filename.endswith(".xml") or first_two_lines.startswith(b"<?xml"):
-            parser = "junit_xml"
-            parsing_function = parse_junit_xml
-        elif first_two_lines.startswith(b'{"pytest_version":'):
-            parser = "pytest_reportlog"
-            parsing_function = parse_pytest_reportlog
-        elif first_two_lines.startswith(b'{"numTotalTestSuites"'):
-            parser = "vitest_json"
-            parsing_function = parse_vitest_json
-        else:
-            raise ParserNotSupportedError()
-
-        return parser, parsing_function
 
     def remove_space_from_line(self, line):
         return bytes("".join(line.decode("utf-8").split()), "utf-8")
