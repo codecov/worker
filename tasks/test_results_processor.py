@@ -182,11 +182,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 )
             )
 
-            test_flag_bridge_data += [
-                {"test_id": test_id, "repoid": repoid, "flag_id": repo_flags[flag]}
-                for flag in flags
-                if test_id not in existing_tests
-            ]
+            if test_id not in existing_tests:
+                test_flag_bridge_data += [
+                    {"test_id": test_id, "repoid": repoid, "flag_id": repo_flags[flag]}
+                    for flag in flags
+                ]
 
             test_instance_data.append(
                 dict(
