@@ -336,8 +336,7 @@ def sample_comparison_for_limited_upload(
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierIntegration(object):
-    @pytest.mark.asyncio
-    async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
+    def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
         sample_comparison.context = ComparisonContext(
             all_tests_passed=True, test_results_error=None
         )
@@ -353,7 +352,7 @@ class TestCommentNotifierIntegration(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -408,8 +407,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669247}
 
-    @pytest.mark.asyncio
-    async def test_notify_test_results_error(
+    def test_notify_test_results_error(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
         sample_comparison.context = ComparisonContext(
@@ -428,7 +426,7 @@ class TestCommentNotifierIntegration(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -483,8 +481,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669247}
 
-    @pytest.mark.asyncio
-    async def test_notify_upgrade(
+    def test_notify_upgrade(
         self, dbsession, sample_comparison_for_upgrade, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
@@ -497,7 +494,7 @@ class TestCommentNotifierIntegration(object):
             current_yaml={},
             decoration_type=Decoration.upgrade,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -517,8 +514,7 @@ class TestCommentNotifierIntegration(object):
         }
         assert result.data_received == {"id": 1361234119}
 
-    @pytest.mark.asyncio
-    async def test_notify_upload_limited(
+    def test_notify_upload_limited(
         self,
         dbsession,
         sample_comparison_for_limited_upload,
@@ -538,7 +534,7 @@ class TestCommentNotifierIntegration(object):
             current_yaml={},
             decoration_type=Decoration.upload_limit,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -560,8 +556,7 @@ class TestCommentNotifierIntegration(object):
         }
         assert result.data_received == {"id": 1111984446}
 
-    @pytest.mark.asyncio
-    async def test_notify_gitlab(
+    def test_notify_gitlab(
         self, sample_comparison_gitlab, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {
@@ -576,7 +571,7 @@ class TestCommentNotifierIntegration(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -626,8 +621,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 1}
         assert result.data_received == {"id": 1457135397}
 
-    @pytest.mark.asyncio
-    async def test_notify_new_layout(
+    def test_notify_new_layout(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
@@ -642,7 +636,7 @@ class TestCommentNotifierIntegration(object):
             notifier_site_settings=True,
             current_yaml={},
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -696,8 +690,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669290}
 
-    @pytest.mark.asyncio
-    async def test_notify_with_components(
+    def test_notify_with_components(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
@@ -718,7 +711,7 @@ class TestCommentNotifierIntegration(object):
                 }
             },
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None

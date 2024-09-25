@@ -84,7 +84,7 @@ class SaveReportResultsTask(
             notifier_site_settings=True,
             current_yaml=current_yaml,
         )
-        result = async_to_sync(notifier.build_payload)(comparison)
+        result = notifier.build_payload(comparison)
         report = self.fetch_report(commit, report_code)
         log.info(
             "Saving report results into the db",

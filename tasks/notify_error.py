@@ -1,7 +1,6 @@
 import logging
 from dataclasses import dataclass
 
-from asgiref.sync import async_to_sync
 from sqlalchemy.orm import Session
 
 from celery_config import notify_error_task_name
@@ -87,7 +86,7 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
             failed_upload=num_failed_upload,
             total_upload=num_total_upload,
         )
-        notification_result: NotifierResult = async_to_sync(error_notifier.notify)()
+        notification_result: NotifierResult = error_notifier.notify()
         match notification_result:
             case NotifierResult.COMMENT_POSTED:
                 log.info(

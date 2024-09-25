@@ -17,6 +17,7 @@ from shared.config import get_config
 from shared.django_apps.codecov_metrics.service.codecov_metrics import (
     UserOnboardingMetricsService,
 )
+from shared.metrics import Histogram
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
@@ -38,7 +39,11 @@ from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.redis import download_archive_from_redis, get_redis_connection
-from services.report import NotReadyToBuildReportYetError, ReportService
+from services.report import (
+    BaseReportService,
+    NotReadyToBuildReportYetError,
+    ReportService,
+)
 from services.repository import (
     create_webhook_on_provider,
     fetch_commit_yaml_and_possibly_store,
@@ -58,6 +63,13 @@ from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, upload_processor
 log = logging.getLogger(__name__)
 
 CHUNK_SIZE = 3
+
+UPLOADS_PER_TASK_SCHEDULE = Histogram(
+    "worker_uploads_per_schedule",
+    "The number of individual uploads scheduled for processing",
+    ["report_type"],
+    buckets=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 50],
+)
 
 
 class UploadContext:
@@ -370,7 +382,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             retry_countdown = 20 * 2**self.request.retries
             log.warning(
                 "Retrying upload",
-                extra=upload_context.log_extra(countdown=int(retry_countdown)),
+                extra=upload_context.log_extra(countdown=retry_countdown),
             )
             self.retry(
                 max_retries=3,
@@ -408,6 +420,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         repository = commit.repository
         repository.updatestamp = datetime.now()
         repository_service = None
+
         was_updated, was_setup = False, False
         try:
             installation_name_to_use = get_installation_name_for_owner_for_task(
@@ -442,6 +455,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 extra=upload_context.log_extra(),
                 exc_info=True,
             )
+
         if repository_service:
             commit_yaml = fetch_commit_yaml_and_possibly_store(
                 commit, repository_service
@@ -459,6 +473,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 owner_context=context,
             )
 
+        report_service: BaseReportService
         if report_type == ReportType.COVERAGE:
             # TODO: consider renaming class to `CoverageReportService`
             report_service = ReportService(
@@ -474,8 +489,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         try:
             log.info("Initializing and saving report", extra=upload_context.log_extra())
             commit_report = report_service.initialize_and_save_report(
-                commit,
-                upload_context.report_code,
+                commit, upload_context.report_code
             )
         except NotReadyToBuildReportYetError:
             log.warning(
@@ -503,6 +517,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         if argument_list:
             db_session.commit()
+
+            UPLOADS_PER_TASK_SCHEDULE.labels(report_type=report_type.value).observe(
+                len(argument_list)
+            )
             scheduled_tasks = self.schedule_task(
                 db_session,
                 commit,

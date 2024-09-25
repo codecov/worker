@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import Optional
 
@@ -381,9 +380,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 }
 
             if commit.repository.service == "gitlab":
-                gitlab_extra_shas_to_notify = async_to_sync(
-                    self.get_gitlab_extra_shas_to_notify
-                )(commit, repository_service)
+                gitlab_extra_shas_to_notify = self.get_gitlab_extra_shas_to_notify(
+                    commit, repository_service
+                )
             else:
                 gitlab_extra_shas_to_notify = None
 
@@ -542,7 +541,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         if db_session is None:
             log.warning("Failed to save patch_totals. dbsession is None")
             return
-        patch_coverage = async_to_sync(comparison.get_patch_totals)()
+        patch_coverage = comparison.get_patch_totals()
         if (
             comparison.project_coverage_base is not None
             and comparison.project_coverage_base.commit is not None
@@ -583,7 +582,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 compare_commit.patch_totals = minimal_totals(patch_coverage)
 
     @sentry_sdk.trace
-    async def get_gitlab_extra_shas_to_notify(
+    def get_gitlab_extra_shas_to_notify(
         self, commit: Commit, repository_service: TorngitBaseAdapter
     ) -> set[str]:
         """ "
@@ -605,14 +604,11 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             )
             return set()
         project_id = commit.repository.service_id
-        job_ids = [
+        job_ids = (
             upload.job_code for upload in report.uploads if upload.job_code is not None
-        ]
-        tasks = [
-            repository_service.get_pipeline_details(project_id, job_id)
-            for job_id in job_ids
-        ]
-        results = await asyncio.gather(*tasks)
+        )
+        _get_pipeline_details = async_to_sync(repository_service.get_pipeline_details)
+        results = [_get_pipeline_details(project_id, job_id) for job_id in job_ids]
         return set(
             filter(lambda sha: sha is not None and sha != commit.commitid, results)
         )
@@ -683,7 +679,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             decoration_type,
             gh_installation_name_to_use=installation_name_to_use,
         )
-        return async_to_sync(notifications_service.notify)(comparison)
+        return notifications_service.notify(comparison)
 
     def send_notifications_if_commit_differs_from_pulls_head(
         self, commit, enriched_pull, current_yaml
@@ -800,7 +796,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
 
     @sentry_sdk.trace
     def fetch_and_update_whether_ci_passed(
-        self, repository_service, commit, current_yaml
+        self, repository_service: TorngitBaseAdapter, commit, current_yaml
     ):
         all_statuses = async_to_sync(repository_service.get_commit_statuses)(
             commit.commitid

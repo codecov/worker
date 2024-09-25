@@ -5,7 +5,6 @@ This packages uses the following services:
 
 """
 
-import asyncio
 import logging
 from typing import Iterator, List, TypedDict
 
@@ -16,7 +15,6 @@ from shared.plan.constants import TEAM_PLAN_REPRESENTATIONS
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner, Repository
-from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 from services.license import is_properly_licensed
@@ -233,7 +231,7 @@ class NotificationService(object):
         for component_status in self._get_component_statuses(current_flags):
             yield component_status
 
-    async def notify(self, comparison: ComparisonProxy) -> List[NotificationResult]:
+    def notify(self, comparison: ComparisonProxy) -> list[NotificationResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):
             log.warning(
                 "Not sending notifications because the system is not properly licensed"
@@ -256,18 +254,13 @@ class NotificationService(object):
             for notifier in self.get_notifiers_instances()
             if notifier.is_enabled()
         ]
-        results = []
-        chunk_size = 3
-        for i in range(0, len(notification_instances), chunk_size):
-            notification_instances_chunk = notification_instances[i : i + chunk_size]
-            task_chunk = [
-                self.notify_individual_notifier(notifier, comparison)
-                for notifier in notification_instances_chunk
-            ]
-            results.extend(await asyncio.gather(*task_chunk))
+        results = [
+            self.notify_individual_notifier(notifier, comparison)
+            for notifier in notification_instances
+        ]
         return results
 
-    async def notify_individual_notifier(
+    def notify_individual_notifier(
         self, notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> NotificationResult:
         commit = comparison.head.commit
@@ -289,17 +282,13 @@ class NotificationService(object):
             notifier=notifier.name, title=notifier.title, result=None
         )
         try:
-            with metrics.timer(
-                f"worker.services.notifications.notifiers.{notifier.name}"
-            ) as notify_timer:
-                res = await notifier.notify(comparison)
+            res = notifier.notify(comparison)
             individual_result["result"] = res
 
             notifier.store_results(comparison, res)
             log.info(
                 "Individual notification done",
                 extra=dict(
-                    timing_ms=notify_timer.ms,
                     individual_result=individual_result,
                     commit=commit.commitid,
                     base_commit=(
@@ -310,28 +299,6 @@ class NotificationService(object):
             )
             return individual_result
         except (CeleryError, SoftTimeLimitExceeded):
-            raise
-        except asyncio.TimeoutError:
-            log.warning(
-                "Individual notifier timed out",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    individual_result=individual_result,
-                    base_commit=(
-                        base_commit.commitid if base_commit is not None else "NO_BASE"
-                    ),
-                ),
-            )
-            return individual_result
-        except asyncio.CancelledError as e:
-            log.warning(
-                "Individual notifier cancelled",
-                extra=dict(
-                    repoid=commit.repoid, commit=commit.commitid, exception=str(e)
-                ),
-                exc_info=True,
-            )
             raise
         except Exception:
             log.exception(

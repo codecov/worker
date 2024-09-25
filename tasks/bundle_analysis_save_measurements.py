@@ -65,11 +65,17 @@ class BundleAnalysisSaveMeasurementsTask(
         if all((result["error"] is not None for result in previous_result)):
             save_measurements = False
 
+        bundle_name = None
+        for result in previous_result:
+            bundle_name = result.get("bundle_name")
+
         if save_measurements:
             report_service = BundleAnalysisReportService(
                 UserYaml.from_dict(commit_yaml)
             )
-            result: ProcessingResult = report_service.save_measurements(commit, upload)
+            result: ProcessingResult = report_service.save_measurements(
+                commit, upload, bundle_name
+            )
             save_measurements = result.error is None
 
         log.info(

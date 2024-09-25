@@ -2,6 +2,7 @@ import json
 import re
 from typing import Sequence
 
+from asgiref.sync import async_to_sync
 from cc_rustyribs import rustify_diff
 from shared.profiling import ProfilingDataFullAnalyzer, ProfilingSummaryDataAnalyzer
 from shared.storage.exceptions import FileNotInStorageError
@@ -76,7 +77,7 @@ class CriticalPathOverlay(object):
             self._profiling_analyzer = _load_full_profiling_analyzer(self._comparison)
         return self._profiling_analyzer
 
-    async def _get_critical_files_from_yaml(self, filenames_to_search: Sequence[str]):
+    def _get_critical_files_from_yaml(self, filenames_to_search: Sequence[str]):
         """
         Get list of files in filenames_to_search that match the list of critical_file paths defined by the user in the YAML (under profiling.critical_files_paths)
         """
@@ -87,7 +88,7 @@ class CriticalPathOverlay(object):
             repo_provider = get_repo_provider_service(
                 repo, installation_name_to_use=gh_app_installation_name
             )
-            current_yaml = await get_current_yaml(
+            current_yaml = async_to_sync(get_current_yaml)(
                 self._comparison.head.commit, repo_provider
             )
         if not current_yaml.get("profiling") or not current_yaml["profiling"].get(
@@ -103,9 +104,7 @@ class CriticalPathOverlay(object):
         ]
         return user_defined_critical_files
 
-    async def search_files_for_critical_changes(
-        self, filenames_to_search: Sequence[str]
-    ):
+    def search_files_for_critical_changes(self, filenames_to_search: Sequence[str]):
         """
         Returns list of files considered critical in filenames_to_search.
         Critical files comes from 2 sources:
@@ -118,15 +117,15 @@ class CriticalPathOverlay(object):
                 self._critical_path_report.get_critical_files_filenames()
             )
         critical_files_from_yaml = set(
-            await self._get_critical_files_from_yaml(filenames_to_search)
+            self._get_critical_files_from_yaml(filenames_to_search)
         )
         return list(critical_files_from_profiling | critical_files_from_yaml)
 
-    async def find_impacted_endpoints(self):
+    def find_impacted_endpoints(self):
         analyzer = self.full_analyzer
         if analyzer is None:
             return None
-        diff = rustify_diff(await self._comparison.get_diff())
+        diff = rustify_diff(self._comparison.get_diff())
         return self.full_analyzer.find_impacted_endpoints(
             self._comparison.project_coverage_base.report.rust_report.get_report(),
             self._comparison.head.report.rust_report.get_report(),

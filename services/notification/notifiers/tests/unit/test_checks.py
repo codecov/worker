@@ -263,10 +263,7 @@ def multiple_diff_changes():
 
 
 class TestChecksWithFallback(object):
-    @pytest.mark.asyncio
-    async def test_checks_403_failure(
-        self, sample_comparison, mocker, mock_repo_provider
-    ):
+    def test_checks_403_failure(self, sample_comparison, mocker, mock_repo_provider):
         mock_repo_provider.create_check_run = Mock(
             side_effect=TorngitClientGeneralError(
                 403, response_data="No Access", message="No Access"
@@ -299,7 +296,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.notification_type.value == "checks_patch"
         assert fallback_notifier.decoration_type is None
 
-        res = await fallback_notifier.notify(sample_comparison)
+        res = fallback_notifier.notify(sample_comparison)
         fallback_notifier.store_results(sample_comparison, res)
         assert status_notifier.notify.call_count == 1
         assert fallback_notifier.name == "checks-patch-with-fallback"
@@ -309,8 +306,7 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.decoration_type is None
         assert res == "success"
 
-    @pytest.mark.asyncio
-    async def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
+    def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
         mock_repo_provider.create_check_run = Mock(
             side_effect=TorngitClientGeneralError(
                 409, response_data="No Access", message="No Access"
@@ -343,24 +339,23 @@ class TestChecksWithFallback(object):
         assert fallback_notifier.notification_type.value == "checks_patch"
         assert fallback_notifier.decoration_type is None
 
-        res = await fallback_notifier.notify(sample_comparison)
+        res = fallback_notifier.notify(sample_comparison)
         assert res.notification_successful == False
         assert res.explanation == "client_side_error_provider"
 
         mock_repo_provider.create_check_run = Mock(side_effect=TorngitError())
 
-        res = await fallback_notifier.notify(sample_comparison)
+        res = fallback_notifier.notify(sample_comparison)
         assert res.notification_successful == False
         assert res.explanation == "server_side_error_provider"
 
         mock_repo_provider.create_check_run.return_value = 1234
         mock_repo_provider.update_check_run = Mock(side_effect=TorngitError())
-        res = await fallback_notifier.notify(sample_comparison)
+        res = fallback_notifier.notify(sample_comparison)
         assert res.notification_successful == False
         assert res.explanation == "server_side_error_provider"
 
-    @pytest.mark.asyncio
-    async def test_checks_no_pull(self, sample_comparison_without_pull, mocker):
+    def test_checks_no_pull(self, sample_comparison_without_pull, mocker):
         comparison = sample_comparison_without_pull
         checks_notifier = PatchChecksNotifier(
             repository=comparison.head.commit.repository,
@@ -382,12 +377,11 @@ class TestChecksWithFallback(object):
         fallback_notifier = ChecksWithFallback(
             checks_notifier=checks_notifier, status_notifier=status_notifier
         )
-        result = await fallback_notifier.notify(sample_comparison_without_pull)
+        result = fallback_notifier.notify(sample_comparison_without_pull)
         assert result == "success"
         assert status_notifier.notify.call_count == 1
 
-    @pytest.mark.asyncio
-    async def test_notify_pull_request_not_in_provider(
+    def test_notify_pull_request_not_in_provider(
         self, dbsession, sample_comparison_database_pull_without_provider, mocker
     ):
         comparison = sample_comparison_database_pull_without_provider
@@ -411,14 +405,11 @@ class TestChecksWithFallback(object):
         fallback_notifier = ChecksWithFallback(
             checks_notifier=checks_notifier, status_notifier=status_notifier
         )
-        result = await fallback_notifier.notify(comparison)
+        result = fallback_notifier.notify(comparison)
         assert result == "success"
         assert status_notifier.notify.call_count == 1
 
-    @pytest.mark.asyncio
-    async def test_notify_closed_pull_request(
-        self, dbsession, sample_comparison, mocker
-    ):
+    def test_notify_closed_pull_request(self, dbsession, sample_comparison, mocker):
         sample_comparison.pull.state = "closed"
 
         checks_notifier = PatchChecksNotifier(
@@ -441,7 +432,7 @@ class TestChecksWithFallback(object):
         fallback_notifier = ChecksWithFallback(
             checks_notifier=checks_notifier, status_notifier=status_notifier
         )
-        result = await fallback_notifier.notify(sample_comparison)
+        result = fallback_notifier.notify(sample_comparison)
         assert result == "success"
         assert status_notifier.notify.call_count == 1
 
@@ -678,8 +669,7 @@ class TestPatchChecksNotifier(object):
         result = list(notifier.paginate_annotations(sample_array))
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_flag_payload(
+    def test_build_flag_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -697,11 +687,10 @@ class TestPatchChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_flag_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 50.00%)",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_payload(
+    def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"] = {
@@ -723,11 +712,10 @@ class TestPatchChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nThe author of this PR, codecov-test-user, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov](test.example.br/members/gh/test_build_upgrade_payload) to display a detailed status check.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_default_payload(
+    def test_build_default_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -754,12 +742,11 @@ class TestPatchChecksNotifier(object):
                 ],
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result["output"]["summary"] == result["output"]["summary"]
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_target_coverage_failure(
+    def test_build_payload_target_coverage_failure(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -777,11 +764,10 @@ class TestPatchChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 70.00%)",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_without_base_report(
+    def test_build_payload_without_base_report(
         self,
         sample_comparison_without_base_report,
         mock_repo_provider,
@@ -812,11 +798,10 @@ class TestPatchChecksNotifier(object):
                 ],
             },
         }
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_target_coverage_failure_witinh_threshold(
+    def test_build_payload_target_coverage_failure_witinh_threshold(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -849,14 +834,13 @@ class TestPatchChecksNotifier(object):
                 ],
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result["state"] == result["state"]
         assert expected_result["output"]["summary"] == result["output"]["summary"]
         assert expected_result["output"] == result["output"]
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_with_multiple_changes(
+    def test_build_payload_with_multiple_changes(
         self,
         comparison_with_multiple_changes,
         mock_repo_provider,
@@ -891,7 +875,7 @@ class TestPatchChecksNotifier(object):
                 ],
             },
         }
-        result = await notifier.build_payload(comparison_with_multiple_changes)
+        result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result["state"] == result["state"]
         assert expected_result["output"] == result["output"]
         assert expected_result == result
@@ -901,8 +885,7 @@ class TestPatchChecksNotifier(object):
                 "segments"
             ) == multiple_diff_changes["files"][filename].get("segments")
 
-    @pytest.mark.asyncio
-    async def test_build_payload_no_diff(
+    def test_build_payload_no_diff(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_repo_provider.get_compare.return_value = {
@@ -953,14 +936,11 @@ class TestPatchChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_no_diff/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nCoverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert notifier.notification_type.value == "checks_patch"
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_send_notification(
-        self, sample_comparison, mocker, mock_repo_provider
-    ):
+    def test_send_notification(self, sample_comparison, mocker, mock_repo_provider):
         comparison = sample_comparison
         payload = {
             "state": "success",
@@ -976,7 +956,7 @@ class TestPatchChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        result = await notifier.send_notification(sample_comparison, payload)
+        result = notifier.send_notification(sample_comparison, payload)
         assert result.notification_successful == True
         assert result.explanation is None
         assert result.data_sent == {
@@ -985,8 +965,7 @@ class TestPatchChecksNotifier(object):
             "url": "https://app.codecov.io/gh/codecov/worker/compare/100?src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=checks&utm_campaign=pr+comments&utm_term=codecov",
         }
 
-    @pytest.mark.asyncio
-    async def test_send_notification_annotations_paginations(
+    def test_send_notification_annotations_paginations(
         self, sample_comparison, mocker, mock_repo_provider
     ):
         comparison = sample_comparison
@@ -1025,7 +1004,7 @@ class TestPatchChecksNotifier(object):
                 "url": None,
             },
         ]
-        result = await notifier.send_notification(sample_comparison, payload)
+        result = notifier.send_notification(sample_comparison, payload)
         assert result.notification_successful == True
         assert result.explanation is None
         calls = [call[1] for call in mock_repo_provider.update_check_run.call_args_list]
@@ -1040,8 +1019,7 @@ class TestPatchChecksNotifier(object):
             },
         }
 
-    @pytest.mark.asyncio
-    async def test_notify(
+    def test_notify(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1061,7 +1039,7 @@ class TestPatchChecksNotifier(object):
         )
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert result.explanation is None
         assert result.data_sent == {
@@ -1073,8 +1051,7 @@ class TestPatchChecksNotifier(object):
             "url": f"test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
         }
 
-    @pytest.mark.asyncio
-    async def test_notify_passing_empty_upload(
+    def test_notify_passing_empty_upload(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1089,7 +1066,7 @@ class TestPatchChecksNotifier(object):
             current_yaml=UserYaml({}),
             decoration_type=Decoration.passing_empty_upload,
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert result.explanation is None
         assert result.data_sent == {
@@ -1101,8 +1078,7 @@ class TestPatchChecksNotifier(object):
             "url": f"test.example.br/gh/test_notify_passing_empty_upload/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
         }
 
-    @pytest.mark.asyncio
-    async def test_notify_failing_empty_upload(
+    def test_notify_failing_empty_upload(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1117,7 +1093,7 @@ class TestPatchChecksNotifier(object):
             current_yaml=UserYaml({}),
             decoration_type=Decoration.failing_empty_upload,
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert result.explanation is None
         assert result.data_sent == {
@@ -1129,8 +1105,7 @@ class TestPatchChecksNotifier(object):
             "url": f"test.example.br/gh/test_notify_failing_empty_upload/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
         }
 
-    @pytest.mark.asyncio
-    async def test_notification_exception(
+    def test_notification_exception(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1148,20 +1123,19 @@ class TestPatchChecksNotifier(object):
                 400, response_data="Error", message="Error"
             )
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == False
         assert result.explanation == "client_side_error_provider"
         assert result.data_sent is None
 
         # Test exception handling when there's a TorngitError
         mock_repo_provider.get_compare = Mock(side_effect=TorngitError())
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == False
         assert result.explanation == "server_side_error_provider"
         assert result.data_sent is None
 
-    @pytest.mark.asyncio
-    async def test_notification_exception_not_fit(self, sample_comparison, mocker):
+    def test_notification_exception_not_fit(self, sample_comparison, mocker):
         notifier = ChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -1172,15 +1146,14 @@ class TestPatchChecksNotifier(object):
         mocker.patch.object(
             ChecksNotifier, "can_we_set_this_status", return_value=False
         )
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
         assert result.notification_successful is None
         assert result.explanation == "not_fit_criteria"
         assert result.data_sent is None
         assert result.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_checks_with_after_n_builds(self, sample_comparison, mocker):
+    def test_checks_with_after_n_builds(self, sample_comparison, mocker):
         notifier = ChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -1206,7 +1179,7 @@ class TestPatchChecksNotifier(object):
         )
 
         mocker.patch.object(ChecksNotifier, "can_we_set_this_status", return_value=True)
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
         assert result.notification_successful is None
         assert result.explanation == "need_more_builds"
@@ -1215,8 +1188,7 @@ class TestPatchChecksNotifier(object):
 
 
 class TestChangesChecksNotifier(object):
-    @pytest.mark.asyncio
-    async def test_build_payload(
+    def test_build_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1234,12 +1206,11 @@ class TestChangesChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo indirect coverage changes found",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
         assert notifier.notification_type.value == "checks_changes"
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_payload(
+    def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"] = {
@@ -1261,11 +1232,10 @@ class TestChangesChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nThe author of this PR, codecov-test-user, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov](test.example.br/members/gh/test_build_upgrade_payload) to display a detailed status check.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_with_multiple_changes(
+    def test_build_payload_with_multiple_changes(
         self,
         comparison_with_multiple_changes,
         mock_repo_provider,
@@ -1290,11 +1260,10 @@ class TestChangesChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_with_multiple_changes/{comparison_with_multiple_changes.head.commit.repository.name}/pull/{comparison_with_multiple_changes.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n3 files have indirect coverage changes not visible in diff",
             },
         }
-        result = await notifier.build_payload(comparison_with_multiple_changes)
+        result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_without_base_report(
+    def test_build_payload_without_base_report(
         self,
         sample_comparison_without_base_report,
         mock_repo_provider,
@@ -1316,11 +1285,10 @@ class TestChangesChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_without_base_report/{sample_comparison_without_base_report.head.commit.repository.name}/pull/{sample_comparison_without_base_report.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nUnable to determine changes, no report found at pull request base",
             },
         }
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_failing_empty_upload_payload(
+    def test_build_failing_empty_upload_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"] = {
@@ -1342,13 +1310,12 @@ class TestChangesChecksNotifier(object):
                 "summary": "Testable files changed",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
 
 class TestProjectChecksNotifier(object):
-    @pytest.mark.asyncio
-    async def test_analytics_url(
+    def test_analytics_url(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "codecov.io"
@@ -1382,7 +1349,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml={"comment": {"layout": "files"}},
         )
-        result = await notifier.send_notification(sample_comparison, payload)
+        result = notifier.send_notification(sample_comparison, payload)
         expected_result = {
             "state": "success",
             "output": {
@@ -1408,8 +1375,7 @@ class TestProjectChecksNotifier(object):
         ]["text"].split("\n")
         assert expected_result == result.data_sent
 
-    @pytest.mark.asyncio
-    async def test_build_flag_payload(
+    def test_build_flag_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1420,7 +1386,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
         )
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "state": "success",
@@ -1432,8 +1398,7 @@ class TestProjectChecksNotifier(object):
         assert result == expected_result
         assert notifier.notification_type.value == "checks_project"
 
-    @pytest.mark.asyncio
-    async def test_build_upgrade_payload(
+    def test_build_upgrade_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"] = {
@@ -1455,11 +1420,10 @@ class TestProjectChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nThe author of this PR, codecov-test-user, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov](test.example.br/members/gh/test_build_upgrade_payload) to display a detailed status check.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_passing_empty_upload_payload(
+    def test_build_passing_empty_upload_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"] = {
@@ -1481,11 +1445,10 @@ class TestProjectChecksNotifier(object):
                 "summary": "Non-testable files changed.",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_default_payload(
+    def test_build_default_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1496,7 +1459,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml={"comment": {"layout": "files"}},
         )
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
@@ -1531,8 +1494,7 @@ class TestProjectChecksNotifier(object):
         ].split("\n")
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_default_payload_with_flags(
+    def test_build_default_payload_with_flags(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1543,7 +1505,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml={"comment": {"layout": "files, flags"}},
         )
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
@@ -1578,8 +1540,7 @@ class TestProjectChecksNotifier(object):
         ].split("\n")
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_default_payload_with_flags_and_footer(
+    def test_build_default_payload_with_flags_and_footer(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         test_name = "test_build_default_payload_with_flags_and_footer"
@@ -1591,7 +1552,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml={"comment": {"layout": "files, flags, footer"}},
         )
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
@@ -1632,8 +1593,7 @@ class TestProjectChecksNotifier(object):
         ].split("\n")
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_default_payload_comment_off(
+    def test_build_default_payload_comment_off(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1644,7 +1604,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml={"comment": False},
         )
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         repo = sample_comparison.head.commit.repository
         base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
@@ -1656,8 +1616,7 @@ class TestProjectChecksNotifier(object):
         }
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_default_payload_negative_change_comment_off(
+    def test_build_default_payload_negative_change_comment_off(
         self, sample_comparison_negative_change, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1668,7 +1627,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings=True,
             current_yaml={"comment": False},
         )
-        result = await notifier.build_payload(sample_comparison_negative_change)
+        result = notifier.build_payload(sample_comparison_negative_change)
         repo = sample_comparison_negative_change.head.commit.repository
         base_commit = sample_comparison_negative_change.project_coverage_base.commit
         expected_result = {
@@ -1680,8 +1639,7 @@ class TestProjectChecksNotifier(object):
         }
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_not_auto(
+    def test_build_payload_not_auto(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1700,11 +1658,10 @@ class TestProjectChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_not_auto/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (target 57.00%)",
             },
         }
-        result = await notifier.build_payload(sample_comparison)
+        result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_no_base_report(
+    def test_build_payload_no_base_report(
         self,
         sample_comparison_without_base_report,
         mock_repo_provider,
@@ -1727,11 +1684,10 @@ class TestProjectChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_no_base_report/{repo.name}/pull/{sample_comparison_without_base_report.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo report found to compare against",
             },
         }
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_check_notify_no_path_match(
+    def test_check_notify_no_path_match(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1752,7 +1708,7 @@ class TestProjectChecksNotifier(object):
         )
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert result.explanation is None
         assert result.data_sent == {
@@ -1764,8 +1720,7 @@ class TestProjectChecksNotifier(object):
             "url": f"test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
-    @pytest.mark.asyncio
-    async def test_check_notify_single_path_match(
+    def test_check_notify_single_path_match(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1787,7 +1742,7 @@ class TestProjectChecksNotifier(object):
 
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful is True
         assert result.explanation is None
         expected_result = {
@@ -1805,8 +1760,7 @@ class TestProjectChecksNotifier(object):
         )
         assert result.data_sent["output"] == expected_result["output"]
 
-    @pytest.mark.asyncio
-    async def test_check_notify_multiple_path_match(
+    def test_check_notify_multiple_path_match(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1828,7 +1782,7 @@ class TestProjectChecksNotifier(object):
 
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert result.explanation is None
         assert result.data_sent == {
@@ -1840,8 +1794,7 @@ class TestProjectChecksNotifier(object):
             "url": f"test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
-    @pytest.mark.asyncio
-    async def test_check_notify_with_paths(
+    def test_check_notify_with_paths(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -1862,7 +1815,7 @@ class TestProjectChecksNotifier(object):
         )
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
-        result = await notifier.notify(sample_comparison)
+        result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
         assert result.explanation is None
         assert result.data_sent == {
@@ -1874,8 +1827,7 @@ class TestProjectChecksNotifier(object):
             "url": f"test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
-    @pytest.mark.asyncio
-    async def test_notify_pass_behavior_when_coverage_not_uploaded(
+    def test_notify_pass_behavior_when_coverage_not_uploaded(
         self,
         sample_comparison_coverage_carriedforward,
         mock_repo_provider,
@@ -1912,7 +1864,7 @@ class TestProjectChecksNotifier(object):
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert (
             expected_result.data_sent["output"]["summary"]
             == result.data_sent["output"]["summary"]
@@ -1920,8 +1872,7 @@ class TestProjectChecksNotifier(object):
         assert expected_result.data_sent["output"] == result.data_sent["output"]
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_pass_behavior_when_coverage_uploaded(
+    def test_notify_pass_behavior_when_coverage_uploaded(
         self,
         sample_comparison_coverage_carriedforward,
         mock_repo_provider,
@@ -1957,11 +1908,10 @@ class TestProjectChecksNotifier(object):
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_include_behavior_when_coverage_not_uploaded(
+    def test_notify_include_behavior_when_coverage_not_uploaded(
         self,
         sample_comparison_coverage_carriedforward,
         mock_repo_provider,
@@ -1998,11 +1948,10 @@ class TestProjectChecksNotifier(object):
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_when_coverage_not_uploaded(
+    def test_notify_exclude_behavior_when_coverage_not_uploaded(
         self,
         sample_comparison_coverage_carriedforward,
         mock_repo_provider,
@@ -2028,11 +1977,10 @@ class TestProjectChecksNotifier(object):
             data_sent=None,
             data_received=None,
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_when_coverage_uploaded(
+    def test_notify_exclude_behavior_when_coverage_uploaded(
         self,
         sample_comparison_coverage_carriedforward,
         mock_repo_provider,
@@ -2069,11 +2017,10 @@ class TestProjectChecksNotifier(object):
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_when_some_coverage_uploaded(
+    def test_notify_exclude_behavior_when_some_coverage_uploaded(
         self,
         sample_comparison_coverage_carriedforward,
         mock_repo_provider,
@@ -2114,11 +2061,10 @@ class TestProjectChecksNotifier(object):
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_notify_exclude_behavior_no_flags(
+    def test_notify_exclude_behavior_no_flags(
         self,
         sample_comparison_coverage_carriedforward,
         mock_repo_provider,
@@ -2156,7 +2102,7 @@ class TestProjectChecksNotifier(object):
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
-        result = await notifier.notify(sample_comparison_coverage_carriedforward)
+        result = notifier.notify(sample_comparison_coverage_carriedforward)
         assert (
             expected_result.data_sent["output"]["summary"]
             == result.data_sent["output"]["summary"]
@@ -2165,10 +2111,7 @@ class TestProjectChecksNotifier(object):
         assert expected_result.data_sent == result.data_sent
         assert expected_result == result
 
-    @pytest.mark.asyncio
-    async def test_build_payload_comments_true(
-        self, sample_comparison, mock_configuration
-    ):
+    def test_build_payload_comments_true(self, sample_comparison, mock_configuration):
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2179,7 +2122,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings={},
             current_yaml={"comment": True},
         )
-        res = await notifier.build_payload(sample_comparison)
+        res = notifier.build_payload(sample_comparison)
         assert res == {
             "state": "success",
             "output": {
@@ -2188,10 +2131,7 @@ class TestProjectChecksNotifier(object):
             },
         }
 
-    @pytest.mark.asyncio
-    async def test_build_payload_comments_false(
-        self, sample_comparison, mock_configuration
-    ):
+    def test_build_payload_comments_false(self, sample_comparison, mock_configuration):
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -2202,7 +2142,7 @@ class TestProjectChecksNotifier(object):
             notifier_site_settings={},
             current_yaml={"comment": False},
         )
-        res = await notifier.build_payload(sample_comparison)
+        res = notifier.build_payload(sample_comparison)
         assert res == {
             "state": "success",
             "output": {

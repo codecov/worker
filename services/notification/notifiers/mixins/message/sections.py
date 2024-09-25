@@ -4,7 +4,6 @@ from base64 import b64encode
 from decimal import Decimal
 from enum import Enum, auto
 from itertools import starmap
-from typing import List
 from urllib.parse import urlencode
 
 from shared.helpers.yaml import walk
@@ -71,17 +70,17 @@ class BaseSectionWriter(object):
     def name(self):
         return self.__class__.__name__
 
-    async def write_section(self, *args, **kwargs):
-        return [i async for i in self.do_write_section(*args, **kwargs)]
+    def write_section(self, *args, **kwargs):
+        return [i for i in self.do_write_section(*args, **kwargs)]
 
 
 class NullSectionWriter(BaseSectionWriter):
-    async def write_section(*args, **kwargs):
+    def write_section(*args, **kwargs):
         return []
 
 
 class NewFooterSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
         if hide_project_coverage:
             yield ("")
@@ -118,12 +117,11 @@ class HeaderSectionWriter(BaseSectionWriter):
             yield ""
             yield (":white_check_mark: All tests successful. No failed tests found.")
 
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         pull_dict = comparison.enriched_pull.provider_pull
-        repo_service = comparison.repository_service.service
 
         diff_totals = head_report.apply_diff(diff)
         if diff_totals:
@@ -206,7 +204,7 @@ class HeaderSectionWriter(BaseSectionWriter):
             ) | set(c.path for c in changes or [])
             overlay = comparison.get_overlay(OverlayType.line_execution_count)
             files_in_critical = set(
-                await overlay.search_files_for_critical_changes(
+                overlay.search_files_for_critical_changes(
                     all_potentially_affected_critical_files
                 )
             )
@@ -229,7 +227,7 @@ class AnnouncementSectionWriter(BaseSectionWriter):
         #   "Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"  # This is disabled as of CODE-1885. But we might bring it back later.
     ]
 
-    async def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
+    def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
         if self._potential_ats_user(comparison):
             message_to_display = AnnouncementSectionWriter.ats_message
         else:
@@ -271,9 +269,9 @@ class AnnouncementSectionWriter(BaseSectionWriter):
 
 
 class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         overlay = comparison.get_overlay(OverlayType.line_execution_count)
-        impacted_endpoints = await overlay.find_impacted_endpoints()
+        impacted_endpoints = overlay.find_impacted_endpoints()
         if impacted_endpoints:
             yield "| Related Entrypoints |"
             yield "|---|"
@@ -284,7 +282,7 @@ class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
 
 
 class FooterSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         pull_dict = comparison.enriched_pull.provider_pull
         yield ("------")
         yield ("")
@@ -310,7 +308,7 @@ class FooterSectionWriter(BaseSectionWriter):
 
 
 class ReachSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         pull = comparison.enriched_pull.database_pull
         yield (
             "[![Impacted file tree graph]({})]({}?src=pr&el=tree)".format(
@@ -328,7 +326,7 @@ class ReachSectionWriter(BaseSectionWriter):
 
 
 class DiffSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         if base_report is None:
@@ -361,7 +359,7 @@ def _get_tree_cell(typ, path, metrics, compare, is_critical):
 
 
 class NewFilesSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # create list of files changed in diff
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
@@ -399,7 +397,7 @@ class NewFilesSectionWriter(BaseSectionWriter):
             if self.settings.get("show_critical_paths", False):
                 overlay = comparison.get_overlay(OverlayType.line_execution_count)
                 files_in_critical = set(
-                    await overlay.search_files_for_critical_changes(all_files)
+                    overlay.search_files_for_critical_changes(all_files)
                 )
 
             def tree_cell(typ, path, metrics, _=None):
@@ -442,7 +440,7 @@ class NewFilesSectionWriter(BaseSectionWriter):
 
 
 class FileSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # create list of files changed in diff
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
@@ -480,7 +478,7 @@ class FileSectionWriter(BaseSectionWriter):
             if self.settings.get("show_critical_paths", False):
                 overlay = comparison.get_overlay(OverlayType.line_execution_count)
                 files_in_critical = set(
-                    await overlay.search_files_for_critical_changes(all_files)
+                    overlay.search_files_for_critical_changes(all_files)
                 )
 
             def tree_cell(typ, path, metrics, _=None):
@@ -536,7 +534,7 @@ class FileSectionWriter(BaseSectionWriter):
 
 
 class FlagSectionWriter(BaseSectionWriter):
-    async def do_write_section(self, comparison, diff, changes, links, behind_by=None):
+    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         # flags
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
@@ -666,16 +664,16 @@ class FlagSectionWriter(BaseSectionWriter):
 
 
 class ComponentsSectionWriter(BaseSectionWriter):
-    async def _get_table_data_for_components(
+    def _get_table_data_for_components(
         self, all_components, comparison: ComparisonProxy
-    ) -> List[dict]:
+    ) -> list[dict]:
         component_data = []
         for component in all_components:
             flags = component.get_matching_flags(comparison.head.report.flags.keys())
             filtered_comparison = comparison.get_filtered_comparison(
                 flags, component.paths
             )
-            diff = await filtered_comparison.get_diff()
+            diff = filtered_comparison.get_diff()
             component_data.append(
                 {
                     "name": component.get_display_name(),
@@ -692,14 +690,14 @@ class ComponentsSectionWriter(BaseSectionWriter):
             )
         return component_data
 
-    async def do_write_section(
+    def do_write_section(
         self, comparison: ComparisonProxy, diff, changes, links, behind_by=None
     ):
         all_components = get_components_from_yaml(self.current_yaml)
         if all_components == []:
             return  # fast return if there's noting to process
 
-        component_data_to_show = await self._get_table_data_for_components(
+        component_data_to_show = self._get_table_data_for_components(
             all_components, comparison
         )
 
@@ -790,7 +788,7 @@ class MessagesToUserSectionWriter(BaseSectionWriter):
             return ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
         return ""
 
-    async def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
+    def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
         messages_ordering = [
             self.Messages.INSTALL_GITHUB_APP_WARNING,
             self.Messages.DIFFERENT_UPLOAD_COUNT_WARNING,

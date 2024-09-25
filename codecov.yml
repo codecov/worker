@@ -2,16 +2,10 @@ codecov:
   require_ci_to_pass: false
   notify:
     wait_for_ci: false
+
 comment:
-  show_critical_paths: true
-  layout: "reach,diff,flags,components,tree,betaprofiling"
-beta_groups:
-  - "labels"
-flag_management:
-  individual_flags:
-    - name: "onlysomelabels"
-      carryforward: true
-      carryforward_mode: "labels"
+  layout: "reach,diff,flags,components,tree"
+
 component_management:
   default_rules:
     statuses:

@@ -7,20 +7,12 @@ from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
-from database.models import (
-    Commit,
-    CommitReport,
-    RepositoryFlag,
-    TestInstance,
-    Upload,
-)
+from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.report import BaseReportService
-from services.repository import (
-    get_repo_provider_service,
-)
+from services.repository import get_repo_provider_service
 from services.urls import get_members_url, get_test_analytics_url
 from services.yaml import read_yaml_field
 
@@ -33,7 +25,7 @@ class TestResultsReportService(BaseReportService):
         self.flag_dict = None
 
     def initialize_and_save_report(
-        self, commit: Commit, report_code: str = None
+        self, commit: Commit, report_code: str | None = None
     ) -> CommitReport:
         db_session = commit.get_db_session()
         current_report_row = (
@@ -63,8 +55,7 @@ class TestResultsReportService(BaseReportService):
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
         upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags = normalized_arguments.get("flags")
-        flags = flags or []
+        flags = normalized_arguments.get("flags") or []
         self._attach_flags_to_upload(upload, flags)
         return upload
 
@@ -301,10 +292,10 @@ class TestResultsNotifier(BaseNotifier):
         message.append(generate_view_test_analytics_line(self.commit))
         return "\n".join(message)
 
-    async def error_comment(self):
+    def error_comment(self):
         self._repo_service = get_repo_provider_service(self.commit.repository)
 
-        pull = await self.get_pull()
+        pull = self.get_pull()
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
@@ -316,17 +307,17 @@ class TestResultsNotifier(BaseNotifier):
 
         message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
 
-        sent_to_provider = await self.send_to_provider(pull, message)
+        sent_to_provider = self.send_to_provider(pull, message)
         if sent_to_provider == False:
             return (False, "torngit_error")
 
         return (True, "comment_posted")
 
-    async def upgrade_comment(self):
+    def upgrade_comment(self):
         if self._repo_service is None:
             self._repo_service = get_repo_provider_service(self.commit.repository)
 
-        pull = await self.get_pull()
+        pull = self.get_pull()
         if pull is None:
             log.info(
                 "Not notifying since there is no pull request associated with this commit",
@@ -364,7 +355,7 @@ class TestResultsNotifier(BaseNotifier):
                 ]
             )
 
-        sent_to_provider = await self.send_to_provider(pull, message)
+        sent_to_provider = self.send_to_provider(pull, message)
         if sent_to_provider == False:
             return (False, "torngit_error")
 

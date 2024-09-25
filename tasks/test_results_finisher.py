@@ -182,7 +182,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 # make an attempt to make test results comment
                 notifier = TestResultsNotifier(commit, commit_yaml, None)
 
-                success, reason = async_to_sync(notifier.error_comment)()
+                success, reason = notifier.error_comment()
 
                 # also make attempt to make coverage comment
                 queue_notify = True
@@ -302,7 +302,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             if should_show_upgrade_message:
                 notifier = TestResultsNotifier(commit, commit_yaml, pull)
 
-                success, reason = async_to_sync(notifier.upgrade_comment)()
+                success, reason = notifier.upgrade_comment()
 
                 metrics.incr(
                     f"test_results.finisher.test_result_notifier_upgrade_comment.{"success" if success else "failure"}.{reason}",
@@ -344,7 +344,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     f"test_results_notif_latency.{"flaky" if should_read_flaky_detection(repoid, commit_yaml) else "non_flaky"}",
                     begin_to_notify,
                 )
-            notifier_result: NotifierResult = async_to_sync(notifier.notify)()
+            notifier_result: NotifierResult = notifier.notify()
 
         match notifier_result:
             case NotifierResult.COMMENT_POSTED:
@@ -357,6 +357,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "Detected failure on test that has been identified as flaky",
                 extra=dict(
                     success=success,
+                    notifier_result=notifier_result.value,
                     repoid=repoid,
                     commitid=commit.commitid,
                     test_ids=list(flaky_tests.keys()),

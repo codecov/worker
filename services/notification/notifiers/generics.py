@@ -90,14 +90,14 @@ class StandardNotifier(AbstractBaseNotifier):
             return False
         return True
 
-    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
         filtered_comparison = comparison.get_filtered_comparison(
             **self.get_notifier_filters()
         )
         with nullcontext():
             with nullcontext():
                 if self.should_notify_comparison(filtered_comparison):
-                    result = await self.do_notify(filtered_comparison, **extra_data)
+                    result = self.do_notify(filtered_comparison, **extra_data)
                 else:
                     result = NotificationResult(
                         notification_attempted=False,
@@ -117,9 +117,9 @@ class StandardNotifier(AbstractBaseNotifier):
             flags=flag_list,
         )
 
-    async def do_notify(self, comparison) -> NotificationResult:
+    def do_notify(self, comparison) -> NotificationResult:
         data = self.build_payload(comparison)
-        result = await self.send_actual_notification(data)
+        result = self.send_actual_notification(data)
         return NotificationResult(
             notification_attempted=result["notification_attempted"],
             notification_successful=result["notification_successful"],
@@ -241,15 +241,15 @@ class RequestsYamlBasedNotifier(StandardNotifier):
         "User-Agent": "Codecov",
     }
 
-    async def send_actual_notification(self, data: Mapping[str, Any]):
+    def send_actual_notification(self, data: Mapping[str, Any]):
         _timeouts = get_config("setup", "http", "timeouts", "external", default=10)
         kwargs = dict(timeout=_timeouts, headers=self.json_headers)
         try:
             with metrics.timer(
                 f"worker.services.notifications.notifiers.{self.name}.actual_connection"
             ):
-                async with httpx.AsyncClient() as client:
-                    res = await client.post(
+                with httpx.Client() as client:
+                    res = client.post(
                         url=self.notifier_yaml_settings["url"],
                         data=json.dumps(data, cls=EnhancedJSONEncoder),
                         **kwargs,

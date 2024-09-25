@@ -82,18 +82,13 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
                             ), "Pending status disabled in YAML"
                             assert title not in statuses, "Pending status already set"
 
-                            # async_to_sync has its own "context" argument so we
-                            # have to hide ours in a wrapper
-                            async def wrapper():
-                                await repo_service.set_commit_status(
-                                    commit=commitid,
-                                    status="pending",
-                                    context=title,
-                                    description="Collecting reports and waiting for CI to complete",
-                                    url=url,
-                                )
-
-                            async_to_sync(wrapper)()
+                            async_to_sync(repo_service.set_commit_status)(
+                                commitid,
+                                "pending",
+                                title,
+                                "Collecting reports and waiting for CI to complete",
+                                url,
+                            )
                             status_set = True
                             log.info(
                                 "Status set", extra=dict(context=title, state="pending")

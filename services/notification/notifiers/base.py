@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 class NotificationResult(object):
     notification_attempted: bool = False
     notification_successful: bool = False
-    explanation: str = None
+    explanation: str | None = None
     data_sent: Mapping[str, Any] | None = None
     data_received: Mapping[str, Any] | None = None
     github_app_used: int | None = None
@@ -53,7 +53,7 @@ class AbstractBaseNotifier(object):
         notifier_yaml_settings: Mapping[str, Any],
         notifier_site_settings: Mapping[str, Any],
         current_yaml: Mapping[str, Any],
-        decoration_type: Decoration = None,
+        decoration_type: Decoration | None = None,
         gh_installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     ):
         """
@@ -78,7 +78,7 @@ class AbstractBaseNotifier(object):
     def name(self) -> str:
         raise NotImplementedError()
 
-    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
         raise NotImplementedError()
 
     def is_enabled(self) -> bool:

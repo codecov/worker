@@ -94,11 +94,11 @@ class TestSetErrorTaskUnit(object):
         StatusSetErrorTask().run_impl(dbsession, repoid, commitid)
         if cc_status_exists:
             repo.set_commit_status.assert_called_with(
-                commit=commitid,
-                status="error",
-                context="codecov/" + context,
-                description="Coverage not measured fully because CI failed",
-                url=f"https://codecov.io/gh/owner/repo/commit/{commitid}",
+                commitid,
+                "error",
+                "codecov/" + context,
+                "Coverage not measured fully because CI failed",
+                f"https://codecov.io/gh/owner/repo/commit/{commitid}",
             )
         else:
             assert not repo.set_commit_status.called
@@ -153,9 +153,9 @@ class TestSetErrorTaskUnit(object):
         )
 
         repo.set_commit_status.assert_called_with(
-            commit=commitid,
-            status="error",
-            context="codecov/" + context,
-            description=custom_message,
-            url=f"https://codecov.io/gh/owner/repo/commit/{commitid}",
+            commitid,
+            "error",
+            "codecov/" + context,
+            custom_message,
+            f"https://codecov.io/gh/owner/repo/commit/{commitid}",
         )

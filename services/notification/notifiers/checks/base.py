@@ -2,9 +2,9 @@ import logging
 from contextlib import nullcontext
 from typing import Dict
 
+from asgiref.sync import async_to_sync
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
-from helpers.metrics import metrics
 from services.notification.notifiers.base import Comparison, NotificationResult
 from services.notification.notifiers.status.base import StatusNotifier
 from services.urls import (
@@ -64,14 +64,14 @@ class ChecksNotifier(StatusNotifier):
         for i in range(0, len(annotations), self.ANNOTATIONS_PER_REQUEST):
             yield annotations[i : i + self.ANNOTATIONS_PER_REQUEST]
 
-    async def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(self, comparison) -> Dict[str, str]:
         raise NotImplementedError()
 
     def get_status_external_name(self) -> str:
         status_piece = f"/{self.title}" if self.title != "default" else ""
         return f"codecov/{self.context}{status_piece}"
 
-    async def notify(self, comparison: Comparison):
+    def notify(self, comparison: Comparison):
         if comparison.pull is None or ():
             log.debug(
                 "Falling back to commit_status: Not a pull request",
@@ -152,7 +152,7 @@ class ChecksNotifier(StatusNotifier):
                     )
                 )
                 if not comparison.has_head_report():
-                    payload = await self.build_payload(comparison)
+                    payload = self.build_payload(comparison)
                 elif (
                     flag_coverage_not_uploaded_behavior == "exclude"
                     and not self.flag_coverage_was_uploaded(comparison)
@@ -171,7 +171,7 @@ class ChecksNotifier(StatusNotifier):
                     filtered_comparison = comparison.get_filtered_comparison(
                         **self.get_notifier_filters()
                     )
-                    payload = await self.build_payload(filtered_comparison)
+                    payload = self.build_payload(filtered_comparison)
                     payload["state"] = "success"
                     payload["output"]["summary"] = (
                         payload.get("output", {}).get("summary", "")
@@ -181,12 +181,12 @@ class ChecksNotifier(StatusNotifier):
                     filtered_comparison = comparison.get_filtered_comparison(
                         **self.get_notifier_filters()
                     )
-                    payload = await self.build_payload(filtered_comparison)
+                    payload = self.build_payload(filtered_comparison)
             if comparison.pull:
                 payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
-            return await self.maybe_send_notification(comparison, payload)
+            return self.maybe_send_notification(comparison, payload)
         except TorngitClientError as e:
             if e.code == 403:
                 raise e
@@ -316,7 +316,6 @@ class ChecksNotifier(StatusNotifier):
             previous_line = line
         return line_headers
 
-    @metrics.timer("worker.services.notifications.notifiers.checks.create_annotations")
     def create_annotations(self, comparison, diff):
         files_with_change = [
             {"type": _diff["type"], "path": path, "segments": _diff["segments"]}
@@ -343,7 +342,7 @@ class ChecksNotifier(StatusNotifier):
             annotations.append(annotation)
         return annotations
 
-    async def send_notification(self, comparison: Comparison, payload):
+    def send_notification(self, comparison: Comparison, payload):
         title = self.get_status_external_name()
         head = comparison.head.commit
         repository_service = self.repository_service(head)
@@ -382,12 +381,9 @@ class ChecksNotifier(StatusNotifier):
             )
 
         # We need to first create the check run, get that id and update the status
-        with metrics.timer(
-            "worker.services.notifications.notifiers.checks.create_check_run"
-        ):
-            check_id = await repository_service.create_check_run(
-                check_name=title, head_sha=head.commitid
-            )
+        check_id = async_to_sync(repository_service.create_check_run)(
+            check_name=title, head_sha=head.commitid
+        )
 
         if len(output.get("annotations", [])) > self.ANNOTATIONS_PER_REQUEST:
             annotation_pages = list(
@@ -401,27 +397,21 @@ class ChecksNotifier(StatusNotifier):
                 ),
             )
             for annotation_page in annotation_pages:
-                with metrics.timer(
-                    "worker.services.notifications.notifiers.checks.update_check_run"
-                ):
-                    await repository_service.update_check_run(
-                        check_id,
-                        state,
-                        output={
-                            "title": output.get("title"),
-                            "summary": output.get("summary"),
-                            "annotations": annotation_page,
-                        },
-                        url=payload.get("url"),
-                    )
+                async_to_sync(repository_service.update_check_run)(
+                    check_id,
+                    state,
+                    output={
+                        "title": output.get("title"),
+                        "summary": output.get("summary"),
+                        "annotations": annotation_page,
+                    },
+                    url=payload.get("url"),
+                )
 
         else:
-            with metrics.timer(
-                "worker.services.notifications.notifiers.checks.update_check_run"
-            ):
-                await repository_service.update_check_run(
-                    check_id, state, output=output, url=payload.get("url")
-                )
+            async_to_sync(repository_service.update_check_run)(
+                check_id, state, output=output, url=payload.get("url")
+            )
 
         return NotificationResult(
             notification_attempted=True,
