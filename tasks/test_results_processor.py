@@ -25,7 +25,9 @@ from database.models import (
     DailyTestRollup,
     Flake,
     Repository,
+    RepositoryFlag,
     Test,
+    TestFlagBridge,
     TestInstance,
     Upload,
 )
@@ -47,6 +49,31 @@ class ParserFailureError(Exception):
 
 
 class ParserNotSupportedError(Exception): ...
+
+
+def get_existing_tests(db_session: Session, repoid: int) -> dict[str, Test]:
+    existing_tests = db_session.query(Test).filter(Test.repoid == repoid).all()
+    return {test.id_: test for test in existing_tests}
+
+
+def get_repo_flags(
+    db_session: Session, repoid: int, flags: list[str]
+) -> dict[str, int]:
+    repo_flags: list[RepositoryFlag] = (
+        db_session.query(RepositoryFlag)
+        .filter(
+            RepositoryFlag.repository_id == repoid,
+            RepositoryFlag.flag_name.in_(flags),
+        )
+        .all()
+    )
+
+    # flag name => flag id
+    repo_flag_mapping: dict[str, int] = {
+        repo_flag.flag_name: repo_flag.id_ for repo_flag in repo_flags
+    }
+
+    return repo_flag_mapping
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
@@ -74,9 +101,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         testrun_dict_list = []
         upload_list = []
 
-        f = db_session.query(Flake).all()
-
-        flakes = (
+        repo_flakes = (
             db_session.query(Flake)
             .filter(Flake.repoid == repoid, Flake.end_date.is_(None))
             .all()
@@ -84,7 +109,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         flaky_test_set = set()
 
-        for flake in flakes:
+        for flake in repo_flakes:
             flaky_test_set.add(flake.testid)
 
         # process each report session's test information
@@ -125,12 +150,19 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_id: int,
         branch: str,
         parsed_testruns: List[Testrun],
-        flags_hash: str,
         flaky_test_set: set[str],
+        flags: list[str],
     ):
         test_data = []
         test_instance_data = []
+        test_flag_bridge_data = []
         daily_totals = dict()
+        flags_hash = generate_flags_hash(flags)
+
+        repo_flags: dict[str, int] = get_repo_flags(db_session, repoid, flags)
+
+        existing_tests: dict[str, Test] = get_existing_tests(db_session, repoid)
+
         for testrun in parsed_testruns:
             # Build up the data for bulk insert
             name = testrun.name
@@ -149,6 +181,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     flags_hash=flags_hash,
                 )
             )
+
+            if test_id not in existing_tests:
+                test_flag_bridge_data += [
+                    {"test_id": test_id, "repoid": repoid, "flag_id": repo_flags[flag]}
+                    for flag in flags
+                ]
 
             test_instance_data.append(
                 dict(
@@ -232,6 +270,15 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         db_session.execute(insert_on_conflict_do_nothing)
         db_session.flush()
 
+        if len(test_flag_bridge_data):
+            insert_on_conflict_do_nothing_flags = (
+                insert(TestFlagBridge.__table__)
+                .values(test_flag_bridge_data)
+                .on_conflict_do_nothing()
+            )
+            db_session.execute(insert_on_conflict_do_nothing_flags)
+            db_session.flush()
+
         # Upsert Daily Test Totals
         rollup_table = DailyTestRollup.__table__
         stmt = insert(rollup_table).values(list(daily_totals.values()))
@@ -291,7 +338,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             return {
                 "successful": False,
             }
-        flags_hash = generate_flags_hash(upload_obj.flag_names)
         upload_id = upload_obj.id
         branch = upload_obj.report.commit.branch
         self._bulk_write_tests_to_db(
@@ -301,8 +347,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             upload_id,
             branch,
             parsed_testruns,
-            flags_hash,
             flaky_test_set,
+            upload_obj.flag_names,
         )
 
         return {

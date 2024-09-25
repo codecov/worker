@@ -381,3 +381,18 @@ class DailyTestRollup(CodecovBaseModel, MixinBaseClassNoExternalID):
             name="reports_dailytestrollups_repoid_date_branch_test",
         ),
     )
+
+
+class TestFlagBridge(CodecovBaseModel, MixinBaseClassNoExternalID):
+    __tablename__ = "reports_test_results_flag_bridge"
+
+    test_id = Column(types.Text, ForeignKey("reports_test.id"))
+    test = relationship(Test, backref=backref("test_flag_bridges"))
+
+    repoid = Column(types.Integer, ForeignKey("repos.repoid"))
+    repository = relationship("Repository", backref=backref("test_flag_bridges"))
+
+    flag_id = Column(
+        "flag_id", types.BigInteger, ForeignKey("reports_repositoryflag.id")
+    )
+    flag = relationship("RepositoryFlag", backref=backref("test_flag_bridges"))
