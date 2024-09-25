@@ -1,15 +1,11 @@
-import datetime as dt
 import logging
 
-import sentry_sdk
 from django.db.models import Q
 from shared.celery_config import process_flakes_task_name
-from shared.django_apps.reports.models import (
-    Flake,
-    TestInstance,
-)
+from shared.django_apps.reports.models import DailyTestRollup, Flake, TestInstance
 
 from app import celery_app
+from helpers.metrics import metrics
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -40,10 +36,12 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
             extra=dict(repoid=repo_id, commit=commit_id_list),
         )
 
-        with sentry_sdk.metrics.timing("process_flakes", tags={"repo_id": repo_id}):
+        with metrics.timer("process_flakes"):
             flake_dict = generate_flake_dict(repo_id)
 
-            flaky_tests = list(flake_dict.keys())
+            flaky_tests: list[str] = [
+                test_id for (test_id, _) in list(flake_dict.keys())
+            ]
 
             for commit_id in commit_id_list:
                 test_instances = get_test_instances(
@@ -55,7 +53,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                             (test_instance.test_id, test_instance.reduced_error_id)
                         )
                         if flake is not None:
-                            update_passed_flakes(flake)
+                            update_passed_flakes(test_instance, flake)
                     elif test_instance.outcome in (
                         TestInstance.Outcome.FAILURE.value,
                         TestInstance.Outcome.ERROR.value,
@@ -64,7 +62,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                             (test_instance.test_id, test_instance.reduced_error_id)
                         )
                         upserted_flake = upsert_failed_flake(
-                            test_instance, repo_id, flake
+                            test_instance, flake, repo_id
                         )
                         if flake is None:
                             flake_dict[
@@ -118,16 +116,20 @@ def generate_flake_dict(repo_id: int) -> FlakeDict:
     return flake_dict
 
 
-def update_passed_flakes(flake: Flake) -> None:
+def update_passed_flakes(test_instance: TestInstance, flake: Flake) -> None:
     flake.count += 1
     flake.recent_passes_count += 1
+
     if flake.recent_passes_count == FLAKE_EXPIRY_COUNT:
-        flake.end_date = dt.datetime.now(tz=dt.UTC)
+        flake.end_date = test_instance.created_at
+
     flake.save()
 
 
 def upsert_failed_flake(
-    test_instance: TestInstance, repo_id: int, flake: Flake | None
+    test_instance: TestInstance,
+    flake: Flake | None,
+    repo_id: int,
 ) -> Flake:
     if flake is None:
         flake = Flake(
@@ -136,10 +138,32 @@ def upsert_failed_flake(
             reduced_error=test_instance.reduced_error_id,
             count=1,
             fail_count=1,
-            start_date=dt.datetime.now(dt.UTC),
+            start_date=test_instance.created_at,
             recent_passes_count=0,
         )
         flake.save()
+
+        # retroactively mark newly caught flake as flaky failure in its rollup
+        rollup = DailyTestRollup.objects.filter(
+            repoid=repo_id,
+            date=test_instance.created_at.date(),
+            branch=test_instance.branch,
+            test_id=test_instance.test_id,
+        ).first()
+
+        if rollup:
+            rollup.flaky_fail_count += 1
+            rollup.save()
+        else:
+            log.warning(
+                "Could not find rollup when trying to update its flaky fail count",
+                extra=dict(
+                    repoid=repo_id,
+                    testid=test_instance.test_id,
+                    branch=test_instance.branch,
+                    date=test_instance.created_at.date(),
+                ),
+            )
     else:
         flake.count += 1
         flake.fail_count += 1
