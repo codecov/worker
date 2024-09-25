@@ -2308,7 +2308,7 @@ class TestReportService(BaseTestCase):
         report.add_session(to_merge_session)
         assert sorted(report.sessions.keys()) == [2, 3, 4]
         assert _adjust_sessions(
-            report, Report(), to_merge_session, UserYaml(yaml_dict)
+            report, Report(), ["enterprise"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
         )
@@ -2378,7 +2378,7 @@ class TestReportService(BaseTestCase):
         report.add_session(first_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 2, 3, 4]
         assert _adjust_sessions(
-            report, Report(), first_to_merge_session, UserYaml(yaml_dict)
+            report, Report(), ["enterprise"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
         )
@@ -2454,7 +2454,7 @@ class TestReportService(BaseTestCase):
         report.add_session(second_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
         assert _adjust_sessions(
-            report, Report(), second_to_merge_session, UserYaml(yaml_dict)
+            report, Report(), ["unit"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[], partially_deleted_sessions=[]
         )
