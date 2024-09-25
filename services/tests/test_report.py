@@ -31,7 +31,7 @@ from services.report import (
 from services.report import log as report_log
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
-    _adjust_sessions,
+    clear_carryforward_sessions,
 )
 from test_utils.base import BaseTestCase
 
@@ -2307,7 +2307,7 @@ class TestReportService(BaseTestCase):
         to_merge_session = Session(flags=["enterprise"])
         report.add_session(to_merge_session)
         assert sorted(report.sessions.keys()) == [2, 3, 4]
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             report, Report(), ["enterprise"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
@@ -2377,7 +2377,7 @@ class TestReportService(BaseTestCase):
         first_to_merge_session = Session(flags=["enterprise"])
         report.add_session(first_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 2, 3, 4]
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             report, Report(), ["enterprise"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
@@ -2453,7 +2453,7 @@ class TestReportService(BaseTestCase):
         second_to_merge_session = Session(flags=["unit"])
         report.add_session(second_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             report, Report(), ["unit"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[], partially_deleted_sessions=[]

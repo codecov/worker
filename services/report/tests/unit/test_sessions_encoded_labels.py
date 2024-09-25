@@ -16,7 +16,7 @@ from helpers.labels import SpecialLabelsEnum
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
-    _adjust_sessions,
+    clear_carryforward_sessions,
     make_sure_label_indexes_match,
 )
 from test_utils.base import BaseTestCase
@@ -404,7 +404,7 @@ class TestAdjustSession(BaseTestCase):
         second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml({})
         # No change to the report cause there's no session to CF
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             report_under_test, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [])
         assert first_value == self.convert_report_to_better_readable(report_under_test)
@@ -419,7 +419,7 @@ class TestAdjustSession(BaseTestCase):
                 }
             }
         )
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
         assert self.convert_report_to_better_readable(sample_first_report) == {
@@ -646,7 +646,7 @@ class TestAdjustSession(BaseTestCase):
 
         first_value = self.convert_report_to_better_readable(sample_first_report)
         # This makes changes to the not-label-encoded original report, encoding them
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             report_under_test,
             second_report,
             ["enterprise"],
@@ -794,7 +794,7 @@ class TestAdjustSession(BaseTestCase):
             ),
         )
         second_report.append(second_report_file)
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             sample_first_report,
             second_report,
             ["enterprise"],
@@ -1063,7 +1063,7 @@ class TestAdjustSession(BaseTestCase):
         )
         second_report.append(second_report_file)
         second_report.append(a_report_file)
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             sample_first_report,
             second_report,
             ["enterprise"],

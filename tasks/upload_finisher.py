@@ -30,7 +30,7 @@ from services.archive import ArchiveService, MinioEndpoints
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
-from services.report.raw_upload_processor import _adjust_sessions
+from services.report.raw_upload_processor import clear_carryforward_sessions
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.parallel_verification import parallel_verification_task
@@ -569,7 +569,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
             session.id = session_id
 
-            _adjust_sessions(
+            clear_carryforward_sessions(
                 cumulative_report, incremental_report, session, UserYaml(commit_yaml)
             )
             # ReportService.update_upload_with_processing_result should use this result

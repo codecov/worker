@@ -168,7 +168,7 @@ def process_raw_upload(
     )
     # Adjust sessions removed carryforward sessions that are being replaced
     if session.flags:
-        session_adjustment = _adjust_sessions(
+        session_adjustment = clear_carryforward_sessions(
             report, temporary_report, session.flags, commit_yaml, upload
         )
     else:
@@ -284,7 +284,7 @@ def make_sure_label_indexes_match(
 
 
 @sentry_sdk.trace
-def _adjust_sessions(
+def clear_carryforward_sessions(
     original_report: Report,
     to_merge_report: Report,
     to_merge_flags: list[str],
