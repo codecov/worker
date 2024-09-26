@@ -34,7 +34,7 @@ def get_test_analytics_repos(start_repoid):
     ).order_by("repoid")
 
     if start_repoid is not None:
-        test_analytics_repos = test_analytics_repos.filter(repoid__gt=start_repoid)
+        test_analytics_repos = test_analytics_repos.filter(repoid__gte=start_repoid)
 
     return test_analytics_repos
 
@@ -48,7 +48,7 @@ def process_instance(
     fail_count = 0
     skip_count = 0
     flaky_fail_count = 0
-    duration_seconds = 0
+    duration_seconds = instance.duration_seconds
     created_at = instance.created_at
     commitid = instance.commitid
 
@@ -75,8 +75,8 @@ def process_instance(
         entry.sum_duration_seconds += duration_seconds
         entry.last_duration_seconds = duration_seconds
         entry.latest_run = created_at
-        entry.commits_where_fail.add(commitid)
-
+        if commitid:
+            entry.commits_where_fail.add(commitid)
     else:
         rollup_dict[(instance.test_id, instance.branch)] = RollupObj(
             pass_count,
@@ -86,11 +86,16 @@ def process_instance(
             duration_seconds,
             duration_seconds,
             created_at,
-            {commitid},
+            set(),
         )
+        if commitid:
+            rollup_dict[(instance.test_id, instance.branch)].commits_where_fail.add(
+                commitid
+            )
 
 
 def save_rollups(rollup_dict, repoid, date):
+    rollups_to_create = []
     for obj_key, obj in rollup_dict.items():
         rollup = DailyTestRollup(
             repoid=repoid,
@@ -108,16 +113,18 @@ def save_rollups(rollup_dict, repoid, date):
             / (obj.pass_count + obj.fail_count),
         )
 
-        rollup.save()
+        rollups_to_create.append(rollup)
+
+    DailyTestRollup.objects.bulk_create(rollups_to_create, 1000)
 
 
-def run_impl(
+def backfill_test_rollups(
     start_repoid: int | None = None,
     start_date: str | None = None,  # default is 2024-07-16
     end_date: str | None = None,  # default is 2024-09-17
 ) -> dict[str, bool]:
     log.info(
-        f"Updating test instances {start_repoid} {start_date} {end_date}",
+        "Updating test instances",
         extra=dict(start_repoid=start_repoid, start_date=start_date, end_date=end_date),
     )
     test_analytics_repos = get_test_analytics_repos(start_repoid)
@@ -125,23 +132,25 @@ def run_impl(
     chunk_size = 10000
 
     log.info(
-        f"Starting backfill for repos {[repo.repoid for repo in test_analytics_repos]}",
+        "Starting backfill for repos",
         extra=dict(repos=[repo.repoid for repo in test_analytics_repos]),
     )
 
     for repo in test_analytics_repos:
         repoid = repo.repoid
-        log.info(f"Starting backfill for repo {repoid}", extra=dict(repoid=repoid))
+        log.info("Starting backfill for repo", extra=dict(repoid=repoid))
+
         curr_date = date.fromisoformat(start_date) if start_date else date(2024, 7, 16)
-
-        # delete all existing rollups for this day
-        DailyTestRollup.objects.filter(repoid=repoid).delete()
-        log.info(f"Deleted rollups for repo {repoid}", extra=dict(repoid=repoid))
-
         until_date = date.fromisoformat(end_date) if end_date else date(2024, 9, 17)
 
-        # get flakes
+        # delete all existing rollups for this day
+        DailyTestRollup.objects.filter(
+            repoid=repoid, date__gte=curr_date, date__lte=until_date
+        ).delete()
+        django_transaction.commit()
+        log.info("Deleted rollups for repo", extra=dict(repoid=repoid))
 
+        # get flakes
         flake_list = list(Flake.objects.filter(repository_id=repoid))
 
         flake_dict: dict[str, list[tuple[datetime, datetime | None]]] = defaultdict(
@@ -152,9 +161,10 @@ def run_impl(
 
         while curr_date <= until_date:
             log.info(
-                f"Starting backfill for repo on date {repoid} {curr_date}",
+                "Starting backfill for repo on date",
                 extra=dict(repoid=repoid, date=curr_date),
             )
+
             rollup_dict: dict[tuple[str, str], RollupObj] = {}
 
             test_instances = TestInstance.objects.filter(
@@ -181,11 +191,11 @@ def run_impl(
             save_rollups(rollup_dict, repoid, curr_date)
             django_transaction.commit()
             log.info(
-                f"Committed repo for day {repoid} {curr_date}",
+                "Committed repo for day",
                 extra=dict(repoid=repoid, date=curr_date),
             )
             curr_date += timedelta(days=1)
 
-        log.info(f"Finished backfill for repo {repoid}", extra=dict(repoid=repoid))
+        log.info("Finished backfill for repo", extra=dict(repoid=repoid))
 
     return {"successful": True}

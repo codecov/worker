@@ -14,6 +14,7 @@ log = logging.getLogger()
 
 
 def backfill_test_flag_bridges(repoid=None):
+    log.info("Backfilling TestFlagBridge objects", extra=dict(repoid=repoid))
     repos = Repository.objects.filter(test_analytics_enabled=True)
     if repoid is not None:
         repos = repos.filter(repoid=repoid)
@@ -26,22 +27,24 @@ def backfill_test_flag_bridges(repoid=None):
             for flag in RepositoryFlag.objects.filter(repository=repo)
         }
 
+        bridges_to_create = []
         for test in tests:
             TestFlagBridge.objects.filter(test == test).delete()
 
-            first_test_instance = TestInstance.objects.filter(
-                test_id=test.id
-            ).select_related("upload")[:1][0]
-
-            if first_test_instance is None:
+            try:
+                first_test_instance = TestInstance.objects.filter(
+                    test_id=test.id
+                ).select_related("upload")[0]
+            except IndexError:
                 continue
 
             flag_names = first_test_instance.upload.flag_names
 
             for flag_name in flag_names:
                 new_bridge = TestFlagBridge(test=test, flag=flags[flag_name])
-                new_bridge.save()
+                bridges_to_create.append(new_bridge)
 
+        TestFlagBridge.objects.bulk_create(bridges_to_create, 1000)
         log.info(
             "Done creating flag bridges for repo",
             extra=dict(repoid=repoid, num_tests=len(tests)),
