@@ -180,7 +180,8 @@ def _process_file(
             coverage_type,
             missing_branches=(missing_branches if missing_branches != [] else None),
         )
-        _file.append(ln, _line)
+        # instead of using `.append`/merge, this rather overwrites the line:
+        _file[ln] = _line
 
     return _file
 

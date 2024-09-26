@@ -195,3 +195,23 @@ class TestLcov(BaseTestCase):
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
             ]
         }
+
+    def test_regression_partial_branch(self):
+        # See https://github.com/codecov/feedback/issues/513
+        text = b"""
+SF:foo.c
+DA:1047,731835
+BRDA:1047,0,0,0
+BRDA:1047,0,1,1
+end_of_record
+"""
+        report_builder_session = create_report_builder_session()
+        lcov.from_txt(text, report_builder_session)
+        report = report_builder_session.output_report()
+        processed_report = self.convert_report_to_better_readable(report)
+
+        assert processed_report["archive"] == {
+            "foo.c": [
+                (1047, "1/2", "b", [[0, "1/2", ["0:0"], None, None]], None, None),
+            ]
+        }
