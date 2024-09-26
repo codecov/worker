@@ -7,8 +7,9 @@ import pytest
 from redis import Redis
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import ReportLine
+from shared.utils.sessions import SessionType
 from shared.yaml import UserYaml
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as DbSession
 
 from database.models.core import Commit, CompareCommit, Repository
 from database.tests.factories import CommitFactory, RepositoryFactory
@@ -27,10 +28,14 @@ def write_raw_upload(
     repoid: int,
     commitid: str,
     contents: bytes,
+    upload_json: dict | None = None,
 ):
     report_id = uuid4().hex
     written_path = archive_service.write_raw_upload(commitid, report_id, contents)
-    upload = json.dumps({"reportid": report_id, "url": written_path})
+
+    upload_json = upload_json or {}
+    upload_json.update({"reportid": report_id, "url": written_path})
+    upload = json.dumps(upload_json)
 
     redis_key = f"uploads/{repoid}/{commitid}"
     redis.lpush(redis_key, upload)
@@ -54,7 +59,7 @@ def get_base_report():
     return report
 
 
-def setup_base_commit(repository: Repository, dbsession: Session) -> Commit:
+def setup_base_commit(repository: Repository, dbsession: DbSession) -> Commit:
     base_report = get_base_report()
     commit = CommitFactory(repository=repository)
     dbsession.add(commit)
@@ -112,28 +117,31 @@ def setup_mock_get_compare(
     mock_repo_provider.get_compare.return_value = get_compare
 
 
-@pytest.mark.integration
-@pytest.mark.django_db()
-@pytest.mark.parametrize("do_parallel_processing", [False, True])
-def test_full_upload(
-    dbsession: Session,
-    do_parallel_processing: bool,
+def setup_mocks(
     mocker,
-    mock_repo_provider,
-    mock_storage,
+    dbsession: DbSession,
     mock_configuration,
+    mock_repo_provider,
+    user_yaml=None,
 ):
     # patch various `get_db_session` imports
     hook_session(mocker, dbsession)
     # to not close the session after each task
     mocker.patch("tasks.base.BaseCodecovTask.wrap_up_dbsession")
+    mocker.patch("tasks.base.BaseCodecovTask._commit_django")
     # patch various `get_repo_provider_service` imports
     hook_repo_provider(mocker, mock_repo_provider)
     # avoid some calls reaching out to git providers
     mocker.patch("tasks.upload.UploadTask.possibly_setup_webhooks", return_value=True)
     mocker.patch(
-        "tasks.upload.fetch_commit_yaml_and_possibly_store", return_value=UserYaml({})
+        "tasks.upload.fetch_commit_yaml_and_possibly_store",
+        return_value=UserYaml(user_yaml or {}),
     )
+    # disable all the tasks being emitted from `UploadFinisher`
+    mocker.patch(
+        "tasks.notify.NotifyTask.run_impl"
+    )  # we would eventually also E2E test these
+
     # force `report_json` to be written out to storage
     mock_configuration.set_params(
         {
@@ -145,6 +153,21 @@ def test_full_upload(
             }
         }
     )
+
+
+@pytest.mark.integration
+@pytest.mark.django_db()
+@pytest.mark.parametrize("do_parallel_processing", [False, True])
+def test_full_upload(
+    dbsession: DbSession,
+    do_parallel_processing: bool,
+    mocker,
+    mock_repo_provider,
+    mock_storage,
+    mock_configuration,
+):
+    setup_mocks(mocker, dbsession, mock_configuration, mock_repo_provider)
+
     # use parallel processing:
     mocker.patch.object(
         PARALLEL_UPLOAD_PROCESSING_BY_REPO,
@@ -240,7 +263,7 @@ end_of_record
     report = report_service.get_existing_report_for_commit(commit, report_code=None)
 
     assert report
-    assert set(report.files) == set(("a.rs", "b.rs"))
+    assert set(report.files) == {"a.rs", "b.rs"}
 
     a = report.get("a.rs")
     assert a
@@ -252,7 +275,10 @@ end_of_record
 
     b = report.get("b.rs")
     assert b
-    assert lines(b.lines) == [(1, 3), (2, 5)]
+    assert lines(b.lines) == [
+        (1, 3),
+        (2, 5),
+    ]
 
     # Adding one more upload
 
@@ -278,11 +304,13 @@ end_of_record
     report = report_service.get_existing_report_for_commit(commit, report_code=None)
 
     assert report
-    assert set(report.files) == set(("a.rs", "b.rs", "c.rs"))
+    assert set(report.files) == {"a.rs", "b.rs", "c.rs"}
 
     c = report.get("c.rs")
     assert c
-    assert lines(c.lines) == [(2, 4)]  # only yields covered lines
+    assert lines(c.lines) == [
+        (2, 4),
+    ]
 
     archive = mock_storage.storage["archive"]
     repo_hash = ArchiveService.get_archive_hash(repository)
@@ -308,3 +336,239 @@ end_of_record
         "coverage": 1,
         "partials": 0,
     }
+
+
+@pytest.mark.integration
+@pytest.mark.django_db()
+@pytest.mark.parametrize("do_parallel_processing", [False, True])
+def test_full_carryforward(
+    dbsession: DbSession,
+    do_parallel_processing: bool,
+    mocker,
+    mock_repo_provider,
+    mock_storage,
+    mock_configuration,
+):
+    user_yaml = {"flag_management": {"default_rules": {"carryforward": True}}}
+    setup_mocks(
+        mocker, dbsession, mock_configuration, mock_repo_provider, user_yaml=user_yaml
+    )
+
+    # use parallel processing:
+    mocker.patch.object(
+        PARALLEL_UPLOAD_PROCESSING_BY_REPO,
+        "check_value",
+        return_value=do_parallel_processing,
+    )
+
+    repository = RepositoryFactory.create()
+    dbsession.add(repository)
+    dbsession.flush()
+
+    repoid = repository.repoid
+    commitid = uuid4().hex
+    base_commit = CommitFactory.create(repository=repository, commitid=commitid)
+    dbsession.add(base_commit)
+    dbsession.flush()
+
+    archive_service = ArchiveService(repository)
+    do_upload = partial(
+        write_raw_upload,
+        get_redis_connection(),
+        archive_service,
+        repoid,
+        commitid,
+    )
+
+    do_upload(
+        b"""
+a.rs
+<<<<<< network
+# path=coverage.lcov
+SF:a.rs
+DA:1,1
+end_of_record
+""",
+        {"flags": "a"},
+    )
+    do_upload(
+        b"""
+a.rs
+<<<<<< network
+# path=coverage.lcov
+SF:a.rs
+DA:2,2
+DA:3,1
+end_of_record
+""",
+        {"flags": "a"},
+    )
+    do_upload(
+        b"""
+b.rs
+<<<<<< network
+# path=coverage.lcov
+SF:b.rs
+DA:1,3
+end_of_record
+""",
+        {"flags": "b"},
+    )
+    do_upload(
+        b"""
+b.rs
+<<<<<< network
+# path=coverage.lcov
+SF:b.rs
+DA:2,5
+end_of_record
+""",
+        {"flags": "b"},
+    )
+
+    with run_tasks():
+        upload_task.apply_async(
+            kwargs={
+                "repoid": repoid,
+                "commitid": commitid,
+            }
+        )
+
+    report_service = ReportService(UserYaml({}))
+    report = report_service.get_existing_report_for_commit(
+        base_commit, report_code=None
+    )
+
+    assert report
+    assert set(report.files) == {"a.rs", "b.rs"}
+
+    a = report.get("a.rs")
+    assert a
+    assert lines(a.lines) == [
+        (1, 1),
+        (2, 2),
+        (3, 1),
+    ]
+
+    b = report.get("b.rs")
+    assert b
+    assert lines(b.lines) == [
+        (1, 3),
+        (2, 5),
+    ]
+
+    # Then, upload only *half* of the reports using carry-forward logic:
+
+    commitid = uuid4().hex
+    commit = CommitFactory.create(
+        repository=repository,
+        commitid=commitid,
+        _report_json=None,
+        parent_commit_id=base_commit.commitid,
+    )
+    dbsession.add(commit)
+    dbsession.flush()
+
+    # BASE and HEAD are connected in a PR
+    pull = PullFactory(
+        pullid=12,
+        repository=repository,
+        compared_to=base_commit.commitid,
+    )
+    dbsession.add(pull)
+    dbsession.flush()
+    setup_mock_get_compare(base_commit, commit, mock_repo_provider)
+
+    do_upload = partial(
+        write_raw_upload,
+        get_redis_connection(),
+        archive_service,
+        repoid,
+        commitid,
+    )
+
+    do_upload(
+        b"""
+a.rs
+<<<<<< network
+# path=coverage.lcov
+SF:a.rs
+DA:1,1
+end_of_record
+""",
+        {"flags": "a"},
+    )
+
+    with run_tasks():
+        upload_task.apply_async(
+            kwargs={
+                "repoid": repoid,
+                "commitid": commitid,
+            }
+        )
+
+    # with only one upload being processed so far, we still expect all "b" sessions to still exist
+    report = report_service.get_existing_report_for_commit(commit, report_code=None)
+
+    assert report
+    assert set(report.files) == {"a.rs", "b.rs"}
+
+    a = report.get("a.rs")
+    assert a
+    assert lines(a.lines) == [
+        (1, 1),
+    ]
+
+    b = report.get("b.rs")
+    assert b
+    assert lines(b.lines) == [
+        (1, 3),
+        (2, 5),
+    ]
+
+    sessions = report.sessions
+    # we expect there to be a total of 3 sessions, two of which are carriedforward
+    assert len(sessions) == 3
+    carriedforward_sessions = sum(
+        1 for s in sessions.values() if s.session_type == SessionType.carriedforward
+    )
+    assert carriedforward_sessions == 2
+
+    # and then overwrite data related to "b" as well
+    do_upload(
+        b"""
+b.rs
+<<<<<< network
+# path=coverage.lcov
+SF:b.rs
+DA:1,3
+end_of_record
+""",
+        {"flags": "b"},
+    )
+
+    with run_tasks():
+        upload_task.apply_async(
+            kwargs={
+                "repoid": repoid,
+                "commitid": commitid,
+            }
+        )
+    report = report_service.get_existing_report_for_commit(commit, report_code=None)
+
+    assert report
+    assert set(report.files) == {"a.rs", "b.rs"}
+
+    a = report.get("a.rs")
+    assert a
+    assert lines(a.lines) == [
+        (1, 1),
+    ]
+
+    b = report.get("b.rs")
+    assert b
+    assert lines(b.lines) == [
+        (1, 3),
+    ]
+
+    assert len(report.sessions) == 2
