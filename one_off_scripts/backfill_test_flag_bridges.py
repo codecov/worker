@@ -29,7 +29,7 @@ def backfill_test_flag_bridges(repoid=None):
 
         bridges_to_create = []
         for test in tests:
-            TestFlagBridge.objects.filter(test == test).delete()
+            TestFlagBridge.objects.filter(test=test).delete()
 
             try:
                 first_test_instance = TestInstance.objects.filter(
