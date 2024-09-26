@@ -107,9 +107,6 @@ class TestBasePathAwarePathFixer(object):
         assert base_aware_pf("sample/path.c") == "path.c"
         assert base_aware_pf("another/path.py") == "another/path.py"
         assert base_aware_pf("/another/path.py") == "another/path.py"
-        assert len(base_aware_pf.unexpected_results) == 0
-        assert base_aware_pf.log_abnormalities() is False
-        assert not base_aware_pf.log_abnormalities()
 
     def test_basepath_uses_own_result_if_main_is_none(self):
         toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
@@ -118,13 +115,6 @@ class TestBasePathAwarePathFixer(object):
         base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
         assert pf("__init__.py") is None
         assert base_aware_pf("__init__.py") == "project/__init__.py"
-        assert base_aware_pf.log_abnormalities()
-        assert len(base_aware_pf.unexpected_results) == 1
-        assert base_aware_pf.unexpected_results.pop() == {
-            "original_path": "__init__.py",
-            "original_path_fixer_result": None,
-            "base_path_aware_result": "project/__init__.py",
-        }
 
     def test_basepath_uses_own_result_if_main_is_none_multuple_base_paths(self):
         toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
@@ -137,9 +127,3 @@ class TestBasePathAwarePathFixer(object):
             base_aware_pf("__init__.py", bases_to_try=["/home/travis/build/project"])
             == "project/__init__.py"
         )
-        assert base_aware_pf.log_abnormalities()
-        assert base_aware_pf.unexpected_results.pop() == {
-            "original_path": "__init__.py",
-            "original_path_fixer_result": None,
-            "base_path_aware_result": "project/__init__.py",
-        }

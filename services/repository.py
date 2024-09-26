@@ -91,7 +91,7 @@ def get_repo_provider_service_for_specific_commit(
 def get_repo_provider_service(
     repository: Repository,
     installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-) -> torngit.base.TorngitBaseAdapter:
+) -> TorngitBaseAdapter:
     adapter_auth_info = get_adapter_auth_information(
         repository.owner,
         repository=repository,

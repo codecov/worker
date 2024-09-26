@@ -16,7 +16,7 @@ from helpers.labels import SpecialLabelsEnum
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
-    _adjust_sessions,
+    clear_carryforward_sessions,
     make_sure_label_indexes_match,
 )
 from test_utils.base import BaseTestCase
@@ -73,7 +73,7 @@ class TestAdjustSession(BaseTestCase):
         second_file = EditableReportFile("second_file.py")
         first_report.append(first_file)
         first_report.append(second_file)
-        # print(self.convert_report_to_better_readable(first_report)["archive"])
+
         assert self.convert_report_to_better_readable(first_report)["archive"] == {
             "first_file.py": [
                 (
@@ -241,7 +241,7 @@ class TestAdjustSession(BaseTestCase):
         second_file = EditableReportFile("second_file.py")
         first_report.append(first_file)
         first_report.append(second_file)
-        # print(self.convert_report_to_better_readable(first_report)["archive"])
+
         assert self.convert_report_to_better_readable(first_report)["archive"] == {
             "first_file.py": [
                 (
@@ -404,8 +404,8 @@ class TestAdjustSession(BaseTestCase):
         second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml({})
         # No change to the report cause there's no session to CF
-        assert _adjust_sessions(
-            report_under_test, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            report_under_test, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [])
         assert first_value == self.convert_report_to_better_readable(report_under_test)
 
@@ -419,10 +419,9 @@ class TestAdjustSession(BaseTestCase):
                 }
             }
         )
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
-        print(self.convert_report_to_better_readable(sample_first_report))
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -647,10 +646,10 @@ class TestAdjustSession(BaseTestCase):
 
         first_value = self.convert_report_to_better_readable(sample_first_report)
         # This makes changes to the not-label-encoded original report, encoding them
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             report_under_test,
             second_report,
-            first_to_merge_session,
+            ["enterprise"],
             current_yaml,
             upload=upload,
         ) == SessionAdjustmentResult([], [0])
@@ -795,14 +794,14 @@ class TestAdjustSession(BaseTestCase):
             ),
         )
         second_report.append(second_report_file)
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             sample_first_report,
             second_report,
-            first_to_merge_session,
+            ["enterprise"],
             current_yaml,
             upload=upload,
         ) == SessionAdjustmentResult([], [0])
-        print(self.convert_report_to_better_readable(sample_first_report))
+
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -1064,15 +1063,15 @@ class TestAdjustSession(BaseTestCase):
         )
         second_report.append(second_report_file)
         second_report.append(a_report_file)
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             sample_first_report,
             second_report,
-            first_to_merge_session,
+            ["enterprise"],
             current_yaml,
             upload=upload,
         ) == SessionAdjustmentResult([0], [])
+
         res = self.convert_report_to_better_readable(sample_first_report)
-        # print(res["report"]["sessions"])
         assert res["report"]["sessions"] == {
             "1": {
                 "t": None,
@@ -1120,10 +1119,7 @@ class TestAdjustSession(BaseTestCase):
                 "se": {},
             },
         }
-        print(self.convert_report_to_better_readable(sample_first_report)["archive"])
-        assert self.convert_report_to_better_readable(sample_first_report)[
-            "archive"
-        ] == {
+        assert res["archive"] == {
             "first_file.py": [
                 (
                     1,
@@ -1219,98 +1215,3 @@ class TestAdjustSession(BaseTestCase):
                 ),
             ]
         }
-
-
-{
-    "first_file.py": [
-        (
-            1,
-            14,
-            None,
-            [[3, 7, None, None, None], [2, 14, None, None, None]],
-            None,
-            None,
-            [
-                (2, 14, None, [2, 1]),
-                (3, 7, None, [2]),
-            ],
-        ),
-        (
-            2,
-            15,
-            None,
-            [[1, 1, None, None, None], [3, 15, None, None, None]],
-            None,
-            None,
-            [
-                (1, 1, None, [1]),
-                (3, 15, None, [2, 1]),
-            ],
-        ),
-        (
-            3,
-            9,
-            None,
-            [[2, 2, None, None, None], [1, 9, None, None, None]],
-            None,
-            None,
-            [
-                (1, 9, None, [1]),
-                (1, 9, None, [2]),
-                (2, 2, None, [1]),
-            ],
-        ),
-        (
-            4,
-            17,
-            None,
-            [
-                [3, 3, None, None, None],
-                [2, 10, None, None, None],
-                [1, 17, None, None, None],
-            ],
-            None,
-            None,
-            [
-                (1, 17, None, [0]),
-                (2, 10, None, [1]),
-                (2, 10, None, [2]),
-                (3, 3, None, [1]),
-            ],
-        ),
-        (
-            5,
-            18,
-            None,
-            [[3, 11, None, None, None], [2, 18, None, None, None]],
-            None,
-            None,
-            [
-                (2, 18, None, [0]),
-                (3, 11, None, [1]),
-                (3, 11, None, [2]),
-            ],
-        ),
-        (
-            6,
-            19,
-            None,
-            [[1, 5, None, None, None], [3, 19, None, None, None]],
-            None,
-            None,
-            [(1, 5, None, [2]), (3, 19, None, [0])],
-        ),
-        (
-            7,
-            13,
-            None,
-            [[2, 6, None, None, None], [1, 13, None, None, None]],
-            None,
-            None,
-            [
-                (1, 13, None, [2, 1]),
-                (2, 6, None, [2]),
-            ],
-        ),
-    ]
-}

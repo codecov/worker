@@ -24,13 +24,13 @@ from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.metrics import KiB, MiB, metrics
+from helpers.metrics import KiB, MiB
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService, MinioEndpoints
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
 from services.report import ReportService
-from services.report.raw_upload_processor import _adjust_sessions
+from services.report.raw_upload_processor import clear_carryforward_sessions
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.parallel_verification import parallel_verification_task
@@ -168,10 +168,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
-            with metrics.timer(f"{self.metrics_prefix}.save_parallel_report_results"):
-                parallel_paths = report_service.save_parallel_report_to_archive(
-                    commit, report, report_code
-                )
+            parallel_paths = report_service.save_parallel_report_to_archive(
+                commit, report, report_code
+            )
             # now that we've built the report and stored it to GCS, we have what we need to
             # compare the results with the current upload pipeline. We end execution of the
             # finisher task here so that we don't cause any additional side-effects
@@ -562,17 +561,16 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     ),
                 )
 
-            sessionid = next(iter(incremental_report.sessions))
-            incremental_report.sessions[sessionid].id = sessionid
-
-            session_id, session = cumulative_report.add_session(
-                incremental_report.sessions[parallel_idx], use_id_from_session=True
+            session = incremental_report.sessions[parallel_idx]
+            session.id = parallel_idx
+            _session_id, session = cumulative_report.add_session(
+                session, use_id_from_session=True
             )
-            session.id = session_id
 
-            _adjust_sessions(
-                cumulative_report, incremental_report, session, UserYaml(commit_yaml)
-            )
+            if flags := session.flags:
+                clear_carryforward_sessions(
+                    cumulative_report, incremental_report, flags, UserYaml(commit_yaml)
+                )
             # ReportService.update_upload_with_processing_result should use this result
             # to update the state of Upload. Once the experiment is finished, Upload.state should
             # be set to: parallel_processed (instead of processed)

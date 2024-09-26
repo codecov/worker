@@ -16,7 +16,7 @@ from helpers.labels import SpecialLabelsEnum
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
-    _adjust_sessions,
+    clear_carryforward_sessions,
 )
 from test_utils.base import BaseTestCase
 
@@ -222,8 +222,8 @@ class TestAdjustSession(BaseTestCase):
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml({})
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [])
         assert first_value == self.convert_report_to_better_readable(
             sample_first_report
@@ -239,8 +239,8 @@ class TestAdjustSession(BaseTestCase):
                 }
             }
         )
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
         print(self.convert_report_to_better_readable(sample_first_report))
         assert self.convert_report_to_better_readable(sample_first_report) == {
@@ -435,8 +435,8 @@ class TestAdjustSession(BaseTestCase):
             }
         )
         first_value = self.convert_report_to_better_readable(sample_first_report)
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
         after_result = self.convert_report_to_better_readable(sample_first_report)
         assert after_result == first_value
@@ -483,10 +483,10 @@ class TestAdjustSession(BaseTestCase):
                 )
             },
         )
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             sample_first_report,
             second_report,
-            first_to_merge_session,
+            ["enterprise"],
             current_yaml,
             upload=upload,
         ) == SessionAdjustmentResult([], [0])
@@ -519,8 +519,8 @@ class TestAdjustSession(BaseTestCase):
             ),
         )
         second_report.append(second_report_file)
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
         print(self.convert_report_to_better_readable(sample_first_report))
         assert self.convert_report_to_better_readable(sample_first_report) == {
@@ -766,8 +766,8 @@ class TestAdjustSession(BaseTestCase):
         )
         second_report.append(second_report_file)
         second_report.append(a_report_file)
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
         res = self.convert_report_to_better_readable(sample_first_report)
         # print(res["report"]["sessions"])
