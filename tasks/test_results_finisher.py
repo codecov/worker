@@ -399,6 +399,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     Flake.repoid == repoid,
                     Flake.testid.in_(failure_test_ids),
                     Flake.end_date.is_(None),
+                    Flake.count != (Flake.recent_passes_count + Flake.fail_count),
                 )
                 .limit(100)
                 .all()

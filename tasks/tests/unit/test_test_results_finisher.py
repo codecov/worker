@@ -763,6 +763,9 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         assert expected_result == result
 
+    @pytest.mark.parametrize(
+        "fail_count,count,recent_passes_count", [(2, 15, 13), (50, 150, 10)]
+    )
     @pytest.mark.integration
     def test_upload_finisher_task_call_with_flaky(
         self,
@@ -776,11 +779,19 @@ To view individual test run time comparison to the main branch, go to the [Test 
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
+        fail_count,
+        count,
+        recent_passes_count,
     ):
         mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = True
 
         repoid, commit, pull, test_instances = test_results_setup
+
+        for i, instance in enumerate(test_instances):
+            if i != 2:
+                dbsession.delete(instance)
+        dbsession.flush()
 
         r = ReducedError()
         r.message = "failure_message"
@@ -792,9 +803,9 @@ To view individual test run time comparison to the main branch, go to the [Test 
         f.repoid = repoid
         f.testid = test_instances[2].test_id
         f.reduced_error = r
-        f.count = 5
-        f.fail_count = 2
-        f.recent_passes_count = 1
+        f.count = count
+        f.fail_count = fail_count
+        f.recent_passes_count = recent_passes_count
         f.start_date = datetime.now()
         f.end_date = None
 
@@ -824,61 +835,17 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
-            """### :x: 4 Tests Failed:
+            f"""### :x: 1 Tests Failed:
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
-| 4 | 4 | 0 | 0 |
-<details><summary>View the top 2 failed tests by shortest run time</summary>
-
-> 
-> ```
-> test_name1
-> ```
-> 
-> <details><summary>Stack Traces | 2s run time</summary>
-> 
-> > `````````
-> > Shared 
-> > 
-> > 
-> > 
-> >  <pre> ````````
-> >  
-> > 
-> >  | test | test | test </pre>failure message
-> > `````````
-> > [View](https://example.com/build_url_1) the CI Build
-> 
-> </details>
-
-
-> 
-> ```
-> Class Name test_name0
-> ```
-> 
-> <details><summary>Stack Traces | 4s run time</summary>
-> 
-> > 
-> > ```
-> > <pre>Fourth 
-> > 
-> > </pre> | test  | instance |
-> > ```
-> > 
-> > [View](https://example.com/build_url_3) the CI Build
-> 
-> </details>
-
-</details>
-<details><summary>View the full list of 1 :snowflake: flaky tests</summary>
+| 1 | 1 | 0 | 0 |
+<details><summary>{"View the top 1 failed tests by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
 
 > 
 > ```
 > Other Class Name test_name2
 > ```
-> 
-> **Flake rate in main:** 40.00% (Passed 3 times, Failed 2 times)
+> {f"\n> **Flake rate in main:** 33.33% (Passed {count - fail_count} times, Failed {fail_count} times)" if (count - fail_count) != recent_passes_count else ""}
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
 > > `````````
