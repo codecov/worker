@@ -20,11 +20,7 @@ from helpers.exceptions import (
 )
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
-from services.report import (
-    ProcessingError,
-    RawReportInfo,
-    ReportService,
-)
+from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
@@ -532,8 +528,8 @@ class TestUploadProcessorTask(object):
         )
         mocker.patch.object(UploadProcessorTask, "save_report_results")
 
-        mocked_rewrite_report = mocker.patch.object(
-            UploadProcessorTask, "_rewrite_raw_report_readable"
+        mocked_post_process = mocker.patch.object(
+            UploadProcessorTask, "postprocess_raw_reports"
         )
 
         redis_queue = [{"url": "url", "upload_pk": upload.id_}]
@@ -571,20 +567,22 @@ class TestUploadProcessorTask(object):
         assert error_obj is not None
         assert error_obj.error_code == UploadErrorCode.UNKNOWN_PROCESSING
 
-        mocked_rewrite_report.assert_called()
-        expected_raw_report_info = RawReportInfo(
-            raw_report="ParsedRawReport()",
-            archive_url="url",
-            upload=upload.external_id,
-            error=ProcessingError(
-                code=UploadErrorCode.UNKNOWN_PROCESSING,
-                params={"location": "url"},
-                is_retryable=False,
-            ),
+        mocked_post_process.assert_called_with(
+            mocker.ANY,
+            mocker.ANY,
+            [
+                RawReportInfo(
+                    raw_report="ParsedRawReport()",
+                    archive_url="url",
+                    upload=upload.external_id,
+                    error=ProcessingError(
+                        code=UploadErrorCode.UNKNOWN_PROCESSING,
+                        params={"location": "url"},
+                        is_retryable=False,
+                    ),
+                )
+            ],
         )
-        # Third argument of the first call. We don't care about the other arguments
-        actual_raw_report_info = mocked_rewrite_report.call_args[0][2]
-        assert actual_raw_report_info == expected_raw_report_info
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_redis_lock_unobtainable(

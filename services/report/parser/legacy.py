@@ -3,7 +3,6 @@ from io import BytesIO
 
 import sentry_sdk
 
-from helpers.metrics import metrics
 from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedReportFile
 
 
@@ -106,7 +105,6 @@ class LegacyReportParser(object):
                 }
 
     @sentry_sdk.trace
-    @metrics.timer("services.report.parser.parse_raw_report_from_bytes")
     def parse_raw_report_from_bytes(self, raw_report: bytes) -> LegacyParsedRawReport:
         raw_report, _, _compat_report_str = raw_report.partition(
             self.ignore_from_now_on_marker
