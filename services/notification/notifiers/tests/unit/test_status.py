@@ -4,6 +4,7 @@ import pytest
 from mock import AsyncMock
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.types import ReportTotals
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitRepoNotFoundError,
@@ -14,7 +15,9 @@ from shared.typings.torngit import GithubInstallationInfo, TorngitInstanceData
 from shared.yaml.user_yaml import UserYaml
 
 from database.enums import Notification
+from database.tests.factories.core import CommitFactory
 from services.comparison import ComparisonProxy
+from services.comparison.types import FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.status import (
@@ -1448,8 +1451,116 @@ class TestProjectStatusNotifier(object):
         assert result == expected_result
         mock_get_impacted_files.assert_called()
 
+    @pytest.mark.parametrize(
+        "base_totals, head_totals, impacted_files, expected",
+        [
+            pytest.param(
+                ReportTotals(hits=1980, misses=120, partials=0),
+                ReportTotals(
+                    hits=1974,
+                    misses=120,
+                    partials=0,
+                    coverage=round((1974 / (1974 + 120)) * 100, 5),
+                ),
+                [
+                    {
+                        "removed_diff_coverage": [
+                            (1, "h"),
+                            (2, "h"),
+                            (3, "h"),
+                            (4, "h"),
+                            (5, "h"),
+                            (6, "h"),
+                            (7, "h"),
+                            (8, "h"),
+                            (9, "h"),
+                            (10, "h"),
+                            (11, "h"),
+                            (12, "h"),
+                            (13, "h"),
+                            (14, "h"),
+                            (15, "h"),
+                        ]
+                    }
+                ],
+                (
+                    "success",
+                    ", passed because coverage increased by 0.02% when compared to adjusted base (94.24%)",
+                ),
+                id="many_removed_hits_makes_head_more_covered_than_base",
+            ),
+            pytest.param(
+                ReportTotals(hits=1980, misses=120, partials=0),
+                ReportTotals(
+                    hits=1974,
+                    misses=120,
+                    partials=0,
+                    coverage=round((1974 / (1974 + 120)) * 100, 5),
+                ),
+                [
+                    {
+                        "removed_diff_coverage": [
+                            (1, "h"),
+                            (2, "h"),
+                            (3, "h"),
+                            (4, "h"),
+                            (5, "h"),
+                            (6, "h"),
+                        ]
+                    }
+                ],
+                (
+                    "success",
+                    ", passed because coverage increased by 0% when compared to adjusted base (94.27%)",
+                ),
+                id="many_removed_hits_makes_head_same_as_base",
+            ),
+            pytest.param(
+                ReportTotals(hits=1980, misses=120, partials=0),
+                ReportTotals(
+                    hits=1974,
+                    misses=120,
+                    partials=0,
+                    coverage=round((1974 / (1974 + 120)) * 100, 5),
+                ),
+                [
+                    {
+                        "removed_diff_coverage": [
+                            (1, "h"),
+                            (2, "h"),
+                            (3, "h"),
+                        ]
+                    }
+                ],
+                None,
+                id="not_enough_hits_removed_for_status_to_pass",
+            ),
+        ],
+    )
+    def test_adjust_base_behavior(
+        self, mocker, base_totals, head_totals, impacted_files, expected
+    ):
+        comparison = mocker.MagicMock(
+            name="fake-comparison",
+            get_impacted_files=MagicMock(return_value={"files": impacted_files}),
+            project_coverage_base=FullCommit(
+                commit=None, report=Report(totals=base_totals)
+            ),
+            head=FullCommit(commit=CommitFactory(), report=Report(totals=head_totals)),
+        )
+        settings = {"target": "auto"}
+        status_mixin = ProjectStatusNotifier(
+            repository="repo",
+            title="fake-notifier",
+            notifier_yaml_settings=settings,
+            notifier_site_settings={},
+            current_yaml=settings,
+        )
+        result = status_mixin._apply_adjust_base_behavior(comparison)
+        assert result == expected
+
     def test_notify_pass_adjust_base_behavior(
-        slef, mock_configuration, sample_comparison_negative_change, mocker
+        self, mock_configuration, sample_comparison_negative_change, mocker
     ):
         sample_comparison = sample_comparison_negative_change
         mock_get_impacted_files = mocker.patch.object(
@@ -1484,7 +1595,7 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
         )
         expected_result = {
-            "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by +0.00% when compared to adjusted base (50.00%)",
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by 0% when compared to adjusted base (50.00%)",
             "state": "success",
         }
         result = notifier.build_payload(sample_comparison)
@@ -1537,7 +1648,7 @@ class TestProjectStatusNotifier(object):
         mock_get_impacted_files.assert_called()
 
     def test_notify_adjust_base_behavior_fail(
-        slef, mock_configuration, sample_comparison_negative_change, mocker
+        self, mock_configuration, sample_comparison_negative_change, mocker
     ):
         sample_comparison = sample_comparison_negative_change
         mock_get_impacted_files = mocker.patch.object(
@@ -1580,7 +1691,7 @@ class TestProjectStatusNotifier(object):
         mock_get_impacted_files.assert_called()
 
     def test_notify_adjust_base_behavior_skips_if_target_coverage_defined(
-        slef, mock_configuration, sample_comparison_negative_change, mocker
+        self, mock_configuration, sample_comparison_negative_change, mocker
     ):
         sample_comparison = sample_comparison_negative_change
         mock_get_impacted_files = mocker.patch.object(

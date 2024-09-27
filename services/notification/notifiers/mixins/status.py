@@ -210,16 +210,17 @@ class StatusProjectMixin(object):
         quantized_base_adjusted_coverage = base_adjusted_coverage.quantize(
             Decimal("0.00000")
         )
-        if abs(quantized_base_adjusted_coverage - head_coverage) < Decimal("0.01"):
-            rounded_difference = round_number(
-                self.current_yaml, head_coverage - base_adjusted_coverage
+        if quantized_base_adjusted_coverage - head_coverage < Decimal("0.005"):
+            rounded_difference = max(
+                0,
+                round_number(self.current_yaml, head_coverage - base_adjusted_coverage),
             )
             rounded_base_adjusted_coverage = round_number(
                 self.current_yaml, base_adjusted_coverage
             )
             return (
                 "success",
-                f", passed because coverage increased by {rounded_difference:+}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)",
+                f", passed because coverage increased by {rounded_difference}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)",
             )
         return None
 
