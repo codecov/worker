@@ -4059,7 +4059,7 @@ class TestReportService(BaseTestCase):
         assert len(upload_obj.errors) == 0
         processing_result = ProcessingResult(
             session=Session(),
-            error=None,
+            session_adjustment=SessionAdjustmentResult([], []),
         )
         assert (
             ReportService({}).update_upload_with_processing_result(

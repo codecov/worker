@@ -33,7 +33,7 @@ class SessionAdjustmentResult:
 @dataclass
 class UploadProcessingResult:
     report: Report  # NOTE: this is just returning the input argument, and primarily used in tests
-    session_adjustment: SessionAdjustmentResult  # NOTE: this is only ever used in tests
+    session_adjustment: SessionAdjustmentResult
 
 
 @sentry_sdk.trace
