@@ -32,9 +32,11 @@ def backfill_test_flag_bridges(repoid=None):
             TestFlagBridge.objects.filter(test=test).delete()
 
             try:
-                first_test_instance = TestInstance.objects.filter(
-                    test_id=test.id
-                ).select_related("upload")[0]
+                first_test_instance = (
+                    TestInstance.objects.filter(test_id=test.id)
+                    .select_related("upload")
+                    .first()
+                )
             except IndexError:
                 continue
 
