@@ -1136,3 +1136,75 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
 Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("plan", ["users-basic", "users-pr-inappm"])
+    def test_upload_finisher_task_call_main_with_plan(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+        plan,
+    ):
+        mocked_get_flaky_tests = mocker.patch.object(
+            TestResultsFinisherTask, "get_flaky_tests"
+        )
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = True
+        commit_yaml = {
+            "codecov": {
+                "max_report_age": False,
+            },
+            "test_analytics": {"flake_detection": True},
+        }
+
+        repoid, commit, pull, test_instances = test_results_setup
+
+        commit.merged = True
+
+        repo = dbsession.query(Repository).filter_by(repoid=repoid).first()
+        repo.owner.plan = plan
+        dbsession.flush()
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            [
+                [{"successful": True}],
+            ],
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml=commit_yaml,
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
+        if plan == "users-basic":
+            test_results_mock_app.tasks[
+                "app.tasks.flakes.ProcessFlakesTask"
+            ].apply_async.assert_not_called()
+            mocked_get_flaky_tests.assert_not_called()
+        else:
+            test_results_mock_app.tasks[
+                "app.tasks.flakes.ProcessFlakesTask"
+            ].apply_async.assert_called_with(
+                kwargs={
+                    "repo_id": repoid,
+                    "commit_id_list": [commit.commitid],
+                    "branch": "main",
+                },
+            )
+            mocked_get_flaky_tests.assert_called_with(
+                dbsession, mocker.ANY, repoid, mocker.ANY
+            )

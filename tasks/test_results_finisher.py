@@ -141,7 +141,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
 
         repo = db_session.query(Repository).filter_by(repoid=repoid).first()
-        if should_write_flaky_detection(repoid, commit_yaml):
+        if should_write_flaky_detection(repo, commit_yaml):
             if commit.merged is True or commit.branch == repo.branch:
                 self.app.tasks[process_flakes_task_name].apply_async(
                     kwargs=dict(
@@ -326,7 +326,12 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     QUEUE_NOTIFY_KEY: False,
                 }
 
-        flaky_tests = self.get_flaky_tests(db_session, commit_yaml, repoid, failures)
+        flaky_tests = dict()
+
+        if should_read_flaky_detection(repo, commit_yaml):
+            flaky_tests = self.get_flaky_tests(
+                db_session, commit_yaml, repoid, failures
+            )
 
         failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
 
@@ -348,7 +353,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 TestResultsFlow.TEST_RESULTS_NOTIFY,
             ):
                 metrics.timing(
-                    f"test_results_notif_latency.{"flaky" if should_read_flaky_detection(repoid, commit_yaml) else "non_flaky"}",
+                    f"test_results_notif_latency.{"flaky" if should_read_flaky_detection(repo, commit_yaml) else "non_flaky"}",
                     begin_to_notify,
                 )
             notifier_result: NotifierResult = notifier.notify()
@@ -397,28 +402,25 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid: int,
         failures: list[TestResultsNotificationFailure],
     ) -> dict[str, FlakeInfo]:
-        if should_read_flaky_detection(repoid, commit_yaml):
-            flaky_test_ids = dict()
-            failure_test_ids = [failure.test_id for failure in failures]
+        flaky_test_ids = dict()
+        failure_test_ids = [failure.test_id for failure in failures]
 
-            matching_flakes = list(
-                db_session.query(Flake)
-                .filter(  # type:ignore
-                    Flake.repoid == repoid,
-                    Flake.testid.in_(failure_test_ids),
-                    Flake.end_date.is_(None),
-                    Flake.count != (Flake.recent_passes_count + Flake.fail_count),
-                )
-                .limit(100)
-                .all()
+        matching_flakes = list(
+            db_session.query(Flake)
+            .filter(  # type:ignore
+                Flake.repoid == repoid,
+                Flake.testid.in_(failure_test_ids),
+                Flake.end_date.is_(None),
+                Flake.count != (Flake.recent_passes_count + Flake.fail_count),
             )
+            .limit(100)
+            .all()
+        )
 
-            for flake in matching_flakes:
-                flaky_test_ids[flake.testid] = FlakeInfo(flake.fail_count, flake.count)
+        for flake in matching_flakes:
+            flaky_test_ids[flake.testid] = FlakeInfo(flake.fail_count, flake.count)
 
-            return flaky_test_ids
-
-        return dict()
+        return flaky_test_ids
 
     def check_if_no_success(self, previous_result):
         return all(
