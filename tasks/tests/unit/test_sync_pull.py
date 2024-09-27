@@ -118,7 +118,12 @@ class TestPullSyncTask(object):
             get_commit=MagicMock(return_value=dict(parents=["1", "2"]))
         )
         res = task.update_pull_commits(
-            mock_repo_provider, enriched_pull, commits, commits_at_base, current_yaml
+            mock_repo_provider,
+            enriched_pull,
+            commits,
+            commits_at_base,
+            current_yaml,
+            repository,
         )
 
         if outcome:
@@ -197,7 +202,12 @@ class TestPullSyncTask(object):
             get_commit=MagicMock(return_value=dict(parents=["1", "2"]))
         )
         res = task.update_pull_commits(
-            mock_repo_provider, enriched_pull, commits, commits_at_base, current_yaml
+            mock_repo_provider,
+            enriched_pull,
+            commits,
+            commits_at_base,
+            current_yaml,
+            repository,
         )
         assert res == {"merged_count": 0, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
@@ -545,7 +555,7 @@ class TestPullSyncTask(object):
         )
 
         task.trigger_process_flakes(
-            repository.repoid,
+            repository,
             commit.commitid,
             "main",
             current_yaml,
