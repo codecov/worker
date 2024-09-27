@@ -7,6 +7,7 @@ coverage.xml
 tests/__init__.py
 tests/test_sample.py
 <<<<<< network
+
 # path=coverage.xml
 <?xml version="1.0" ?>
 <coverage branch-rate="0" branches-covered="0" branches-valid="0" complexity="0" line-rate="0.7917" lines-covered="19" lines-valid="24" timestamp="1558110577401" version="4.5.3">
@@ -66,6 +67,7 @@ tests/test_sample.py
     </packages>
 </coverage>
 <<<<<< EOF
+
 # path=codecov.yaml
 codecov:
   notify:
@@ -92,5 +94,6 @@ parsers:
 comment:
   layout: "header, diff"
   behavior: default
-  require_changes: no<<<<<< EOF
+  require_changes: no
+<<<<<< EOF
 

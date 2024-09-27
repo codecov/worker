@@ -26,9 +26,9 @@ from helpers.parallel_upload_processing import (
 from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
-from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import ProcessingResult, RawReportInfo, Report, ReportService
+from services.report.parser.types import VersionOneParsedRawReport
 from services.repository import get_repo_provider_service
 from tasks.base import BaseCodecovTask
 
@@ -429,43 +429,18 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         archive_service = report_service.get_archive_service(commit.repository)
 
         for report_info in reports:
+            archive_url = report_info.archive_url
+
             if should_delete_archive_setting and not report_info.error:
-                archive_url = report_info.archive_url
                 if not archive_url.startswith("http"):
-                    log.info(
-                        "Deleting uploaded file as requested",
-                        extra=dict(
-                            archive_url=archive_url,
-                            commit=commit.commitid,
-                            upload=report_info.upload,
-                            parent_task=self.request.parent_id,
-                        ),
-                    )
                     archive_service.delete_file(archive_url)
 
-            else:
-                self._rewrite_raw_report_readable(archive_service, commit, report_info)
+            elif isinstance(report_info.raw_report, VersionOneParsedRawReport):
+                # only a version 1 report needs to be "rewritten readable"
 
-    def _rewrite_raw_report_readable(
-        self,
-        archive_service: ArchiveService,
-        commit: Commit,
-        raw_report_info: RawReportInfo,
-    ) -> None:
-        assert raw_report_info.raw_report
-        archive_url = raw_report_info.archive_url
-        log.info(
-            "Re-writing raw report in readable format",
-            extra=dict(
-                archive_url=archive_url,
-                commit=commit.commitid,
-                upload=raw_report_info.upload,
-                parent_task=self.request.parent_id,
-            ),
-        )
-        archive_service.write_file(
-            archive_url, raw_report_info.raw_report.content().getvalue()
-        )
+                archive_service.write_file(
+                    archive_url, report_info.raw_report.content().getvalue()
+                )
 
     @sentry_sdk.trace
     def save_report_results(

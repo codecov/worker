@@ -20,11 +20,7 @@ from helpers.exceptions import (
 )
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
-from services.report import (
-    ProcessingError,
-    RawReportInfo,
-    ReportService,
-)
+from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
@@ -337,7 +333,9 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(upload)
         dbsession.flush()
-        with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
+        with open(
+            here.parent.parent / "samples" / "sample_uploaded_report_1.txt", "rb"
+        ) as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
@@ -352,7 +350,8 @@ class TestUploadProcessorTask(object):
             arguments_list=redis_queue,
             report_code=None,
         )
-        expected_result = {
+
+        assert result == {
             "processings_so_far": [
                 {
                     "arguments": {"url": url, "upload_pk": upload.id_},
@@ -360,10 +359,10 @@ class TestUploadProcessorTask(object):
                 }
             ]
         }
-        assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         assert upload.state == "processed"
-        expected_generated_report = {
+
+        assert commit.report_json == {
             "files": {
                 "awesome/__init__.py": [
                     0,
@@ -402,20 +401,11 @@ class TestUploadProcessorTask(object):
                 }
             },
         }
-        assert (
-            commit.report_json["files"]["awesome/__init__.py"]
-            == expected_generated_report["files"]["awesome/__init__.py"]
-        )
-        assert commit.report_json["files"] == expected_generated_report["files"]
-        assert commit.report_json["sessions"] == expected_generated_report["sessions"]
-        assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid, None)
 
         # storage is overwritten with parsed contents
         data = mock_storage.read_file("archive", url)
-        parsed = LegacyReportParser().parse_raw_report_from_bytes(
-            content.encode("utf-8")
-        )
+        parsed = LegacyReportParser().parse_raw_report_from_bytes(content)
         assert data == parsed.content().getvalue()
 
     @pytest.mark.integration
@@ -532,8 +522,8 @@ class TestUploadProcessorTask(object):
         )
         mocker.patch.object(UploadProcessorTask, "save_report_results")
 
-        mocked_rewrite_report = mocker.patch.object(
-            UploadProcessorTask, "_rewrite_raw_report_readable"
+        mocked_post_process = mocker.patch.object(
+            UploadProcessorTask, "postprocess_raw_reports"
         )
 
         redis_queue = [{"url": "url", "upload_pk": upload.id_}]
@@ -571,20 +561,22 @@ class TestUploadProcessorTask(object):
         assert error_obj is not None
         assert error_obj.error_code == UploadErrorCode.UNKNOWN_PROCESSING
 
-        mocked_rewrite_report.assert_called()
-        expected_raw_report_info = RawReportInfo(
-            raw_report="ParsedRawReport()",
-            archive_url="url",
-            upload=upload.external_id,
-            error=ProcessingError(
-                code=UploadErrorCode.UNKNOWN_PROCESSING,
-                params={"location": "url"},
-                is_retryable=False,
-            ),
+        mocked_post_process.assert_called_with(
+            mocker.ANY,
+            mocker.ANY,
+            [
+                RawReportInfo(
+                    raw_report="ParsedRawReport()",
+                    archive_url="url",
+                    upload=upload.external_id,
+                    error=ProcessingError(
+                        code=UploadErrorCode.UNKNOWN_PROCESSING,
+                        params={"location": "url"},
+                        is_retryable=False,
+                    ),
+                )
+            ],
         )
-        # Third argument of the first call. We don't care about the other arguments
-        actual_raw_report_info = mocked_rewrite_report.call_args[0][2]
-        assert actual_raw_report_info == expected_raw_report_info
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_with_redis_lock_unobtainable(
