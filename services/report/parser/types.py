@@ -73,11 +73,11 @@ class ParsedRawReport(object):
         if self.has_toc():
             for file in self.get_toc():
                 buffer.write(f"{file}\n".encode("utf-8"))
-            buffer.write("<<<<<< network\n\n".encode("utf-8"))
+            buffer.write(b"<<<<<< network\n\n")
         for file in self.uploaded_files:
             buffer.write(f"# path={file.filename}\n".encode("utf-8"))
             buffer.write(file.contents)
-            buffer.write("\n<<<<<< EOF\n\n".encode("utf-8"))
+            buffer.write(b"\n<<<<<< EOF\n\n")
         buffer.seek(0)
         return buffer
 

@@ -333,7 +333,9 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(upload)
         dbsession.flush()
-        with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
+        with open(
+            here.parent.parent / "samples" / "sample_uploaded_report_1.txt", "rb"
+        ) as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
@@ -348,7 +350,8 @@ class TestUploadProcessorTask(object):
             arguments_list=redis_queue,
             report_code=None,
         )
-        expected_result = {
+
+        assert result == {
             "processings_so_far": [
                 {
                     "arguments": {"url": url, "upload_pk": upload.id_},
@@ -356,10 +359,10 @@ class TestUploadProcessorTask(object):
                 }
             ]
         }
-        assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         assert upload.state == "processed"
-        expected_generated_report = {
+
+        assert commit.report_json == {
             "files": {
                 "awesome/__init__.py": [
                     0,
@@ -398,20 +401,11 @@ class TestUploadProcessorTask(object):
                 }
             },
         }
-        assert (
-            commit.report_json["files"]["awesome/__init__.py"]
-            == expected_generated_report["files"]["awesome/__init__.py"]
-        )
-        assert commit.report_json["files"] == expected_generated_report["files"]
-        assert commit.report_json["sessions"] == expected_generated_report["sessions"]
-        assert commit.report_json == expected_generated_report
         mocked_1.assert_called_with(commit.commitid, None)
 
         # storage is overwritten with parsed contents
         data = mock_storage.read_file("archive", url)
-        parsed = LegacyReportParser().parse_raw_report_from_bytes(
-            content.encode("utf-8")
-        )
+        parsed = LegacyReportParser().parse_raw_report_from_bytes(content)
         assert data == parsed.content().getvalue()
 
     @pytest.mark.integration
