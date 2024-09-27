@@ -17,7 +17,7 @@ from database.models import (
     Upload,
 )
 from helpers.notifier import BaseNotifier
-from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
+from rollouts import FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.processing.types import UploadArguments
 from services.report import BaseReportService
@@ -405,20 +405,12 @@ def not_private_and_free_or_team(repo: Repository):
     )
 
 
-def should_write_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
-    return (
-        (
-            FLAKY_TEST_DETECTION.check_value(identifier=repo.repoid, default=False)
-            or FLAKY_SHADOW_MODE.check_value(identifier=repo.repoid, default=False)
-        )
-        and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True)
-        and not_private_and_free_or_team(repo)
+def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
+    should_config = read_yaml_field(
+        commit_yaml, ("test_analytics", "flake_detection"), True
     )
-
-
-def should_read_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
-    return (
-        FLAKY_TEST_DETECTION.check_value(identifier=repo.repoid, default=False)
-        and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True)
-        and not_private_and_free_or_team(repo)
+    should_feature = FLAKY_TEST_DETECTION.check_value(
+        identifier=repo.repoid, default=True
     )
+    should_plan = not_private_and_free_or_team(repo)
+    return should_config and (should_feature or should_plan)

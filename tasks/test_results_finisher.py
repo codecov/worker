@@ -28,8 +28,7 @@ from services.test_results import (
     TestResultsNotificationPayload,
     TestResultsNotifier,
     latest_test_instances_for_a_given_commit,
-    should_read_flaky_detection,
-    should_write_flaky_detection,
+    should_do_flaky_detection,
 )
 from tasks.base import BaseCodecovTask
 from tasks.cache_test_rollups import cache_test_rollups_task_name
@@ -141,7 +140,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
 
         repo = db_session.query(Repository).filter_by(repoid=repoid).first()
-        if should_write_flaky_detection(repo, commit_yaml):
+        if should_do_flaky_detection(repo, commit_yaml):
             if commit.merged is True or commit.branch == repo.branch:
                 self.app.tasks[process_flakes_task_name].apply_async(
                     kwargs=dict(
@@ -328,7 +327,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         flaky_tests = dict()
 
-        if should_read_flaky_detection(repo, commit_yaml):
+        if should_do_flaky_detection(repo, commit_yaml):
             flaky_tests = self.get_flaky_tests(
                 db_session, commit_yaml, repoid, failures
             )
@@ -353,7 +352,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 TestResultsFlow.TEST_RESULTS_NOTIFY,
             ):
                 metrics.timing(
-                    f"test_results_notif_latency.{"flaky" if should_read_flaky_detection(repo, commit_yaml) else "non_flaky"}",
+                    f"test_results_notif_latency.{"flaky" if should_do_flaky_detection(repo, commit_yaml) else "non_flaky"}",
                     begin_to_notify,
                 )
             notifier_result: NotifierResult = notifier.notify()

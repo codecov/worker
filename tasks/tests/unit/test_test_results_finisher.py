@@ -944,9 +944,6 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         )
 
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "flake_detection", [None, "FLAKY_TEST_DETECTION", "FLAKY_SHADOW_MODE"]
-    )
     def test_upload_finisher_task_call_main_branch(
         self,
         mocker,
@@ -959,11 +956,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
-        flake_detection,
     ):
-        if flake_detection:
-            mock_feature = mocker.patch(f"services.test_results.{flake_detection}")
-            mock_feature.check_value.return_value = True
         commit_yaml = {
             "codecov": {"max_report_age": False},
         }
@@ -1190,21 +1183,12 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
         assert expected_result == result
 
-        if plan == "users-basic":
-            test_results_mock_app.tasks[
-                "app.tasks.flakes.ProcessFlakesTask"
-            ].apply_async.assert_not_called()
-            mocked_get_flaky_tests.assert_not_called()
-        else:
-            test_results_mock_app.tasks[
-                "app.tasks.flakes.ProcessFlakesTask"
-            ].apply_async.assert_called_with(
-                kwargs={
-                    "repo_id": repoid,
-                    "commit_id_list": [commit.commitid],
-                    "branch": "main",
-                },
-            )
-            mocked_get_flaky_tests.assert_called_with(
-                dbsession, mocker.ANY, repoid, mocker.ANY
-            )
+        test_results_mock_app.tasks[
+            "app.tasks.flakes.ProcessFlakesTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repo_id": repoid,
+                "commit_id_list": [commit.commitid],
+                "branch": "main",
+            },
+        )

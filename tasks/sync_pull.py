@@ -30,7 +30,7 @@ from services.repository import (
     fetch_and_update_pull_request_information,
     get_repo_provider_service,
 )
-from services.test_results import should_write_flaky_detection
+from services.test_results import should_do_flaky_detection
 from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.process_flakes import process_flakes_task_name
@@ -534,7 +534,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         current_yaml: UserYaml,
     ):
         # but only if flake processing is enabled for this repo
-        if should_write_flaky_detection(repository, current_yaml):
+        if should_do_flaky_detection(repository, current_yaml):
             self.app.tasks[process_flakes_task_name].apply_async(
                 kwargs=dict(
                     repo_id=repository.repoid, commit_id_list=[pull_head], branch=branch
