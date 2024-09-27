@@ -383,14 +383,13 @@ class DailyTestRollup(CodecovBaseModel, MixinBaseClassNoExternalID):
     )
 
 
-class TestFlagBridge(CodecovBaseModel, MixinBaseClassNoExternalID):
+class TestFlagBridge(CodecovBaseModel):
     __tablename__ = "reports_test_results_flag_bridge"
+
+    id_ = Column("id", types.BigInteger, primary_key=True)
 
     test_id = Column(types.Text, ForeignKey("reports_test.id"))
     test = relationship(Test, backref=backref("test_flag_bridges"))
-
-    repoid = Column(types.Integer, ForeignKey("repos.repoid"))
-    repository = relationship("Repository", backref=backref("test_flag_bridges"))
 
     flag_id = Column(
         "flag_id", types.BigInteger, ForeignKey("reports_repositoryflag.id")

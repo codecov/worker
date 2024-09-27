@@ -631,7 +631,6 @@ class TestUploadTestProcessorTask(object):
         ]
         for bridge in test_flag_bridges:
             assert bridge.flag == repo_flag
-            assert bridge.repoid == repoid
 
         assert len(tests) == 5
         assert len(test_instances) == 4
