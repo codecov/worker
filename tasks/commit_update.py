@@ -2,7 +2,10 @@ import logging
 
 from asgiref.sync import async_to_sync
 from shared.celery_config import commit_update_task_name
-from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.torngit.exceptions import (
+    TorngitClientError,
+    TorngitRepoNotFoundError,
+)
 
 from app import celery_app
 from database.models import Commit
@@ -36,7 +39,7 @@ class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
         was_updated = False
         try:
             installation_name_to_use = get_installation_name_for_owner_for_task(
-                self.name, repository.owner
+                db_session, self.name, repository.owner
             )
             repository_service = get_repo_provider_service(
                 repository, installation_name_to_use=installation_name_to_use

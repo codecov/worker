@@ -1,21 +1,21 @@
 import logging
 
+from sqlalchemy.orm import Session
+
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     Owner,
     OwnerInstallationNameToUseForTask,
 )
+from helpers.cache import cache
 
 log = logging.getLogger(__file__)
 
 
-def get_installation_name_for_owner_for_task(task_name: str, owner: Owner) -> str:
-    if owner.service not in ["github", "github_enterprise"]:
-        # The `installation` concept only exists in GitHub.
-        # We still return a default here, primarily to satisfy types.
-        return GITHUB_APP_INSTALLATION_DEFAULT_NAME
-
-    dbsession = owner.get_db_session()
+@cache.cache_function(ttl=86400)  # 1 day
+def get_installation_name_for_owner_for_task(
+    dbsession: Session, task_name: str, owner: Owner
+) -> str:
     config_for_owner = (
         dbsession.query(OwnerInstallationNameToUseForTask)
         .filter(

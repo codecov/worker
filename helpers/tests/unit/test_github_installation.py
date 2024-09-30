@@ -9,7 +9,7 @@ from helpers.github_installation import get_installation_name_for_owner_for_task
 
 
 def test_get_installation_name_for_owner_for_task(dbsession: Session):
-    owner = OwnerFactory(service="github")
+    owner = OwnerFactory()
     other_owner = OwnerFactory()
     task_name = "app.tasks.notify.Notify"
     installation_task_config = OwnerInstallationNameToUseForTask(
@@ -21,13 +21,14 @@ def test_get_installation_name_for_owner_for_task(dbsession: Session):
     dbsession.add_all([owner, installation_task_config])
     dbsession.flush()
     assert (
-        get_installation_name_for_owner_for_task(task_name, owner) == "my_installation"
+        get_installation_name_for_owner_for_task(dbsession, task_name, owner)
+        == "my_installation"
     )
     assert (
-        get_installation_name_for_owner_for_task(task_name, other_owner)
+        get_installation_name_for_owner_for_task(dbsession, task_name, other_owner)
         == GITHUB_APP_INSTALLATION_DEFAULT_NAME
     )
     assert (
-        get_installation_name_for_owner_for_task("other_task", owner)
+        get_installation_name_for_owner_for_task(dbsession, "other_task", owner)
         == GITHUB_APP_INSTALLATION_DEFAULT_NAME
     )
