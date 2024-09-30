@@ -1,4 +1,5 @@
 import json
+import random
 from functools import partial
 from typing import Iterable
 from uuid import uuid4
@@ -39,6 +40,8 @@ def write_raw_upload(
 
     redis_key = f"uploads/{repoid}/{commitid}"
     redis.lpush(redis_key, upload)
+
+    return upload_json
 
 
 def lines(lines: Iterable[tuple[int, ReportLine]]) -> list[tuple[int, int]]:
@@ -209,7 +212,12 @@ def test_full_upload(
         commitid,
     )
 
-    do_upload(
+    report_service = ReportService({})
+    commit_report = report_service.initialize_and_save_report(commit)
+
+    upload_id = 2**33 + int(random.random() * 2**15)
+
+    first_upload_json = do_upload(
         b"""
 a.rs
 <<<<<< network
@@ -217,8 +225,19 @@ a.rs
 SF:a.rs
 DA:1,1
 end_of_record
-"""
+""",
+        {"upload_id": upload_id},
     )
+
+    first_upload = report_service.create_report_upload(first_upload_json, commit_report)
+    first_upload.flags = []
+    dbsession.flush()
+
+    # force the upload to have a really high ID:
+    dbsession.execute(
+        f"UPDATE reports_upload SET id={upload_id} WHERE id={first_upload.id}"
+    )
+
     do_upload(
         b"""
 a.rs

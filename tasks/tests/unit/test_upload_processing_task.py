@@ -107,7 +107,7 @@ class TestUploadProcessorTask(object):
         }
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
-        expected_generated_report = {
+        assert commit.report_json == {
             "files": {
                 "awesome/__init__.py": [
                     0,
@@ -146,18 +146,8 @@ class TestUploadProcessorTask(object):
                 }
             },
         }
-        assert (
-            commit.report_json["sessions"]["0"]
-            == expected_generated_report["sessions"]["0"]
-        )
-        assert commit.report_json == expected_generated_report
+
         mocked_1.assert_called_with(commit.commitid, None)
-        # mocked_3.send_task.assert_called_with(
-        #     'app.tasks.notify.Notify',
-        #     args=None,
-        #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
-        # )
-        # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
             f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
@@ -239,7 +229,8 @@ class TestUploadProcessorTask(object):
         )
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
-        expected_generated_report = {
+
+        assert commit.report_json == {
             "files": {
                 "awesome/__init__.py": [
                     0,
@@ -278,18 +269,8 @@ class TestUploadProcessorTask(object):
                 }
             },
         }
-        assert (
-            commit.report_json["sessions"]["0"]
-            == expected_generated_report["sessions"]["0"]
-        )
-        assert commit.report_json == expected_generated_report
+
         mocked_1.assert_called_with(commit.commitid, None)
-        # mocked_3.send_task.assert_called_with(
-        #     'app.tasks.notify.Notify',
-        #     args=None,
-        #     kwargs={'repoid': commit.repository.repoid, 'commitid': commit.commitid}
-        # )
-        # mock_redis.assert_called_with(None)
         mock_redis.lock.assert_called_with(
             f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
             blocking_timeout=5,
