@@ -34,7 +34,7 @@ class SaveReportResultsTask(
 
         try:
             installation_name_to_use = get_installation_name_for_owner_for_task(
-                self.name, commit.repository.owner
+                db_session, self.name, commit.repository.owner
             )
             repository_service = get_repo_provider_service(
                 commit.repository, installation_name_to_use=installation_name_to_use
