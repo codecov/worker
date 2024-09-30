@@ -3,10 +3,7 @@ from functools import cached_property
 from typing import Generic, Literal, Self, TypeVar
 
 import sentry_sdk
-from shared.bundle_analysis import (
-    BundleAnalysisReport,
-    BundleAnalysisReportLoader,
-)
+from shared.bundle_analysis import BundleAnalysisReport, BundleAnalysisReportLoader
 from shared.torngit.base import TorngitBaseAdapter
 from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
@@ -20,9 +17,7 @@ from services.bundle_analysis.notify.types import (
     NotificationType,
     NotificationUserConfig,
 )
-from services.repository import (
-    get_repo_provider_service,
-)
+from services.repository import get_repo_provider_service
 from services.storage import get_storage_client
 
 T = TypeVar("T")
@@ -192,16 +187,18 @@ class NotificationContextBuilder:
 
         This allows all notifiers to access configuration for any notifier and already have the defaults
         """
-        required_changes: bool | Literal["bundle_increase"] = (
-            self.current_yaml.read_yaml_field(
-                "comment", "require_bundle_changes", _else=False
+        comment_config: bool | dict = self.current_yaml.read_yaml_field("comment")
+        if not comment_config:
+            required_changes = False
+            required_changes_threshold = BundleThreshold("absolute", 0)
+        else:
+            required_changes: bool | Literal["bundle_increase"] = comment_config.get(
+                "require_bundle_changes", False
             )
-        )
-        required_changes_threshold: int | float = self.current_yaml.read_yaml_field(
-            "comment",
-            "bundle_change_threshold",
-            _else=BundleThreshold("absolute", 0),
-        )
+            required_changes_threshold: int | float = comment_config.get(
+                "bundle_change_threshold",
+                BundleThreshold("absolute", 0),
+            )
         warning_threshold: int | float = self.current_yaml.read_yaml_field(
             "bundle_analysis",
             "warning_threshold",
