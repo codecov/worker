@@ -1178,10 +1178,12 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
         )
         mock_get_instance.assert_called_with(
             "github",
-            **data,
-            token="the app token",
-            token_type_mapping=None,
-            on_token_refresh=None,
+            dict(
+                **data,
+                token="the app token",
+                token_type_mapping=None,
+                on_token_refresh=None,
+            ),
         )
 
 

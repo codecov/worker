@@ -31,6 +31,7 @@ from sqlalchemy.orm import Query
 from database.enums import CommitErrorTypes
 from database.models import Commit, Owner, Pull, Repository
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from helpers.cache import cache
 from helpers.save_commit_error import save_commit_error
 from helpers.token_refresh import get_token_refresh_callback
 from services.github import get_github_app_for_commit
@@ -45,7 +46,7 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 def get_repo_provider_service_for_specific_commit(
     commit: Commit,
     fallback_installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-) -> torngit.base.TorngitBaseAdapter:
+) -> TorngitBaseAdapter:
     """Gets a Torngit adapter (potentially) using a specific GitHub app as the authentication source.
     If the commit doesn't have a particular app assigned to it, return regular `get_repo_provider_service` choice
 
@@ -84,13 +85,16 @@ def get_repo_provider_service_for_specific_commit(
         on_token_refresh=None,
         **data,
     )
-    return _get_repo_provider_service_instance(repository.service, **adapter_params)
+    return _get_repo_provider_service_instance(repository.service, adapter_params)
 
 
 @sentry_sdk.trace
+@cache.cache_function(
+    ttl=5 * 60  # this TTL is quite conservative, it could potentially be higher
+)
 def get_repo_provider_service(
     repository: Repository,
-    installation_name_to_use: Optional[str] = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
 ) -> TorngitBaseAdapter:
     adapter_auth_info = get_adapter_auth_information(
         repository.owner,
@@ -121,10 +125,10 @@ def get_repo_provider_service(
         on_token_refresh=get_token_refresh_callback(adapter_auth_info["token_owner"]),
         **data,
     )
-    return _get_repo_provider_service_instance(repository.service, **adapter_params)
+    return _get_repo_provider_service_instance(repository.service, adapter_params)
 
 
-def _get_repo_provider_service_instance(service: str, **adapter_params):
+def _get_repo_provider_service_instance(service: str, adapter_params: dict):
     _timeouts = [
         get_config("setup", "http", "timeouts", "connect", default=30),
         get_config("setup", "http", "timeouts", "receive", default=60),
