@@ -29,6 +29,8 @@ def setup_tests(transactional_db):
     upload_2.flags.set([flag_3])
     test_instance_2 = TestInstanceFactory(test=test_2, upload=upload_2)
 
+    test_3 = TestFactory(repository_id=repo.repoid)
+
 
 @pytest.mark.django_db(transaction=True)
 def test_it_backfills_test_flag_bridges(setup_tests):
