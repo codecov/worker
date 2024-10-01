@@ -192,7 +192,7 @@ class TestBackfillCommitDataToStorageTask(object):
 
     @patch("tasks.backfill_commit_data_to_storage.ReportService.save_report")
     @patch(
-        "tasks.backfill_commit_data_to_storage.ReportService.get_existing_report_for_commit_from_legacy_data",
+        "tasks.backfill_commit_data_to_storage.ReportService.get_existing_report_for_commit",
         return_value="the existing report",
     )
     def test_handle_single_report_row_create_ReportDetails(

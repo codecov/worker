@@ -7,11 +7,7 @@ from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
     PullFactory,
-    ReportDetailsFactory,
-    ReportFactory,
     RepositoryFactory,
-    RepositoryFlagFactory,
-    UploadFactory,
 )
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy
@@ -97,144 +93,164 @@ def sample_report():
 
 @pytest.fixture
 def sample_commit_with_report_already_carriedforward(dbsession, mock_storage):
+    sessions_dict = {
+        "0": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": [],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "uploaded",
+            "t": None,
+            "u": None,
+        },
+        "1": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["unit"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "uploaded",
+            "t": None,
+            "u": None,
+        },
+        "2": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["enterprise"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "carriedforward",
+            "t": None,
+            "u": None,
+            "se": {"carriedforward_from": "123456789sha"},
+        },
+        "3": {
+            "N": None,
+            "a": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "f": ["integration"],
+            "j": None,
+            "n": None,
+            "p": None,
+            "st": "carriedforward",
+            "t": None,
+            "u": None,
+        },
+    }
+    file_headers = {
+        "file_00.py": [
+            0,
+            [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_01.py": [
+            1,
+            [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_10.py": [
+            10,
+            [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_11.py": [
+            11,
+            [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_12.py": [
+            12,
+            [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_13.py": [
+            13,
+            [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_14.py": [
+            14,
+            [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_02.py": [
+            2,
+            [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_03.py": [
+            3,
+            [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_04.py": [
+            4,
+            [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_05.py": [
+            5,
+            [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_06.py": [
+            6,
+            [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_07.py": [
+            7,
+            [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_08.py": [
+            8,
+            [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+        "file_09.py": [
+            9,
+            [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+            [None, None, None, [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
+            None,
+        ],
+    }
     commit = CommitFactory.create(
+        _report_json={"sessions": sessions_dict, "files": file_headers},
         repository__owner__service="github",
         repository__owner__integration_id="10000",
         repository__using_integration=True,
     )
     dbsession.add(commit)
-
-    unit_flag = RepositoryFlagFactory(repository=commit.repository, flag_name="unit")
-    dbsession.add(unit_flag)
-    enterprise_flag = RepositoryFlagFactory(
-        repository=commit.repository, flag_name="enterprise"
-    )
-    dbsession.add(enterprise_flag)
-    integration_flag = RepositoryFlagFactory(
-        repository=commit.repository, flag_name="integration"
-    )
-    dbsession.add(integration_flag)
-
-    report = ReportFactory(commit=commit)
-    dbsession.add(report)
-
-    upload0 = UploadFactory(report=report, order_number=0, upload_type="uploaded")
-    dbsession.add(upload0)
-    upload1 = UploadFactory(
-        report=report, order_number=1, upload_type="uploaded", flags=[unit_flag]
-    )
-    dbsession.add(upload1)
-    upload2 = UploadFactory(
-        report=report,
-        order_number=2,
-        upload_type="carriedforward",
-        upload_extras={"carriedforward_from": "123456789sha"},
-        flags=[enterprise_flag],
-    )
-    dbsession.add(upload2)
-    upload3 = UploadFactory(
-        report=report,
-        order_number=3,
-        upload_type="carriedforward",
-        flags=[integration_flag],
-    )
-    dbsession.add(upload3)
-
-    files_array = [
-        {
-            "filename": "file_00.py",
-            "file_index": 0,
-            "file_totals": [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_01.py",
-            "file_index": 1,
-            "file_totals": [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_10.py",
-            "file_index": 10,
-            "file_totals": [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_11.py",
-            "file_index": 11,
-            "file_totals": [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_12.py",
-            "file_index": 12,
-            "file_totals": [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_13.py",
-            "file_index": 13,
-            "file_totals": [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_14.py",
-            "file_index": 14,
-            "file_totals": [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_02.py",
-            "file_index": 2,
-            "file_totals": [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_03.py",
-            "file_index": 3,
-            "file_totals": [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_04.py",
-            "file_index": 4,
-            "file_totals": [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_05.py",
-            "file_index": 5,
-            "file_totals": [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_06.py",
-            "file_index": 6,
-            "file_totals": [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_07.py",
-            "file_index": 7,
-            "file_totals": [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_08.py",
-            "file_index": 8,
-            "file_totals": [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_09.py",
-            "file_index": 9,
-            "file_totals": [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-            "diff_totals": None,
-        },
-    ]
-    details = ReportDetailsFactory(report=report, _files_array=files_array)
-    dbsession.add(details)
-
     dbsession.flush()
 
     with open("tasks/tests/samples/sample_chunks_4_sessions.txt") as f:
@@ -368,7 +384,7 @@ def sample_comparison_coverage_carriedforward(
     dbsession.flush()
 
     yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-    report = ReportService(yaml_dict).build_report_from_commit(head_commit)
+    report = ReportService(yaml_dict).get_existing_report_for_commit(head_commit)
     report._totals = (
         None  # need to reset the report to get it to recalculate totals correctly
     )

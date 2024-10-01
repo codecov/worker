@@ -122,10 +122,8 @@ class BackfillCommitDataToStorageTask(
 
             repo_yaml = get_repo_yaml(commit.repository)
             report_service = ReportService(current_yaml=repo_yaml)
-            actual_report = (
-                report_service.get_existing_report_for_commit_from_legacy_data(
-                    commit, report_code=None
-                )
+            actual_report = report_service.get_existing_report_for_commit(
+                commit, report_code=None
             )
             if actual_report is not None:
                 report_service.save_report(commit, actual_report)
