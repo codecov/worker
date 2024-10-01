@@ -31,13 +31,13 @@ def backfill_test_flag_bridges(repoid=None):
         for test in tests:
             TestFlagBridge.objects.filter(test=test).delete()
 
-            try:
-                first_test_instance = (
-                    TestInstance.objects.filter(test_id=test.id)
-                    .select_related("upload")
-                    .first()
-                )
-            except IndexError:
+            first_test_instance = (
+                TestInstance.objects.filter(test_id=test.id)
+                .select_related("upload")
+                .first()
+            )
+
+            if first_test_instance is None:
                 continue
 
             flag_names = first_test_instance.upload.flag_names
