@@ -423,7 +423,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         was_updated, was_setup = False, False
         try:
             installation_name_to_use = get_installation_name_for_owner_for_task(
-                db_session, self.name, repository.owner
+                self.name, repository.owner
             )
             repository_service = get_repo_provider_service(
                 repository, installation_name_to_use=installation_name_to_use

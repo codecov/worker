@@ -21,9 +21,7 @@ from database.models import Commit, Pull, Repository, Test
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
-from rollouts import (
-    SYNC_PULL_USE_MERGE_COMMIT_SHA,
-)
+from rollouts import SYNC_PULL_USE_MERGE_COMMIT_SHA
 from services.comparison.changes import get_changes
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
@@ -113,7 +111,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         assert repository
         try:
             installation_name_to_use = get_installation_name_for_owner_for_task(
-                db_session, self.name, repository.owner
+                self.name, repository.owner
             )
             repository_service = get_repo_provider_service(
                 repository, installation_name_to_use=installation_name_to_use
