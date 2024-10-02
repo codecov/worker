@@ -3042,9 +3042,6 @@ class TestCommentNotifier(object):
         else:
             assert result[-1] == ""
 
-        print(result)
-        assert 0 == 1
-
 
 class TestFileSectionWriter(object):
     def test_filesection_no_extra_settings(self, sample_comparison, mocker):
