@@ -75,6 +75,7 @@ class RepositoryFactory(Factory):
     languages = []
     languages_last_updated = factory.LazyAttribute(lambda o: datetime.now())
     bundle_analysis_enabled = False
+    test_analytics_enabled = True
 
 
 class BranchFactory(Factory):
