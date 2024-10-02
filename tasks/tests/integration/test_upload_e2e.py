@@ -13,6 +13,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session as DbSession
 
 from database.models.core import Commit, CompareCommit, Repository
+from database.models.reports import Upload
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.core import PullFactory
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
@@ -457,8 +458,10 @@ end_of_record
     report = report_service.get_existing_report_for_commit(
         base_commit, report_code=None
     )
-
     assert report
+
+    base_sessions = report.sessions
+
     assert set(report.files) == {"a.rs", "b.rs"}
 
     a = report.get("a.rs")
@@ -553,6 +556,14 @@ end_of_record
     )
     assert carriedforward_sessions == 2
 
+    # the `Upload`s in the database should match the `sessions` in the report:
+    uploads = (
+        dbsession.query(Upload).filter(Upload.report_id == commit.report.id_).all()
+    )
+    assert {upload.order_number for upload in uploads} == {
+        session.id for session in sessions.values()
+    }
+
     # and then overwrite data related to "b" as well
     do_upload(
         b"""
@@ -591,3 +602,18 @@ end_of_record
     ]
 
     assert len(report.sessions) == 2
+    uploads = (
+        dbsession.query(Upload).filter(Upload.report_id == commit.report.id_).all()
+    )
+    assert {upload.order_number for upload in uploads} == {
+        session.id for session in report.sessions.values()
+    }
+
+    # just as a sanity check: any cleanup for the followup commit did not touch
+    # data of the base commit:
+    uploads = (
+        dbsession.query(Upload).filter(Upload.report_id == base_commit.report.id_).all()
+    )
+    assert {upload.order_number for upload in uploads} == {
+        session.id for session in base_sessions.values()
+    }
