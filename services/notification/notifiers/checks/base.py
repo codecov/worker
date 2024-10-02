@@ -94,7 +94,7 @@ class ChecksNotifier(StatusNotifier):
             or comparison.enriched_pull.provider_pull is None
         ):
             log.debug(
-                "Faling back to commit_status: Pull request not in provider",
+                "Falling back to commit_status: Pull request not in provider",
                 extra=dict(
                     notifier=self.name,
                     repoid=comparison.head.commit.repoid,
@@ -111,7 +111,7 @@ class ChecksNotifier(StatusNotifier):
             )
         if comparison.pull.state != "open":
             log.debug(
-                "Faling back to commit_status: Pull request closed",
+                "Falling back to commit_status: Pull request closed",
                 extra=dict(
                     notifier=self.name,
                     repoid=comparison.head.commit.repoid,
@@ -139,6 +139,30 @@ class ChecksNotifier(StatusNotifier):
                 notification_attempted=False,
                 notification_successful=None,
                 explanation="need_more_builds",
+                data_sent=None,
+                data_received=None,
+            )
+        # Check for existing statuses for this commit. If so, retain
+        # statuses and don't do a check as well
+        statuses = comparison.get_existing_statuses()
+        status_title = self.get_status_external_name()
+        print("lulu", statuses, status_title)
+        print("asdfasd", statuses.get(status_title))
+        if statuses and statuses.get(status_title):
+            log.debug(
+                "Falling back to commit_status: Status already exists for this commit",
+                extra=dict(
+                    notifier=self.name,
+                    repoid=comparison.head.commit.repoid,
+                    notifier_title=self.title,
+                    status_title=status_title,
+                    commit=comparison.head.commit,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="preexisting_commit_status",
                 data_sent=None,
                 data_received=None,
             )

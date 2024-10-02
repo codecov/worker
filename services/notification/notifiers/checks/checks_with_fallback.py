@@ -52,6 +52,7 @@ class ChecksWithFallback(AbstractBaseNotifier):
                 res.explanation == "no_pull_request"
                 or res.explanation == "pull_request_not_in_provider"
                 or res.explanation == "pull_request_closed"
+                or res.explanation == "preexisting_commit_status"
             ):
                 log.info(
                     "Couldn't use checks notifier, falling back to status notifiers",
