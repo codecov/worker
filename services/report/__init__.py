@@ -112,26 +112,6 @@ class BaseReportService:
     ) -> CommitReport:
         raise NotImplementedError()
 
-    def fetch_report_upload(
-        self, commit_report: CommitReport, upload_id: int
-    ) -> Upload:
-        """
-        Fetch Upload by the given upload_id.
-        :raises: Exception if Upload is not found.
-        """
-        db_session = commit_report.get_db_session()
-        upload = db_session.query(Upload).filter_by(id_=int(upload_id)).first()
-        if not upload:
-            raise Exception(
-                f"Failed to find existing upload by ID ({upload_id})",
-                dict(
-                    commit=commit_report.commit_id,
-                    repo=commit_report.commit.repoid,
-                    upload_id=upload_id,
-                ),
-            )
-        return upload
-
     def create_report_upload(
         self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
     ) -> Upload:
