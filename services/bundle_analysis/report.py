@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 from dataclasses import dataclass
@@ -25,6 +26,8 @@ from services.archive import ArchiveService
 from services.report import BaseReportService
 from services.storage import get_storage_client
 from services.timeseries import repository_datasets_query
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -290,6 +293,11 @@ class BundleAnalysisReportService(BaseReportService):
                     "result": "parser_error",
                     "plugin_name": plugin_name,
                 },
+            )
+            log.error(
+                "Unable to parse upload for bundle analysis",
+                exc_info=True,
+                extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             return ProcessingResult(
                 upload=upload,
