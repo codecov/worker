@@ -6,6 +6,7 @@ from shared.celery_config import parallel_verification_task_name
 
 from app import celery_app
 from database.models import Commit
+from helpers.metrics import metrics
 from services.report import ReportService
 from tasks.base import BaseCodecovTask
 
@@ -146,10 +147,8 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         )
 
         is_success = top_level_totals_match and file_level_totals_match
-        sentry_sdk.metrics.incr(
-            "parallel_verification.comparisons",
-            tags={"result": "success" if is_success else "failure"},
-        )
+        status = "success" if is_success else "failure"
+        metrics.incr(f"parallel_verification.comparisons.{status}")
         if not is_success:
             with sentry_sdk.new_scope() as scope:
                 if file_level_mismatched_files:

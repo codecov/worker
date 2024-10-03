@@ -3,6 +3,8 @@ from typing import List, Optional
 import regex
 import sentry_sdk
 
+from helpers.metrics import metrics
+
 predefined_dict_of_regexes_to_match = {
     "UUID": [
         r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}"
@@ -100,7 +102,7 @@ class FailureNormalizer:
 
     @sentry_sdk.trace
     def normalize_failure_message(self, failure_message: str):
-        with sentry_sdk.metrics.timing("failure_normalizer.normalize_failure_message"):
+        with metrics.timer("failure_normalizer.normalize_failure_message"):
             key_ordering = self.key_analysis_order or self.dict_of_regex.keys()
             for key in key_ordering:
                 list_of_compiled_regex = self.dict_of_regex[key]

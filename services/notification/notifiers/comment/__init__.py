@@ -12,6 +12,7 @@ from shared.torngit.exceptions import (
 )
 
 from database.enums import Notification
+from helpers.metrics import metrics
 from services.billing import BillingPlan
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
@@ -82,14 +83,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
         if comparison.pull is not None and comparison.pull.state != "open":
-            sentry_sdk.metrics.incr(
-                "notifiers.comment.pull_closed_notifying_anyways",
-                tags={
-                    "repo_using_integration": self.repository_service.data["repo"][
-                        "using_integration"
-                    ]
-                },
-            )
+            integration_status = "repo_with_integration" if self.repository_service.data["repo"]["using_integration"] else "repo_without_integration"
+            metrics.incr(f"notifiers.comment.pull_closed_notifying_anyways.{integration_status}")
 
         for condition in self.notify_conditions:
             condition_result = condition.check_condition(

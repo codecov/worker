@@ -22,6 +22,7 @@ from database.enums import ReportType
 from database.models.core import Commit
 from database.models.reports import CommitReport, Upload, UploadError
 from database.models.timeseries import Measurement, MeasurementName
+from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.report import BaseReportService
 from services.storage import get_storage_client
@@ -87,12 +88,8 @@ class ProcessingResult:
             self.upload.upload_type = SessionType.carriedforward.value
             self.upload_type_id = UploadType.CARRIEDFORWARD.db_id
 
-        sentry_sdk.metrics.incr(
-            "bundle_analysis_upload",
-            tags={
-                "result": "upload_error" if self.error else "processed",
-            },
-        )
+        status = "upload_error" if self.error else "processed"
+        metrics.incr(f"bundle_analysis_upload.upload.{status}")
 
         db_session.flush()
 
@@ -268,13 +265,7 @@ class BundleAnalysisReportService(BaseReportService):
             )
         except PutRequestRateLimitError as e:
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "rate_limit_error",
-                    "plugin_name": plugin_name,
-                },
-            )
+            metrics.incr(f"bundle_analysis_upload.rate_limit_error.{plugin_name}")
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
@@ -287,13 +278,7 @@ class BundleAnalysisReportService(BaseReportService):
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "parser_error",
-                    "plugin_name": plugin_name,
-                },
-            )
+            metrics.incr(f"bundle_analysis_upload.parser_error.{plugin_name}")
             log.error(
                 "Unable to parse upload for bundle analysis",
                 exc_info=True,
@@ -429,13 +414,7 @@ class BundleAnalysisReportService(BaseReportService):
                 commit=commit,
             )
         except Exception:
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "parser_error",
-                    "repository": commit.repository.repoid,
-                },
-            )
+            metrics.incr(f"bundle_analysis_upload.parser_error.{commit.repository.repoid}")
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
