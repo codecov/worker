@@ -146,8 +146,6 @@ class ChecksNotifier(StatusNotifier):
         # statuses and don't do a check as well
         statuses = comparison.get_existing_statuses()
         status_title = self.get_status_external_name()
-        print("lulu", statuses, status_title)
-        print("asdfasd", statuses.get(status_title))
         if statuses and statuses.get(status_title):
             log.debug(
                 "Falling back to commit_status: Status already exists for this commit",
