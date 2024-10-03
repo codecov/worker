@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import pytest
+from celery.exceptions import Retry
 from mock.mock import MagicMock
 from redis.exceptions import LockError
 from shared.reports.types import Change
@@ -10,7 +11,7 @@ from shared.torngit.exceptions import TorngitClientError
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from database.tests.factories.reports import TestFactory
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from services.repository import EnrichedPull
 from services.yaml import UserYaml
 from tasks.sync_pull import PullSyncTask
@@ -304,6 +305,43 @@ class TestPullSyncTask(object):
             "notifier_called": False,
             "pull_updated": False,
             "reason": "no_bot",
+        }
+
+    def test_call_pullsync_no_apps_available_rate_limit(
+        self, dbsession, mock_redis, mocker
+    ):
+        task = PullSyncTask()
+        pull = PullFactory.create(state="open")
+        dbsession.add(pull)
+        dbsession.flush()
+        mocker.patch(
+            "tasks.sync_pull.get_repo_provider_service",
+            side_effect=NoConfiguredAppsAvailable(
+                apps_count=1, rate_limited_count=1, suspended_count=0
+            ),
+        )
+        with pytest.raises(Retry):
+            task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+
+    def test_call_pullsync_no_apps_available_suspended(
+        self, dbsession, mock_redis, mocker
+    ):
+        task = PullSyncTask()
+        pull = PullFactory.create(state="open")
+        dbsession.add(pull)
+        dbsession.flush()
+        mocker.patch(
+            "tasks.sync_pull.get_repo_provider_service",
+            side_effect=NoConfiguredAppsAvailable(
+                apps_count=1, rate_limited_count=0, suspended_count=1
+            ),
+        )
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        assert res == {
+            "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+            "notifier_called": False,
+            "pull_updated": False,
+            "reason": "no_configured_apps_available",
         }
 
     def test_call_pullsync_no_permissions_get_compare(
