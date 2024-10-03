@@ -414,7 +414,9 @@ class BundleAnalysisReportService(BaseReportService):
                 commit=commit,
             )
         except Exception:
-            metrics.incr(f"bundle_analysis_upload.parser_error.{commit.repository.repoid}")
+            metrics.incr(
+                f"bundle_analysis_upload.parser_error.{commit.repository.repoid}"
+            )
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
