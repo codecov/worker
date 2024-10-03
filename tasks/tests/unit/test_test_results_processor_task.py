@@ -684,7 +684,6 @@ class TestUploadTestProcessorTask(object):
 
         for test in tests:
             assert test.framework == "Pytest"
-            print(test.computed_name)
             assert test.computed_name.startswith(
                 "api/temp/calculator/test_calculator.py::"
             )

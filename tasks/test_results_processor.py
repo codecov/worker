@@ -233,10 +233,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     computed_name=computed_name,
                 )
 
-            if test_id not in existing_tests:
-                test_flag_bridge_data += [
-                    {"test_id": test_id, "flag_id": repo_flags[flag]} for flag in flags
-                ]
+                if test_id not in existing_tests:
+                    test_flag_bridge_data += [
+                        {"test_id": test_id, "flag_id": repo_flags[flag]}
+                        for flag in flags
+                    ]
 
                 test_instance_data.append(
                     dict(
@@ -457,12 +458,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             file_content = file_bytes.read()
             with metrics.timer("test_results.processor.file_parsing"):
                 res = parse_junit_xml(file_content)
-                print("BBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
         except ParserError as e:
-            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-            # aware of cardinality issues with using a variable here in the reason field but
-            # parser is defined by us and limited to the amount of different parsers we will
-            # write, so I don't expect this to be a problem for us
             metrics.incr(
                 "test_results.processor.parsing.failure.failed_to_parse",
             )
