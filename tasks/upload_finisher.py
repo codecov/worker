@@ -134,7 +134,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         assert commit, "Commit not found in database."
         repository = commit.repository
 
-        parallel_processing = ParallelProcessing.from_task_args(repoid, **kwargs)
+        parallel_processing = ParallelProcessing.from_task_args(**kwargs)
 
         if parallel_processing.is_parallel:
             # need to transform processing_results produced by chord to get it into the

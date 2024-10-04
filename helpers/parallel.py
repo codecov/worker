@@ -77,18 +77,13 @@ class ParallelProcessing(Enum):
     @classmethod
     def from_task_args(
         cls,
-        repoid: int,
         in_parallel: bool = False,
         is_final: bool = False,
+        run_fully_parallel: bool = False,
         **kwargs,
     ) -> ParallelProcessing:
-        feature = ParallelFeature.load(repoid)
-
-        if feature is ParallelFeature.SERIAL:
-            return ParallelProcessing.SERIAL
-        if feature is ParallelFeature.PARALLEL:
+        if run_fully_parallel:
             return ParallelProcessing.PARALLEL
-
         if in_parallel:
             return ParallelProcessing.EXPERIMENT_PARALLEL
         if is_final:

@@ -89,7 +89,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             ),
         )
 
-        parallel_processing = ParallelProcessing.from_task_args(repoid, **kwargs)
+        parallel_processing = ParallelProcessing.from_task_args(**kwargs)
 
         if parallel_processing.is_parallel:
             log.info(

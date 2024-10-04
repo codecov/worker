@@ -679,6 +679,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 arguments_list=[arguments],
                 report_code=commit_report.code,
                 parallel_idx=arguments["upload_pk"],
+                run_fully_parallel=run_fully_parallel,
                 in_parallel=True,
                 is_final=False,
             )
@@ -696,6 +697,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": commit_report.code,
+                "run_fully_parallel": run_fully_parallel,
                 "in_parallel": True,
                 _kwargs_key(UploadFlow): checkpoints.data,
             },
