@@ -657,6 +657,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         )
         report = functools.reduce(merge_report, unmerged_reports, report)
         commit.get_db_session().flush()
+
+        cleanup_partial_reports(
+            repository, commit, processing_results["parallel_incremental_result"]
+        )
+
         return report
 
 
@@ -672,6 +677,40 @@ def acquire_report_lock(repoid: int, commitid: str, hard_time_limit: int) -> Loc
         timeout=max(60 * 5, hard_time_limit),
         blocking_timeout=5,
     )
+
+
+def cleanup_partial_reports(
+    repository: Repository, commit: Commit, partial_reports: list[dict]
+):
+    """
+    Cleans up the files in storage that contain the "partial Report"s
+    from parallel processing, as well as the copy of the "master Report" used
+    for the "experiment" mode.
+    """
+    archive_service = ArchiveService(repository)
+    repo_hash = archive_service.get_archive_hash(repository)
+
+    # there are only relevant for the "experiment" mode:
+    files_to_delete = [
+        MinioEndpoints.parallel_upload_experiment.get_path(
+            version="v4",
+            repo_hash=repo_hash,
+            commitid=commit.commitid,
+            file_name="files_and_sessions",
+        ),
+        MinioEndpoints.parallel_upload_experiment.get_path(
+            version="v4",
+            repo_hash=repo_hash,
+            commitid=commit.commitid,
+            file_name="chunks",
+        ),
+    ]
+
+    for partial_report in partial_reports:
+        files_to_delete.append(partial_report["chunks_path"])
+        files_to_delete.append(partial_report["files_and_sessions_path"])
+
+    archive_service.delete_files(files_to_delete)
 
 
 # TODO: maybe move this to `shared` if it turns out to be a better place for this

@@ -279,6 +279,13 @@ end_of_record
             }
         )
 
+    # we expect the following files:
+    # chunks+json for the base commit
+    # 4 * raw uploads
+    # chunks+json, `files_array` and `comparison` for the finished upload
+    archive = mock_storage.storage["archive"]
+    assert len(archive) == 2 + 4 + 4
+
     report_service = ReportService(UserYaml({}))
     report = report_service.get_existing_report_for_commit(commit, report_code=None)
 
@@ -332,7 +339,7 @@ end_of_record
         (2, 4),
     ]
 
-    archive = mock_storage.storage["archive"]
+    assert len(archive) == 2 + 5 + 4
     repo_hash = ArchiveService.get_archive_hash(repository)
     raw_chunks_path = f"v4/repos/{repo_hash}/commits/{commitid}/chunks.txt"
     assert raw_chunks_path in archive
@@ -617,3 +624,10 @@ end_of_record
     assert {upload.order_number for upload in uploads} == {
         session.id for session in base_sessions.values()
     }
+
+    # we expect the following files:
+    # chunks+json, `files_array` for the base commit
+    # 6 * raw uploads
+    # chunks+json, `files_array` for the carryforwarded commit (no `comparison`)
+    archive = mock_storage.storage["archive"]
+    assert len(archive) == 3 + 6 + 3
