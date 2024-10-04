@@ -161,10 +161,10 @@ def setup_mocks(
 
 @pytest.mark.integration
 @pytest.mark.django_db()
-@pytest.mark.parametrize("do_parallel_processing", [False, True])
+@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
 def test_full_upload(
     dbsession: DbSession,
-    do_parallel_processing: bool,
+    parallel_processing: str,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -176,7 +176,7 @@ def test_full_upload(
     mocker.patch.object(
         PARALLEL_UPLOAD_PROCESSING_BY_REPO,
         "check_value",
-        return_value=do_parallel_processing,
+        return_value=parallel_processing,
     )
 
     repository = RepositoryFactory.create()
@@ -360,10 +360,10 @@ end_of_record
 
 @pytest.mark.integration
 @pytest.mark.django_db()
-@pytest.mark.parametrize("do_parallel_processing", [False, True])
+@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
 def test_full_carryforward(
     dbsession: DbSession,
-    do_parallel_processing: bool,
+    parallel_processing: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -378,7 +378,7 @@ def test_full_carryforward(
     mocker.patch.object(
         PARALLEL_UPLOAD_PROCESSING_BY_REPO,
         "check_value",
-        return_value=do_parallel_processing,
+        return_value=parallel_processing,
     )
 
     repository = RepositoryFactory.create()

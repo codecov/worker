@@ -18,7 +18,7 @@ from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.models import Commit, Pull, Repository, Test
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
 from rollouts import SYNC_PULL_USE_MERGE_COMMIT_SHA
@@ -109,6 +109,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         commit_updates_done = {"merged_count": 0, "soft_deleted_count": 0}
         repository = db_session.query(Repository).filter_by(repoid=repoid).first()
         assert repository
+        extra_info = dict(pullid=pullid, repoid=repoid)
         try:
             installation_name_to_use = get_installation_name_for_owner_for_task(
                 self.name, repository.owner
@@ -119,7 +120,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         except RepositoryWithoutValidBotError:
             log.warning(
                 "Could not sync pull because there is no valid bot found for that repo",
-                extra=dict(pullid=pullid, repoid=repoid),
+                extra=extra_info,
                 exc_info=True,
             )
             return {
@@ -127,6 +128,24 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
                 "pull_updated": False,
                 "reason": "no_bot",
+            }
+        except NoConfiguredAppsAvailable as err:
+            log.error(
+                "Could not sync pull because there are no configured apps available",
+                extra={
+                    **extra_info,
+                    "suspended_app_count": err.suspended_count,
+                    "rate_limited_count": err.rate_limited_count,
+                },
+            )
+            if err.rate_limited_count > 0:
+                log.info("Apps are rate limited. Retrying in 60s", extra=extra_info)
+                self.retry(max_retries=1, countdown=60)
+            return {
+                "notifier_called": False,
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+                "pull_updated": False,
+                "reason": "no_configured_apps_available",
             }
         context = OwnerContext(
             owner_onboarding_date=repository.owner.createstamp,
@@ -146,7 +165,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         if pull is None:
             log.info(
                 "Not syncing pull since we can't find it in the database nor in the provider",
-                extra=dict(pullid=pullid, repoid=repoid),
+                extra=extra_info,
             )
             return {
                 "notifier_called": False,
@@ -157,7 +176,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         if enriched_pull.provider_pull is None:
             log.info(
                 "Not syncing pull since we can't find it in the provider. There is nothing to sync",
-                extra=dict(pullid=pullid, repoid=repoid),
+                extra=extra_info,
             )
             return {
                 "notifier_called": False,

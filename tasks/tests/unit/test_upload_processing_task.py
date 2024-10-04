@@ -18,6 +18,7 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
+from helpers.parallel import ParallelProcessing
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
 from services.report import ProcessingError, RawReportInfo, ReportService
@@ -322,7 +323,7 @@ class TestUploadProcessorTask(object):
         redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocked_3 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_3.send_task.return_value = True
-        result = UploadProcessorTask().process_impl_within_lock(
+        result = UploadProcessorTask().process_upload(
             db_session=dbsession,
             previous_results={},
             repoid=commit.repoid,
@@ -330,6 +331,7 @@ class TestUploadProcessorTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
             report_code=None,
+            parallel_processing=ParallelProcessing.SERIAL,
         )
 
         assert result == {
@@ -726,6 +728,7 @@ class TestUploadProcessorTask(object):
             report=false_report,
             raw_report_info=RawReportInfo(),
             upload=upload,
+            parallel_processing=ParallelProcessing.SERIAL,
         )
         assert result.error.as_dict() == {
             "code": "file_not_in_storage",
@@ -751,6 +754,7 @@ class TestUploadProcessorTask(object):
                 Report(),
                 UploadFactory.create(),
                 RawReportInfo(),
+                parallel_processing=ParallelProcessing.SERIAL,
             )
 
     @pytest.mark.django_db(databases={"default"})

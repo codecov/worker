@@ -15,6 +15,7 @@ from shared.celery_config import (
 )
 from shared.metrics import Histogram
 from shared.reports.editable import EditableReport, EditableReportFile
+from shared.reports.enums import UploadState
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
 from shared.yaml import UserYaml
@@ -23,20 +24,25 @@ from app import celery_app
 from celery_config import notify_error_task_name
 from database.models import Commit, Pull
 from database.models.core import Repository
+from database.models.reports import Upload
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.metrics import KiB, MiB
-from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
+from helpers.parallel import ParallelProcessing
 from services.archive import ArchiveService, MinioEndpoints
 from services.comparison import get_or_create_comparison
 from services.redis import get_redis_connection
-from services.report import ReportService
-from services.report.raw_upload_processor import clear_carryforward_sessions
+from services.report import ReportService, delete_uploads_by_sessionid
+from services.report.raw_upload_processor import (
+    SessionAdjustmentResult,
+    clear_carryforward_sessions,
+)
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.parallel_verification import parallel_verification_task
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
+from tasks.upload_processor import UploadProcessorTask
 
 log = logging.getLogger(__name__)
 
@@ -101,7 +107,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repoid,
         commitid,
         commit_yaml,
-        in_parallel=False,
         report_code=None,
         **kwargs,
     ):
@@ -129,10 +134,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         assert commit, "Commit not found in database."
         repository = commit.repository
 
-        if (
-            PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(identifier=repository.repoid)
-            and in_parallel
-        ):
+        parallel_processing = ParallelProcessing.from_task_args(**kwargs)
+
+        if parallel_processing.is_parallel:
+            # need to transform processing_results produced by chord to get it into the
+            # same format as the processing_results produced from chain
             processing_results = {
                 "processings_so_far": [
                     task["processings_so_far"][0] for task in processing_results
@@ -149,6 +155,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 commit,
                 report_service,
                 processing_results,
+                parallel_processing,
             )
 
             log.info(
@@ -161,28 +168,42 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
-            parallel_paths = report_service.save_parallel_report_to_archive(
-                commit, report, report_code
-            )
-            # now that we've built the report and stored it to GCS, we have what we need to
-            # compare the results with the current upload pipeline. We end execution of the
-            # finisher task here so that we don't cause any additional side-effects
+            if parallel_processing is ParallelProcessing.PARALLEL:
+                pr = processing_results["processings_so_far"][0]["arguments"].get("pr")
+                processor_task = UploadProcessorTask()
+                processor_task.save_report_results(
+                    db_session,
+                    report_service,
+                    repository,
+                    commit,
+                    report,
+                    pr,
+                    report_code,
+                )
 
-            # The verification task that will compare the results of the serial flow and
-            # the parallel flow, and log the result to determine if parallel flow is
-            # working properly.
-            parallel_verification_task.apply_async(
-                kwargs=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    report_code=report_code,
-                    parallel_paths=parallel_paths,
-                    processing_results=processing_results,
-                ),
-            )
+            else:
+                parallel_paths = report_service.save_parallel_report_to_archive(
+                    commit, report, report_code
+                )
+                # now that we've built the report and stored it to GCS, we have what we need to
+                # compare the results with the current upload pipeline. We end execution of the
+                # finisher task here so that we don't cause any additional side-effects
 
-            return
+                # The verification task that will compare the results of the serial flow and
+                # the parallel flow, and log the result to determine if parallel flow is
+                # working properly.
+                parallel_verification_task.apply_async(
+                    kwargs=dict(
+                        repoid=repoid,
+                        commitid=commitid,
+                        commit_yaml=commit_yaml,
+                        report_code=report_code,
+                        parallel_paths=parallel_paths,
+                        processing_results=processing_results,
+                    ),
+                )
+
+                return
 
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
@@ -253,7 +274,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         db_session,
         commit: Commit,
         commit_yaml: UserYaml,
-        processing_results,
+        processing_results: dict,
         report_code,
         checkpoints,
     ):
@@ -370,7 +391,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         return {"notifications_called": notifications_called}
 
-    def should_clean_labels_index(self, commit_yaml: UserYaml, processing_results):
+    def should_clean_labels_index(
+        self, commit_yaml: UserYaml, processing_results: dict
+    ):
         """Returns True if any of the successful processings was uploaded using a flag
         that implies labels were uploaded with the report.
         """
@@ -389,7 +412,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         return any(map(should_clean_for_processing_result, actual_processing_results))
 
     def should_call_notifications(
-        self, commit: Commit, commit_yaml: UserYaml, processing_results, report_code
+        self,
+        commit: Commit,
+        commit_yaml: UserYaml,
+        processing_results: dict,
+        report_code,
     ) -> ShouldCallNotifyResult:
         extra_dict = {
             "repoid": commit.repoid,
@@ -473,41 +500,52 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         commit: Commit,
         report_service: ReportService,
         processing_results: dict,
+        parallel_processing: ParallelProcessing,
     ):
         archive_service = report_service.get_archive_service(repository)
         repoid = repository.repoid
         commitid = commit.id
 
-        fas_path = MinioEndpoints.parallel_upload_experiment.get_path(
-            version="v4",
-            repo_hash=archive_service.get_archive_hash(repository),
-            commitid=commit.commitid,
-            file_name="files_and_sessions",
-        )
-        chunks_path = MinioEndpoints.parallel_upload_experiment.get_path(
-            version="v4",
-            repo_hash=archive_service.get_archive_hash(repository),
-            commitid=commit.commitid,
-            file_name="chunks",
-        )
+        if parallel_processing is ParallelProcessing.PARALLEL:
+            report = report_service.get_existing_report_for_commit(commit)
+            if report is None:
+                log.info(
+                    "No base report found for parallel upload processing, using an empty report",
+                    extra=dict(commit=commitid, repoid=repoid),
+                )
+                report = Report()
 
-        try:
-            files_and_sessions = json.loads(archive_service.read_file(fas_path))
-            chunks = archive_service.read_file(chunks_path).decode(errors="replace")
-            report = report_service.build_report(
-                chunks,
-                files_and_sessions["files"],
-                files_and_sessions["sessions"],
-                None,
+        else:
+            fas_path = MinioEndpoints.parallel_upload_experiment.get_path(
+                version="v4",
+                repo_hash=archive_service.get_archive_hash(repository),
+                commitid=commit.commitid,
+                file_name="files_and_sessions",
             )
-        except (
-            FileNotInStorageError
-        ):  # there were no CFFs, so no report was stored in GCS
-            log.info(
-                "No base report found for parallel upload processing, using an empty report",
-                extra=dict(commit=commitid, repoid=repoid),
+            chunks_path = MinioEndpoints.parallel_upload_experiment.get_path(
+                version="v4",
+                repo_hash=archive_service.get_archive_hash(repository),
+                commitid=commit.commitid,
+                file_name="chunks",
             )
-            report = Report()
+
+            try:
+                files_and_sessions = json.loads(archive_service.read_file(fas_path))
+                chunks = archive_service.read_file(chunks_path).decode(errors="replace")
+                report = report_service.build_report(
+                    chunks,
+                    files_and_sessions["files"],
+                    files_and_sessions["sessions"],
+                    None,
+                )
+            except (
+                FileNotInStorageError
+            ):  # there were no CFFs, so no report was stored in GCS
+                log.info(
+                    "No base report found for parallel upload processing, using an empty report",
+                    extra=dict(commit=commitid, repoid=repoid),
+                )
+                report = Report()
 
         log.info(
             "Downloading %s incremental reports that were processed in parallel",
@@ -564,18 +602,30 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 session, use_id_from_session=True
             )
 
+            session_adjustment = SessionAdjustmentResult([], [])
             if flags := session.flags:
-                clear_carryforward_sessions(
+                session_adjustment = clear_carryforward_sessions(
                     cumulative_report, incremental_report, flags, UserYaml(commit_yaml)
                 )
-            # ReportService.update_upload_with_processing_result should use this result
-            # to update the state of Upload. Once the experiment is finished, Upload.state should
-            # be set to: parallel_processed (instead of processed)
 
             cumulative_report.merge(incremental_report)
 
-            # once the experiment is finished, we should be modifying the Upload here
-            # moving it's state from: parallel_processed -> processed
+            if parallel_processing is ParallelProcessing.PARALLEL:
+                # When we are fully parallel, we need to update the `Upload` in the database
+                # with the final session_id (aka `order_number`) and other statuses
+                db_session = commit.get_db_session()
+                upload = (
+                    db_session.query(Upload)
+                    .filter(Upload.id_ == obj["upload_pk"])
+                    .first()
+                )
+                upload.state_id = UploadState.PROCESSED.db_id
+                upload.state = "processed"
+                upload.order_number = new_sessionid
+                delete_uploads_by_sessionid(
+                    upload, session_adjustment.fully_deleted_sessions
+                )
+                db_session.flush()
 
             return cumulative_report
 
@@ -596,6 +646,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             ),
         )
         report = functools.reduce(merge_report, unmerged_reports, report)
+        commit.get_db_session().flush()
         return report
 
 
