@@ -289,7 +289,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     upload_id,
                     report_code,
                 )
-                parallel_incremental_result["upload_pk"] = upload_id
                 state.mark_upload_as_processed(int(upload_id))
 
                 log.info(
