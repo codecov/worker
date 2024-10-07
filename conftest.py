@@ -134,7 +134,6 @@ def mock_configuration(mocker):
                 "secret_access_key": "codecov-default-secret",
                 "verify_ssl": False,
             },
-            "redis_url": "redis://redis:@localhost:6379/",
             "smtp": {
                 "host": "mailhog",
                 "port": 1025,
