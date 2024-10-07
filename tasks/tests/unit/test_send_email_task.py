@@ -30,7 +30,6 @@ def mock_configuration_no_smtp(mocker):
                 "secret_access_key": "codecov-default-secret",
                 "verify_ssl": False,
             },
-            "redis_url": "redis://redis:@localhost:6379/",
         },
         "setup": {
             "codecov_url": "https://codecov.io",

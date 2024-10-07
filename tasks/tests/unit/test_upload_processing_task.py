@@ -280,7 +280,7 @@ class TestUploadProcessorTask(object):
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_call_with_upload_obj(
-        self, mocker, mock_configuration, dbsession, mock_storage
+        self, mocker, dbsession, mock_storage
     ):
         mocker.patch.object(
             USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
