@@ -34,6 +34,7 @@ from helpers.metrics import KiB, MiB
 from helpers.parallel import ParallelProcessing
 from services.archive import ArchiveService, MinioEndpoints
 from services.comparison import get_or_create_comparison
+from services.processing.state import ProcessingState, should_trigger_postprocessing
 from services.redis import get_redis_connection
 from services.report import ReportService, delete_uploads_by_sessionid
 from services.report.raw_upload_processor import (
@@ -136,6 +137,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         assert commit, "Commit not found in database."
         repository = commit.repository
 
+        state = ProcessingState(repoid, commitid)
         parallel_processing = ParallelProcessing.from_task_args(**kwargs)
         parallel_processing.emit_metrics("upload_finisher")
 
@@ -191,6 +193,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                         pr,
                         report_code,
                     )
+                    state.mark_uploads_as_merged(
+                        [
+                            int(upload["upload_pk"])
+                            for upload in processing_results[
+                                "parallel_incremental_result"
+                            ]
+                        ]
+                    )
 
                 else:
                     parallel_paths = report_service.save_parallel_report_to_archive(
@@ -215,6 +225,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     )
 
                     return
+
+            if not should_trigger_postprocessing(state.get_upload_numbers()):
+                return
 
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()

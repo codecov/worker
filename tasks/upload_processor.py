@@ -25,6 +25,7 @@ from helpers.parallel_upload_processing import (
 )
 from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
+from services.processing.state import ProcessingState
 from services.redis import get_redis_connection
 from services.report import ProcessingResult, RawReportInfo, Report, ReportService
 from services.report.parser.types import VersionOneParsedRawReport
@@ -218,7 +219,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 pr = arguments.get("pr")
                 upload_obj = (
                     db_session.query(Upload)
-                    .filter_by(id_=arguments.get("upload_pk"))
+                    .filter_by(id_=arguments["upload_pk"])
                     .first()
                 )
                 log.info(
@@ -276,10 +277,12 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
+            state = ProcessingState(repoid, commitid)
+
             parallel_incremental_result = None
             results_dict = {}
             if in_parallel:
-                upload_id = arguments_list[0].get("upload_pk")
+                upload_id = arguments_list[0]["upload_pk"]
                 parallel_incremental_result = save_incremental_report_results(
                     report_service,
                     commit,
@@ -287,6 +290,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     upload_id,
                     report_code,
                 )
+                state.mark_upload_as_processed(int(upload_id))
 
                 log.info(
                     "Saved incremental report results to storage",
@@ -306,6 +310,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     pr,
                     report_code,
                 )
+                upload_ids = [int(upload["upload_pk"]) for upload in arguments_list]
+                for upload_id in upload_ids:
+                    state.mark_upload_as_processed(upload_id)
+                state.mark_uploads_as_merged(upload_ids)
 
                 # Save the final accumulated result from the serial flow for the
                 # ParallelVerification task to compare with later, for the parallel

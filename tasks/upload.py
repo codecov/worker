@@ -37,6 +37,7 @@ from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
+from services.processing.state import ProcessingState
 from services.redis import download_archive_from_redis, get_redis_connection
 from services.report import (
     BaseReportService,
@@ -671,6 +672,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         checkpoints: CheckpointLogger,
         run_fully_parallel: bool,
     ):
+        state = ProcessingState(commit.repoid, commit.commitid)
+        state.mark_uploads_as_processing(
+            [int(upload["upload_pk"]) for upload in argument_list]
+        )
+
         parallel_processing_tasks = [
             upload_processor_task.s(
                 repoid=commit.repoid,
