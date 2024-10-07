@@ -583,9 +583,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 report_class=EditableReport,
             )
             return {
-                "parallel_idx": partial_report["parallel_idx"],
-                "report": report,
                 "upload_pk": partial_report["upload_pk"],
+                "report": report,
             }
 
         def merge_report(cumulative_report: Report, obj):
@@ -598,7 +597,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                         repoid=repoid,
                         commit=commitid,
                         upload_pk=obj["upload_pk"],
-                        parallel_idx=obj["parallel_idx"],
                     ),
                 )
 

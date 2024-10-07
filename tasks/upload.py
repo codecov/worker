@@ -678,7 +678,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_yaml=commit_yaml,
                 arguments_list=[arguments],
                 report_code=commit_report.code,
-                parallel_idx=arguments["upload_pk"],
                 run_fully_parallel=run_fully_parallel,
                 in_parallel=True,
                 is_final=False,
