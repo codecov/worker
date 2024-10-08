@@ -35,7 +35,6 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from services.notification.notifiers.codecov_slack_app import CodecovSlackAppNotifier
-from services.notification.notifiers.status.base import StatusNotifier
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_components_from_yaml
 
@@ -105,7 +104,7 @@ class NotificationService(object):
         key: StatusType,
         title: str,
         status_config: dict,
-    ) -> AbstractBaseNotifier | StatusNotifier:
+    ) -> AbstractBaseNotifier:
         status_notifier_class = get_status_notifier_class(key, "status")
         if self._should_use_checks_notifier(status_type=key):
             checks_notifier = get_status_notifier_class(key, "checks")
@@ -231,7 +230,7 @@ class NotificationService(object):
         for component_status in self._get_component_statuses(current_flags):
             yield component_status
 
-    def notify(self, comparison: ComparisonProxy) -> list[NotificationResult]:
+    def notify(self, comparison: ComparisonProxy) -> list[IndividualResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):
             log.warning(
                 "Not sending notifications because the system is not properly licensed"
@@ -249,20 +248,16 @@ class NotificationService(object):
                 repoid=comparison.head.commit.repoid,
             ),
         )
-        notification_instances = [
-            notifier
-            for notifier in self.get_notifiers_instances()
-            if notifier.is_enabled()
-        ]
         results = [
             self.notify_individual_notifier(notifier, comparison)
-            for notifier in notification_instances
+            for notifier in self.get_notifiers_instances()
+            if notifier.is_enabled()
         ]
         return results
 
     def notify_individual_notifier(
         self, notifier: AbstractBaseNotifier, comparison: ComparisonProxy
-    ) -> NotificationResult:
+    ) -> IndividualResult:
         commit = comparison.head.commit
         base_commit = comparison.project_coverage_base.commit
         log.info(

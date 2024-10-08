@@ -6,11 +6,12 @@ import requests
 
 from database.enums import Notification
 from database.models import Commit
+from services.comparison import ComparisonProxy
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.notification.notifiers.generics import Comparison, EnhancedJSONEncoder
+from services.notification.notifiers.generics import EnhancedJSONEncoder
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import round_number
 
@@ -37,7 +38,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         elif isinstance(self.notifier_yaml_settings, bool):
             return self.notifier_yaml_settings
 
-    def store_results(self, comparison: Comparison, result: NotificationResult):
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     def serialize_commit(self, commit: Commit):
@@ -54,7 +55,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             "pull": commit.pullid,
         }
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: ComparisonProxy) -> dict:
         head_full_commit = comparison.head
         base_full_commit = comparison.project_coverage_base
         if comparison.has_project_coverage_base_report():
@@ -101,7 +102,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             "head_totals_c": str(comparison.head.report.totals.coverage),
         }
 
-    def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
         request_url = f"{CODECOV_SLACK_APP_URL}/notify"
 
         headers = {

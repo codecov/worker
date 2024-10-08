@@ -23,7 +23,7 @@ class SlackNotifier(RequestsYamlBasedNotifier):
     def notification_type(self) -> Notification:
         return Notification.slack
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: Comparison) -> dict:
         message = self.generate_message(comparison)
         compare_dict = self.generate_compare_dict(comparison)
         color = "good" if compare_dict["notation"] in ("", "+") else "bad"

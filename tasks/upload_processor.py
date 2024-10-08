@@ -1,5 +1,6 @@
 import logging
 import random
+from typing import Any
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -17,14 +18,13 @@ from database.models import Commit, Upload
 from database.models.core import Pull, Repository
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.metrics import metrics
+from helpers.parallel import ParallelProcessing
 from helpers.parallel_upload_processing import (
     save_final_serial_report_results,
     save_incremental_report_results,
 )
 from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
-from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.redis import get_redis_connection
 from services.report import ProcessingResult, RawReportInfo, Report, ReportService
 from services.report.parser.types import VersionOneParsedRawReport
@@ -79,22 +79,19 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commit_yaml,
         arguments_list,
         report_code=None,
-        parallel_idx=None,
-        in_parallel=False,
-        is_final=False,
         **kwargs,
     ):
         repoid = int(repoid)
         log.info(
             "Received upload processor task",
-            extra=dict(repoid=repoid, commit=commitid, in_parallel=in_parallel),
+            extra=dict(
+                repoid=repoid, commit=commitid, in_parallel=kwargs.get("in_parallel")
+            ),
         )
 
-        in_parallel = in_parallel and PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-            identifier=repoid
-        )
+        parallel_processing = ParallelProcessing.from_task_args(**kwargs)
 
-        if in_parallel:
+        if parallel_processing.is_parallel:
             log.info(
                 "Using parallel upload processing, skip acquiring upload processing lock",
                 extra=dict(
@@ -105,18 +102,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
-            # This function is named `within_lock` but we gate any concurrency-
-            # unsafe operations with `PARALLEL_UPLOAD_PROCESSING_BY_REPO`.
-            return self.process_impl_within_lock(
+            return self.process_upload(
                 db_session=db_session,
                 previous_results={},
                 repoid=repoid,
                 commitid=commitid,
                 commit_yaml=commit_yaml,
                 arguments_list=arguments_list,
-                parallel_idx=parallel_idx,
                 report_code=report_code,
-                in_parallel=in_parallel,
+                parallel_processing=parallel_processing,
             )
 
         lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
@@ -147,7 +141,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     ),
                 )
 
-                return self.process_impl_within_lock(
+                return self.process_upload(
                     db_session=db_session,
                     previous_results=previous_results,
                     repoid=repoid,
@@ -155,9 +149,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     commit_yaml=commit_yaml,
                     arguments_list=arguments_list,
                     report_code=report_code,
-                    parallel_idx=parallel_idx,
-                    in_parallel=in_parallel,
-                    is_final=is_final,
+                    parallel_processing=parallel_processing,
                 )
         except LockError:
             max_retry = 200 * 3**self.request.retries
@@ -175,18 +167,16 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
 
     @sentry_sdk.trace
-    def process_impl_within_lock(
+    def process_upload(
         self,
         db_session,
-        previous_results,
+        previous_results: dict,
         repoid: int,
-        commitid,
+        commitid: str,
         commit_yaml: dict,
-        arguments_list,
+        arguments_list: list[dict],
         report_code,
-        parallel_idx=None,
-        in_parallel=False,
-        is_final=False,
+        parallel_processing: ParallelProcessing,
     ):
         processings_so_far: list[dict] = previous_results.get("processings_so_far", [])
         n_processed = 0
@@ -202,6 +192,8 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         pr = None
         report_service = ReportService(UserYaml(commit_yaml))
 
+        in_parallel = parallel_processing.is_parallel
+
         if in_parallel:
             log.info(
                 "Creating empty report to store incremental result",
@@ -209,16 +201,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             )
             report = Report()
         else:
-            with metrics.timer(f"{self.metrics_prefix}.build_original_report"):
-                report = report_service.get_existing_report_for_commit(
-                    commit, report_code=report_code
+            report = report_service.get_existing_report_for_commit(
+                commit, report_code=report_code
+            )
+            if report is None:
+                log.info(
+                    "No existing report for commit",
+                    extra=dict(commit=commit.commitid),
                 )
-                if report is None:
-                    log.info(
-                        "No existing report for commit",
-                        extra=dict(commit=commit.commitid),
-                    )
-                    report = Report()
+                report = Report()
 
         raw_reports: list[RawReportInfo] = []
         try:
@@ -242,24 +233,21 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                         in_parallel=in_parallel,
                     ),
                 )
-                individual_info = {"arguments": arguments}
+                individual_info: dict[str, Any] = {"arguments": arguments}
                 try:
-                    with metrics.timer(
-                        f"{self.metrics_prefix}.process_individual_report"
-                    ):
-                        raw_report_info = RawReportInfo()
-                        processing_result = self.process_individual_report(
-                            report_service,
-                            commit,
-                            report,
-                            upload_obj,
-                            raw_report_info,
-                            in_parallel=in_parallel,
-                        )
-                        # NOTE: this is only used because test mocking messes with the return value here.
-                        # in normal flow, the function mutates the argument instead.
-                        if processing_result.report:
-                            report = processing_result.report
+                    raw_report_info = RawReportInfo()
+                    processing_result = self.process_individual_report(
+                        report_service,
+                        commit,
+                        report,
+                        upload_obj,
+                        raw_report_info,
+                        parallel_processing,
+                    )
+                    # NOTE: this is only used because test mocking messes with the return value here.
+                    # in normal flow, the function mutates the argument instead.
+                    if processing_result.report:
+                        report = processing_result.report
                 except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
                     raise
 
@@ -290,11 +278,13 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             parallel_incremental_result = None
             results_dict = {}
             if in_parallel:
+                upload_id = arguments_list[0].get("upload_pk")
                 parallel_incremental_result = save_incremental_report_results(
-                    report_service, commit, report, parallel_idx, report_code
-                )
-                parallel_incremental_result["upload_pk"] = arguments_list[0].get(
-                    "upload_pk"
+                    report_service,
+                    commit,
+                    report,
+                    upload_id,
+                    report_code,
                 )
 
                 log.info(
@@ -320,7 +310,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 # ParallelVerification task to compare with later, for the parallel
                 # experiment. The report being saved is not necessarily the final
                 # report for the commit, as more uploads can still be made.
-                if is_final:
+                if parallel_processing is ParallelProcessing.EXPERIMENT_SERIAL:
                     final_serial_report_url = save_final_serial_report_results(
                         report_service, commit, report, report_code, arguments_list
                     )
@@ -376,10 +366,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report: Report,
         upload: Upload,
         raw_report_info: RawReportInfo,
-        in_parallel=False,
+        parallel_processing: ParallelProcessing,
     ) -> ProcessingResult:
         processing_result = report_service.build_report_from_raw_content(
-            report, raw_report_info, upload=upload
+            report, raw_report_info, upload
         )
         if (
             processing_result.error is not None
@@ -401,7 +391,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
         # for the parallel experiment, we don't want to modify anything in the
         # database, so we disable it here
-        if not in_parallel:
+        if parallel_processing is not ParallelProcessing.EXPERIMENT_PARALLEL:
             report_service.update_upload_with_processing_result(
                 upload, processing_result
             )

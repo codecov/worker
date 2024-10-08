@@ -1,6 +1,5 @@
-from typing import Dict
-
 from database.enums import Notification
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.mixins.status import StatusChangesMixin
 
@@ -12,7 +11,7 @@ class ChangesChecksNotifier(StatusChangesMixin, ChecksNotifier):
     def notification_type(self) -> Notification:
         return Notification.checks_changes
 
-    def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         if self.is_empty_upload():
             state, message = self.get_status_check_for_empty_upload()
             return {
