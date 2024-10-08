@@ -401,12 +401,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid: int,
         failures: list[TestResultsNotificationFailure],
     ) -> dict[str, FlakeInfo]:
-        flaky_test_ids = dict()
         failure_test_ids = [failure.test_id for failure in failures]
 
         matching_flakes = list(
             db_session.query(Flake)
-            .filter(  # type:ignore
+            .filter(
                 Flake.repoid == repoid,
                 Flake.testid.in_(failure_test_ids),
                 Flake.end_date.is_(None),
@@ -416,8 +415,10 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             .all()
         )
 
-        for flake in matching_flakes:
-            flaky_test_ids[flake.testid] = FlakeInfo(flake.fail_count, flake.count)
+        flaky_test_ids = {
+            flake.testid: FlakeInfo(flake.fail_count, flake.count)
+            for flake in matching_flakes
+        }
 
         return flaky_test_ids
 

@@ -406,11 +406,11 @@ def not_private_and_free_or_team(repo: Repository):
 
 
 def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
-    should_config = read_yaml_field(
+    has_flaky_configured = read_yaml_field(
         commit_yaml, ("test_analytics", "flake_detection"), True
     )
-    should_feature = FLAKY_TEST_DETECTION.check_value(
+    feature_enabled = FLAKY_TEST_DETECTION.check_value(
         identifier=repo.repoid, default=True
     )
-    should_plan = not_private_and_free_or_team(repo)
-    return should_config and (should_feature or should_plan)
+    has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
+    return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)

@@ -2,7 +2,11 @@ import mock
 import pytest
 from shared.torngit.exceptions import TorngitClientError
 
-from database.tests.factories import CommitFactory, RepositoryFactory
+from database.tests.factories import (
+    CommitFactory,
+    OwnerFactory,
+    RepositoryFactory,
+)
 from helpers.notifier import NotifierResult
 from services.test_results import (
     FlakeInfo,
@@ -257,16 +261,9 @@ def test_notify_fail_no_pull(
 def test_should_do_flake_detection(
     dbsession, mocker, config, feature_flag, private, plan, ex_result
 ):
-    repo = RepositoryFactory()
+    owner = OwnerFactory(plan=plan)
+    repo = RepositoryFactory(private=private, owner=owner)
     dbsession.add(repo)
-    dbsession.flush()
-
-    if private:
-        repo.private = True
-    else:
-        repo.private = False
-
-    repo.owner.plan = plan
     dbsession.flush()
 
     mocked_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
