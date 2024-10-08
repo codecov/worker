@@ -1,11 +1,12 @@
 import logging
 from contextlib import nullcontext
-from typing import Dict
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
-from services.notification.notifiers.base import Comparison, NotificationResult
+from services.comparison import ComparisonProxy, FilteredComparison
+from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.status.base import StatusNotifier
 from services.urls import (
     append_tracking_params_to_urls,
@@ -28,7 +29,7 @@ class ChecksNotifier(StatusNotifier):
     def is_enabled(self) -> bool:
         return True
 
-    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     @property
@@ -45,7 +46,9 @@ class ChecksNotifier(StatusNotifier):
             flags=flag_list,
         )
 
-    def get_upgrade_message(self, comparison: Comparison) -> str:
+    def get_upgrade_message(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> str:
         db_pull = comparison.enriched_pull.database_pull
         links = {"members_url": get_members_url(db_pull)}
         author_username = comparison.enriched_pull.provider_pull["author"].get(
@@ -64,14 +67,15 @@ class ChecksNotifier(StatusNotifier):
         for i in range(0, len(annotations), self.ANNOTATIONS_PER_REQUEST):
             yield annotations[i : i + self.ANNOTATIONS_PER_REQUEST]
 
-    def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         raise NotImplementedError()
 
     def get_status_external_name(self) -> str:
         status_piece = f"/{self.title}" if self.title != "default" else ""
         return f"codecov/{self.context}{status_piece}"
 
-    def notify(self, comparison: Comparison):
+    @sentry_sdk.trace
+    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
         if comparison.pull is None or ():
             log.debug(
                 "Falling back to commit_status: Not a pull request",
@@ -298,10 +302,10 @@ class ChecksNotifier(StatusNotifier):
             file_diff["additions"] = lines_diff
         return file_diff
 
-    def get_codecov_pr_link(self, comparison):
+    def get_codecov_pr_link(self, comparison: ComparisonProxy | FilteredComparison):
         return f"[View this Pull Request on Codecov]({get_pull_url(comparison.pull)}?dropdown=coverage&src=pr&el=h1)"
 
-    def get_lines_to_annotate(self, comparison, files_with_change):
+    def get_lines_to_annotate(self, comparison: ComparisonProxy, files_with_change):
         lines_diff = []
         for _file in files_with_change:
             if _file is None:
@@ -338,7 +342,9 @@ class ChecksNotifier(StatusNotifier):
             previous_line = line
         return line_headers
 
-    def create_annotations(self, comparison, diff):
+    def create_annotations(
+        self, comparison: ComparisonProxy | FilteredComparison, diff
+    ):
         files_with_change = [
             {"type": _diff["type"], "path": path, "segments": _diff["segments"]}
             for path, _diff in (diff["files"] if diff else {}).items()
@@ -364,7 +370,7 @@ class ChecksNotifier(StatusNotifier):
             annotations.append(annotation)
         return annotations
 
-    def send_notification(self, comparison: Comparison, payload):
+    def send_notification(self, comparison: ComparisonProxy, payload):
         title = self.get_status_external_name()
         head = comparison.head.commit
         repository_service = self.repository_service(head)

@@ -1,15 +1,16 @@
 import json
 import logging
-from contextlib import nullcontext
 from decimal import Decimal
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
 import httpx
+import sentry_sdk
 from shared.config import get_config
 
 from helpers.match import match
 from helpers.metrics import metrics
+from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
@@ -45,7 +46,7 @@ class StandardNotifier(AbstractBaseNotifier):
             )
         return self._repository_service
 
-    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     @property
@@ -90,21 +91,20 @@ class StandardNotifier(AbstractBaseNotifier):
             return False
         return True
 
-    def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    @sentry_sdk.trace
+    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
         filtered_comparison = comparison.get_filtered_comparison(
             **self.get_notifier_filters()
         )
-        with nullcontext():
-            with nullcontext():
-                if self.should_notify_comparison(filtered_comparison):
-                    result = self.do_notify(filtered_comparison, **extra_data)
-                else:
-                    result = NotificationResult(
-                        notification_attempted=False,
-                        notification_successful=None,
-                        explanation="Did not fit criteria",
-                        data_sent=None,
-                    )
+        if self.should_notify_comparison(filtered_comparison):
+            result = self.do_notify(filtered_comparison)
+        else:
+            result = NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="Did not fit criteria",
+                data_sent=None,
+            )
         return result
 
     def get_notifier_filters(self) -> dict:
@@ -117,7 +117,7 @@ class StandardNotifier(AbstractBaseNotifier):
             flags=flag_list,
         )
 
-    def do_notify(self, comparison) -> NotificationResult:
+    def do_notify(self, comparison: Comparison) -> NotificationResult:
         data = self.build_payload(comparison)
         result = self.send_actual_notification(data)
         return NotificationResult(

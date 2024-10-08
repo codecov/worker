@@ -72,9 +72,7 @@ class BaseNotifier:
     def build_message(self) -> str:
         raise NotImplementedError
 
-    def notify(
-        self,
-    ) -> NotifierResult:
+    def notify(self) -> NotifierResult:
         pull = self.get_pull()
         if pull is None:
             log.info(

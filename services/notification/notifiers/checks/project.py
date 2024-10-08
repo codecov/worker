@@ -1,5 +1,5 @@
 from database.enums import Notification
-from services.notification.notifiers.base import Comparison
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.mixins.message import MessageMixin
 from services.notification.notifiers.mixins.status import StatusProjectMixin
@@ -13,11 +13,13 @@ class ProjectChecksNotifier(MessageMixin, StatusProjectMixin, ChecksNotifier):
     def notification_type(self) -> Notification:
         return Notification.checks_project
 
-    def get_message(self, comparison: Comparison, yaml_comment_settings):
+    def get_message(
+        self, comparison: ComparisonProxy | FilteredComparison, yaml_comment_settings
+    ):
         pull_dict = comparison.enriched_pull.provider_pull
         return self.create_message(comparison, pull_dict, yaml_comment_settings)
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         """
         This method build the paylod of the project github checks.
 
