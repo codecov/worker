@@ -303,13 +303,14 @@ class StatusProjectMixin(object):
     def _get_project_status(
         self, comparison: ComparisonProxy | FilteredComparison
     ) -> tuple[str, str]:
-        if comparison.head.report.totals.coverage is None:
+        head_report_totals = comparison.head.report.totals
+        if head_report_totals.coverage is None:
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No coverage information found on head"
             return (state, message)
 
         threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
-        head_coverage = Decimal(comparison.head.report.totals.coverage)
+        head_coverage = Decimal(head_report_totals.coverage)
         head_coverage_rounded = round_number(self.current_yaml, head_coverage)
 
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
@@ -325,20 +326,23 @@ class StatusProjectMixin(object):
             expected_coverage_str = round_number(self.current_yaml, target_coverage)
             message = f"{head_coverage_rounded}% (target {expected_coverage_str}%)"
             return (state, message)
-        if comparison.project_coverage_base.report is None:
+
+        base_report = comparison.project_coverage_base.report
+        if base_report is None:
             # No base report - can't pass by offset coverage
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No report found to compare against"
             return (state, message)
-        if comparison.project_coverage_base.report.totals.coverage is None:
+
+        base_report_totals = base_report.totals
+        if base_report_totals.coverage is None:
             # Base report, no coverage on base report - can't pass by offset coverage
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No coverage information found on base report"
             return (state, message)
+
         # Proper comparison head vs base report
-        target_coverage = Decimal(
-            comparison.project_coverage_base.report.totals.coverage
-        )
+        target_coverage = Decimal(base_report_totals.coverage)
         state = "success" if head_coverage + threshold >= target_coverage else "failure"
         change_coverage = round_number(
             self.current_yaml, head_coverage - target_coverage
