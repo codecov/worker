@@ -3,6 +3,7 @@ import logging
 from collections import defaultdict
 from typing import Any, Dict, Iterator, List, Tuple, Union
 
+import sentry_sdk
 from shared.helpers.numeric import ratio
 from shared.reports.resources import Report
 from shared.reports.types import Change, ReportTotals
@@ -80,6 +81,7 @@ def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
     return dict([(k, v) for k, v in offsets.items() if v != 0]), additions, removals
 
 
+@sentry_sdk.trace
 def get_changes(
     base_report: Report, head_report: Report, diff_json: dict[str, Any] | None
 ) -> list[Change] | None:

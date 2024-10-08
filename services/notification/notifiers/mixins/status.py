@@ -2,7 +2,6 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from services.comparison import ComparisonProxy, FilteredComparison
-from services.comparison.types import Comparison
 from services.yaml.reader import round_number
 
 log = logging.getLogger(__name__)
@@ -79,7 +78,9 @@ class StatusChangesMixin(object):
                 return (t.misses + t.partials) > 0
         return False
 
-    def get_changes_status(self, comparison: Comparison) -> tuple[str, str]:
+    def get_changes_status(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str]:
         pull = comparison.pull
         if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
             if not comparison.has_project_coverage_base_report():

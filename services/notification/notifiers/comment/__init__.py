@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, List, Mapping
+from typing import Any, Mapping
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 
 
 class CommentNotifier(MessageMixin, AbstractBaseNotifier):
-    notify_conditions: List[NotifyCondition] = [
+    notify_conditions: list[NotifyCondition] = [
         ComparisonHasPull,
         PullRequestInProvider,
         PullHeadMatchesComparisonHead,
@@ -56,7 +56,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             )
         return self._repository_service
 
-    def store_results(self, comparison: Comparison, result: NotificationResult):
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pull = comparison.pull
         if not result.notification_attempted or not result.notification_successful:
             return
@@ -78,7 +78,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     def get_diff(self, comparison: Comparison):
         return comparison.get_diff()
 
-    def notify(self, comparison: ComparisonProxy, **extra_data) -> NotificationResult:
+    @sentry_sdk.trace
+    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
         if comparison.pull is not None and comparison.pull.state != "open":
@@ -314,7 +315,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             self.notifier_yaml_settings, dict
         )
 
-    def build_message(self, comparison: Comparison) -> list[str]:
+    def build_message(self, comparison: ComparisonProxy) -> list[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
         if self.is_processing_upload():
@@ -391,7 +392,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 "Files changed in this PR are testable or aren't ignored by Codecov, please run your tests and upload coverage. If you wish to ignore these files, please visit our [ignoring paths docs](https://docs.codecov.com/docs/ignoring-paths).",
             ]
 
-    def _create_reached_upload_limit_message(self, comparison):
+    def _create_reached_upload_limit_message(self, comparison: ComparisonProxy):
         db_pull = comparison.enriched_pull.database_pull
         links = {"plan_url": get_plan_url(db_pull)}
         return [
@@ -403,7 +404,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             "**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
 
-    def _create_upgrade_message(self, comparison):
+    def _create_upgrade_message(self, comparison: ComparisonProxy):
         db_pull = comparison.enriched_pull.database_pull
         links = {
             "members_url_cloud": get_members_url(db_pull),

@@ -1,7 +1,7 @@
 import logging
 
 from database.enums import Notification
-from services.notification.notifiers.base import Comparison
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.status import StatusProjectMixin
 from services.notification.notifiers.status.base import StatusNotifier
 
@@ -30,7 +30,7 @@ class ProjectStatusNotifier(StatusProjectMixin, StatusNotifier):
     def notification_type(self) -> Notification:
         return Notification.status_project
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         if self.is_empty_upload():
             state, message = self.get_status_check_for_empty_upload()
             return {"state": state, "message": message}

@@ -1,5 +1,5 @@
 from database.enums import Notification
-from services.notification.notifiers.base import Comparison
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.mixins.status import StatusPatchMixin
 from services.yaml import read_yaml_field
@@ -12,7 +12,7 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
     def notification_type(self) -> Notification:
         return Notification.checks_patch
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         """
         This method build the paylod of the patch github checks.
 
