@@ -177,6 +177,28 @@ class MessageMixin(object):
                         section_writer,
                     )
 
+            extra_message = []
+
+            if not self.repository.test_analytics_enabled:
+                extra_message.append(
+                    "- [Flaky Tests Detection](https://docs.codecov.com/docs/test-result-ingestion-beta) - Identify and resolve unreliable tests more easily."
+                )
+            if not self.repository.bundle_analysis_enabled and set(
+                {"javascript", "typescript"}
+            ).intersection(self.repository.languages or {}):
+                extra_message.append(
+                    "- [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis) - Gain insights into your bundle size and performance."
+                )
+
+            if extra_message:
+                for i in [
+                    "----",
+                    "🚀 Exciting News! Check out our new features. Give them a try today!",
+                    "",
+                    *extra_message,
+                ]:
+                    write(i)
+
         return [m for m in message if m is not None]
 
     def _possibly_write_install_app(
