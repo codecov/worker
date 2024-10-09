@@ -1,7 +1,7 @@
 import typing
 from io import BytesIO
-from json import dumps, loads
 
+import orjson
 import sentry_sdk
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -11,7 +11,7 @@ from services.report.report_builder import ReportBuilderSession
 class GapProcessor(BaseLanguageProcessor):
     def matches_content(self, content: typing.Any, first_line: str, name: str) -> bool:
         try:
-            val = content if isinstance(content, dict) else loads(first_line)
+            val = content if isinstance(content, dict) else orjson.loads(first_line)
             return "Type" in val and "File" in val
         except (TypeError, ValueError):
             return False
@@ -23,7 +23,7 @@ class GapProcessor(BaseLanguageProcessor):
         report_builder_session: ReportBuilderSession,
     ) -> None:
         if isinstance(content, dict):
-            content = dumps(content)
+            content = orjson.dumps(content)
         if isinstance(content, str):
             content = content.encode()
         return from_string(content, report_builder_session)
@@ -32,11 +32,11 @@ class GapProcessor(BaseLanguageProcessor):
 def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> None:
     _file = None
     for encoded_line in BytesIO(string):
-        line = encoded_line.decode(errors="replace").rstrip("\n")
-        if not line:
+        line_str = encoded_line.decode(errors="replace").rstrip("\n")
+        if not line_str:
             continue
 
-        line = loads(line)
+        line = orjson.loads(line_str)
         if line["Type"] == "S":
             if _file is not None:
                 report_builder_session.append(_file)

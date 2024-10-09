@@ -4,10 +4,10 @@ import logging
 import sys
 import uuid
 from dataclasses import dataclass
-from json import loads
 from time import time
 from typing import Any, Mapping, Sequence
 
+import orjson
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
@@ -865,7 +865,7 @@ class ReportService(BaseReportService):
         # `report_json` is an `ArchiveField`, so this will trigger an upload
         # FIXME: we do an unnecessary `loads` roundtrip because of this abstraction,
         # and we should just save the `report_json` to archive storage directly instead.
-        commit.report_json = loads(report_json)
+        commit.report_json = orjson.loads(report_json)
 
         # `report` is an accessor which implicitly queries `CommitReport`
         if commit_report := commit.report:

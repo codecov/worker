@@ -1,11 +1,11 @@
 import contextlib
 import functools
-import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
+import orjson
 from redis.exceptions import LockError
 from redis.lock import Lock
 from shared.celery_config import (
@@ -262,7 +262,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         # tell when the report is final.
         try:
             if commit.report_json:
-                report_json_size = len(json.dumps(commit.report_json))
+                report_json_size = len(orjson.dumps(commit.report_json))
                 archive_service = ArchiveService(commit.repository)
                 chunks_size = len(
                     archive_service.read_chunks(commit.commitid, report_code)
@@ -540,7 +540,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
 
             try:
-                files_and_sessions = json.loads(archive_service.read_file(fas_path))
+                files_and_sessions = orjson.loads(archive_service.read_file(fas_path))
                 chunks = archive_service.read_file(chunks_path).decode(errors="replace")
                 report = report_service.build_report(
                     chunks,
@@ -572,7 +572,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             chunks = archive_service.read_file(partial_report["chunks_path"]).decode(
                 errors="replace"
             )
-            files_and_sessions = json.loads(
+            files_and_sessions = orjson.loads(
                 archive_service.read_file(partial_report["files_and_sessions_path"])
             )
             report = report_service.build_report(
