@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from enum import Enum
 
+import sentry_sdk
+from shared.metrics import Counter
+
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
+
+PARALLEL_TASK_RUNS = Counter(
+    "worker_parallel_task_runs",
+    "Number of tasks run using different parallel processing configurations.",
+    ["task", "parallel_mode"],
+)
 
 """
 This encapsulates Parallel Upload Processing logic
@@ -89,3 +98,7 @@ class ParallelProcessing(Enum):
         if is_final:
             return ParallelProcessing.EXPERIMENT_SERIAL
         return ParallelProcessing.SERIAL
+
+    def emit_metrics(self, task: str):
+        sentry_sdk.set_tag("parallel_mode", self.value)
+        PARALLEL_TASK_RUNS.labels(task=task, parallel_mode=self.value).inc()
