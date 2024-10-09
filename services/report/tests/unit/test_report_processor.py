@@ -1,5 +1,3 @@
-from io import BytesIO
-
 import pytest
 
 from services.report.languages.helpers import remove_non_ascii
@@ -43,7 +41,7 @@ xcode_report = b"""/Users/distiller/project/Auth0/A0ChallengeGenerator.m:
     ],
 )
 def test_report_type_matching(input: bytes, expected_type: str, expected_content):
-    report = ParsedUploadedReportFile(filename="name", file_contents=BytesIO(input))
+    report = ParsedUploadedReportFile(filename="name", file_contents=input)
     first_line = remove_non_ascii(report.get_first_line().decode(errors="replace"))
 
     content, detected_type = report_type_matching(
@@ -56,10 +54,10 @@ def test_report_type_matching(input: bytes, expected_type: str, expected_content
 
 
 def test_empty_json():
-    raw_report = ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b"{}"))
+    raw_report = ParsedUploadedReportFile(filename="name", file_contents=b"{}")
     report = process_report(raw_report, None)
     assert report is None
 
-    raw_report = ParsedUploadedReportFile(filename="name", file_contents=BytesIO(b"[]"))
+    raw_report = ParsedUploadedReportFile(filename="name", file_contents=b"[]")
     report = process_report(raw_report, None)
     assert report is None

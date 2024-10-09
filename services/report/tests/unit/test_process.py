@@ -1,4 +1,3 @@
-from io import BytesIO
 from json import dumps, loads
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -400,12 +399,10 @@ class TestProcessSessions(BaseTestCase):
 
 
 class TestProcessReport(BaseTestCase):
-    @pytest.mark.parametrize("report", ["<idk>", "<?xml", ""])
+    @pytest.mark.parametrize("report", [b"<idk>", b"<?xml", b""])
     def test_emptys(self, report):
         res = process.process_report(
-            report=ParsedUploadedReportFile(
-                filename=None, file_contents=BytesIO(report.encode())
-            ),
+            report=ParsedUploadedReportFile(filename=None, file_contents=report),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
             ),
@@ -417,7 +414,7 @@ class TestProcessReport(BaseTestCase):
         res = process.process_report(
             report=ParsedUploadedReportFile(
                 filename="app.coverage.txt",
-                file_contents=BytesIO("/file:\n 1 | 1|line".encode()),
+                file_contents=b"/file:\n 1 | 1|line",
             ),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -446,275 +443,238 @@ class TestProcessReport(BaseTestCase):
         [
             (
                 "go.from_txt",
+                ParsedUploadedReportFile(filename=None, file_contents=b"mode: atomic"),
+            ),
+            (
+                "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"mode: atomic")
+                    filename="/Users/path/to/app.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO(b"<data>"),
-                ),
-            ),
-            (
-                "xcode.from_txt",
-                ParsedUploadedReportFile(
-                    filename="app.coverage.txt", file_contents=BytesIO(b"<data>")
+                    filename="app.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/framework.coverage.txt",
-                    file_contents=BytesIO(b"<data>"),
+                    file_contents=b"<data>",
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="framework.coverage.txt", file_contents=BytesIO(b"<data>")
+                    filename="framework.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/xctest.coverage.txt",
-                    file_contents=BytesIO(b"<data>"),
+                    file_contents=b"<data>",
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="xctest.coverage.txt", file_contents=BytesIO(b"<data>")
+                    filename="xctest.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="coverage.txt", file_contents=BytesIO(b"/blah/app.h:\n")
+                    filename="coverage.txt", file_contents=b"/blah/app.h:\n"
                 ),
             ),
             (
                 "dlst.from_string",
-                ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"data\ncovered")
-                ),
+                ParsedUploadedReportFile(filename=None, file_contents=b"data\ncovered"),
             ),
             (
                 "vb.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b"<results><SampleTag></SampleTag></results>"
-                    ),
+                    file_contents=b"<results><SampleTag></SampleTag></results>",
                 ),
             ),
             (
                 "lcov.from_txt",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"content\nend_of_record")
+                    filename=None, file_contents=b"content\nend_of_record"
                 ),
             ),
             (
                 "gcov.from_txt",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"0:Source:\nline2")
+                    filename=None, file_contents=b"0:Source:\nline2"
                 ),
             ),
             (
                 "lua.from_txt",
+                ParsedUploadedReportFile(filename=None, file_contents=b"======="),
+            ),
+            (
+                "gap.from_string",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"=======")
+                    filename=None, file_contents=b'{"Type": "S", "File": "a"}'
                 ),
             ),
             (
                 "gap.from_string",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"Type": "S", "File": "a"}')
-                ),
-            ),
-            (
-                "gap.from_string",
-                ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'{"Type": "S", "File": "a"}\n{"Type":"R","Line":1,"FileId":37}'
-                    ),
+                    file_contents=b'{"Type": "S", "File": "a"}\n{"Type":"R","Line":1,"FileId":37}',
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"RSpec": {"coverage": {}}}')
+                    filename=None, file_contents=b'{"RSpec": {"coverage": {}}}'
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
-                    filename=None,
-                    file_contents=BytesIO(b'{"MiniTest": {"coverage": {}}}'),
+                    filename=None, file_contents=b'{"MiniTest": {"coverage": {}}}'
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"coverage": {}}')
+                    filename=None, file_contents=b'{"coverage": {}}'
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        ('{"coverage": {"data": "' + "\xf1" + '"}}').encode()
-                    ),
+                    file_contents=('{"coverage": {"data": "' + "\xf1" + '"}}').encode(),
                 ),
-            ),  # non-acii
+            ),
             (
                 "rlang.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"uploader": "R"}')
+                    filename=None, file_contents=b'{"uploader": "R"}'
                 ),
             ),
             (
                 "scala.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"fileReports": ""}')
+                    filename=None, file_contents=b'{"fileReports": ""}'
                 ),
             ),
             (
                 "coveralls.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"source_files": ""}')
+                    filename=None, file_contents=b'{"source_files": ""}'
                 ),
             ),
             (
                 "node.from_json",
                 ParsedUploadedReportFile(
-                    filename=None,
-                    file_contents=BytesIO(b'{"filename": {"branchMap": ""}}'),
+                    filename=None, file_contents=b'{"filename": {"branchMap": ""}}'
                 ),
             ),
             (
                 "scoverage.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        (
-                            "<statements><data>" + "\xf1" + "</data></statements>"
-                        ).encode()
-                    ),
+                    file_contents=(
+                        "<statements><data>" + "\xf1" + "</data></statements>"
+                    ).encode(),
                 ),
             ),
             (
                 "clover.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<coverage generated="abc"><SampleTag></SampleTag></coverage>'
-                    ),
+                    file_contents=b'<coverage generated="abc"><SampleTag></SampleTag></coverage>',
                 ),
             ),
             (
                 "cobertura.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b"<coverage><SampleTag></SampleTag></coverage>"
-                    ),
+                    file_contents=b"<coverage><SampleTag></SampleTag></coverage>",
                 ),
             ),
             (
                 "csharp.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b"<CoverageSession><SampleTag></SampleTag></CoverageSession>"
-                    ),
+                    file_contents=b"<CoverageSession><SampleTag></SampleTag></CoverageSession>",
                 ),
             ),
             (
                 "jacoco.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(b"<report><SampleTag></SampleTag></report>"),
+                    file_contents=b"<report><SampleTag></SampleTag></report>",
                 ),
             ),
             (
                 "xcodeplist.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0">\n<plist version="1.0">'
-                    ),
+                    file_contents=b'<?xml version="1.0">\n<plist version="1.0">',
                 ),
             ),
             (
                 "xcodeplist.from_xml",
                 ParsedUploadedReportFile(
                     filename="3CB41F9A-1DEA-4DE1-B321-6F462C460DB6.xccoverage.plist",
-                    file_contents=BytesIO(b"__"),
+                    file_contents=b"__",
                 ),
             ),
             (
                 "scoverage.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<statements><SampleTag></SampleTag></statements>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<statements><SampleTag></SampleTag></statements>',
                 ),
             ),
             (
                 "clover.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<coverage generated="abc"><SampleTag></SampleTag></coverage>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<coverage generated="abc"><SampleTag></SampleTag></coverage>',
                 ),
             ),
             (
                 "cobertura.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<coverage><SampleTag></SampleTag></coverage>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<coverage><SampleTag></SampleTag></coverage>',
                 ),
             ),
             (
                 "csharp.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<CoverageSession><SampleTag></SampleTag></CoverageSession>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<CoverageSession><SampleTag></SampleTag></CoverageSession>',
                 ),
             ),
             (
                 "jacoco.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<report><SampleTag></SampleTag></report>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<report><SampleTag></SampleTag></report>',
                 ),
             ),
             (
                 "salesforce.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'[{"name": "banana"}]')
+                    filename=None, file_contents=b'[{"name": "banana"}]'
                 ),
             ),
             (
                 "bullseye.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="UTF-8"?><BullseyeCoverage name="test.cov" dir="c:/project/cov/sample/" buildId="1234_%s" version="6" xmlns="https://www.bullseye.com/covxml" fn_cov="29" fn_total="29" cd_cov="108" cd_total="161" d_cov="107" d_total="153"><folder name="calc" fn_cov="10" fn_total="10" cd_cov="21" cd_total="50" d_cov="21" d_total="50"></folder></BullseyeCoverage>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="UTF-8"?><BullseyeCoverage name="test.cov" dir="c:/project/cov/sample/" buildId="1234_%s" version="6" xmlns="https://www.bullseye.com/covxml" fn_cov="29" fn_total="29" cd_cov="108" cd_total="161" d_cov="107" d_total="153"><folder name="calc" fn_cov="10" fn_total="10" cd_cov="21" cd_total="50" d_cov="21" d_total="50"></folder></BullseyeCoverage>',
                 ),
             ),
         ],
@@ -733,13 +693,7 @@ class TestProcessReport(BaseTestCase):
 
     @pytest.mark.parametrize(
         "report",
-        [
-            (
-                ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'[{"a": "banana"}]')
-                )
-            )
-        ],
+        [(ParsedUploadedReportFile(filename=None, file_contents=b'[{"a": "banana"}]'))],
     )
     def test_detect_nothing_found(self, report):
         res = process.process_report(
@@ -751,7 +705,7 @@ class TestProcessReport(BaseTestCase):
         assert res is None
 
     def test_xxe_entity_not_called(self, mocker):
-        report_xxe_xml = """<?xml version="1.0"?>
+        report_xxe_xml = b"""<?xml version="1.0"?>
         <!DOCTYPE coverage [
         <!ELEMENT coverage ANY >
         <!ENTITY xxe SYSTEM "file:///config/codecov.yml" >]>
@@ -760,7 +714,7 @@ class TestProcessReport(BaseTestCase):
         func = mocker.patch("services.report.languages.scoverage.from_xml")
         process.process_report(
             report=ParsedUploadedReportFile(
-                filename="filename", file_contents=BytesIO(report_xxe_xml.encode())
+                filename="filename", file_contents=report_xxe_xml
             ),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -778,7 +732,7 @@ class TestProcessReport(BaseTestCase):
         mocked.return_value = "bad_processing", "new_type"
         r = ParsedUploadedReportFile(
             filename="/Users/path/to/app.coverage.txt",
-            file_contents=BytesIO("<data>".encode()),
+            file_contents=b"<data>",
         )
         result = process.process_report(
             report=r,
@@ -811,7 +765,7 @@ class TestProcessReport(BaseTestCase):
             process.process_report(
                 report=ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
                 report_builder=ReportBuilder(
                     current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -835,7 +789,7 @@ class TestProcessReport(BaseTestCase):
         res = process.process_report(
             report=ParsedUploadedReportFile(
                 filename="/Users/path/to/app.coverage.txt",
-                file_contents=BytesIO("<data>".encode()),
+                file_contents=b"<data>",
             ),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -893,15 +847,15 @@ class TestProcessReport(BaseTestCase):
             uploaded_files=[
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
             ],
         )
@@ -996,7 +950,7 @@ class TestProcessReport(BaseTestCase):
             uploaded_files=[
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
             ],
         )
@@ -1088,7 +1042,7 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
             uploaded_files=[
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.json",
-                    file_contents=BytesIO(raw_content.encode()),
+                    file_contents=raw_content.encode(),
                 ),
             ],
         )
@@ -1263,9 +1217,7 @@ class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
             uploaded_files=[
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.json",
-                    file_contents=BytesIO(
-                        "Bogus report that shouldn't match any parser".encode()
-                    ),
+                    file_contents=b"Bogus report that shouldn't match any parser",
                 ),
             ],
         )

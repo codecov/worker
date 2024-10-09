@@ -119,7 +119,7 @@ def report_type_matching(
         return raw_report, "txt"
 
     try:
-        processed = orjson.load(report.file_contents)
+        processed = orjson.loads(raw_report)
         if isinstance(processed, dict) or isinstance(processed, list):
             return processed, "json"
     except ValueError:
