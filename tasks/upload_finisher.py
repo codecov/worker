@@ -137,6 +137,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repository = commit.repository
 
         parallel_processing = ParallelProcessing.from_task_args(**kwargs)
+        parallel_processing.emit_metrics("upload_finisher")
 
         if parallel_processing.is_parallel:
             # need to transform processing_results produced by chord to get it into the

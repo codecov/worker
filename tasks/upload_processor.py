@@ -193,6 +193,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         report_service = ReportService(UserYaml(commit_yaml))
 
         in_parallel = parallel_processing.is_parallel
+        parallel_processing.emit_metrics("upload_processor")
 
         if in_parallel:
             log.info(
