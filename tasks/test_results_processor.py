@@ -83,7 +83,7 @@ class PytestName:
 
 
 @dataclass
-class argProcessingResult:
+class TestResultsProcessingResult:
     network_files: list[str] | None
     parsing_results: list[ParsingInfo]
 
@@ -101,8 +101,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     ) -> str:
         match framework:
             case Framework.Jest:
-                name = raw_name
-                return name
+                return raw_name
             case Framework.Pytest:
                 split_name = raw_classname.split(".")
                 name_candidates: list[PytestName] = []
@@ -394,8 +393,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     ):
         upload_id = upload_obj.id
         with metrics.timer("test_results.processor.process_individual_arg"):
-            arg_processing_result: argProcessingResult = self.process_individual_arg(
-                upload_obj, upload_obj.report.commit.repository
+            arg_processing_result: TestResultsProcessingResult = (
+                self.process_individual_arg(
+                    upload_obj, upload_obj.report.commit.repository
+                )
             )
         if all(
             [
@@ -432,7 +433,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "successful": True,
         }
 
-    def process_individual_arg(self, upload: Upload, repository) -> argProcessingResult:
+    def process_individual_arg(
+        self, upload: Upload, repository
+    ) -> TestResultsProcessingResult:
         archive_service = ArchiveService(repository)
 
         payload_bytes = archive_service.read_file(upload.storage_path)
@@ -459,7 +462,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     ),
                 )
 
-        return argProcessingResult(
+        return TestResultsProcessingResult(
             network_files=network, parsing_results=parsing_results
         )
 
