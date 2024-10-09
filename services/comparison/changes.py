@@ -1,7 +1,7 @@
 import dataclasses
 import logging
 from collections import defaultdict
-from typing import Any, Dict, Iterator, List, Tuple, Union
+from typing import Any, Iterator, Tuple, Union
 
 import sentry_sdk
 from shared.helpers.numeric import ratio
@@ -51,8 +51,8 @@ def diff_totals(base, head, absolute=None) -> Union[bool, None, ReportTotals]:
     return ReportTotals(*diff)
 
 
-def get_segment_offsets(segments) -> Tuple[Dict[int, Any], List[int]]:
-    offsets = defaultdict(lambda: 0)
+def get_segment_offsets(segments) -> tuple[dict[int, Any], list[int], list[int]]:
+    offsets: dict[int, int] = defaultdict(int)
     additions = []
     removals = []
     # loop through the segments
@@ -164,8 +164,8 @@ def get_changes(
                 # Diff says it's because it's new
                 # This is expected
                 continue
-            _, additions, _ = get_segment_offsets(diff["segments"])
-            additions = set(additions)
+            r = get_segment_offsets(diff["segments"])
+            additions: set[int] = set(r[1])
             if any(ln not in additions for ln, _ in _file.lines):
                 # file has new coverage lines that are not accounted by the diff
                 new_files.add(filename)
@@ -195,25 +195,26 @@ def get_changes(
                     ),
                 )
             )
-    vanished_base_files = {
-        d.get("before") or k: (k, d)
-        for (k, d) in diff_json["files"].items()
-        if head_report.get(k) is None
-        and base_report.get(d.get("before") or k) is not None
-    }
-    for possibly_deleted_filename, data in vanished_base_files.items():
-        head_name, diff = data
-        # these are files that are present on base, not present on head
-        # and are possibly accounted by the diff
-        # But to know that for sure we need to know that every line lost is accounted
-        # by the diff
-        if diff.get("type") != "deleted":
-            base_report_file = base_report.get(possibly_deleted_filename)
-            present_lines_on_base = set(x[0] for x in base_report_file.lines)
-            _, _, line_removals = get_segment_offsets(diff["segments"])
-            lines_unnaccounted_for = present_lines_on_base - set(line_removals)
-            if lines_unnaccounted_for:
-                changes.append(Change(path=head_name, deleted=True))
+    if diff_json:
+        vanished_base_files = {
+            d.get("before") or k: (k, d)
+            for (k, d) in diff_json["files"].items()
+            if head_report.get(k) is None
+            and base_report.get(d.get("before") or k) is not None
+        }
+        for possibly_deleted_filename, data in vanished_base_files.items():
+            head_name, diff = data
+            # these are files that are present on base, not present on head
+            # and are possibly accounted by the diff
+            # But to know that for sure we need to know that every line lost is accounted
+            # by the diff
+            if diff.get("type") != "deleted":
+                base_report_file = base_report.get(possibly_deleted_filename)
+                present_lines_on_base = set(x[0] for x in base_report_file.lines)
+                _, _, line_removals = get_segment_offsets(diff["segments"])
+                lines_unnaccounted_for = present_lines_on_base - set(line_removals)
+                if lines_unnaccounted_for:
+                    changes.append(Change(path=head_name, deleted=True))
 
     # [deleted] [~~diff~~] == missing reports
     # left over deleted files
