@@ -196,6 +196,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         in_parallel = parallel_processing.is_parallel
         parallel_processing.emit_metrics("upload_processor")
 
+        report: Report | None
         if in_parallel:
             log.info(
                 "Creating empty report to store incremental result",
@@ -212,6 +213,11 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     extra=dict(commit=commit.commitid),
                 )
                 report = Report()
+
+        state = ProcessingState(repoid, commitid)
+        upload_ids = [int(upload["upload_pk"]) for upload in arguments_list]
+        # this in a noop in normal cases, but relevant for task retries:
+        state.mark_uploads_as_processing(upload_ids)
 
         raw_reports: list[RawReportInfo] = []
         try:
@@ -277,8 +283,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
-            state = ProcessingState(repoid, commitid)
-
             parallel_incremental_result = None
             results_dict = {}
             if in_parallel:
@@ -310,7 +314,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                     pr,
                     report_code,
                 )
-                upload_ids = [int(upload["upload_pk"]) for upload in arguments_list]
                 for upload_id in upload_ids:
                     state.mark_upload_as_processed(upload_id)
                 state.mark_uploads_as_merged(upload_ids)
@@ -366,6 +369,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 extra=dict(repoid=repoid, commit=commitid),
             )
             raise
+        finally:
+            # this is a noop in the success case, but makes sure unrecoverable errors
+            # are not blocking later merge/notify stages
+            state.clear_in_progress_uploads(upload_ids)
 
     @sentry_sdk.trace
     def process_individual_report(

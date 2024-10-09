@@ -77,6 +77,9 @@ class ProcessingState:
     def mark_uploads_as_processing(self, upload_ids: list[int]):
         self._redis.sadd(self._redis_key("processing"), *upload_ids)
 
+    def clear_in_progress_uploads(self, upload_ids: list[int]):
+        self._redis.srem(self._redis_key("processing"), *upload_ids)
+
     def mark_upload_as_processed(self, upload_id: int):
         res = self._redis.smove(
             self._redis_key("processing"), self._redis_key("processed"), upload_id
