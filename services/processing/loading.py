@@ -1,7 +1,7 @@
-import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
+import orjson
 import sentry_sdk
 from shared.reports.editable import EditableReport
 
@@ -35,7 +35,7 @@ def load_intermediate_reports(
         )
 
         chunks = archive_service.read_file(chunks_path).decode(errors="replace")
-        report_json = json.loads(archive_service.read_file(json_path))
+        report_json = orjson.loads(archive_service.read_file(json_path))
 
         report = EditableReport.from_chunks(
             chunks=chunks,

@@ -1,9 +1,9 @@
 import contextlib
-import json
 import logging
 import re
 from enum import Enum
 
+import orjson
 import sentry_sdk
 from redis.exceptions import LockError
 from redis.lock import Lock
@@ -274,7 +274,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         # tell when the report is final.
         try:
             if commit.report_json:
-                report_json_size = len(json.dumps(commit.report_json))
+                report_json_size = len(orjson.dumps(commit.report_json))
                 archive_service = ArchiveService(commit.repository)
                 chunks_size = len(
                     archive_service.read_chunks(commit.commitid, report_code)
@@ -574,7 +574,7 @@ def load_master_report(
 
         try:
             chunks = archive_service.read_file(chunks_path).decode(errors="replace")
-            report_json = json.loads(archive_service.read_file(json_path))
+            report_json = orjson.loads(archive_service.read_file(json_path))
 
             report = report_service.build_report(
                 chunks,

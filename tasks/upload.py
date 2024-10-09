@@ -4,9 +4,9 @@ import time
 import uuid
 from copy import deepcopy
 from datetime import datetime
-from json import loads
 from typing import Any, Dict, List, Optional
 
+import orjson
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery import chain, chord
@@ -178,7 +178,7 @@ class UploadContext:
         log.debug("Fetching arguments from redis %s", uploads_list_key)
         while arguments := self.redis_connection.lpop(uploads_list_key, count=50):
             for arg in arguments:
-                yield loads(arg)
+                yield orjson.loads(arg)
 
     def normalize_arguments(self, commit: Commit, arguments: dict[str, Any]):
         """
