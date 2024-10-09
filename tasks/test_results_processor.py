@@ -17,7 +17,6 @@ from test_results_parser import (
     Outcome,
     ParserError,
     ParsingInfo,
-    Testrun,
     parse_junit_xml,
 )
 
@@ -83,6 +82,12 @@ class PytestName:
     test_file_path: str
 
 
+@dataclass
+class argProcessingResult:
+    network_files: list[str] | None
+    parsing_results: list[ParsingInfo]
+
+
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
     __test__ = False
 
@@ -92,6 +97,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         raw_classname: str,
         raw_name: str,
         filename: str | None,
+        network: list[str] | None,
     ) -> str:
         match framework:
             case Framework.Jest:
@@ -110,8 +116,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
                 for candidate in name_candidates:
                     if candidate.test_file_path == filename or (
-                        self.network is not None
-                        and candidate.test_file_path in self.network
+                        network is not None and candidate.test_file_path in network
                     ):
                         return f"{candidate.test_file_path}::{candidate.actual_class_name}::{raw_name}"
             case Framework.Vitest:
@@ -191,13 +196,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_id: int,
         branch: str,
         parsing_results: List[ParsingInfo],
+        network: list[str] | None,
         flaky_test_set: set[str],
         flags: list[str],
     ):
         test_data = {}
         test_instance_data = []
         test_flag_bridge_data = []
-        daily_totals = dict()
+        daily_totals: dict[str, dict[str, str | int | list[str]]] = dict()
         flags_hash = generate_flags_hash(flags)
 
         repo_flags: dict[str, int] = get_repo_flags(db_session, repoid, flags)
@@ -219,7 +225,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 filename: str | None = testrun.filename
 
                 computed_name: str = self.compute_name(
-                    p.framework, testrun.classname, testrun.name, filename
+                    p.framework, testrun.classname, testrun.name, filename, network
                 )
 
                 test_data[(repoid, name, testsuite, flags_hash)] = dict(
@@ -388,10 +394,15 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     ):
         upload_id = upload_obj.id
         with metrics.timer("test_results.processor.process_individual_arg"):
-            parsing_results: list[ParsingInfo] = self.process_individual_arg(
+            arg_processing_result: argProcessingResult = self.process_individual_arg(
                 upload_obj, upload_obj.report.commit.repository
             )
-        if all([len(result.testruns) == 0 for result in parsing_results]):
+        if all(
+            [
+                len(result.testruns) == 0
+                for result in arg_processing_result.parsing_results
+            ]
+        ):
             log.error(
                 "No test result files were successfully parsed for this upload",
                 extra=dict(
@@ -411,7 +422,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             commitid,
             upload_id,
             branch,
-            parsing_results,
+            arg_processing_result.parsing_results,
+            arg_processing_result.network_files,
             flaky_test_set,
             upload_obj.flag_names,
         )
@@ -420,7 +432,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "successful": True,
         }
 
-    def process_individual_arg(self, upload: Upload, repository) -> List[Testrun]:
+    def process_individual_arg(self, upload: Upload, repository) -> argProcessingResult:
         archive_service = ArchiveService(repository)
 
         payload_bytes = archive_service.read_file(upload.storage_path)
@@ -428,8 +440,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         parsing_results: list[ParsingInfo] = []
 
-        # TODO: this is bad
-        self.network = data.get("network_files")
+        network: list[str] | None = data.get("network_files")
 
         for file_dict in data["test_results_files"]:
             file = file_dict["data"]
@@ -448,7 +459,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     ),
                 )
 
-        return parsing_results
+        return argProcessingResult(
+            network_files=network, parsing_results=parsing_results
+        )
 
     def parse_single_file(
         self,

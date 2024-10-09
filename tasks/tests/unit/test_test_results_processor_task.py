@@ -37,7 +37,7 @@ class TestUploadTestProcessorTask(object):
         assert len(test_instances) == 0
 
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_test.txt") as f:
+        with open(here.parent.parent / "samples" / "sample_test.json") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         upload = UploadFactory.create(storage_path=url)
@@ -105,7 +105,7 @@ class TestUploadTestProcessorTask(object):
         celery_app,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_test.txt") as f:
+        with open(here.parent.parent / "samples" / "sample_test.json") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         upload = UploadFactory.create(storage_path=url)
@@ -156,7 +156,7 @@ class TestUploadTestProcessorTask(object):
         celery_app,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_test.txt") as f:
+        with open(here.parent.parent / "samples" / "sample_test.json") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         upload = UploadFactory.create(storage_path=url)
@@ -281,7 +281,7 @@ class TestUploadTestProcessorTask(object):
         celery_app,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_test.txt") as f:
+        with open(here.parent.parent / "samples" / "sample_test.json") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         upload = UploadFactory.create(
@@ -368,7 +368,7 @@ class TestUploadTestProcessorTask(object):
         celery_app,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_test.txt") as f:
+        with open(here.parent.parent / "samples" / "sample_test.json") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         upload = UploadFactory.create(
@@ -476,7 +476,9 @@ class TestUploadTestProcessorTask(object):
         traveller = travel("1970-1-1T00:00:00Z", tick=False)
         traveller.start()
         first_url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_multi_test_part_1.txt") as f:
+        with open(
+            here.parent.parent / "samples" / "sample_multi_test_part_1.json"
+        ) as f:
             content = f.read()
             mock_storage.write_file("archive", first_url, content)
 
@@ -548,7 +550,9 @@ class TestUploadTestProcessorTask(object):
         dbsession.flush()
 
         second_url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/b84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_multi_test_part_2.txt") as f:
+        with open(
+            here.parent.parent / "samples" / "sample_multi_test_part_2.json"
+        ) as f:
             content = f.read()
             mock_storage.write_file("archive", second_url, content)
         upload = UploadFactory.create(storage_path=second_url, report=second_report_row)
@@ -619,7 +623,7 @@ class TestUploadTestProcessorTask(object):
     @pytest.mark.integration
     @pytest.mark.parametrize(
         "source_file_name",
-        ["sample_test_network.txt", "sample_test_missing_network.txt"],
+        ["sample_test_network.json", "sample_test_missing_network.json"],
     )
     def test_upload_processor_task_call_network(
         self,

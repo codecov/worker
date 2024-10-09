@@ -1,0 +1,11 @@
+{
+    "test_results_files": [
+        {
+            "filename": "codecov-demo/temp.junit.xml",
+            "format": "base64+compressed",
+            "data": "eJzNlE1P4zAQhu/5FSMjVSC2jh3Ksk2bVAhYIQ6c0PaI3MQp1jofsp1C//3aSWgCueyuesCXxOOZZ16PxrNcveUSdlxpURYRopgg4EVSpqLYRqg22fQHWsXe0nBtdC3sJ/bArt4ABct5hKq9s9hgpUqlI2Q5GROyVtxuKAL9W1QVT5uDJjZCM/snXCzB5DJADdctZ9SG5VWEAhJcTCmdku9PlIb0KiQzTCglVwGCl1KbNvevn/eP64fb9f0cyzJhEsUHVqMzYZpDIpnWrT+rBDY8r7D1TWrJTKmw83vu96i7VmNmaTqQSmgv1a1MyJbpO6bfM/xPTFztEfhH1qbrjVEsMV9WYF5LIyq5HwokX0lgKnYi5ceqX/whdNm9gQ9Gt2yHa7Z1WK25MmAfHkQREHw5OaFkAecAry9c8fYAJtIssrpIjH2lcNMnbLUDM0DeKJklc76Zk8nWLE7pNwjODqx32j9zbO6RG4pTno1uNKjl6VnoNcHd5UaEVl13Ye8ORkWwtvNRhiMUxHFbzoj+H6UZMUZhnvd3bRNekBCumyrY9Hduhi79rncG7e6/93s3hP3DFLYj2h/O6D/18sx5",
+            "labels": ""
+        }
+    ],
+    "metadata": {}
+}
