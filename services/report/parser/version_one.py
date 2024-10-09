@@ -1,7 +1,6 @@
 import base64
 import logging
 import zlib
-from io import BytesIO
 
 import orjson
 import sentry_sdk
@@ -43,7 +42,7 @@ class VersionOneReportParser(object):
 
     def _parse_coverage_file_contents(self, coverage_file):
         if coverage_file["format"] == "base64+compressed":
-            return BytesIO(zlib.decompress(base64.b64decode(coverage_file["data"])))
+            return zlib.decompress(base64.b64decode(coverage_file["data"]))
         log.warning(
             "Unkown format found while parsing upload",
             extra=dict(coverage_file_filename=coverage_file["filename"]),
