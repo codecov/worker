@@ -232,8 +232,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
                 failures.append(
                     TestResultsNotificationFailure(
-                        testsuite=test_instance.test.testsuite,
-                        testname=test_instance.test.name,
+                        display_name=test_instance.test.computed_name
+                        if test_instance.test.computed_name is not None
+                        else test_instance.test.name,
                         failure_message=failure_message,
                         test_id=test_instance.test_id,
                         envs=flag_names,

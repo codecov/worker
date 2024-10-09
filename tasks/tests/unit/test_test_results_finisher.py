@@ -933,3 +933,121 @@ To view individual test run time comparison to the main branch, go to the [Test 
                     "branch": "main",
                 },
             )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db(databases={"default"})
+    def test_upload_finisher_task_call_computed_name(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
+        repoid, commit, pull, test_instances = test_results_setup
+
+        for instance in test_instances:
+            instance.test.computed_name = f"hello_{instance.test.name}"
+
+        dbsession.flush()
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            [
+                [{"successful": True}],
+            ],
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
+
+        assert expected_result == result
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 3 failed tests by shortest run time</summary>
+
+> 
+> ```
+> hello_test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> hello_Other Class Name test_name2
+> ```
+> 
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> hello_Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+
+To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+        )
