@@ -1,8 +1,8 @@
-import json
 import logging
 from typing import Literal
 from xml.etree.ElementTree import Element
 
+import orjson
 import sentry_sdk
 from lxml import etree
 from shared.metrics import Counter, Histogram
@@ -119,7 +119,7 @@ def report_type_matching(
         return raw_report, "txt"
 
     try:
-        processed = json.load(report.file_contents)
+        processed = orjson.loads(raw_report)
         if isinstance(processed, dict) or isinstance(processed, list):
             return processed, "json"
     except ValueError:

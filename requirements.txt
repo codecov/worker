@@ -234,6 +234,8 @@ opentelemetry-semantic-conventions==0.45b0
     # via
     #   opentelemetry-instrumentation-celery
     #   opentelemetry-sdk
+orjson==3.10.7
+    # via -r requirements.in
 packaging==24.1
     # via pytest
 platformdirs==3.11.0

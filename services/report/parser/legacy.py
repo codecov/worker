@@ -99,7 +99,7 @@ class LegacyReportParser(object):
                     while i_start < i_end and raw_report[i_start] in whitespaces:
                         i_start += 1
                 yield {
-                    "contents": BytesIO(raw_report[i_start:i_end]),
+                    "contents": raw_report[i_start:i_end],
                     "filename": filename,
                     "footer": separator,
                 }

@@ -1,6 +1,5 @@
 import base64
 import zlib
-from io import BytesIO
 
 from services.report.parser.version_one import (
     ParsedUploadedReportFile,
@@ -106,5 +105,5 @@ def test_version_one_parser_parse_coverage_file_contents_base64_zip_format():
         "filename": "filename.py",
     }
     res = subject._parse_coverage_file_contents(coverage_file)
-    assert isinstance(res, BytesIO)
-    assert res.getvalue() == b"some_cool_string right \n here"
+    assert isinstance(res, bytes)
+    assert res == b"some_cool_string right \n here"
