@@ -1010,7 +1010,7 @@ class TestNotifyTask(object):
                                     "commit": "5b174c2b40d501a70c479e91025d5109b1ad5c1b",
                                     "branch": "master",
                                 },
-                                "open": True,
+                                "open": False,
                                 "id": 9,
                                 "merged": False,
                             },
@@ -1023,7 +1023,7 @@ class TestNotifyTask(object):
                     "title": "default",
                     "result": NotificationResult(
                         notification_attempted=True,
-                        notification_successful=True,
+                        notification_successful=False,
                         explanation=None,
                         data_sent={
                             "text": "Coverage for <https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|joseph-sentry/codecov-demo> *no change* `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9|0.00%>` on `test` is `85.00000%` via `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|5601846>`",
@@ -1038,9 +1038,9 @@ class TestNotifyTask(object):
                     "notifier": "status-project",
                     "title": "default",
                     "result": NotificationResult(
-                        notification_attempted=False,
-                        notification_successful=None,
-                        explanation="already_done",
+                        notification_attempted=True,
+                        notification_successful=False,
+                        explanation="no_write_permission",
                         data_sent={
                             "title": "codecov/project",
                             "state": "success",
@@ -1053,9 +1053,9 @@ class TestNotifyTask(object):
                     "notifier": "status-patch",
                     "title": "default",
                     "result": NotificationResult(
-                        notification_attempted=False,
-                        notification_successful=None,
-                        explanation="already_done",
+                        notification_attempted=True,
+                        notification_successful=False,
+                        explanation="no_write_permission",
                         data_sent={
                             "title": "codecov/patch",
                             "state": "success",
@@ -1069,14 +1069,14 @@ class TestNotifyTask(object):
                     "title": "default",
                     "result": NotificationResult(
                         notification_attempted=True,
-                        notification_successful=True,
-                        explanation=None,
+                        notification_successful=False,
+                        explanation="no_write_permission",
                         data_sent={
                             "title": "codecov/changes",
                             "state": "success",
                             "message": "No indirect coverage changes found",
                         },
-                        data_received={"id": 24846000025},
+                        data_received=None,
                     ),
                 },
                 {
@@ -1188,7 +1188,7 @@ class TestNotifyTask(object):
                                 "## [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
                                 "All modified and coverable lines are covered by tests :white_check_mark:",
                                 "> Project coverage is 85.00%. Comparing base [(`5b174c2`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d?dropdown=coverage&el=desc).",
-                                "> Report is 2 commits behind head on main.",
+                                "> Report is 43 commits behind head on main.",
                                 "",
                                 ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
                                 "",
@@ -1225,7 +1225,7 @@ class TestNotifyTask(object):
                             "commentid": None,
                             "pullid": 9,
                         },
-                        data_received={"id": 1699669573},
+                        data_received={"id": 2404383986},
                     ),
                 },
             ],
@@ -1258,7 +1258,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
         pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
-        assert pull.commentid == "1699669573"
+        assert pull.commentid == "2404383986"
 
     def test_notifier_call_no_head_commit_report(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
