@@ -42,18 +42,14 @@ class BundleAnalysisPRCommentNotificationContext(BaseBundleAnalysisNotificationC
 
     notification_type = NotificationType.PR_COMMENT
 
-    pull: EnrichedPull = NotificationContextField[EnrichedPull]()
-    bundle_analysis_comparison: BundleAnalysisComparison = NotificationContextField[
-        BundleAnalysisComparison
-    ]()
-    commit_status_level: CommitStatusLevel = NotificationContextField[
-        CommitStatusLevel
-    ]()
-    should_use_upgrade_comment: bool = NotificationContextField[bool]()
+    pull = NotificationContextField[EnrichedPull]()
+    bundle_analysis_comparison = NotificationContextField[BundleAnalysisComparison]()
+    commit_status_level = NotificationContextField[CommitStatusLevel]()
+    should_use_upgrade_comment = NotificationContextField[bool]()
 
 
 class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
-    fields_of_interest: tuple[str] = (
+    fields_of_interest: tuple[str, ...] = (
         "commit_report",
         "bundle_analysis_report",
         "user_config",
@@ -176,8 +172,7 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
                 )
                 if successful_activation:
                     schedule_new_user_activated_task(
-                        activate_seat_info.owner_id,
-                        activate_seat_info.author_id,
+                        activate_seat_info.owner_id, activate_seat_info.author_id
                     )
                     self._notification_context.should_use_upgrade_comment = False
                 else:
@@ -215,4 +210,4 @@ class BundleAnalysisPRCommentContextBuilder(NotificationContextBuilder):
         )
 
     def get_result(self) -> BundleAnalysisPRCommentNotificationContext:
-        return self._notification_context
+        return self._notification_context  # type: ignore

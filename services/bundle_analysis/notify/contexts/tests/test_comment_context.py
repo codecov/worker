@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
@@ -145,7 +146,11 @@ class TestBundleAnalysisPRCommentNotificationContext:
     @pytest.mark.parametrize(
         "config, total_size_delta",
         [
-            pytest.param({}, 100, id="default_config"),
+            pytest.param(
+                PATCH_CENTRIC_DEFAULT_CONFIG,
+                100,
+                id="default_config",
+            ),
             pytest.param(
                 {"comment": {"require_bundle_changes": False}},
                 100,
@@ -281,7 +286,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         enriched_pull = get_enriched_pull_setting_up_mocks(
             dbsession, mocker, (head_commit, base_commit)
         )
-        user_yaml = UserYaml.from_dict({})
+        user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
@@ -304,7 +309,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
 
     def test_initialize_from_context(self, dbsession, mocker):
         head_commit, _ = get_commit_pair(dbsession)
-        user_yaml = UserYaml.from_dict({})
+        user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )

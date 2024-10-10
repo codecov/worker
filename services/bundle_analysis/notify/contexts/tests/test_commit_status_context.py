@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
 from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
@@ -143,42 +144,51 @@ class TestBundleAnalysisPRCommentNotificationContext:
         "yaml_dict, percent_change, absolute_change, expected",
         [
             pytest.param(
-                {},
+                PATCH_CENTRIC_DEFAULT_CONFIG,
                 1.0,
                 10000,
                 CommitStatusLevel.INFO,
                 id="default_config_within_5%_change",
             ),
             pytest.param(
-                {},
+                PATCH_CENTRIC_DEFAULT_CONFIG,
                 5.5,
                 10000,
                 CommitStatusLevel.WARNING,
                 id="default_config_outside_5%_change",
             ),
             pytest.param(
-                {"bundle_analysis": {"warning_threshold": 10000}},
+                {
+                    **PATCH_CENTRIC_DEFAULT_CONFIG,
+                    "bundle_analysis": {"warning_threshold": 10000},
+                },
                 1.0,
                 10001,
                 CommitStatusLevel.WARNING,
                 id="informational_outside_range",
             ),
             pytest.param(
-                {"bundle_analysis": {"warning_threshold": 10000}},
+                {
+                    **PATCH_CENTRIC_DEFAULT_CONFIG,
+                    "bundle_analysis": {"warning_threshold": 10000},
+                },
                 1.0,
                 10000,
                 CommitStatusLevel.INFO,
                 id="informational_within_range",
             ),
             pytest.param(
-                {"bundle_analysis": {"warning_threshold": 10000, "status": True}},
+                {
+                    **PATCH_CENTRIC_DEFAULT_CONFIG,
+                    "bundle_analysis": {"warning_threshold": 10000, "status": True},
+                },
                 1.0,
                 10001,
                 CommitStatusLevel.ERROR,
                 id="fail_outside_range_absolute",
             ),
             pytest.param(
-                {"bundle_analysis": {"status": True}},
+                {**PATCH_CENTRIC_DEFAULT_CONFIG, "bundle_analysis": {"status": True}},
                 5.1,
                 10000,
                 CommitStatusLevel.ERROR,
@@ -191,6 +201,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
     ):
         head_commit = CommitFactory()
         dbsession.add(head_commit)
+        yaml_dict.update(PATCH_CENTRIC_DEFAULT_CONFIG)
         user_yaml = UserYaml.from_dict(yaml_dict)
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
@@ -220,7 +231,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         enriched_pull = get_enriched_pull_setting_up_mocks(
             dbsession, mocker, (head_commit, base_commit)
         )
-        user_yaml = UserYaml.from_dict({})
+        user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
@@ -252,7 +263,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
 
     def test_initialize_from_context(self, dbsession, mocker):
         head_commit, _ = get_commit_pair(dbsession)
-        user_yaml = UserYaml.from_dict({})
+        user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
@@ -330,7 +341,15 @@ class TestBundleAnalysisPRCommentNotificationContext:
             return_value=auto_activate_succeeds,
         )
         head_commit, _ = get_commit_pair(dbsession)
-        user_yaml = UserYaml.from_dict({})
+        user_yaml = UserYaml.from_dict(
+            {
+                "comment": {
+                    "layout": "reach,diff,flags,tree,reach",
+                    "behavior": "default",
+                    "show_carryforward_flags": False,
+                }
+            }
+        )
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )

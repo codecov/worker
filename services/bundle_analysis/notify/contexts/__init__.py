@@ -47,13 +47,13 @@ class NotificationContextField(Generic[T]):
     def __set_name__(self, owner, name) -> None:
         self._name = name
 
-    def __get__(self, instance: "NotificationContextField", owner) -> T:
+    def __get__(self, instance, owner) -> T:
         if self._name not in instance.__dict__:
             msg = f"Property {self._name} is not loaded. Make sure to build the context before using it."
             raise ContextNotLoadedError(msg)
         return instance.__dict__[self._name]
 
-    def __set__(self, instance: "NotificationContextField", value: T) -> None:
+    def __set__(self, instance, value: T) -> None:
         instance.__dict__[self._name] = value
 
 
@@ -84,13 +84,9 @@ class BaseBundleAnalysisNotificationContext:
             installation_name_to_use=self.gh_app_installation_name,
         )
 
-    commit_report: CommitReport = NotificationContextField[CommitReport]()
-    bundle_analysis_report: BundleAnalysisReport = NotificationContextField[
-        BundleAnalysisReport
-    ]()
-    user_config: NotificationUserConfig = NotificationContextField[
-        NotificationUserConfig
-    ]()
+    commit_report = NotificationContextField[CommitReport]()
+    bundle_analysis_report = NotificationContextField[BundleAnalysisReport]()
+    user_config = NotificationContextField[NotificationUserConfig]()
 
 
 class NotificationContextBuildError(Exception):
@@ -109,7 +105,7 @@ class NotificationContextBuilder:
 
     current_yaml: UserYaml
     """ Used with `initialize_from_context` method. Declare the fields the class wants to copy over when initializing from another context."""
-    fields_of_interest: tuple[str] = (
+    fields_of_interest: tuple[str, ...] = (
         "commit_report",
         "bundle_analysis_report",
         "user_config",
@@ -188,14 +184,13 @@ class NotificationContextBuilder:
         This allows all notifiers to access configuration for any notifier and already have the defaults
         """
         comment_config: bool | dict = self.current_yaml.read_yaml_field("comment")
-        if not comment_config:
-            required_changes = False
+        required_changes: bool | Literal["bundle_increase"]
+        if isinstance(comment_config, bool):
+            required_changes = comment_config
             required_changes_threshold = BundleThreshold("absolute", 0)
         else:
-            required_changes: bool | Literal["bundle_increase"] = comment_config.get(
-                "require_bundle_changes", False
-            )
-            required_changes_threshold: int | float = comment_config.get(
+            required_changes = comment_config.get("require_bundle_changes", False)
+            required_changes_threshold = comment_config.get(
                 "bundle_change_threshold",
                 BundleThreshold("absolute", 0),
             )
