@@ -23,7 +23,7 @@ class GitterNotifier(RequestsYamlBasedNotifier):
     def notification_type(self) -> Notification:
         return Notification.gitter
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: Comparison) -> dict:
         compare_dict = self.generate_compare_dict(comparison)
         message = self.generate_message(comparison)
         head_commit = comparison.head.commit

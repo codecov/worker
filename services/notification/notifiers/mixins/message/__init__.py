@@ -9,7 +9,7 @@ from database.models.core import Owner
 from helpers.environment import is_enterprise
 from helpers.metrics import metrics
 from services.billing import BillingPlan
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
 )
@@ -25,7 +25,9 @@ log = logging.getLogger(__name__)
 
 
 class MessageMixin(object):
-    def create_message(self, comparison: ComparisonProxy, pull_dict, yaml_settings):
+    def create_message(
+        self, comparison: ComparisonProxy | FilteredComparison, pull_dict, yaml_settings
+    ):
         """
         Assemble the various components of the PR comments message in accordance with their YAML configuration.
         See https://docs.codecov.io/docs/pull-request-comments for more context on the different parts of a PR comment.

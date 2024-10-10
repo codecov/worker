@@ -73,21 +73,34 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         )
 
         # Retrieve serial results
-        serial_files_and_sessions = json.loads(
-            archive_service.read_file(
-                parallel_path_to_serial_path(
-                    parallel_paths["files_and_sessions_path"], last_upload_pk
-                )
-            )
+        serial_fas_path = parallel_path_to_serial_path(
+            parallel_paths["files_and_sessions_path"], last_upload_pk
         )
-        serial_chunks = archive_service.read_file(
-            parallel_path_to_serial_path(parallel_paths["chunks_path"], last_upload_pk)
-        ).decode(errors="replace")
+        serial_files_and_sessions = json.loads(
+            archive_service.read_file(serial_fas_path)
+        )
+        serial_chunks_path = parallel_path_to_serial_path(
+            parallel_paths["chunks_path"], last_upload_pk
+        )
+        serial_chunks = archive_service.read_file(serial_chunks_path).decode(
+            errors="replace"
+        )
         serial_report = report_service.build_report(
             serial_chunks,
             serial_files_and_sessions["files"],
             serial_files_and_sessions["sessions"],
             None,
+        )
+
+        # after the comparison is done, these files are not needed anymore,
+        # and should be cleaned up
+        archive_service.delete_files(
+            [
+                parallel_paths["files_and_sessions_path"],
+                parallel_paths["chunks_path"],
+                serial_fas_path,
+                serial_chunks_path,
+            ]
         )
 
         top_level_totals_match = True

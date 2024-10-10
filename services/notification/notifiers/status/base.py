@@ -1,6 +1,6 @@
 import logging
-from typing import Dict
 
+import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.config import get_config
 from shared.helpers.cache import NO_VALUE, make_hash_sha256
@@ -10,10 +10,9 @@ from shared.torngit.exceptions import TorngitClientError, TorngitError
 from database.models.core import Commit
 from helpers.cache import cache
 from helpers.match import match
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
-    Comparison,
     NotificationResult,
 )
 from services.repository import get_repo_provider_service_for_specific_commit
@@ -32,14 +31,14 @@ class StatusNotifier(AbstractBaseNotifier):
     def is_enabled(self) -> bool:
         return True
 
-    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     @property
     def name(self):
         return f"status-{self.context}"
 
-    def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         raise NotImplementedError()
 
     def get_upgrade_message(self) -> str:
@@ -53,7 +52,7 @@ class StatusNotifier(AbstractBaseNotifier):
         if self.is_failing_empty_upload():
             return ("failure", "Testable files changed")
 
-    def can_we_set_this_status(self, comparison) -> bool:
+    def can_we_set_this_status(self, comparison: ComparisonProxy) -> bool:
         head = comparison.head.commit
         pull = comparison.pull
         if (
@@ -66,7 +65,7 @@ class StatusNotifier(AbstractBaseNotifier):
         return True
 
     def determine_status_check_behavior_to_apply(
-        self, comparison, field_name
+        self, comparison: ComparisonProxy, field_name
     ) -> str | None:
         """
         Used for fields that can be set at the global level for all checks in "default_rules", or at the component level for an individual check.
@@ -88,7 +87,7 @@ class StatusNotifier(AbstractBaseNotifier):
 
         return behavior_to_apply
 
-    def flag_coverage_was_uploaded(self, comparison) -> bool:
+    def flag_coverage_was_uploaded(self, comparison: ComparisonProxy) -> bool:
         """
         Indicates whether coverage was uploaded for any of the flags on this status check.
         If there are no flags on the status check, this will return true.
@@ -122,7 +121,7 @@ class StatusNotifier(AbstractBaseNotifier):
             flags=flag_list,
         )
 
-    def required_builds(self, comparison: Comparison) -> bool:
+    def required_builds(self, comparison: ComparisonProxy) -> bool:
         flags = self.notifier_yaml_settings.get("flags") or []
         head_report = comparison.head.report
 
@@ -158,7 +157,8 @@ class StatusNotifier(AbstractBaseNotifier):
         )
         return selected_installation_id
 
-    def notify(self, comparison: ComparisonProxy):
+    @sentry_sdk.trace
+    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
         payload = None
         if not self.can_we_set_this_status(comparison):
             return NotificationResult(

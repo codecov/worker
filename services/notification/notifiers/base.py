@@ -4,7 +4,7 @@ from typing import Any, Mapping
 
 from database.models import Repository
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from services.comparison.types import Comparison
+from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 
 log = logging.getLogger(__name__)
@@ -78,13 +78,13 @@ class AbstractBaseNotifier(object):
     def name(self) -> str:
         raise NotImplementedError()
 
-    def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
         raise NotImplementedError()
 
     def is_enabled(self) -> bool:
         raise NotImplementedError()
 
-    def store_results(self, comparison: Comparison, result: NotificationResult):
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         """
             This function stores the result in the notification wherever it needs to be saved
             This is the only function in this class allowed to have side-effects in the database

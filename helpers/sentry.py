@@ -41,7 +41,7 @@ def initialize_sentry() -> None:
             CeleryIntegration(monitor_beat_tasks=True),
             DjangoIntegration(signals_spans=False),
             SqlalchemyIntegration(),
-            RedisIntegration(),
+            RedisIntegration(cache_prefixes=["cache:"]),
             HttpxIntegration(),
         ],
         release=os.getenv("SENTRY_RELEASE", version_str),

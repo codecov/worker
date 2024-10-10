@@ -54,10 +54,10 @@ class MetricContext:
 
     def __init__(
         self,
-        repo_id: int = None,
-        owner_id: int = None,
-        commit_id: int = None,
-        commit_sha: str = None,
+        repo_id: int | None = None,
+        owner_id: int | None = None,
+        commit_id: int | None = None,
+        commit_sha: str | None = None,
     ):
         self.repo_id = repo_id
         self.commit_id = commit_id
@@ -68,6 +68,11 @@ class MetricContext:
         sentry_sdk.set_tag("owner_id", owner_id)
         sentry_sdk.set_tag("repo_id", repo_id)
         sentry_sdk.set_tag("commit_sha", commit_sha)
+        transaction = sentry_sdk.get_current_scope().transaction
+        if transaction is not None:
+            transaction.set_tag("owner_id", owner_id)
+            transaction.set_tag("repo_id", repo_id)
+            transaction.set_tag("commit_sha", commit_sha)
 
     def populate(self):
         if self.populated:

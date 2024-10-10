@@ -39,11 +39,9 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
+from helpers.parallel import ParallelFeature
 from helpers.telemetry import MetricContext
-from rollouts import (
-    CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER,
-    PARALLEL_UPLOAD_PROCESSING_BY_REPO,
-)
+from rollouts import CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER
 from services.archive import ArchiveService
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
@@ -255,11 +253,10 @@ class ReportService(BaseReportService):
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
 
+                parallel_processing = ParallelFeature.load(commit.repository.repoid)
                 # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
                 # finisher can build off of it later.
-                if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-                    identifier=commit.repository.repoid
-                ):
+                if parallel_processing is ParallelFeature.EXPERIMENT:
                     self.save_parallel_report_to_archive(commit, report, report_code)
 
         return current_report_row
@@ -790,13 +787,6 @@ class ReportService(BaseReportService):
         session = processing_result.session
 
         if processing_result.error is None:
-            # this should be enabled for the actual rollout of parallel upload processing.
-            # if PARALLEL_UPLOAD_PROCESSING_BY_REPO.check_value(
-            #     "this should be the repo id"
-            # ):
-            #     upload_obj.state_id = UploadState.PARALLEL_PROCESSED.db_id
-            #     upload_obj.state = "parallel_processed"
-            # else:
             upload.state_id = UploadState.PROCESSED.db_id
             upload.state = "processed"
             upload.order_number = session.id
@@ -1032,6 +1022,9 @@ def delete_uploads_by_sessionid(upload: Upload, session_ids: list[int]):
     """
     This deletes all the `Upload` records corresponding to the given `session_ids`.
     """
+    if not session_ids:
+        return
+
     db_session = upload.get_db_session()
     uploads = (
         db_session.query(Upload.id_)

@@ -25,7 +25,7 @@ class HipchatNotifier(RequestsYamlBasedNotifier):
     def notification_type(self) -> Notification:
         return Notification.hipchat
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: Comparison) -> dict:
         card = None
         head_commit = comparison.head.commit
         commitid = head_commit.commitid

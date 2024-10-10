@@ -32,6 +32,7 @@ class User(CodecovBaseModel):
     is_staff = Column(types.Boolean, default=False)
     is_superuser = Column(types.Boolean, default=False)
     external_id = Column(postgresql.UUID(as_uuid=True), unique=True, default=uuid.uuid4)
+    email_opt_in = Column(types.Boolean, default=False)
 
     @validates("external_id")
     def validate_external_id(self, key, value):
