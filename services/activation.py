@@ -104,7 +104,7 @@ def activate_user(db_session, org_ownerid: int, user_ownerid: int) -> bool:
     return activation_success
 
 
-def schedule_new_user_activated_task(self, org_ownerid, user_ownerid):
+def schedule_new_user_activated_task(org_ownerid, user_ownerid):
     celery_app.send_task(
         new_user_activated_task_name,
         args=None,

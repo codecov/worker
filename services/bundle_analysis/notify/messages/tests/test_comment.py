@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from mock import AsyncMock
+from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
 from shared.torngit.exceptions import TorngitClientError
 from shared.typings.torngit import TorngitInstanceData
 from shared.validation.types import BundleThreshold
@@ -43,7 +44,7 @@ class TestCommentMesage:
         enriched_pull = get_enriched_pull_setting_up_mocks(
             dbsession, mocker, (head_commit, base_commit)
         )
-        user_yaml = UserYaml.from_dict({})
+        user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )

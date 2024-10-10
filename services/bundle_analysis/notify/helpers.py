@@ -1,5 +1,5 @@
 import numbers
-from typing import Iterable, Literal
+from typing import Literal
 
 from shared.bundle_analysis import BundleAnalysisComparison, BundleChange
 from shared.django_apps.codecov_auth.models import Service
@@ -43,7 +43,7 @@ def is_comment_configured(yaml: UserYaml, owner: Owner) -> None | NotificationTy
 
 def get_notification_types_configured(
     yaml: UserYaml, owner: Owner
-) -> tuple[NotificationType]:
+) -> tuple[NotificationType, ...]:
     """Gets a tuple with all the different bundle analysis notifications that we should attempt to send,
     based on the given YAML"""
     notification_types = [
@@ -65,20 +65,20 @@ def get_github_app_used(torngit: TorngitBaseAdapter | None) -> int | None:
 
 def bytes_readable(bytes: int) -> str:
     """Converts bytes into human-readable string (up to GB)"""
-    value = abs(bytes)
-    expoent_index = 0
+    value: float = abs(bytes)
+    exponent_index = 0
 
-    while value >= 1000 and expoent_index < 3:
+    while value >= 1000 and exponent_index < 3:
         value /= 1000
-        expoent_index += 1
+        exponent_index += 1
 
-    expoent_str = [" bytes", "kB", "MB", "GB"][expoent_index]
-    rounted_value = round(value, 2)
-    return f"{rounted_value}{expoent_str}"
+    exponent_str = [" bytes", "kB", "MB", "GB"][exponent_index]
+    rounded_value = round(value, 2)
+    return f"{rounded_value}{exponent_str}"
 
 
 def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
-    if isinstance(value, Iterable) and value[0] in ["absolute", "percentage"]:
+    if isinstance(value, (list, tuple)) and value[0] in ["absolute", "percentage"]:
         return BundleThreshold(*value)
     if isinstance(value, numbers.Integral):
         return BundleThreshold("absolute", value)

@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from mock import AsyncMock
+from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
 from shared.torngit.exceptions import TorngitClientError
 from shared.typings.torngit import TorngitInstanceData
 from shared.yaml import UserYaml
@@ -58,15 +59,23 @@ class TestCommitStatusMessage:
         "user_config, expected",
         [
             pytest.param(
-                {}, "Bundle change: -48.89% (Threshold: 5.0%)", id="default_config"
+                PATCH_CENTRIC_DEFAULT_CONFIG,
+                "Bundle change: -48.89% (Threshold: 5.0%)",
+                id="default_config",
             ),
             pytest.param(
-                {"bundle_analysis": {"warning_threshold": 500000}},
+                {
+                    **PATCH_CENTRIC_DEFAULT_CONFIG,
+                    "bundle_analysis": {"warning_threshold": 500000},
+                },
                 "Bundle change: -372.56kB (Threshold: 500.0kB)",
                 id="success_absolute_threshold",
             ),
             pytest.param(
-                {"bundle_analysis": {"warning_threshold": 300000}},
+                {
+                    **PATCH_CENTRIC_DEFAULT_CONFIG,
+                    "bundle_analysis": {"warning_threshold": 300000},
+                },
                 "Bundle change: -372.56kB (Threshold: 300.0kB)",
                 id="warning_absolute_threshold",
             ),
@@ -105,17 +114,23 @@ class TestCommitStatusMessage:
         "user_config, expected",
         [
             pytest.param(
-                {},
+                PATCH_CENTRIC_DEFAULT_CONFIG,
                 "Passed with Warnings - Bundle change: 95.64% (Threshold: 5.0%)",
                 id="default_config",
             ),
             pytest.param(
-                {"bundle_analysis": {"warning_threshold": 500000}},
+                {
+                    **PATCH_CENTRIC_DEFAULT_CONFIG,
+                    "bundle_analysis": {"warning_threshold": 500000},
+                },
                 "Bundle change: 372.56kB (Threshold: 500.0kB)",
                 id="success_absolute_threshold",
             ),
             pytest.param(
-                {"bundle_analysis": {"warning_threshold": 300000}},
+                {
+                    **PATCH_CENTRIC_DEFAULT_CONFIG,
+                    "bundle_analysis": {"warning_threshold": 300000},
+                },
                 "Passed with Warnings - Bundle change: 372.56kB (Threshold: 300.0kB)",
                 id="warning_absolute_threshold",
             ),
@@ -191,7 +206,7 @@ class TestCommitStatusMessage:
                 should_activate_seat=ShouldActivateSeat.NO_ACTIVATE
             ),
         )
-        user_yaml = UserYaml.from_dict({})
+        user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
