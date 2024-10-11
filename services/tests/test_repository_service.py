@@ -63,7 +63,6 @@ class TestRepositoryServiceTestCase(object):
             },
             "repo": {
                 "name": "example-python",
-                "private": repo.private,
                 "using_integration": False,
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
@@ -121,7 +120,6 @@ class TestRepositoryServiceTestCase(object):
             },
             "repo": {
                 "name": "example-python",
-                "private": repo.private,
                 "using_integration": True,
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
@@ -170,7 +168,6 @@ class TestRepositoryServiceTestCase(object):
             "repo": {
                 "name": "example-python",
                 "using_integration": False,
-                "private": repo.private,
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
@@ -205,7 +202,6 @@ class TestRepositoryServiceTestCase(object):
             "repo": {
                 "name": "example-python",
                 "using_integration": False,
-                "private": repo.private,
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
@@ -241,7 +237,6 @@ class TestRepositoryServiceTestCase(object):
             "repo": {
                 "name": "example-python",
                 "using_integration": False,
-                "private": repo.private,
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
@@ -296,7 +291,6 @@ class TestRepositoryServiceTestCase(object):
             "repo": {
                 "name": "example-python",
                 "using_integration": False,
-                "private": repo.private,
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
             },
@@ -333,7 +327,6 @@ class TestRepositoryServiceTestCase(object):
             },
             "repo": {
                 "name": "example-python",
-                "private": repo.private,
                 "using_integration": False,
                 "service_id": repo.service_id,
                 "repoid": repo.repoid,
@@ -1076,7 +1069,6 @@ class TestRepositoryServiceTestCase(object):
             "repo": {
                 "name": "pytest",
                 "using_integration": False,
-                "private": repo.private,
                 "service_id": "123456",
                 "repoid": repo.repoid,
             },
@@ -1171,7 +1163,6 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
             repo=RepoInfo(
                 name=commit.repository.name,
                 using_integration=True,
-                private=commit.repository.private,
                 service_id=commit.repository.service_id,
                 repoid=commit.repository.repoid,
             ),
@@ -1183,7 +1174,7 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
             installation=GithubInstallationInfo(
                 id=app.id, app_id=12, installation_id=1200, pem_path=None
             ),
-            fallback_installations=[],
+            fallback_installations=None,
         )
         mock_get_instance.assert_called_with(
             "github",
@@ -1201,7 +1192,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_from_commit_new_pull_commits_in_place(
         self, dbsession, mocker
     ):
-        now = datetime.now()
+        now = datetime.utcnow()
         commit = CommitFactory.create(
             message="", pullid=1, totals=None, _report_json=None
         )
@@ -1258,7 +1249,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_from_commit_existing_pull_commits_in_place(
         self, dbsession, mocker
     ):
-        now = datetime.now()
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -1337,7 +1328,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_multiple_pulls_same_repo(
         self, dbsession, mocker
     ):
-        now = datetime.now()
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -1422,7 +1413,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_from_commit_different_compared_to(
         self, dbsession, mocker
     ):
-        now = datetime.now()
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
@@ -1513,7 +1504,7 @@ class TestPullRequestFetcher(object):
     async def test_fetch_and_update_pull_request_information_no_compared_to(
         self, dbsession, mocker
     ):
-        now = datetime.now()
+        now = datetime.utcnow()
         repository = RepositoryFactory.create()
         dbsession.add(repository)
         dbsession.flush()
