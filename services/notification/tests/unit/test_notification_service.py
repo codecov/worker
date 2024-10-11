@@ -7,6 +7,7 @@ import pytest
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.plan.constants import PlanName
 from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.torngit.status import Status
 from shared.yaml import UserYaml
 
 from database.enums import Decoration, Notification, NotificationState
@@ -461,6 +462,7 @@ class TestNotificationService(object):
     def test_notify_individual_checks_notifier(
         self, mocker, sample_comparison, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration._params["setup"] = {"codecov_dashboard_url": "test"}
         current_yaml = {}
         commit = sample_comparison.head.commit

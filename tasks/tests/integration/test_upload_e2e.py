@@ -13,6 +13,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session as DbSession
 
 from database.models.core import Commit, CompareCommit, Repository
+from database.models.reports import Upload
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.core import PullFactory
 from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
@@ -160,10 +161,10 @@ def setup_mocks(
 
 @pytest.mark.integration
 @pytest.mark.django_db()
-@pytest.mark.parametrize("do_parallel_processing", [False, True])
+@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
 def test_full_upload(
     dbsession: DbSession,
-    do_parallel_processing: bool,
+    parallel_processing: str,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -175,7 +176,7 @@ def test_full_upload(
     mocker.patch.object(
         PARALLEL_UPLOAD_PROCESSING_BY_REPO,
         "check_value",
-        return_value=do_parallel_processing,
+        return_value=parallel_processing,
     )
 
     repository = RepositoryFactory.create()
@@ -278,6 +279,13 @@ end_of_record
             }
         )
 
+    # we expect the following files:
+    # chunks+json for the base commit
+    # 4 * raw uploads
+    # chunks+json, `files_array` and `comparison` for the finished upload
+    archive = mock_storage.storage["archive"]
+    assert len(archive) == 2 + 4 + 4
+
     report_service = ReportService(UserYaml({}))
     report = report_service.get_existing_report_for_commit(commit, report_code=None)
 
@@ -331,7 +339,7 @@ end_of_record
         (2, 4),
     ]
 
-    archive = mock_storage.storage["archive"]
+    assert len(archive) == 2 + 5 + 4
     repo_hash = ArchiveService.get_archive_hash(repository)
     raw_chunks_path = f"v4/repos/{repo_hash}/commits/{commitid}/chunks.txt"
     assert raw_chunks_path in archive
@@ -359,10 +367,10 @@ end_of_record
 
 @pytest.mark.integration
 @pytest.mark.django_db()
-@pytest.mark.parametrize("do_parallel_processing", [False, True])
+@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
 def test_full_carryforward(
     dbsession: DbSession,
-    do_parallel_processing: bool,
+    parallel_processing: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -377,7 +385,7 @@ def test_full_carryforward(
     mocker.patch.object(
         PARALLEL_UPLOAD_PROCESSING_BY_REPO,
         "check_value",
-        return_value=do_parallel_processing,
+        return_value=parallel_processing,
     )
 
     repository = RepositoryFactory.create()
@@ -457,8 +465,10 @@ end_of_record
     report = report_service.get_existing_report_for_commit(
         base_commit, report_code=None
     )
-
     assert report
+
+    base_sessions = report.sessions
+
     assert set(report.files) == {"a.rs", "b.rs"}
 
     a = report.get("a.rs")
@@ -553,6 +563,14 @@ end_of_record
     )
     assert carriedforward_sessions == 2
 
+    # the `Upload`s in the database should match the `sessions` in the report:
+    uploads = (
+        dbsession.query(Upload).filter(Upload.report_id == commit.report.id_).all()
+    )
+    assert {upload.order_number for upload in uploads} == {
+        session.id for session in sessions.values()
+    }
+
     # and then overwrite data related to "b" as well
     do_upload(
         b"""
@@ -591,3 +609,25 @@ end_of_record
     ]
 
     assert len(report.sessions) == 2
+    uploads = (
+        dbsession.query(Upload).filter(Upload.report_id == commit.report.id_).all()
+    )
+    assert {upload.order_number for upload in uploads} == {
+        session.id for session in report.sessions.values()
+    }
+
+    # just as a sanity check: any cleanup for the followup commit did not touch
+    # data of the base commit:
+    uploads = (
+        dbsession.query(Upload).filter(Upload.report_id == base_commit.report.id_).all()
+    )
+    assert {upload.order_number for upload in uploads} == {
+        session.id for session in base_sessions.values()
+    }
+
+    # we expect the following files:
+    # chunks+json, `files_array` for the base commit
+    # 6 * raw uploads
+    # chunks+json, `files_array` for the carryforwarded commit (no `comparison`)
+    archive = mock_storage.storage["archive"]
+    assert len(archive) == 3 + 6 + 3

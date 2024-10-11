@@ -32,6 +32,7 @@ class User(CodecovBaseModel):
     is_staff = Column(types.Boolean, default=False)
     is_superuser = Column(types.Boolean, default=False)
     external_id = Column(postgresql.UUID(as_uuid=True), unique=True, default=uuid.uuid4)
+    email_opt_in = Column(types.Boolean, default=False)
 
     @validates("external_id")
     def validate_external_id(self, key, value):
@@ -82,6 +83,8 @@ class Owner(CodecovBaseModel):
     stripe_customer_id = Column(types.Text, server_default=FetchedValue())
     stripe_subscription_id = Column(types.Text, server_default=FetchedValue())
     onboarding_completed = Column(types.Boolean, default=False)
+    upload_token_required_for_public_repos = Column(types.Boolean, default=True)
+
     bot_id = Column(
         "bot",
         types.Integer,

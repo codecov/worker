@@ -6,6 +6,7 @@ import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
+from shared.torngit.status import Status
 from shared.yaml.user_yaml import UserYaml
 
 from services.decoration import Decoration
@@ -307,6 +308,7 @@ class TestChecksWithFallback(object):
         assert res == "success"
 
     def test_checks_failure(self, sample_comparison, mocker, mock_repo_provider):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_repo_provider.create_check_run = Mock(
             side_effect=TorngitClientGeneralError(
                 409, response_data="No Access", message="No Access"
@@ -1022,6 +1024,7 @@ class TestPatchChecksNotifier(object):
     def test_notify(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         payload = {
@@ -1054,6 +1057,7 @@ class TestPatchChecksNotifier(object):
     def test_notify_passing_empty_upload(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         mock_repo_provider.create_check_run.return_value = 2234563
@@ -1081,6 +1085,7 @@ class TestPatchChecksNotifier(object):
     def test_notify_failing_empty_upload(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         mock_repo_provider.create_check_run.return_value = 2234563
@@ -1108,6 +1113,7 @@ class TestPatchChecksNotifier(object):
     def test_notification_exception(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -1150,6 +1156,34 @@ class TestPatchChecksNotifier(object):
         assert not result.notification_attempted
         assert result.notification_successful is None
         assert result.explanation == "not_fit_criteria"
+        assert result.data_sent is None
+        assert result.data_received is None
+
+    def test_notification_exception_preexisting_commit_status(
+        self, sample_comparison, mocker, mock_repo_provider
+    ):
+        comparison = sample_comparison
+        notifier = ProjectChecksNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"paths": ["file_1.go"]},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+        )
+        mock_repo_provider.get_commit_statuses.return_value = Status(
+            [
+                {
+                    "time": "2024-10-01T22:34:52Z",
+                    "state": "success",
+                    "description": "42.85% (+0.00%) compared to 36be7f3",
+                    "context": "codecov/project/title",
+                }
+            ]
+        )
+        result = notifier.notify(sample_comparison)
+        assert not result.notification_attempted
+        assert result.notification_successful is None
+        assert result.explanation == "preexisting_commit_status"
         assert result.data_sent is None
         assert result.data_received is None
 
@@ -1690,6 +1724,7 @@ class TestProjectChecksNotifier(object):
     def test_check_notify_no_path_match(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         payload = {
@@ -1723,6 +1758,7 @@ class TestProjectChecksNotifier(object):
     def test_check_notify_single_path_match(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         payload = {
@@ -1763,6 +1799,7 @@ class TestProjectChecksNotifier(object):
     def test_check_notify_multiple_path_match(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         payload = {
@@ -1797,6 +1834,7 @@ class TestProjectChecksNotifier(object):
     def test_check_notify_with_paths(
         self, sample_comparison, mocker, mock_repo_provider, mock_configuration
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
         payload = {
@@ -1833,6 +1871,7 @@ class TestProjectChecksNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1878,6 +1917,7 @@ class TestProjectChecksNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1917,6 +1957,7 @@ class TestProjectChecksNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1957,6 +1998,7 @@ class TestProjectChecksNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -1986,6 +2028,7 @@ class TestProjectChecksNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -2026,6 +2069,7 @@ class TestProjectChecksNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
@@ -2070,6 +2114,7 @@ class TestProjectChecksNotifier(object):
         mock_repo_provider,
         mock_configuration,
     ):
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"

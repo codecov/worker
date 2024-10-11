@@ -87,5 +87,5 @@ class IRCNotifier(StandardNotifier):
         con.close()
         return {"successful": True, "reason": None}
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: Comparison) -> dict:
         return {"message": self.generate_message(comparison)}

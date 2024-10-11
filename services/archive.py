@@ -38,13 +38,13 @@ class MinioEndpoints(Enum):
 # Service class for performing archive operations. Meant to work against the
 # underlying StorageService
 class ArchiveService(object):
-    root = None
+    root: str
     """
     The root level of the archive. In s3 terms,
     this would be the name of the bucket
     """
 
-    storage_hash = None
+    storage_hash: str
     """
     A hash key of the repo for internal storage
     """
@@ -251,6 +251,13 @@ class ArchiveService(object):
         Generic method to delete a file from the archive.
         """
         self.storage.delete_file(self.root, path)
+
+    @sentry_sdk.trace()
+    def delete_files(self, paths: list[str]) -> list[bool]:
+        """
+        Batch-deletes the gives list of files.
+        """
+        return self.storage.delete_files(self.root, paths)
 
     def delete_repo_files(self) -> int:
         """

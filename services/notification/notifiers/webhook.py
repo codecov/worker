@@ -43,7 +43,7 @@ class WebhookNotifier(RequestsYamlBasedNotifier):
             "message": commit.message,
         }
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: Comparison) -> dict:
         head_full_commit = comparison.head
         base_full_commit = comparison.project_coverage_base
         pull = comparison.pull
