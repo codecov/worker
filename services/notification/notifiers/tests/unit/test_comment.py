@@ -3017,11 +3017,9 @@ class TestCommentNotifier(object):
         dbsession.flush()
         result = notifier.build_message(comparison)
 
-        promotional_message = (
-            "🚀 Exciting News! Check out our new features. Give them a try today!"
-        )
-        flake_message = "- [Flaky Tests Detection](https://docs.codecov.com/docs/test-result-ingestion-beta) - Identify and resolve unreliable tests more easily."
-        bundle_message = "- [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis) - Gain insights into your bundle size and performance."
+        promotional_message = "🚨 Try these New Features:"
+        flake_message = "- [Flaky Tests Detection](https://docs.codecov.com/docs/test-result-ingestion-beta) - Detect and resolve failed and flaky tests"
+        bundle_message = "- [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis) - Avoid shipping oversized bundles"
 
         end_of_message = []
 

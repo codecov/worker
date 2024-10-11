@@ -183,19 +183,19 @@ class MessageMixin(object):
 
             if not self.repository.test_analytics_enabled:
                 extra_message.append(
-                    "- [Flaky Tests Detection](https://docs.codecov.com/docs/test-result-ingestion-beta) - Identify and resolve unreliable tests more easily."
+                    "- [Flaky Tests Detection](https://docs.codecov.com/docs/test-result-ingestion-beta) - Detect and resolve failed and flaky tests"
                 )
             if not self.repository.bundle_analysis_enabled and set(
                 {"javascript", "typescript"}
             ).intersection(self.repository.languages or {}):
                 extra_message.append(
-                    "- [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis) - Gain insights into your bundle size and performance."
+                    "- [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis) - Avoid shipping oversized bundles"
                 )
 
             if extra_message:
                 for i in [
                     "----",
-                    "🚀 Exciting News! Check out our new features. Give them a try today!",
+                    "🚨 Try these New Features:",
                     "",
                     *extra_message,
                 ]:
