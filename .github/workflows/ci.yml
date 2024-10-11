@@ -13,6 +13,8 @@ on:
 permissions:
   contents: "read"
   id-token: "write"
+  issues: "write"
+  pull-requests: "write"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -47,6 +49,34 @@ jobs:
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
+
+  test-basic-action:
+    runs-on: ubuntu-latest
+    needs: [ build ]
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install app
+        run: pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          make test
+      - name: Upload artifacts for test-results-processing
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit.xml
+          path: junit.xml
+      - name: basic-rest-results
+        if: ${{ !cancelled() }}
+        uses: codecov/basic-test-results@63fe03b3961e66679be21130a0ee49fc4883646a
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: junit.xml
+          disable-search: true
 
   build-self-hosted:
     name: Build Self Hosted Worker
@@ -86,3 +116,5 @@ jobs:
     with:
       push_rolling: true
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
+
+
