@@ -13,7 +13,6 @@ from shared.reports.types import CoverageDatapoint
 from shared.yaml import UserYaml
 
 from helpers.labels import SpecialLabelsEnum
-from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
     clear_carryforward_sessions,
@@ -442,14 +441,8 @@ class TestAdjustSession(BaseTestCase):
         assert after_result == first_value
 
     def test_adjust_sessions_partial_cf_only_no_changes_encoding_labels(
-        self, sample_first_report, mocker
+        self, sample_first_report
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(
             sessions={first_to_merge_session.id: first_to_merge_session}

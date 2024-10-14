@@ -28,22 +28,13 @@ class PyCoverageProcessor(BaseLanguageProcessor):
             ] + [(COVERAGE_MISS, ln) for ln in file_coverage["missing_lines"]]
             for cov, ln in lines_and_coverage:
                 if ln > 0:
-                    label_list_of_lists: list[list[str]] | list[list[int]] = []
-                    if report_builder_session.should_use_label_index:
-                        label_list_of_lists = [
-                            [single_id]
-                            for single_id in labels_table._get_list_of_label_ids(
-                                report_builder_session.label_index,
-                                file_coverage.get("contexts", {}).get(str(ln), []),
-                            )
-                        ]
-                    else:
-                        label_list_of_lists = [
-                            [labels_table._normalize_label(testname)]
-                            for testname in file_coverage.get("contexts", {}).get(
-                                str(ln), []
-                            )
-                        ]
+                    # label_list_of_lists: list[list[str]] | list[list[int]] = []
+                    label_list_of_lists = [
+                        [labels_table._normalize_label(testname)]
+                        for testname in file_coverage.get("contexts", {}).get(
+                            str(ln), []
+                        )
+                    ]
                     _file.append(
                         ln,
                         report_builder_session.create_coverage_line(
