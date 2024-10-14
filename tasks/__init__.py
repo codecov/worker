@@ -26,7 +26,6 @@ from tasks.github_marketplace import ghm_sync_plans_task
 from tasks.health_check import health_check_task
 from tasks.hourly_check import hourly_check_task
 from tasks.http_request import http_request_task
-from tasks.label_analysis import label_analysis_task
 from tasks.manual_trigger import manual_trigger_task
 from tasks.new_user_activated import new_user_activated_task
 from tasks.notify import notify_task
@@ -58,6 +57,5 @@ from tasks.trial_expiration import trial_expiration_task
 from tasks.trial_expiration_cron import trial_expiration_cron_task
 from tasks.update_branches import update_branches_task_name
 from tasks.upload import upload_task
-from tasks.upload_clean_labels_index import clean_labels_index_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task

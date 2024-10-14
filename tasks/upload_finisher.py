@@ -37,14 +37,10 @@ from services.comparison import get_or_create_comparison
 from services.processing.state import ProcessingState, should_trigger_postprocessing
 from services.redis import get_redis_connection
 from services.report import ReportService, delete_uploads_by_sessionid
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    clear_carryforward_sessions,
-)
+from services.report.raw_upload_processor import clear_carryforward_sessions
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.parallel_verification import parallel_verification_task
-from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, UploadProcessorTask
 
 log = logging.getLogger(__name__)
@@ -390,50 +386,12 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         else:
             commit.state = "skipped"
 
-        if self.should_clean_labels_index(commit_yaml, processing_results):
-            task = self.app.tasks[clean_labels_index_task_name].apply_async(
-                kwargs={
-                    "repoid": repoid,
-                    "commitid": commitid,
-                    "report_code": report_code,
-                },
-            )
-            log.info(
-                "Scheduling clean_labels_index task",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    clean_labels_index_task_id=task.id,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-
         if checkpoints:
             checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
             if not notifications_called:
                 checkpoints.log(UploadFlow.SKIPPING_NOTIFICATION)
 
         return {"notifications_called": notifications_called}
-
-    def should_clean_labels_index(
-        self, commit_yaml: UserYaml, processing_results: dict
-    ):
-        """Returns True if any of the successful processings was uploaded using a flag
-        that implies labels were uploaded with the report.
-        """
-
-        def should_clean_for_flag(flag: str):
-            config = commit_yaml.get_flag_configuration(flag)
-            return config and config.get("carryforward_mode", "") == "labels"
-
-        def should_clean_for_processing_result(results):
-            args = results.get("arguments", {})
-            flags_str = args.get("flags", "")
-            flags = flags_str.split(",") if flags_str else []
-            return results["successful"] and any(map(should_clean_for_flag, flags))
-
-        actual_processing_results = processing_results.get("processings_so_far", [])
-        return any(map(should_clean_for_processing_result, actual_processing_results))
 
     def should_call_notifications(
         self,
@@ -624,10 +582,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 session, use_id_from_session=True
             )
 
-            session_adjustment = SessionAdjustmentResult([], [])
+            deleted_sessions = set()
             if flags := session.flags:
-                session_adjustment = clear_carryforward_sessions(
-                    cumulative_report, incremental_report, flags, UserYaml(commit_yaml)
+                deleted_sessions = clear_carryforward_sessions(
+                    cumulative_report, flags, UserYaml(commit_yaml)
                 )
 
             cumulative_report.merge(incremental_report)
@@ -644,9 +602,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 upload.state_id = UploadState.PROCESSED.db_id
                 upload.state = "processed"
                 upload.order_number = new_sessionid
-                delete_uploads_by_sessionid(
-                    upload, session_adjustment.fully_deleted_sessions
-                )
+                if deleted_sessions:
+                    delete_uploads_by_sessionid(upload, list(deleted_sessions))
                 db_session.flush()
 
             return cumulative_report
@@ -756,9 +713,6 @@ def change_sessionid(report: Report, old_id: int, new_id: int):
                     session.id = new_id
                 all_sessions.add(session.id)
 
-            if line.datapoints:
-                for point in line.datapoints:
-                    if point.sessionid == old_id:
-                        point.sessionid = new_id
+            line.datapoints = None
 
         report_file._details["present_sessions"] = all_sessions

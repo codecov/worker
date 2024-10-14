@@ -20,10 +20,7 @@ from services.report import (
     ReportService,
 )
 from services.report import log as report_log
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    clear_carryforward_sessions,
-)
+from services.report.raw_upload_processor import clear_carryforward_sessions
 from test_utils.base import BaseTestCase
 
 
@@ -211,51 +208,6 @@ def sample_commit_with_report_big(dbsession, mock_storage):
     dbsession.add(commit)
     dbsession.flush()
     with open("tasks/tests/samples/sample_chunks_4_sessions.txt") as f:
-        content = f.read().encode()
-        archive_hash = ArchiveService.get_archive_hash(commit.repository)
-        chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
-        mock_storage.write_file("archive", chunks_url, content)
-    return commit
-
-
-@pytest.fixture
-def sample_commit_with_report_big_with_labels(dbsession, mock_storage):
-    sessions_dict = {
-        "0": {
-            "N": None,
-            "a": None,
-            "c": None,
-            "d": None,
-            "e": None,
-            "f": ["enterprise"],
-            "j": None,
-            "n": None,
-            "p": None,
-            "st": "uploaded",
-            "t": None,
-            "u": None,
-        },
-    }
-    file_headers = {
-        "file_00.py": [
-            0,
-            [0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0],
-            [[0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0]],
-            None,
-        ],
-        "file_01.py": [
-            1,
-            [0, 32, 32, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-            [[0, 32, 32, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
-            None,
-        ],
-    }
-    commit = CommitFactory.create(
-        _report_json={"sessions": sessions_dict, "files": file_headers}
-    )
-    dbsession.add(commit)
-    dbsession.flush()
-    with open("tasks/tests/samples/sample_chunks_with_header.txt") as f:
         content = f.read().encode()
         archive_hash = ArchiveService.get_archive_hash(commit.repository)
         chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
@@ -1437,442 +1389,6 @@ class TestReportService(BaseTestCase):
         assert expected_results == readable_report
 
     @pytest.mark.django_db(databases={"default", "timeseries"})
-    def test_create_new_report_for_commit_with_labels(
-        self, dbsession, sample_commit_with_report_big_with_labels
-    ):
-        parent_commit = sample_commit_with_report_big_with_labels
-        commit = CommitFactory.create(
-            repository=parent_commit.repository,
-            parent_commit_id=parent_commit.commitid,
-            _report_json=None,
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-        dbsession.add(CommitReport(commit_id=commit.id_))
-        dbsession.flush()
-        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
-        assert report is not None
-        assert report.labels_index == {
-            0: "Th2dMtk4M_codecov",
-            1: "core/tests/test_menu_interface.py::TestMenuInterface::test_init",
-            2: "core/tests/test_main.py::TestMainMenu::test_init_values",
-            3: "core/tests/test_main.py::TestMainMenu::test_invalid_menu_choice",
-            4: "core/tests/test_menu_interface.py::TestMenuInterface::test_menu_options",
-            5: "core/tests/test_menu_interface.py::TestMenuInterface::test_set_loop",
-            6: "core/tests/test_main.py::TestMainMenu::test_menu_choice_emotions",
-            7: "core/tests/test_menu_interface.py::TestMenuInterface::test_name",
-            8: "core/tests/test_menu_interface.py::TestMenuInterface::test_parent",
-            9: "core/tests/test_main.py::TestMainMenu::test_menu_choice_fruits",
-            10: "core/tests/test_main.py::TestMainMenu::test_menu_options",
-        }
-        assert sorted(report.files) == sorted(
-            [
-                "file_00.py",
-                "file_01.py",
-            ]
-        )
-        assert report.totals == ReportTotals(
-            files=2,
-            lines=36,
-            hits=32,
-            misses=4,
-            partials=0,
-            coverage="88.88889",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=1,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        readable_report = self.convert_report_to_better_readable(report)
-        expected_results = {
-            "archive": {
-                "file_00.py": [
-                    (
-                        1,
-                        0,
-                        None,
-                        [[0, 0, None, None, None]],
-                        None,
-                        None,
-                        [(0, 0, None, [])],
-                    ),
-                    (
-                        3,
-                        0,
-                        None,
-                        [[0, 0, None, None, None]],
-                        None,
-                        None,
-                        [(0, 0, None, [])],
-                    ),
-                    (
-                        4,
-                        0,
-                        None,
-                        [[0, 0, None, None, None]],
-                        None,
-                        None,
-                        [(0, 0, None, [])],
-                    ),
-                    (
-                        5,
-                        0,
-                        None,
-                        [[0, 0, None, None, None]],
-                        None,
-                        None,
-                        [(0, 0, None, [])],
-                    ),
-                ],
-                "file_01.py": [
-                    (
-                        1,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        2,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        5,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        6,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        7,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        8,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        9,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        12,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        13,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        14,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        16,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        17,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
-                    ),
-                    (
-                        18,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
-                    ),
-                    (
-                        19,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
-                    ),
-                    (
-                        21,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        22,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        23,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [1, 3, 5, 6, 9])],
-                    ),
-                    (
-                        25,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        26,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        27,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [1, 2, 8])],
-                    ),
-                    (
-                        29,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        30,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        31,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [1, 2, 7])],
-                    ),
-                    (
-                        33,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        34,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [3, 5, 6, 9])],
-                    ),
-                    (
-                        36,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        37,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        38,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [3, 4, 6, 9, 10])],
-                    ),
-                    (
-                        39,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [4])],
-                    ),
-                    (
-                        41,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [3, 4, 6, 9, 10])],
-                    ),
-                    (
-                        43,
-                        1,
-                        None,
-                        [[0, 1, None, None, None]],
-                        None,
-                        None,
-                        [(0, 1, None, [0])],
-                    ),
-                    (
-                        44,
-                        0,
-                        None,
-                        [[0, 0, None, None, None]],
-                        None,
-                        None,
-                        [(0, 0, None, [])],
-                    ),
-                ],
-            },
-            "report": {
-                "files": {
-                    "file_00.py": [
-                        0,
-                        [0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0],
-                        None,
-                        None,
-                    ],
-                    "file_01.py": [
-                        1,
-                        [0, 32, 32, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        None,
-                        None,
-                    ],
-                },
-                "sessions": {
-                    "0": {
-                        "N": "Carriedforward",
-                        "a": None,
-                        "c": None,
-                        "d": None,
-                        "e": None,
-                        "f": ["enterprise"],
-                        "j": None,
-                        "n": None,
-                        "p": None,
-                        "se": {"carriedforward_from": parent_commit.commitid},
-                        "st": "carriedforward",
-                        "t": None,
-                        "u": None,
-                    }
-                },
-            },
-            "totals": {
-                "C": 0,
-                "M": 0,
-                "N": 0,
-                "b": 0,
-                "c": "88.88889",
-                "d": 0,
-                "diff": None,
-                "f": 2,
-                "h": 32,
-                "m": 4,
-                "n": 36,
-                "p": 0,
-                "s": 1,
-            },
-        }
-        assert expected_results["report"]["files"] == readable_report["report"]["files"]
-        assert expected_results["report"] == readable_report["report"]
-        assert expected_results == readable_report
-
-    @pytest.mark.django_db(databases={"default", "timeseries"})
     def test_build_report_from_commit_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
@@ -1904,10 +1420,8 @@ class TestReportService(BaseTestCase):
         report.add_session(to_merge_session)
         assert sorted(report.sessions.keys()) == [2, 3, 4]
         assert clear_carryforward_sessions(
-            report, Report(), ["enterprise"], UserYaml(yaml_dict)
-        ) == SessionAdjustmentResult(
-            fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
-        )
+            report, ["enterprise"], UserYaml(yaml_dict)
+        ) == {2, 3}
         assert sorted(report.sessions.keys()) == [4]
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
@@ -1976,10 +1490,8 @@ class TestReportService(BaseTestCase):
         report.add_session(first_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 2, 3, 4]
         assert clear_carryforward_sessions(
-            report, Report(), ["enterprise"], UserYaml(yaml_dict)
-        ) == SessionAdjustmentResult(
-            fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
-        )
+            report, ["enterprise"], UserYaml(yaml_dict)
+        ) == {2, 3}
         assert sorted(report.sessions.keys()) == [0, 1, 4]
         readable_report = self.convert_report_to_better_readable(report)
         expected_sessions_dict = {
@@ -2051,10 +1563,8 @@ class TestReportService(BaseTestCase):
         second_to_merge_session = Session(flags=["unit"])
         report.add_session(second_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
-        assert clear_carryforward_sessions(
-            report, Report(), ["unit"], UserYaml(yaml_dict)
-        ) == SessionAdjustmentResult(
-            fully_deleted_sessions=[], partially_deleted_sessions=[]
+        assert (
+            clear_carryforward_sessions(report, ["unit"], UserYaml(yaml_dict)) == set()
         )
         assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
         new_readable_report = self.convert_report_to_better_readable(report)
@@ -4057,10 +3567,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(upload_obj)
         dbsession.flush()
         assert len(upload_obj.errors) == 0
-        processing_result = ProcessingResult(
-            session=Session(),
-            session_adjustment=SessionAdjustmentResult([], []),
-        )
+        processing_result = ProcessingResult(session=Session(), deleted_sessions={})
         assert (
             ReportService({}).update_upload_with_processing_result(
                 upload_obj, processing_result

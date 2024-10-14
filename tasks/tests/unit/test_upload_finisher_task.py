@@ -426,7 +426,6 @@ class TestUploadFinisherTask(object):
                 "app.tasks.notify.Notify": mocker.MagicMock(),
                 "app.tasks.pulls.Sync": mocker.MagicMock(),
                 "app.tasks.compute_comparison.ComputeComparison": mocker.MagicMock(),
-                "app.tasks.upload.UploadCleanLabelsIndex": mocker.MagicMock(),
             },
         )
         repository = RepositoryFactory.create(
@@ -481,70 +480,6 @@ class TestUploadFinisherTask(object):
         mocked_app.tasks[
             "app.tasks.compute_comparison.ComputeComparison"
         ].apply_async.assert_called_once()
-        mocked_app.tasks[
-            "app.tasks.upload.UploadCleanLabelsIndex"
-        ].apply_async.assert_not_called()
-
-    def test_finish_reports_processing_call_clean_labels(self, dbsession, mocker):
-        commit_yaml = {
-            "flag_management": {
-                "individual_flags": [
-                    {
-                        "name": "smart-tests",
-                        "carryforward": True,
-                        "carryforward_mode": "labels",
-                    },
-                    {
-                        "name": "just-tests",
-                        "carryforward": True,
-                    },
-                ]
-            }
-        }
-        mocked_app = mocker.patch.object(UploadFinisherTask, "app")
-        commit = CommitFactory.create(
-            message="dsidsahdsahdsa",
-            commitid="abf6d4df662c47e32460020ab14abf9303581429",
-            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
-            repository__owner__username="ThiagoCodecov",
-            repository__yaml=commit_yaml,
-        )
-        processing_results = {
-            "processings_so_far": [
-                {"successful": True, "arguments": {"flags": "smart-tests"}}
-            ]
-        }
-        dbsession.add(commit)
-        dbsession.flush()
-
-        checkpoints = _create_checkpoint_logger(mocker)
-        res = UploadFinisherTask().finish_reports_processing(
-            dbsession,
-            commit,
-            UserYaml(commit_yaml),
-            processing_results,
-            None,
-            checkpoints,
-        )
-        assert res == {"notifications_called": True}
-        mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_any_call(
-            kwargs={
-                "commitid": commit.commitid,
-                "current_yaml": commit_yaml,
-                "repoid": commit.repoid,
-                _kwargs_key(UploadFlow): ANY,
-            },
-        )
-        mocked_app.tasks[
-            "app.tasks.upload.UploadCleanLabelsIndex"
-        ].apply_async.assert_called_with(
-            kwargs={
-                "repoid": commit.repoid,
-                "commitid": commit.commitid,
-                "report_code": None,
-            },
-        )
-        assert mocked_app.send_task.call_count == 0
 
     @pytest.mark.parametrize(
         "notify_error",
@@ -630,76 +565,3 @@ class TestUploadFinisherTask(object):
                 "dataset_names": None,
             }
         )
-
-
-class TestShouldCleanLabelsIndex(object):
-    @pytest.mark.parametrize(
-        "processing_results, expected",
-        [
-            (
-                {
-                    "processings_so_far": [
-                        {"successful": True, "arguments": {"flags": "smart-tests"}}
-                    ]
-                },
-                True,
-            ),
-            (
-                {
-                    "processings_so_far": [
-                        {"successful": True, "arguments": {"flags": "just-tests"}}
-                    ]
-                },
-                False,
-            ),
-            (
-                {
-                    "processings_so_far": [
-                        {
-                            "successful": True,
-                            "arguments": {"flags": "just-tests,smart-tests"},
-                        }
-                    ]
-                },
-                True,
-            ),
-            (
-                {
-                    "processings_so_far": [
-                        {"successful": False, "arguments": {"flags": "smart-tests"}}
-                    ]
-                },
-                False,
-            ),
-            (
-                {
-                    "processings_so_far": [
-                        {"successful": True, "arguments": {"flags": "just-tests"}},
-                        {"successful": True, "arguments": {"flags": "smart-tests"}},
-                    ]
-                },
-                True,
-            ),
-        ],
-    )
-    def test_should_clean_labels_index(self, processing_results, expected):
-        commit_yaml = UserYaml(
-            {
-                "flag_management": {
-                    "individual_flags": [
-                        {
-                            "name": "smart-tests",
-                            "carryforward": True,
-                            "carryforward_mode": "labels",
-                        },
-                        {
-                            "name": "just-tests",
-                            "carryforward": True,
-                        },
-                    ]
-                }
-            }
-        )
-        task = UploadFinisherTask()
-        result = task.should_clean_labels_index(commit_yaml, processing_results)
-        assert result == expected

@@ -19,14 +19,10 @@ from helpers.exceptions import (
     RepositoryWithoutValidBotError,
 )
 from helpers.parallel import ParallelProcessing
-from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
 from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    UploadProcessingResult,
-)
+from services.report.raw_upload_processor import UploadProcessingResult
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
@@ -53,12 +49,6 @@ class TestUploadProcessorTask(object):
         mock_storage,
         celery_app,
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
@@ -160,12 +150,6 @@ class TestUploadProcessorTask(object):
         mock_storage,
         celery_app,
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         mock_configuration.set_params(
             {"services": {"minio": {"expire_raw_after_n_days": True}}}
         )
@@ -270,12 +254,6 @@ class TestUploadProcessorTask(object):
     def test_upload_processor_call_with_upload_obj(
         self, mocker, dbsession, mock_storage
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         commit = CommitFactory.create(
@@ -390,12 +368,6 @@ class TestUploadProcessorTask(object):
         mock_storage,
         celery_app,
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         with open(here.parent.parent / "samples" / "sample_chunks_1.txt") as f:
             content = f.read()
@@ -599,9 +571,7 @@ class TestUploadProcessorTask(object):
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            UploadProcessingResult(
-                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
-            ),
+            UploadProcessingResult(report=false_report, deleted_sessions={}),
             ReportExpiredException(),
         ]
         # Mocking retry to also raise the exception so we can see how it is called
@@ -755,9 +725,7 @@ class TestUploadProcessorTask(object):
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            UploadProcessingResult(
-                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
-            ),
+            UploadProcessingResult(report=false_report, deleted_sessions={}),
             ReportEmptyError(),
         ]
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
