@@ -23,9 +23,16 @@ meaning that:
 
 from dataclasses import dataclass
 
+from shared.metrics import Counter
+
 from services.redis import get_redis_connection
 
 MERGE_BATCH_SIZE = 5
+
+CLEARED_UPLOADS = Counter(
+    "worker_processing_cleared_uploads",
+    "Number of uploads cleared from queue because of errors",
+)
 
 
 @dataclass
@@ -78,7 +85,13 @@ class ProcessingState:
         self._redis.sadd(self._redis_key("processing"), *upload_ids)
 
     def clear_in_progress_uploads(self, upload_ids: list[int]):
-        self._redis.srem(self._redis_key("processing"), *upload_ids)
+        removed_uploads = self._redis.srem(self._redis_key("processing"), *upload_ids)
+        if removed_uploads > 0:
+            # the normal flow would move the uploads from the "processing" set
+            # to the "processed" set via `mark_upload_as_processed`.
+            # this function here is only called in the error case and we don't expect
+            # this to be triggered often, if at all.
+            CLEARED_UPLOADS.inc(removed_uploads)
 
     def mark_upload_as_processed(self, upload_id: int):
         res = self._redis.smove(
