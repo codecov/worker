@@ -51,7 +51,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         codecov_vcr,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocker.patch.object(
@@ -149,11 +148,6 @@ class TestUploadProcessorTask(object):
         }
 
         mocked_1.assert_called_with(commit.commitid, None)
-        mock_redis.lock.assert_called_with(
-            f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
 
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
@@ -164,7 +158,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         codecov_vcr,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocker.patch.object(
@@ -272,15 +265,10 @@ class TestUploadProcessorTask(object):
         }
 
         mocked_1.assert_called_with(commit.commitid, None)
-        mock_redis.lock.assert_called_with(
-            f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_processor_call_with_upload_obj(
-        self, mocker, mock_configuration, dbsession, mock_storage
+        self, mocker, dbsession, mock_storage
     ):
         mocker.patch.object(
             USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
@@ -400,7 +388,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         codecov_vcr,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocker.patch.object(
@@ -462,11 +449,6 @@ class TestUploadProcessorTask(object):
         assert expected_result == result
         assert commit.message == "dsidsahdsahdsa"
         mocked_1.assert_called_with(commit.commitid, None)
-        mock_redis.lock.assert_called_with(
-            f"upload_processing_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_exception_within_individual_upload(
@@ -476,7 +458,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         codecov_vcr,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         commit = CommitFactory.create(
@@ -607,7 +588,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         mock_repo_provider,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
@@ -697,7 +677,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         mock_repo_provider,
         mock_storage,
-        mock_redis,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
@@ -765,7 +744,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         mock_repo_provider,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
@@ -860,7 +838,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         mock_repo_provider,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
@@ -951,7 +928,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         mock_repo_provider,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
@@ -996,7 +972,6 @@ class TestUploadProcessorTask(object):
         dbsession,
         mock_repo_provider,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
