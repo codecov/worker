@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
@@ -106,13 +107,15 @@ class TestCreateContextForNotification:
             mock_storage,
             sample_report_number=1,
         )
-        service = BundleAnalysisNotifyService(head_commit, UserYaml.from_dict({}))
+        service = BundleAnalysisNotifyService(
+            head_commit, UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
+        )
         base_context = service.build_base_context()
         assert base_context.commit_report == head_commit_report
         assert base_context.bundle_analysis_report.session_count() == 19
 
     def test_create_context_success(self, dbsession, mock_storage, mocker):
-        current_yaml = UserYaml.from_dict({})
+        current_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         head_commit, base_commit = get_commit_pair(dbsession)
         head_commit_report, base_commit_report = get_report_pair(
             dbsession, (head_commit, base_commit)
