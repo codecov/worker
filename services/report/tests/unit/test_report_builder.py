@@ -1,12 +1,7 @@
 import pytest
 from shared.reports.resources import LineSession, ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint
 
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    SpecialLabelsEnum,
-)
+from services.report.report_builder import CoverageType, ReportBuilder
 
 
 def test_report_builder_generate_session(mocker):
@@ -36,23 +31,12 @@ def test_report_builder_session(mocker):
     first_file.append(2, ReportLine.create(coverage=0))
     first_file.append(
         3,
-        ReportLine.create(
-            coverage=0,
-            datapoints=[
-                CoverageDatapoint(
-                    sessionid=0,
-                    coverage=1,
-                    coverage_type=None,
-                    label_ids=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
-                )
-            ],
-        ),
+        ReportLine.create(coverage=0),
     )
     first_file.append(
         10,
         ReportLine.create(
             coverage=1,
-            type=None,
             sessions=[
                 (
                     LineSession(
@@ -61,21 +45,6 @@ def test_report_builder_session(mocker):
                     )
                 )
             ],
-            datapoints=[
-                CoverageDatapoint(
-                    sessionid=0,
-                    coverage=1,
-                    coverage_type=None,
-                    label_ids=["some_label", "other"],
-                ),
-                CoverageDatapoint(
-                    sessionid=0,
-                    coverage=1,
-                    coverage_type=None,
-                    label_ids=None,
-                ),
-            ],
-            complexity=None,
         ),
     )
     builder_session.append(first_file)
@@ -84,53 +53,15 @@ def test_report_builder_session(mocker):
     assert sorted(final_report.get("filename.py").lines) == [
         (
             2,
-            ReportLine.create(
-                coverage=0, type=None, sessions=None, datapoints=None, complexity=None
-            ),
+            ReportLine.create(coverage=0),
         ),
         (
             3,
-            ReportLine.create(
-                coverage=0,
-                type=None,
-                sessions=None,
-                datapoints=[
-                    CoverageDatapoint(
-                        sessionid=0,
-                        coverage=1,
-                        coverage_type=None,
-                        label_ids=["Th2dMtk4M_codecov"],
-                    ),
-                ],
-                complexity=None,
-            ),
+            ReportLine.create(coverage=0),
         ),
         (
             10,
-            ReportLine.create(
-                coverage=1,
-                type=None,
-                sessions=[
-                    LineSession(
-                        id=0, coverage=1, branches=None, partials=None, complexity=None
-                    )
-                ],
-                datapoints=[
-                    CoverageDatapoint(
-                        sessionid=0,
-                        coverage=1,
-                        coverage_type=None,
-                        label_ids=["some_label", "other"],
-                    ),
-                    CoverageDatapoint(
-                        sessionid=0,
-                        coverage=1,
-                        coverage_type=None,
-                        label_ids=None,
-                    ),
-                ],
-                complexity=None,
-            ),
+            ReportLine.create(coverage=1, sessions=[LineSession(id=0, coverage=1)]),
         ),
     ]
 
@@ -149,17 +80,7 @@ def test_report_builder_session_only_all_labels(mocker):
     first_file.append(2, ReportLine.create(coverage=0))
     first_file.append(
         3,
-        ReportLine.create(
-            coverage=0,
-            datapoints=[
-                CoverageDatapoint(
-                    sessionid=0,
-                    coverage=1,
-                    coverage_type=None,
-                    label_ids=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
-                )
-            ],
-        ),
+        ReportLine.create(coverage=0),
     )
     first_file.append(
         10,
@@ -174,21 +95,6 @@ def test_report_builder_session_only_all_labels(mocker):
                     )
                 )
             ],
-            datapoints=[
-                CoverageDatapoint(
-                    sessionid=0,
-                    coverage=1,
-                    coverage_type=None,
-                    label_ids=[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER],
-                ),
-                CoverageDatapoint(
-                    sessionid=0,
-                    coverage=1,
-                    coverage_type=None,
-                    label_ids=None,
-                ),
-            ],
-            complexity=None,
         ),
     )
     builder_session.append(first_file)
@@ -197,52 +103,17 @@ def test_report_builder_session_only_all_labels(mocker):
     assert sorted(final_report.get("filename.py").lines) == [
         (
             2,
-            ReportLine.create(
-                coverage=0, type=None, sessions=None, datapoints=None, complexity=None
-            ),
+            ReportLine.create(coverage=0),
         ),
         (
             3,
-            ReportLine.create(
-                coverage=0,
-                type=None,
-                sessions=None,
-                datapoints=[
-                    CoverageDatapoint(
-                        sessionid=0,
-                        coverage=1,
-                        coverage_type=None,
-                        label_ids=["Th2dMtk4M_codecov"],
-                    ),
-                ],
-                complexity=None,
-            ),
+            ReportLine.create(coverage=0),
         ),
         (
             10,
             ReportLine.create(
                 coverage=1,
-                type=None,
-                sessions=[
-                    LineSession(
-                        id=0, coverage=1, branches=None, partials=None, complexity=None
-                    )
-                ],
-                datapoints=[
-                    CoverageDatapoint(
-                        sessionid=0,
-                        coverage=1,
-                        coverage_type=None,
-                        label_ids=["Th2dMtk4M_codecov"],
-                    ),
-                    CoverageDatapoint(
-                        sessionid=0,
-                        coverage=1,
-                        coverage_type=None,
-                        label_ids=None,
-                    ),
-                ],
-                complexity=None,
+                sessions=[LineSession(id=0, coverage=1)],
             ),
         ),
     ]
@@ -274,8 +145,6 @@ def test_report_builder_session_create_line(mocker):
                 id=45, coverage=1, branches=None, partials=None, complexity=None
             )
         ],
-        datapoints=[],
-        complexity=None,
     )
 
 
@@ -299,7 +168,6 @@ def test_report_builder_session_create_line_mixed_labels(mocker):
     line = builder_session.create_coverage_line(
         1,
         CoverageType.branch,
-        labels_list_of_lists=[["label1"], [], ["label2"], None],
     )
     assert line == ReportLine.create(
         coverage=1,
@@ -309,21 +177,6 @@ def test_report_builder_session_create_line_mixed_labels(mocker):
                 id=45, coverage=1, branches=None, partials=None, complexity=None
             )
         ],
-        datapoints=[
-            CoverageDatapoint(
-                sessionid=45,
-                coverage=1,
-                coverage_type="b",
-                label_ids=["label1"],
-            ),
-            CoverageDatapoint(
-                sessionid=45,
-                coverage=1,
-                coverage_type="b",
-                label_ids=["label2"],
-            ),
-        ],
-        complexity=None,
     )
 
 

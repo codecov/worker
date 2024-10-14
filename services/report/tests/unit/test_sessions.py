@@ -9,10 +9,8 @@ from shared.reports.resources import (
     Session,
     SessionType,
 )
-from shared.reports.types import CoverageDatapoint
 from shared.yaml import UserYaml
 
-from helpers.labels import SpecialLabelsEnum
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
     clear_carryforward_sessions,
@@ -46,27 +44,19 @@ class TestAdjustSession(BaseTestCase):
         )
         first_file = EditableReportFile("first_file.py")
         c = 0
-        for list_of_lists_of_labels in [
-            [["one_label"]],
-            [["another_label"]],
-            [["another_label"], ["one_label"]],
-            [["another_label", "one_label"]],
-            [[SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label]],
-        ]:
-            for sessionid in range(4):
-                first_file.append(
-                    c % 7 + 1,
-                    self.create_sample_line(
-                        coverage=c,
-                        sessionid=sessionid,
-                        list_of_lists_of_labels=list_of_lists_of_labels,
-                    ),
-                )
-                c += 1
+        for sessionid in range(4):
+            first_file.append(
+                c % 7 + 1,
+                self.create_sample_line(
+                    coverage=c,
+                    sessionid=sessionid,
+                ),
+            )
+            c += 1
         second_file = EditableReportFile("second_file.py")
         first_report.append(first_file)
         first_report.append(second_file)
-        # print(self.convert_report_to_better_readable(first_report)["archive"])
+
         assert self.convert_report_to_better_readable(first_report)["archive"] == {
             "first_file.py": [
                 (
@@ -191,29 +181,10 @@ class TestAdjustSession(BaseTestCase):
         }
         return first_report
 
-    def create_sample_line(
-        self, *, coverage, sessionid=None, list_of_lists_of_labels=None
-    ):
-        datapoints = [
-            CoverageDatapoint(
-                sessionid=sessionid,
-                coverage=coverage,
-                coverage_type=None,
-                label_ids=labels,
-            )
-            for labels in (list_of_lists_of_labels or [[]])
-        ]
+    def create_sample_line(self, *, coverage, sessionid=None):
         return ReportLine.create(
             coverage=coverage,
-            sessions=[
-                (
-                    LineSession(
-                        id=sessionid,
-                        coverage=coverage,
-                    )
-                )
-            ],
-            datapoints=datapoints,
+            sessions=[(LineSession(id=sessionid, coverage=coverage))],
         )
 
     def test_adjust_sessions_no_cf(self, sample_first_report):
@@ -241,7 +212,7 @@ class TestAdjustSession(BaseTestCase):
         assert clear_carryforward_sessions(
             sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
-        print(self.convert_report_to_better_readable(sample_first_report))
+
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -515,7 +486,7 @@ class TestAdjustSession(BaseTestCase):
         assert clear_carryforward_sessions(
             sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
-        print(self.convert_report_to_better_readable(sample_first_report))
+
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -739,23 +710,12 @@ class TestAdjustSession(BaseTestCase):
         second_report_file = ReportFile("unrelatedfile.py")
         second_report_file.append(
             90,
-            self.create_sample_line(
-                coverage=90, sessionid=3, list_of_lists_of_labels=[["one_label"]]
-            ),
+            self.create_sample_line(coverage=90, sessionid=3),
         )
         a_report_file = ReportFile("first_file.py")
         a_report_file.append(
             90,
-            self.create_sample_line(
-                coverage=90,
-                sessionid=3,
-                list_of_lists_of_labels=[
-                    ["another_label"],
-                    [
-                        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
-                    ],
-                ],
-            ),
+            self.create_sample_line(coverage=90, sessionid=3),
         )
         second_report.append(second_report_file)
         second_report.append(a_report_file)
@@ -763,7 +723,7 @@ class TestAdjustSession(BaseTestCase):
             sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
         res = self.convert_report_to_better_readable(sample_first_report)
-        # print(res["report"]["sessions"])
+
         assert res["report"]["sessions"] == {
             "1": {
                 "t": None,
@@ -811,7 +771,7 @@ class TestAdjustSession(BaseTestCase):
                 "se": {},
             },
         }
-        print(self.convert_report_to_better_readable(sample_first_report)["archive"])
+
         assert self.convert_report_to_better_readable(sample_first_report)[
             "archive"
         ] == {
@@ -910,98 +870,3 @@ class TestAdjustSession(BaseTestCase):
                 ),
             ]
         }
-
-
-{
-    "first_file.py": [
-        (
-            1,
-            14,
-            None,
-            [[3, 7, None, None, None], [2, 14, None, None, None]],
-            None,
-            None,
-            [
-                (2, 14, None, ["another_label", "one_label"]),
-                (3, 7, None, ["another_label"]),
-            ],
-        ),
-        (
-            2,
-            15,
-            None,
-            [[1, 1, None, None, None], [3, 15, None, None, None]],
-            None,
-            None,
-            [
-                (1, 1, None, ["one_label"]),
-                (3, 15, None, ["another_label", "one_label"]),
-            ],
-        ),
-        (
-            3,
-            9,
-            None,
-            [[2, 2, None, None, None], [1, 9, None, None, None]],
-            None,
-            None,
-            [
-                (1, 9, None, ["another_label"]),
-                (1, 9, None, ["one_label"]),
-                (2, 2, None, ["one_label"]),
-            ],
-        ),
-        (
-            4,
-            17,
-            None,
-            [
-                [3, 3, None, None, None],
-                [2, 10, None, None, None],
-                [1, 17, None, None, None],
-            ],
-            None,
-            None,
-            [
-                (1, 17, None, ["Th2dMtk4M_codecov"]),
-                (2, 10, None, ["another_label"]),
-                (2, 10, None, ["one_label"]),
-                (3, 3, None, ["one_label"]),
-            ],
-        ),
-        (
-            5,
-            18,
-            None,
-            [[3, 11, None, None, None], [2, 18, None, None, None]],
-            None,
-            None,
-            [
-                (2, 18, None, ["Th2dMtk4M_codecov"]),
-                (3, 11, None, ["another_label"]),
-                (3, 11, None, ["one_label"]),
-            ],
-        ),
-        (
-            6,
-            19,
-            None,
-            [[1, 5, None, None, None], [3, 19, None, None, None]],
-            None,
-            None,
-            [(1, 5, None, ["another_label"]), (3, 19, None, ["Th2dMtk4M_codecov"])],
-        ),
-        (
-            7,
-            13,
-            None,
-            [[2, 6, None, None, None], [1, 13, None, None, None]],
-            None,
-            None,
-            [
-                (1, 13, None, ["another_label", "one_label"]),
-                (2, 6, None, ["another_label"]),
-            ],
-        ),
-    ]
-}
