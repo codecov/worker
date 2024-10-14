@@ -588,7 +588,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             session_adjustment = SessionAdjustmentResult([], [])
             if flags := session.flags:
                 session_adjustment = clear_carryforward_sessions(
-                    cumulative_report, incremental_report, flags, UserYaml(commit_yaml)
+                    cumulative_report, flags, UserYaml(commit_yaml)
                 )
 
             cumulative_report.merge(incremental_report)
@@ -717,9 +717,6 @@ def change_sessionid(report: Report, old_id: int, new_id: int):
                     session.id = new_id
                 all_sessions.add(session.id)
 
-            if line.datapoints:
-                for point in line.datapoints:
-                    if point.sessionid == old_id:
-                        point.sessionid = new_id
+            line.datapoints = None
 
         report_file._details["present_sessions"] = all_sessions

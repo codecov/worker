@@ -8,7 +8,6 @@ from shared.yaml import UserYaml
 
 from database.models.reports import Upload
 from helpers.exceptions import ReportEmptyError, ReportExpiredException
-from helpers.labels import get_all_report_labels, get_labels_per_session
 from services.path_fixer import PathFixer
 from services.report.parser.types import ParsedRawReport
 from services.report.report_builder import ReportBuilder
@@ -124,7 +123,7 @@ def process_raw_upload(
     # Adjust sessions removed carryforward sessions that are being replaced
     if session.flags:
         session_adjustment = clear_carryforward_sessions(
-            report, temporary_report, session.flags, commit_yaml, upload
+            report, session.flags, commit_yaml
         )
     else:
         session_adjustment = SessionAdjustmentResult([], [])
@@ -138,52 +137,21 @@ def process_raw_upload(
 @sentry_sdk.trace
 def clear_carryforward_sessions(
     original_report: Report,
-    to_merge_report: Report,
     to_merge_flags: list[str],
     current_yaml: UserYaml,
-    upload: Upload | None = None,
 ) -> SessionAdjustmentResult:
-    flags_under_carryforward_rules = {
+    to_fully_overwrite_flags = {
         f for f in to_merge_flags if current_yaml.flag_has_carryfoward(f)
     }
-    to_partially_overwrite_flags = {
-        f
-        for f in flags_under_carryforward_rules
-        if current_yaml.get_flag_configuration(f).get("carryforward_mode") == "labels"
-    }
-    to_fully_overwrite_flags = flags_under_carryforward_rules.difference(
-        to_partially_overwrite_flags
-    )
-
-    if upload is None and to_partially_overwrite_flags:
-        log.warning("Upload is None, but there are partial_overwrite_flags present")
 
     session_ids_to_fully_delete = []
-    session_ids_to_partially_delete = []
-
-    if to_fully_overwrite_flags or to_partially_overwrite_flags:
+    if to_fully_overwrite_flags:
         for session_id, session in original_report.sessions.items():
             if session.session_type == SessionType.carriedforward and session.flags:
                 if any(f in to_fully_overwrite_flags for f in session.flags):
                     session_ids_to_fully_delete.append(session_id)
-                if any(f in to_partially_overwrite_flags for f in session.flags):
-                    session_ids_to_partially_delete.append(session_id)
 
-    actually_fully_deleted_sessions = set()
     if session_ids_to_fully_delete:
         original_report.delete_multiple_sessions(session_ids_to_fully_delete)
-        actually_fully_deleted_sessions.update(session_ids_to_fully_delete)
 
-    if session_ids_to_partially_delete:
-        all_labels = get_all_report_labels(to_merge_report)
-        original_report.delete_labels(session_ids_to_partially_delete, all_labels)
-        for s in session_ids_to_partially_delete:
-            labels_now = get_labels_per_session(original_report, s)
-            if not labels_now:
-                actually_fully_deleted_sessions.add(s)
-                original_report.delete_session(s)
-
-    return SessionAdjustmentResult(
-        sorted(actually_fully_deleted_sessions),
-        sorted(set(session_ids_to_partially_delete) - actually_fully_deleted_sessions),
-    )
+    return SessionAdjustmentResult(sorted(session_ids_to_fully_delete), [])

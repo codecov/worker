@@ -1,14 +1,6 @@
 import pytest
-from mock import MagicMock
 from shared.reports.editable import EditableReport, EditableReportFile
-from shared.reports.resources import (
-    LineSession,
-    Report,
-    ReportFile,
-    ReportLine,
-    Session,
-    SessionType,
-)
+from shared.reports.resources import LineSession, ReportLine, Session, SessionType
 from shared.yaml import UserYaml
 
 from services.report.raw_upload_processor import (
@@ -189,19 +181,15 @@ class TestAdjustSession(BaseTestCase):
 
     def test_adjust_sessions_no_cf(self, sample_first_report):
         first_value = self.convert_report_to_better_readable(sample_first_report)
-        first_to_merge_session = Session(flags=["enterprise"], id=3)
-        second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml({})
         assert clear_carryforward_sessions(
-            sample_first_report, second_report, ["enterprise"], current_yaml
+            sample_first_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [])
         assert first_value == self.convert_report_to_better_readable(
             sample_first_report
         )
 
     def test_adjust_sessions_full_cf_only(self, sample_first_report):
-        first_to_merge_session = Session(flags=["enterprise"], id=3)
-        second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml(
             {
                 "flag_management": {
@@ -210,7 +198,7 @@ class TestAdjustSession(BaseTestCase):
             }
         )
         assert clear_carryforward_sessions(
-            sample_first_report, second_report, ["enterprise"], current_yaml
+            sample_first_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
 
         assert self.convert_report_to_better_readable(sample_first_report) == {
@@ -387,10 +375,6 @@ class TestAdjustSession(BaseTestCase):
     def test_adjust_sessions_partial_cf_only_no_changes(
         self, sample_first_report, mocker
     ):
-        first_to_merge_session = Session(flags=["enterprise"], id=3)
-        second_report = Report(
-            sessions={first_to_merge_session.id: first_to_merge_session}
-        )
         current_yaml = UserYaml(
             {
                 "flag_management": {
@@ -406,7 +390,7 @@ class TestAdjustSession(BaseTestCase):
         )
         first_value = self.convert_report_to_better_readable(sample_first_report)
         assert clear_carryforward_sessions(
-            sample_first_report, second_report, ["enterprise"], current_yaml
+            sample_first_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
         after_result = self.convert_report_to_better_readable(sample_first_report)
         assert after_result == first_value
@@ -414,10 +398,6 @@ class TestAdjustSession(BaseTestCase):
     def test_adjust_sessions_partial_cf_only_no_changes_encoding_labels(
         self, sample_first_report
     ):
-        first_to_merge_session = Session(flags=["enterprise"], id=3)
-        second_report = Report(
-            sessions={first_to_merge_session.id: first_to_merge_session}
-        )
         current_yaml = UserYaml(
             {
                 "flag_management": {
@@ -432,36 +412,13 @@ class TestAdjustSession(BaseTestCase):
             }
         )
         first_value = self.convert_report_to_better_readable(sample_first_report)
-        upload = MagicMock(
-            name="fake_upload",
-            **{
-                "report": MagicMock(
-                    name="fake_commit_report",
-                    **{
-                        "code": None,
-                        "commit": MagicMock(
-                            name="fake_commit",
-                            **{"repository": MagicMock(name="fake_repo")},
-                        ),
-                    },
-                )
-            },
-        )
         assert clear_carryforward_sessions(
-            sample_first_report,
-            second_report,
-            ["enterprise"],
-            current_yaml,
-            upload=upload,
+            sample_first_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
         after_result = self.convert_report_to_better_readable(sample_first_report)
         assert after_result == first_value
 
     def test_adjust_sessions_partial_cf_only_some_changes(self, sample_first_report):
-        first_to_merge_session = Session(flags=["enterprise"], id=3)
-        second_report = Report(
-            sessions={first_to_merge_session.id: first_to_merge_session}
-        )
         current_yaml = UserYaml(
             {
                 "flag_management": {
@@ -475,16 +432,8 @@ class TestAdjustSession(BaseTestCase):
                 }
             }
         )
-        second_report_file = ReportFile("unrelatedfile.py")
-        second_report_file.append(
-            90,
-            self.create_sample_line(
-                coverage=90, sessionid=3, list_of_lists_of_labels=[["one_label"]]
-            ),
-        )
-        second_report.append(second_report_file)
         assert clear_carryforward_sessions(
-            sample_first_report, second_report, ["enterprise"], current_yaml
+            sample_first_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
 
         assert self.convert_report_to_better_readable(sample_first_report) == {
@@ -691,8 +640,6 @@ class TestAdjustSession(BaseTestCase):
     def test_adjust_sessions_partial_cf_only_full_deletion_due_to_lost_labels(
         self, sample_first_report
     ):
-        first_to_merge_session = Session(flags=["enterprise"], id=3)
-        second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml(
             {
                 "flag_management": {
@@ -707,20 +654,8 @@ class TestAdjustSession(BaseTestCase):
             }
         )
 
-        second_report_file = ReportFile("unrelatedfile.py")
-        second_report_file.append(
-            90,
-            self.create_sample_line(coverage=90, sessionid=3),
-        )
-        a_report_file = ReportFile("first_file.py")
-        a_report_file.append(
-            90,
-            self.create_sample_line(coverage=90, sessionid=3),
-        )
-        second_report.append(second_report_file)
-        second_report.append(a_report_file)
         assert clear_carryforward_sessions(
-            sample_first_report, second_report, ["enterprise"], current_yaml
+            sample_first_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
         res = self.convert_report_to_better_readable(sample_first_report)
 

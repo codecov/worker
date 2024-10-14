@@ -1,4 +1,3 @@
-import pytest
 from shared.reports.resources import LineSession, ReportFile, ReportLine
 
 from services.report.report_builder import CoverageType, ReportBuilder
@@ -178,62 +177,3 @@ def test_report_builder_session_create_line_mixed_labels(mocker):
             )
         ],
     )
-
-
-@pytest.mark.parametrize(
-    "current_yaml,expected_result",
-    [
-        ({}, False),
-        ({"flags": {"oldflag": {"carryforward": "true"}}}, False),
-        (
-            {
-                "flags": {
-                    "oldflag": {"carryforward": "true", "carryforward_mode": "labels"}
-                }
-            },
-            True,
-        ),
-        (
-            {
-                "flag_management": {
-                    "default_rules": {
-                        "carryforward": "true",
-                        "carryforward_mode": "labels",
-                    }
-                }
-            },
-            True,
-        ),
-        (
-            {
-                "flag_management": {
-                    "default_rules": {
-                        "carryforward": "true",
-                        "carryforward_mode": "all",
-                    }
-                }
-            },
-            False,
-        ),
-        (
-            {
-                "flag_management": {
-                    "default_rules": {
-                        "carryforward": "true",
-                        "carryforward_mode": "all",
-                    },
-                    "individual_flags": [
-                        {
-                            "name": "some_flag",
-                            "carryforward_mode": "labels",
-                        }
-                    ],
-                }
-            },
-            True,
-        ),
-    ],
-)
-def test_report_builder_supports_flags(current_yaml, expected_result):
-    builder = ReportBuilder(current_yaml, 0, None, None)
-    assert builder.supports_labels() == expected_result
