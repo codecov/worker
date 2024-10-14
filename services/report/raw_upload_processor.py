@@ -18,15 +18,9 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class SessionAdjustmentResult:
-    fully_deleted_sessions: list[int]
-    partially_deleted_sessions: list[int]
-
-
-@dataclass
 class UploadProcessingResult:
     report: Report  # NOTE: this is just returning the input argument, and primarily used in tests
-    session_adjustment: SessionAdjustmentResult
+    deleted_sessions: set[int]
 
 
 @sentry_sdk.trace
@@ -121,17 +115,16 @@ def process_raw_upload(
     # Because we know that the processing was successful
     _sessionid, session = report.add_session(session, use_id_from_session=True)
     # Adjust sessions removed carryforward sessions that are being replaced
+    deleted_sessions = set()
     if session.flags:
-        session_adjustment = clear_carryforward_sessions(
+        deleted_sessions = clear_carryforward_sessions(
             report, session.flags, commit_yaml
         )
-    else:
-        session_adjustment = SessionAdjustmentResult([], [])
 
     report.merge(temporary_report, joined=joined)
     session.totals = temporary_report.totals
 
-    return UploadProcessingResult(report=report, session_adjustment=session_adjustment)
+    return UploadProcessingResult(report=report, deleted_sessions=deleted_sessions)
 
 
 @sentry_sdk.trace
@@ -139,19 +132,19 @@ def clear_carryforward_sessions(
     original_report: Report,
     to_merge_flags: list[str],
     current_yaml: UserYaml,
-) -> SessionAdjustmentResult:
+) -> set[int]:
+    session_ids_to_fully_delete = set()
     to_fully_overwrite_flags = {
         f for f in to_merge_flags if current_yaml.flag_has_carryfoward(f)
     }
 
-    session_ids_to_fully_delete = []
     if to_fully_overwrite_flags:
         for session_id, session in original_report.sessions.items():
             if session.session_type == SessionType.carriedforward and session.flags:
                 if any(f in to_fully_overwrite_flags for f in session.flags):
-                    session_ids_to_fully_delete.append(session_id)
+                    session_ids_to_fully_delete.add(session_id)
 
     if session_ids_to_fully_delete:
-        original_report.delete_multiple_sessions(session_ids_to_fully_delete)
+        original_report.delete_multiple_sessions(list(session_ids_to_fully_delete))
 
-    return SessionAdjustmentResult(sorted(session_ids_to_fully_delete), [])
+    return session_ids_to_fully_delete

@@ -50,10 +50,7 @@ from services.report.prometheus_metrics import (
     RAW_UPLOAD_RAW_REPORT_COUNT,
     RAW_UPLOAD_SIZE,
 )
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    process_raw_upload,
-)
+from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
@@ -73,7 +70,7 @@ class ProcessingResult:
     session: Session
     report: Report | None = None
     error: ProcessingError | None = None
-    session_adjustment: SessionAdjustmentResult | None = None
+    deleted_sessions: set[int] | None = None
 
 
 @dataclass
@@ -717,7 +714,7 @@ class ReportService(BaseReportService):
                 upload=upload,
             )
             result.report = process_result.report
-            result.session_adjustment = process_result.session_adjustment
+            result.deleted_sessions = process_result.deleted_sessions
 
             log.info(
                 "Successfully processed report",
@@ -812,11 +809,10 @@ class ReportService(BaseReportService):
             # delete all the carryforwarded `Upload` records corresponding to `Session`s
             # which have been removed from the report.
             # we always have a `session_adjustment` in the non-error case.
-            assert processing_result.session_adjustment
-            deleted_sessions = (
-                processing_result.session_adjustment.fully_deleted_sessions
+            assert processing_result.deleted_sessions is not None
+            delete_uploads_by_sessionid(
+                upload, list(processing_result.deleted_sessions)
             )
-            delete_uploads_by_sessionid(upload, deleted_sessions)
 
         else:
             error = processing_result.error

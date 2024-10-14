@@ -37,10 +37,7 @@ from services.comparison import get_or_create_comparison
 from services.processing.state import ProcessingState, should_trigger_postprocessing
 from services.redis import get_redis_connection
 from services.report import ReportService, delete_uploads_by_sessionid
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    clear_carryforward_sessions,
-)
+from services.report.raw_upload_processor import clear_carryforward_sessions
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.parallel_verification import parallel_verification_task
@@ -585,9 +582,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 session, use_id_from_session=True
             )
 
-            session_adjustment = SessionAdjustmentResult([], [])
+            deleted_sessions = set()
             if flags := session.flags:
-                session_adjustment = clear_carryforward_sessions(
+                deleted_sessions = clear_carryforward_sessions(
                     cumulative_report, flags, UserYaml(commit_yaml)
                 )
 
@@ -605,9 +602,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 upload.state_id = UploadState.PROCESSED.db_id
                 upload.state = "processed"
                 upload.order_number = new_sessionid
-                delete_uploads_by_sessionid(
-                    upload, session_adjustment.fully_deleted_sessions
-                )
+                if deleted_sessions:
+                    delete_uploads_by_sessionid(upload, list(deleted_sessions))
                 db_session.flush()
 
             return cumulative_report

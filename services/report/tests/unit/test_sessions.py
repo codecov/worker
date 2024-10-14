@@ -3,14 +3,8 @@ from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.resources import LineSession, ReportLine, Session, SessionType
 from shared.yaml import UserYaml
 
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    clear_carryforward_sessions,
-)
+from services.report.raw_upload_processor import clear_carryforward_sessions
 from test_utils.base import BaseTestCase
-
-# Not calling add_sessions here on purpose, so it doesnt
-#   interfere with this logic
 
 
 class TestAdjustSession(BaseTestCase):
@@ -36,15 +30,16 @@ class TestAdjustSession(BaseTestCase):
         )
         first_file = EditableReportFile("first_file.py")
         c = 0
-        for sessionid in range(4):
-            first_file.append(
-                c % 7 + 1,
-                self.create_sample_line(
-                    coverage=c,
-                    sessionid=sessionid,
-                ),
-            )
-            c += 1
+        for _ in range(5):
+            for sessionid in range(4):
+                first_file.append(
+                    c % 7 + 1,
+                    self.create_sample_line(
+                        coverage=c,
+                        sessionid=sessionid,
+                    ),
+                )
+                c += 1
         second_file = EditableReportFile("second_file.py")
         first_report.append(first_file)
         first_report.append(second_file)
@@ -62,11 +57,6 @@ class TestAdjustSession(BaseTestCase):
                     ],
                     None,
                     None,
-                    [
-                        (0, 0, None, ["one_label"]),
-                        (2, 14, None, ["another_label", "one_label"]),
-                        (3, 7, None, ["another_label"]),
-                    ],
                 ),
                 (
                     2,
@@ -79,12 +69,6 @@ class TestAdjustSession(BaseTestCase):
                     ],
                     None,
                     None,
-                    [
-                        (0, 8, None, ["another_label"]),
-                        (0, 8, None, ["one_label"]),
-                        (1, 1, None, ["one_label"]),
-                        (3, 15, None, ["another_label", "one_label"]),
-                    ],
                 ),
                 (
                     3,
@@ -97,12 +81,6 @@ class TestAdjustSession(BaseTestCase):
                     ],
                     None,
                     None,
-                    [
-                        (0, 16, None, ["Th2dMtk4M_codecov"]),
-                        (1, 9, None, ["another_label"]),
-                        (1, 9, None, ["one_label"]),
-                        (2, 2, None, ["one_label"]),
-                    ],
                 ),
                 (
                     4,
@@ -115,12 +93,6 @@ class TestAdjustSession(BaseTestCase):
                     ],
                     None,
                     None,
-                    [
-                        (1, 17, None, ["Th2dMtk4M_codecov"]),
-                        (2, 10, None, ["another_label"]),
-                        (2, 10, None, ["one_label"]),
-                        (3, 3, None, ["one_label"]),
-                    ],
                 ),
                 (
                     5,
@@ -133,12 +105,6 @@ class TestAdjustSession(BaseTestCase):
                     ],
                     None,
                     None,
-                    [
-                        (0, 4, None, ["another_label"]),
-                        (2, 18, None, ["Th2dMtk4M_codecov"]),
-                        (3, 11, None, ["another_label"]),
-                        (3, 11, None, ["one_label"]),
-                    ],
                 ),
                 (
                     6,
@@ -151,11 +117,6 @@ class TestAdjustSession(BaseTestCase):
                     ],
                     None,
                     None,
-                    [
-                        (0, 12, None, ["another_label", "one_label"]),
-                        (1, 5, None, ["another_label"]),
-                        (3, 19, None, ["Th2dMtk4M_codecov"]),
-                    ],
                 ),
                 (
                     7,
@@ -164,10 +125,6 @@ class TestAdjustSession(BaseTestCase):
                     [[2, 6, None, None, None], [1, 13, None, None, None]],
                     None,
                     None,
-                    [
-                        (1, 13, None, ["another_label", "one_label"]),
-                        (2, 6, None, ["another_label"]),
-                    ],
                 ),
             ]
         }
@@ -182,9 +139,12 @@ class TestAdjustSession(BaseTestCase):
     def test_adjust_sessions_no_cf(self, sample_first_report):
         first_value = self.convert_report_to_better_readable(sample_first_report)
         current_yaml = UserYaml({})
-        assert clear_carryforward_sessions(
-            sample_first_report, ["enterprise"], current_yaml
-        ) == SessionAdjustmentResult([], [])
+        assert (
+            clear_carryforward_sessions(
+                sample_first_report, ["enterprise"], current_yaml
+            )
+            == set()
+        )
         assert first_value == self.convert_report_to_better_readable(
             sample_first_report
         )
@@ -199,7 +159,7 @@ class TestAdjustSession(BaseTestCase):
         )
         assert clear_carryforward_sessions(
             sample_first_report, ["enterprise"], current_yaml
-        ) == SessionAdjustmentResult([0], [])
+        ) == {0}
 
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
@@ -211,10 +171,6 @@ class TestAdjustSession(BaseTestCase):
                         [[3, 7, None, None, None], [2, 14, None, None, None]],
                         None,
                         None,
-                        [
-                            (2, 14, None, ["another_label", "one_label"]),
-                            (3, 7, None, ["another_label"]),
-                        ],
                     ),
                     (
                         2,
@@ -223,10 +179,6 @@ class TestAdjustSession(BaseTestCase):
                         [[1, 1, None, None, None], [3, 15, None, None, None]],
                         None,
                         None,
-                        [
-                            (1, 1, None, ["one_label"]),
-                            (3, 15, None, ["another_label", "one_label"]),
-                        ],
                     ),
                     (
                         3,
@@ -235,11 +187,6 @@ class TestAdjustSession(BaseTestCase):
                         [[2, 2, None, None, None], [1, 9, None, None, None]],
                         None,
                         None,
-                        [
-                            (1, 9, None, ["another_label"]),
-                            (1, 9, None, ["one_label"]),
-                            (2, 2, None, ["one_label"]),
-                        ],
                     ),
                     (
                         4,
@@ -252,12 +199,6 @@ class TestAdjustSession(BaseTestCase):
                         ],
                         None,
                         None,
-                        [
-                            (1, 17, None, ["Th2dMtk4M_codecov"]),
-                            (2, 10, None, ["another_label"]),
-                            (2, 10, None, ["one_label"]),
-                            (3, 3, None, ["one_label"]),
-                        ],
                     ),
                     (
                         5,
@@ -266,11 +207,6 @@ class TestAdjustSession(BaseTestCase):
                         [[3, 11, None, None, None], [2, 18, None, None, None]],
                         None,
                         None,
-                        [
-                            (2, 18, None, ["Th2dMtk4M_codecov"]),
-                            (3, 11, None, ["another_label"]),
-                            (3, 11, None, ["one_label"]),
-                        ],
                     ),
                     (
                         6,
@@ -279,10 +215,6 @@ class TestAdjustSession(BaseTestCase):
                         [[1, 5, None, None, None], [3, 19, None, None, None]],
                         None,
                         None,
-                        [
-                            (1, 5, None, ["another_label"]),
-                            (3, 19, None, ["Th2dMtk4M_codecov"]),
-                        ],
                     ),
                     (
                         7,
@@ -291,10 +223,6 @@ class TestAdjustSession(BaseTestCase):
                         [[2, 6, None, None, None], [1, 13, None, None, None]],
                         None,
                         None,
-                        [
-                            (1, 13, None, ["another_label", "one_label"]),
-                            (2, 6, None, ["another_label"]),
-                        ],
                     ),
                 ]
             },
@@ -370,438 +298,4 @@ class TestAdjustSession(BaseTestCase):
                 "N": 0,
                 "diff": None,
             },
-        }
-
-    def test_adjust_sessions_partial_cf_only_no_changes(
-        self, sample_first_report, mocker
-    ):
-        current_yaml = UserYaml(
-            {
-                "flag_management": {
-                    "individual_flags": [
-                        {
-                            "name": "enterprise",
-                            "carryforward_mode": "labels",
-                            "carryforward": True,
-                        }
-                    ]
-                }
-            }
-        )
-        first_value = self.convert_report_to_better_readable(sample_first_report)
-        assert clear_carryforward_sessions(
-            sample_first_report, ["enterprise"], current_yaml
-        ) == SessionAdjustmentResult([], [0])
-        after_result = self.convert_report_to_better_readable(sample_first_report)
-        assert after_result == first_value
-
-    def test_adjust_sessions_partial_cf_only_no_changes_encoding_labels(
-        self, sample_first_report
-    ):
-        current_yaml = UserYaml(
-            {
-                "flag_management": {
-                    "individual_flags": [
-                        {
-                            "name": "enterprise",
-                            "carryforward_mode": "labels",
-                            "carryforward": True,
-                        }
-                    ]
-                }
-            }
-        )
-        first_value = self.convert_report_to_better_readable(sample_first_report)
-        assert clear_carryforward_sessions(
-            sample_first_report, ["enterprise"], current_yaml
-        ) == SessionAdjustmentResult([], [0])
-        after_result = self.convert_report_to_better_readable(sample_first_report)
-        assert after_result == first_value
-
-    def test_adjust_sessions_partial_cf_only_some_changes(self, sample_first_report):
-        current_yaml = UserYaml(
-            {
-                "flag_management": {
-                    "individual_flags": [
-                        {
-                            "name": "enterprise",
-                            "carryforward_mode": "labels",
-                            "carryforward": True,
-                        }
-                    ]
-                }
-            }
-        )
-        assert clear_carryforward_sessions(
-            sample_first_report, ["enterprise"], current_yaml
-        ) == SessionAdjustmentResult([], [0])
-
-        assert self.convert_report_to_better_readable(sample_first_report) == {
-            "archive": {
-                "first_file.py": [
-                    (
-                        1,
-                        14,
-                        None,
-                        [[3, 7, None, None, None], [2, 14, None, None, None]],
-                        None,
-                        None,
-                        [
-                            (2, 14, None, ["another_label", "one_label"]),
-                            (3, 7, None, ["another_label"]),
-                        ],
-                    ),
-                    (
-                        2,
-                        15,
-                        None,
-                        [
-                            [1, 1, None, None, None],
-                            [0, 8, None, None, None],
-                            [3, 15, None, None, None],
-                        ],
-                        None,
-                        None,
-                        [
-                            (0, 8, None, ["another_label"]),
-                            (1, 1, None, ["one_label"]),
-                            (3, 15, None, ["another_label", "one_label"]),
-                        ],
-                    ),
-                    (
-                        3,
-                        16,
-                        None,
-                        [
-                            [2, 2, None, None, None],
-                            [1, 9, None, None, None],
-                            [0, 16, None, None, None],
-                        ],
-                        None,
-                        None,
-                        [
-                            (0, 16, None, ["Th2dMtk4M_codecov"]),
-                            (1, 9, None, ["another_label"]),
-                            (1, 9, None, ["one_label"]),
-                            (2, 2, None, ["one_label"]),
-                        ],
-                    ),
-                    (
-                        4,
-                        17,
-                        None,
-                        [
-                            [3, 3, None, None, None],
-                            [2, 10, None, None, None],
-                            [1, 17, None, None, None],
-                        ],
-                        None,
-                        None,
-                        [
-                            (1, 17, None, ["Th2dMtk4M_codecov"]),
-                            (2, 10, None, ["another_label"]),
-                            (2, 10, None, ["one_label"]),
-                            (3, 3, None, ["one_label"]),
-                        ],
-                    ),
-                    (
-                        5,
-                        18,
-                        None,
-                        [
-                            [0, 4, None, None, None],
-                            [3, 11, None, None, None],
-                            [2, 18, None, None, None],
-                        ],
-                        None,
-                        None,
-                        [
-                            (0, 4, None, ["another_label"]),
-                            (2, 18, None, ["Th2dMtk4M_codecov"]),
-                            (3, 11, None, ["another_label"]),
-                            (3, 11, None, ["one_label"]),
-                        ],
-                    ),
-                    (
-                        6,
-                        19,
-                        None,
-                        [[1, 5, None, None, None], [3, 19, None, None, None]],
-                        None,
-                        None,
-                        [
-                            (1, 5, None, ["another_label"]),
-                            (3, 19, None, ["Th2dMtk4M_codecov"]),
-                        ],
-                    ),
-                    (
-                        7,
-                        13,
-                        None,
-                        [[2, 6, None, None, None], [1, 13, None, None, None]],
-                        None,
-                        None,
-                        [
-                            (1, 13, None, ["another_label", "one_label"]),
-                            (2, 6, None, ["another_label"]),
-                        ],
-                    ),
-                ]
-            },
-            "report": {
-                "files": {
-                    "first_file.py": [
-                        0,
-                        [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        None,
-                        None,
-                    ]
-                },
-                "sessions": {
-                    "0": {
-                        "t": None,
-                        "d": None,
-                        "a": None,
-                        "f": ["enterprise"],
-                        "c": None,
-                        "n": None,
-                        "N": None,
-                        "j": None,
-                        "u": None,
-                        "p": None,
-                        "e": None,
-                        "st": "carriedforward",
-                        "se": {},
-                    },
-                    "1": {
-                        "t": None,
-                        "d": None,
-                        "a": None,
-                        "f": ["enterprise"],
-                        "c": None,
-                        "n": None,
-                        "N": None,
-                        "j": None,
-                        "u": None,
-                        "p": None,
-                        "e": None,
-                        "st": "uploaded",
-                        "se": {},
-                    },
-                    "2": {
-                        "t": None,
-                        "d": None,
-                        "a": None,
-                        "f": ["unit"],
-                        "c": None,
-                        "n": None,
-                        "N": None,
-                        "j": None,
-                        "u": None,
-                        "p": None,
-                        "e": None,
-                        "st": "carriedforward",
-                        "se": {},
-                    },
-                    "3": {
-                        "t": None,
-                        "d": None,
-                        "a": None,
-                        "f": ["unrelated"],
-                        "c": None,
-                        "n": None,
-                        "N": None,
-                        "j": None,
-                        "u": None,
-                        "p": None,
-                        "e": None,
-                        "st": "uploaded",
-                        "se": {},
-                    },
-                },
-            },
-            "totals": {
-                "f": 1,
-                "n": 7,
-                "h": 7,
-                "m": 0,
-                "p": 0,
-                "c": "100",
-                "b": 0,
-                "d": 0,
-                "M": 0,
-                "s": 4,
-                "C": 0,
-                "N": 0,
-                "diff": None,
-            },
-        }
-
-    def test_adjust_sessions_partial_cf_only_full_deletion_due_to_lost_labels(
-        self, sample_first_report
-    ):
-        current_yaml = UserYaml(
-            {
-                "flag_management": {
-                    "individual_flags": [
-                        {
-                            "name": "enterprise",
-                            "carryforward_mode": "labels",
-                            "carryforward": True,
-                        }
-                    ]
-                }
-            }
-        )
-
-        assert clear_carryforward_sessions(
-            sample_first_report, ["enterprise"], current_yaml
-        ) == SessionAdjustmentResult([0], [])
-        res = self.convert_report_to_better_readable(sample_first_report)
-
-        assert res["report"]["sessions"] == {
-            "1": {
-                "t": None,
-                "d": None,
-                "a": None,
-                "f": ["enterprise"],
-                "c": None,
-                "n": None,
-                "N": None,
-                "j": None,
-                "u": None,
-                "p": None,
-                "e": None,
-                "st": "uploaded",
-                "se": {},
-            },
-            "2": {
-                "t": None,
-                "d": None,
-                "a": None,
-                "f": ["unit"],
-                "c": None,
-                "n": None,
-                "N": None,
-                "j": None,
-                "u": None,
-                "p": None,
-                "e": None,
-                "st": "carriedforward",
-                "se": {},
-            },
-            "3": {
-                "t": None,
-                "d": None,
-                "a": None,
-                "f": ["unrelated"],
-                "c": None,
-                "n": None,
-                "N": None,
-                "j": None,
-                "u": None,
-                "p": None,
-                "e": None,
-                "st": "uploaded",
-                "se": {},
-            },
-        }
-
-        assert self.convert_report_to_better_readable(sample_first_report)[
-            "archive"
-        ] == {
-            "first_file.py": [
-                (
-                    1,
-                    14,
-                    None,
-                    [[3, 7, None, None, None], [2, 14, None, None, None]],
-                    None,
-                    None,
-                    [
-                        (2, 14, None, ["another_label", "one_label"]),
-                        (3, 7, None, ["another_label"]),
-                    ],
-                ),
-                (
-                    2,
-                    15,
-                    None,
-                    [[1, 1, None, None, None], [3, 15, None, None, None]],
-                    None,
-                    None,
-                    [
-                        (1, 1, None, ["one_label"]),
-                        (3, 15, None, ["another_label", "one_label"]),
-                    ],
-                ),
-                (
-                    3,
-                    9,
-                    None,
-                    [[2, 2, None, None, None], [1, 9, None, None, None]],
-                    None,
-                    None,
-                    [
-                        (1, 9, None, ["another_label"]),
-                        (1, 9, None, ["one_label"]),
-                        (2, 2, None, ["one_label"]),
-                    ],
-                ),
-                (
-                    4,
-                    17,
-                    None,
-                    [
-                        [3, 3, None, None, None],
-                        [2, 10, None, None, None],
-                        [1, 17, None, None, None],
-                    ],
-                    None,
-                    None,
-                    [
-                        (1, 17, None, ["Th2dMtk4M_codecov"]),
-                        (2, 10, None, ["another_label"]),
-                        (2, 10, None, ["one_label"]),
-                        (3, 3, None, ["one_label"]),
-                    ],
-                ),
-                (
-                    5,
-                    18,
-                    None,
-                    [[3, 11, None, None, None], [2, 18, None, None, None]],
-                    None,
-                    None,
-                    [
-                        (2, 18, None, ["Th2dMtk4M_codecov"]),
-                        (3, 11, None, ["another_label"]),
-                        (3, 11, None, ["one_label"]),
-                    ],
-                ),
-                (
-                    6,
-                    19,
-                    None,
-                    [[1, 5, None, None, None], [3, 19, None, None, None]],
-                    None,
-                    None,
-                    [
-                        (1, 5, None, ["another_label"]),
-                        (3, 19, None, ["Th2dMtk4M_codecov"]),
-                    ],
-                ),
-                (
-                    7,
-                    13,
-                    None,
-                    [[2, 6, None, None, None], [1, 13, None, None, None]],
-                    None,
-                    None,
-                    [
-                        (1, 13, None, ["another_label", "one_label"]),
-                        (2, 6, None, ["another_label"]),
-                    ],
-                ),
-            ]
         }

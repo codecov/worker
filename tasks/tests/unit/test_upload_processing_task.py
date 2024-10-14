@@ -22,10 +22,7 @@ from helpers.parallel import ParallelProcessing
 from services.archive import ArchiveService
 from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    UploadProcessingResult,
-)
+from services.report.raw_upload_processor import UploadProcessingResult
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
@@ -574,9 +571,7 @@ class TestUploadProcessorTask(object):
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            UploadProcessingResult(
-                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
-            ),
+            UploadProcessingResult(report=false_report, deleted_sessions={}),
             ReportExpiredException(),
         ]
         # Mocking retry to also raise the exception so we can see how it is called
@@ -730,9 +725,7 @@ class TestUploadProcessorTask(object):
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            UploadProcessingResult(
-                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
-            ),
+            UploadProcessingResult(report=false_report, deleted_sessions={}),
             ReportEmptyError(),
         ]
         mocker.patch.object(UploadProcessorTask, "app", celery_app)

@@ -20,10 +20,7 @@ from services.report import (
     ReportService,
 )
 from services.report import log as report_log
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    clear_carryforward_sessions,
-)
+from services.report.raw_upload_processor import clear_carryforward_sessions
 from test_utils.base import BaseTestCase
 
 
@@ -1424,9 +1421,7 @@ class TestReportService(BaseTestCase):
         assert sorted(report.sessions.keys()) == [2, 3, 4]
         assert clear_carryforward_sessions(
             report, ["enterprise"], UserYaml(yaml_dict)
-        ) == SessionAdjustmentResult(
-            fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
-        )
+        ) == {2, 3}
         assert sorted(report.sessions.keys()) == [4]
         readable_report = self.convert_report_to_better_readable(report)
         expected_results = {
@@ -1496,9 +1491,7 @@ class TestReportService(BaseTestCase):
         assert sorted(report.sessions.keys()) == [0, 1, 2, 3, 4]
         assert clear_carryforward_sessions(
             report, ["enterprise"], UserYaml(yaml_dict)
-        ) == SessionAdjustmentResult(
-            fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
-        )
+        ) == {2, 3}
         assert sorted(report.sessions.keys()) == [0, 1, 4]
         readable_report = self.convert_report_to_better_readable(report)
         expected_sessions_dict = {
@@ -1570,10 +1563,8 @@ class TestReportService(BaseTestCase):
         second_to_merge_session = Session(flags=["unit"])
         report.add_session(second_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
-        assert clear_carryforward_sessions(
-            report, ["unit"], UserYaml(yaml_dict)
-        ) == SessionAdjustmentResult(
-            fully_deleted_sessions=[], partially_deleted_sessions=[]
+        assert (
+            clear_carryforward_sessions(report, ["unit"], UserYaml(yaml_dict)) == set()
         )
         assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
         new_readable_report = self.convert_report_to_better_readable(report)
@@ -3576,10 +3567,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(upload_obj)
         dbsession.flush()
         assert len(upload_obj.errors) == 0
-        processing_result = ProcessingResult(
-            session=Session(),
-            session_adjustment=SessionAdjustmentResult([], []),
-        )
+        processing_result = ProcessingResult(session=Session(), deleted_sessions={})
         assert (
             ReportService({}).update_upload_with_processing_result(
                 upload_obj, processing_result

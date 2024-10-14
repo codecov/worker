@@ -43,7 +43,7 @@ def UPLOAD_PROCESSING_LOCK_NAME(repoid: int, commitid: str) -> str:
     Only a single processing task may possess this lock at a time, because merging
     reports requires exclusive access to the report.
 
-    This is used by the Upload, Notify and UploadCleanLabelsIndex tasks as well to
+    This is used by the Upload and Notify tasks as well to
     verify if an upload for the commit is currently being processed.
     """
     return f"upload_processing_lock_{repoid}_{commitid}"
