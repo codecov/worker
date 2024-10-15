@@ -4038,11 +4038,8 @@ class TestReportService(BaseTestCase):
             session=mocker.MagicMock(),
             error=ProcessingError(code="abclkj", params={"banana": "value"}),
         )
-        assert (
-            ReportService({}).update_upload_with_processing_result(
-                upload_obj, processing_result
-            )
-            is None
+        ReportService({}).update_upload_with_processing_result(
+            upload_obj, processing_result
         )
         dbsession.refresh(upload_obj)
         assert upload_obj.state == "error"
@@ -4061,11 +4058,8 @@ class TestReportService(BaseTestCase):
             session=Session(),
             session_adjustment=SessionAdjustmentResult([], []),
         )
-        assert (
-            ReportService({}).update_upload_with_processing_result(
-                upload_obj, processing_result
-            )
-            is None
+        ReportService({}).update_upload_with_processing_result(
+            upload_obj, processing_result
         )
         dbsession.refresh(upload_obj)
         assert upload_obj.state == "processed"
