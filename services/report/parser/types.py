@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Any, BinaryIO, Dict, List, Optional
+from typing import Any
 
 from services.path_fixer.fixpaths import clean_toc
 from services.report.fixes import get_fixes_from_raw
@@ -8,21 +8,17 @@ from services.report.fixes import get_fixes_from_raw
 class ParsedUploadedReportFile(object):
     def __init__(
         self,
-        filename: Optional[str],
-        file_contents: BinaryIO,
-        labels: Optional[List[str]] = None,
+        filename: str | None,
+        file_contents: bytes,
+        labels: list[str] | None = None,
     ):
         self.filename = filename
-        self.contents = file_contents.getvalue()
+        self.contents = file_contents
         self.size = len(self.contents)
         self.labels = labels
 
-    @property
-    def file_contents(self):
-        return BytesIO(self.contents)
-
     def get_first_line(self):
-        return self.file_contents.readline()
+        return BytesIO(self.contents).readline()
 
 
 class ParsedRawReport(object):
@@ -45,10 +41,10 @@ class ParsedRawReport(object):
 
     def __init__(
         self,
-        toc: Optional[BinaryIO],
-        env: Optional[BinaryIO],
-        uploaded_files: List[ParsedUploadedReportFile],
-        report_fixes: Optional[BinaryIO],
+        toc: Any,
+        env: Any,
+        uploaded_files: list[ParsedUploadedReportFile],
+        report_fixes: Any,
     ):
         self.toc = toc
         self.env = env
@@ -94,7 +90,7 @@ class VersionOneParsedRawReport(ParsedRawReport):
     }
     """
 
-    def get_toc(self) -> List[str]:
+    def get_toc(self) -> list[str]:
         return self.toc
 
     def get_env(self):
@@ -103,7 +99,7 @@ class VersionOneParsedRawReport(ParsedRawReport):
     def get_uploaded_files(self):
         return self.uploaded_files
 
-    def get_report_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
+    def get_report_fixes(self, path_fixer) -> dict[str, dict[str, Any]]:
         return self.report_fixes
 
 
@@ -113,18 +109,15 @@ class LegacyParsedRawReport(ParsedRawReport):
     <filename>:<line number>,<line number>,...
     """
 
-    def get_toc(self) -> List[str]:
-        toc = self.toc.read().decode(errors="replace").strip()
-        toc = clean_toc(toc)
-        self.toc.seek(0, 0)
-        return toc
+    def get_toc(self) -> list[str]:
+        return clean_toc(self.toc.decode(errors="replace").strip())
 
     def get_env(self):
-        return self.env.read().decode(errors="replace")
+        return self.env.decode(errors="replace")
 
     def get_uploaded_files(self):
         return self.uploaded_files
 
-    def get_report_fixes(self, path_fixer) -> Dict[str, Dict[str, Any]]:
-        report_fixes = self.report_fixes.read().decode(errors="replace")
+    def get_report_fixes(self, path_fixer) -> dict[str, dict[str, Any]]:
+        report_fixes = self.report_fixes.decode(errors="replace")
         return get_fixes_from_raw(report_fixes, path_fixer)
