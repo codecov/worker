@@ -27,7 +27,7 @@ from shared.metrics import Counter
 
 from services.redis import get_redis_connection
 
-MERGE_BATCH_SIZE = 5
+MERGE_BATCH_SIZE = 10
 
 CLEARED_UPLOADS = Counter(
     "worker_processing_cleared_uploads",

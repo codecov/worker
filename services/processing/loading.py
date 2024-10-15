@@ -6,7 +6,6 @@ import sentry_sdk
 from shared.reports.editable import EditableReport
 
 from services.archive import ArchiveService, MinioEndpoints
-from services.processing.state import MERGE_BATCH_SIZE
 
 
 @dataclass
@@ -28,6 +27,7 @@ def load_intermediate_reports(
     commitsha: str,
     upload_ids: list[int],
 ) -> list[IntermediateReport]:
+    @sentry_sdk.trace
     def load_report(upload_id: int) -> IntermediateReport:
         repo_hash = archive_service.storage_hash
         json_path, chunks_path = intermediate_report_paths(
@@ -45,8 +45,12 @@ def load_intermediate_reports(
         )
         return IntermediateReport(upload_id, report)
 
-    with ThreadPoolExecutor(max_workers=MERGE_BATCH_SIZE) as pool:
-        loaded_reports = pool.map(load_report, upload_ids)
+    def instrumented_load_report(upload_id: int) -> IntermediateReport:
+        with sentry_sdk.isolation_scope() as _scope:
+            return load_report(upload_id)
+
+    with ThreadPoolExecutor() as pool:
+        loaded_reports = pool.map(instrumented_load_report, upload_ids)
         return list(loaded_reports)
 
 
