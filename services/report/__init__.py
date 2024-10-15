@@ -23,6 +23,7 @@ from shared.upload.constants import UploadErrorCode
 from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
+from sqlalchemy.orm import Session as DbSession
 
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
@@ -813,10 +814,13 @@ class ReportService(BaseReportService):
             # which have been removed from the report.
             # we always have a `session_adjustment` in the non-error case.
             assert processing_result.session_adjustment
-            deleted_sessions = (
+            deleted_sessions = set(
                 processing_result.session_adjustment.fully_deleted_sessions
             )
-            delete_uploads_by_sessionid(upload, deleted_sessions)
+            if deleted_sessions:
+                delete_uploads_by_sessionid(
+                    db_session, upload.report_id, deleted_sessions
+                )
 
         else:
             error = processing_result.error
@@ -1018,17 +1022,20 @@ class ReportService(BaseReportService):
 
 
 @sentry_sdk.trace
-def delete_uploads_by_sessionid(upload: Upload, session_ids: list[int]):
+def delete_uploads_by_sessionid(
+    db_session: DbSession, report_id: int, session_ids: set[int]
+):
     """
-    This deletes all the `Upload` records corresponding to the given `session_ids`.
+    This deletes all the `Upload` records belonging to the `CommitReport` with `report_id`,
+    and having an `order_number` corresponding to the given `session_ids`.
     """
-    if not session_ids:
-        return
-
-    db_session = upload.get_db_session()
     uploads = (
         db_session.query(Upload.id_)
-        .filter(Upload.report == upload.report, Upload.order_number.in_(session_ids))
+        .filter(
+            Upload.report_id == report_id,
+            Upload.upload_type == SessionType.carriedforward.value,
+            Upload.order_number.in_(session_ids),
+        )
         .all()
     )
     upload_ids = [upload[0] for upload in uploads]

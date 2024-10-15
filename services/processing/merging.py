@@ -63,14 +63,33 @@ def merge_reports(
 
 @sentry_sdk.trace
 def update_uploads(db_session: DbSession, merge_result: MergeResult):
-    for upload_id, session_id in merge_result.session_mapping.items():
-        upload = db_session.query(Upload).filter(Upload.id_ == upload_id).first()
-        upload.state_id = UploadState.PROCESSED.db_id
-        upload.state = "processed"
-        upload.order_number = session_id
+    """
+    Updates all the `Upload` records with the `MergeResult`.
+    In particular, this updates the `order_number` to match the new `session_id`,
+    and it deletes all the `Upload` records matching removed carry-forwarded `Session`s.
+    """
 
-    if upload:
-        delete_uploads_by_sessionid(upload, list(merge_result.deleted_sessions))
+    # first, delete removed sessions, as report merging can reuse deleted `session_id`s.
+    if merge_result.deleted_sessions:
+        any_upload_id = next(iter(merge_result.session_mapping.keys()))
+        report_id = (
+            db_session.query(Upload.report_id)
+            .filter(Upload.id_ == any_upload_id)
+            .first()[0]
+        )
+
+        delete_uploads_by_sessionid(
+            db_session, report_id, merge_result.deleted_sessions
+        )
+
+    # then, update all the sessions that have been merged
+    for upload_id, session_id in merge_result.session_mapping.items():
+        update = {
+            Upload.state_id: UploadState.PROCESSED.db_id,
+            Upload.state: "processed",
+            Upload.order_number: session_id,
+        }
+        db_session.query(Upload).filter(Upload.id_ == upload_id).update(update)
     db_session.flush()
 
 
