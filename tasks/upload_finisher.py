@@ -42,7 +42,11 @@ from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.parallel_verification import parallel_verification_task
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
-from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME, UploadProcessorTask
+from tasks.upload_processor import (
+    UPLOAD_PROCESSING_LOCK_NAME,
+    load_commit_diff,
+    save_report_results,
+)
 
 log = logging.getLogger(__name__)
 
@@ -153,6 +157,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 int(upload["upload_pk"])
                 for upload in processing_results["parallel_incremental_result"]
             ]
+            pr = processing_results["processings_so_far"][0]["arguments"].get("pr")
+            diff = load_commit_diff(commit, pr, self.name)
 
             report_lock = (
                 acquire_report_lock(repoid, commitid, self.hard_time_limit_task)
@@ -182,18 +188,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 )
 
                 if parallel_processing is ParallelProcessing.PARALLEL:
-                    pr = processing_results["processings_so_far"][0]["arguments"].get(
-                        "pr"
-                    )
-                    processor_task = UploadProcessorTask()
-                    processor_task.save_report_results(
-                        db_session,
-                        report_service,
-                        repository,
-                        commit,
-                        report,
-                        pr,
-                        report_code,
+                    save_report_results(
+                        report_service, commit, report, diff, pr, report_code
                     )
                     state.mark_uploads_as_merged(upload_ids)
 
