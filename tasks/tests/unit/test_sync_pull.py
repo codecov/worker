@@ -21,35 +21,17 @@ here = Path(__file__)
 
 class TestPullSyncTask(object):
     @pytest.mark.parametrize(
-        "flake_detection_config, flake_detection,flaky_shadow_mode,tests_exist,outcome",
-        [
-            (False, True, True, True, False),
-            (True, False, False, False, False),
-            (True, False, False, True, False),
-            (True, True, False, True, True),
-            (True, False, True, True, True),
-            (True, True, True, True, True),
-        ],
+        "tests_exist",
+        [False, True],
     )
     def test_update_pull_commits_merged(
         self,
         dbsession,
         mocker,
-        flake_detection_config,
-        flake_detection,
-        flaky_shadow_mode,
         tests_exist,
-        outcome,
     ):
-        if flake_detection:
-            mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-            mock_feature.check_value.return_value = True
-
-        if flaky_shadow_mode:
-            _flaky_shadow_mode_feature = mocker.patch(
-                "services.test_results.FLAKY_SHADOW_MODE"
-            )
-            _flaky_shadow_mode_feature.check_value.return_value = True
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = True
 
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -111,7 +93,7 @@ class TestPullSyncTask(object):
         current_yaml = UserYaml.from_dict(
             {
                 "test_analytics": {
-                    "flake_detection": flake_detection_config,
+                    "flake_detection": True,
                 }
             }
         )
@@ -119,10 +101,15 @@ class TestPullSyncTask(object):
             get_commit=MagicMock(return_value=dict(parents=["1", "2"]))
         )
         res = task.update_pull_commits(
-            mock_repo_provider, enriched_pull, commits, commits_at_base, current_yaml
+            mock_repo_provider,
+            enriched_pull,
+            commits,
+            commits_at_base,
+            current_yaml,
+            repository,
         )
 
-        if outcome:
+        if tests_exist:
             apply_async.assert_called_once_with(
                 kwargs=dict(
                     repo_id=repository.repoid,
@@ -198,7 +185,12 @@ class TestPullSyncTask(object):
             get_commit=MagicMock(return_value=dict(parents=["1", "2"]))
         )
         res = task.update_pull_commits(
-            mock_repo_provider, enriched_pull, commits, commits_at_base, current_yaml
+            mock_repo_provider,
+            enriched_pull,
+            commits,
+            commits_at_base,
+            current_yaml,
+            repository,
         )
         assert res == {"merged_count": 0, "soft_deleted_count": 2}
         dbsession.refresh(first_commit)
@@ -551,22 +543,20 @@ class TestPullSyncTask(object):
         assert not apply_async.called
 
     @pytest.mark.parametrize(
-        "flake_detection", [None, "FLAKY_TEST_DETECTION", "FLAKY_SHADOW_MODE"]
+        "flake_detection",
+        [False, True],
     )
     def test_trigger_process_flakes(self, dbsession, mocker, flake_detection):
         current_yaml = UserYaml.from_dict(dict())
-        if flake_detection:
-            mock_feature = mocker.patch(f"services.test_results.{flake_detection}")
-            mock_feature.check_value.return_value = True
-
-            if flake_detection == "FLAKY_TEST_DETECTION":
-                current_yaml = UserYaml.from_dict(
-                    {
-                        "test_analytics": {
-                            "flake_detection": flake_detection,
-                        }
-                    }
-                )
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = True
+        current_yaml = UserYaml.from_dict(
+            {
+                "test_analytics": {
+                    "flake_detection": flake_detection,
+                }
+            }
+        )
 
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -583,7 +573,7 @@ class TestPullSyncTask(object):
         )
 
         task.trigger_process_flakes(
-            repository.repoid,
+            repository,
             commit.commitid,
             "main",
             current_yaml,
