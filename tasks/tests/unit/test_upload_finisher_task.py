@@ -649,7 +649,7 @@ class TestUploadFinisherTask(object):
                 dbsession,
                 [
                     {
-                        "processings_so_far": [{"successful": True}],
+                        "processings_so_far": [{"successful": True, "arguments": {}}],
                         "parallel_incremental_result": {"upload_pk": 1},
                     }
                 ],
