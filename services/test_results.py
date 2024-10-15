@@ -112,8 +112,7 @@ def generate_test_id(repoid, testsuite, name, flags_hash):
 @dataclass
 class TestResultsNotificationFailure:
     failure_message: str
-    testsuite: str
-    testname: str
+    display_name: str
     envs: List[str]
     test_id: str
     duration_seconds: float
@@ -205,7 +204,7 @@ def generate_view_test_analytics_line(commit: Commit) -> str:
 def messagify_failure(
     failure: TestResultsNotificationFailure,
 ) -> str:
-    test_name = wrap_in_code(failure.testname.replace("\x1f", " "))
+    test_name = wrap_in_code(failure.display_name.replace("\x1f", " "))
     formatted_duration = display_duration(failure.duration_seconds)
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
     stack_trace = wrap_in_details(
@@ -219,7 +218,7 @@ def messagify_flake(
     flaky_failure: TestResultsNotificationFailure,
     flake_info: FlakeInfo,
 ) -> str:
-    test_name = wrap_in_code(flaky_failure.testname.replace("\x1f", " "))
+    test_name = wrap_in_code(flaky_failure.display_name.replace("\x1f", " "))
     formatted_duration = display_duration(flaky_failure.duration_seconds)
     flake_rate = flake_info.failed / flake_info.count * 100
     flake_rate_section = f"**Flake rate in main:** {flake_rate:.2f}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
@@ -256,7 +255,7 @@ class TestResultsNotifier(BaseNotifier):
                 lambda x: x.test_id not in self.payload.flaky_tests,
                 self.payload.failures,
             ),
-            key=lambda x: (x.duration_seconds, x.testname),
+            key=lambda x: (x.duration_seconds, x.display_name),
         )
 
         if failures:
