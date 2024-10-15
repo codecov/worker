@@ -24,9 +24,8 @@ from shared.typings.torngit import OwnerInfo, RepoInfo, TorngitInstanceData
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, Session, lazyload
 
 from database.enums import CommitErrorTypes
 from database.models import Commit, Owner, Pull, Repository
@@ -530,8 +529,18 @@ async def _pick_best_base_comparedto_pair(
 
 @sentry_sdk.trace
 async def fetch_and_update_pull_request_information(
-    repository_service, db_session, repoid, pullid, current_yaml
+    repository_service,
+    db_session: Session,
+    repoid: int | str,
+    pullid: int | str,
+    current_yaml,
 ) -> EnrichedPull:
+    pull = (
+        db_session.query(Pull)
+        .options(lazyload("repository"))
+        .filter_by(pullid=pullid, repoid=repoid)
+        .first()
+    )
     try:
         pull_information = await repository_service.get_pull_request(pullid=pullid)
     except TorngitClientError:
@@ -539,38 +548,27 @@ async def fetch_and_update_pull_request_information(
             "Unable to find pull request information on provider to update it due to client error",
             extra=dict(repoid=repoid, pullid=pullid),
         )
-        pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
         return EnrichedPull(database_pull=pull, provider_pull=None)
     except TorngitError:
         log.warning(
             "Unable to find pull request information on provider to update it due to unknown provider error",
             extra=dict(repoid=repoid, pullid=pullid),
         )
-        pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
         return EnrichedPull(database_pull=pull, provider_pull=None)
-    db_session.flush()
-    command = (
-        insert(Pull.__table__)
-        .values(
-            pullid=pullid,
+    if not pull:
+        pull = Pull(
             repoid=repoid,
-            issueid=pull_information["id"],
+            pullid=pullid,
             state=pull_information["state"],
             title=pull_information["title"],
+            issueid=pull_information["id"],
         )
-        .on_conflict_do_update(
-            index_elements=[Pull.repoid, Pull.pullid],
-            set_=dict(
-                issueid=pull_information["id"],
-                state=pull_information["state"],
-                title=pull_information["title"],
-            ),
-        )
-    )
-    db_session.connection().execute(command)
-    db_session.flush()
-    pull = db_session.query(Pull).filter_by(pullid=pullid, repoid=repoid).first()
-    db_session.refresh(pull)
+        db_session.add(pull)
+        db_session.flush()
+    else:
+        pull.state = pull_information["state"]
+        pull.title = pull_information["title"]
+        pull.issueid = pull_information["id"]
     base_commit_sha, compared_to = await _pick_best_base_comparedto_pair(
         repository_service, pull, current_yaml, pull_information
     )
