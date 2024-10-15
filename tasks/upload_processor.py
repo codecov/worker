@@ -16,7 +16,7 @@ from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit, Upload
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Pull
-from helpers import cache
+from helpers.cache import cache
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.parallel import ParallelProcessing
