@@ -18,6 +18,8 @@ from sqlalchemy.exc import (
 from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
+from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.logging_config import (
     log_read_task_id,
     log_read_task_name,
@@ -42,6 +44,32 @@ REQUEST_HARD_TIMEOUT_COUNTER = Counter(
 )
 
 
+class CheckpointFlowTerminator:
+    def __init__(self, kwargs):
+        self.upload_checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
+        self.test_results_checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
+
+    def on_timeout(self):
+        if self.upload_checkpoints.data:
+            self.upload_checkpoints.log(
+                UploadFlow.CELERY_ERROR_TIMEOUT, ignore_repeat=True
+            )
+        if self.test_results_checkpoints.data:
+            self.test_results_checkpoints.log(
+                TestResultsFlow.CELERY_ERROR_TIMEOUT, ignore_repeat=True
+            )
+
+    def on_failure(self):
+        if self.upload_checkpoints.data:
+            self.upload_checkpoints.log(
+                UploadFlow.CELERY_ERROR_FAILURE, ignore_repeat=True
+            )
+        if self.test_results_checkpoints.data:
+            self.test_results_checkpoints.log(
+                TestResultsFlow.CELERY_ERROR_FAILURE, ignore_repeat=True
+            )
+
+
 class BaseCodecovRequest(Request):
     @property
     def metrics_prefix(self):
@@ -49,6 +77,9 @@ class BaseCodecovRequest(Request):
 
     def on_timeout(self, soft: bool, timeout: int):
         res = super().on_timeout(soft, timeout)
+
+        CheckpointFlowTerminator(self.kwargs).on_timeout()
+
         if not soft:
             REQUEST_HARD_TIMEOUT_COUNTER.labels(task=self.name).inc()
             metrics.incr(f"{self.metrics_prefix}.hardtimeout")
@@ -381,6 +412,9 @@ class BaseCodecovTask(celery_app.Task):
         Includes SoftTimeoutLimitException, for example
         """
         res = super().on_failure(*args, **kwargs)
+
+        CheckpointFlowTerminator(kwargs).on_failure()
+
         self.task_failure_counter.inc()
         metrics.incr(f"{self.metrics_prefix}.failures")
         metric_context = MetricContext(
