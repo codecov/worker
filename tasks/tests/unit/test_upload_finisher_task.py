@@ -3,6 +3,8 @@ from pathlib import Path
 from unittest.mock import ANY, call
 
 import pytest
+from celery.exceptions import Retry
+from redis.exceptions import LockError
 from shared.celery_config import timeseries_save_commit_measurements_task_name
 from shared.yaml import UserYaml
 
@@ -598,7 +600,7 @@ class TestUploadFinisherTask(object):
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_calls_save_commit_measurements_task(
-        self, mocker, dbsession, mock_redis
+        self, mocker, dbsession, mock_redis, mock_storage
     ):
         mocked_app = mocker.patch.object(
             UploadFinisherTask,
@@ -630,6 +632,32 @@ class TestUploadFinisherTask(object):
                 "dataset_names": None,
             }
         )
+
+    @pytest.mark.django_db()
+    def test_retry_on_report_lock(self, dbsession, mock_redis):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+
+        mock_redis.lock.side_effect = LockError()
+
+        task = UploadFinisherTask()
+        task.request.retries = 0
+
+        with pytest.raises(Retry):
+            task.run_impl(
+                dbsession,
+                [
+                    {
+                        "processings_so_far": [{"successful": True}],
+                        "parallel_incremental_result": {"upload_pk": 1},
+                    }
+                ],
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml={},
+                run_fully_parallel=True,
+            )
 
 
 class TestShouldCleanLabelsIndex(object):
