@@ -38,6 +38,8 @@ def merge_reports(
 
     for intermediate_report in intermediate_reports:
         report = intermediate_report.report
+        if report.is_empty():
+            continue
 
         old_sessionid = next(iter(report.sessions))
         new_sessionid = master_report.next_session_number()
