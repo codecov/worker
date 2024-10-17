@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Sequence
 import sqlalchemy.orm
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
-from sentry_sdk import metrics as sentry_metrics
 from shared.celery_config import notify_task_name, pulls_task_name
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
@@ -498,13 +497,13 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         )
 
         if regular_was_squash == experiment_was_squash:
-            sentry_metrics.incr("sync_pull_merge_commit_sha", tags={"success": "true"})
+            metrics.incr("sync_pull_merge_commit_sha.success")
             log.info(
                 "Sync Pull merge commit sha experiment succeeded",
                 extra=dict(repoid=repoid, pullid=pullid),
             )
         else:
-            sentry_metrics.incr("sync_pull_merge_commit_sha", tags={"success": "false"})
+            metrics.incr("sync_pull_merge_commit_sha.failure")
             log.info(
                 "Sync Pull merge commit sha experiment failed",
                 extra=dict(repoid=repoid, pullid=pullid),
