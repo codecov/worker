@@ -144,6 +144,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -244,6 +245,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -309,6 +311,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -374,6 +377,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -439,6 +443,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -483,6 +488,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -521,6 +527,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
             datetime.now() - timedelta(seconds=1200)
@@ -574,6 +581,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -620,6 +628,7 @@ class TestUploadTaskIntegration(object):
             repository__owner__service="github",
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -718,12 +727,14 @@ class TestUploadTaskIntegration(object):
             message="",
             commitid="c5b67303452bbff57cc1f49984339cde39eb1db5",
             repository=repo,
+            pullid=1,
         )
 
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             repository=repo,
+            pullid=1,
         )
         dbsession.add(parent_commit)
         dbsession.add(commit)
