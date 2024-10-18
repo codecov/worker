@@ -19,6 +19,8 @@ from helpers.checkpoint_logger import (
     "NOTIF_ERROR_NO_REPORT",
     "NOTIFIED_ERROR",
     "ERROR_NOTIFYING_ERROR",
+    "CELERY_ERROR_TIMEOUT",
+    "CELERY_ERROR_FAILURE",
 )
 @success_events(
     "SKIPPING_NOTIFICATION",
@@ -60,9 +62,11 @@ class UploadFlow(BaseFlow):
     NOTIF_TOO_MANY_RETRIES = auto()
     NOTIF_STALE_HEAD = auto()
     NOTIF_ERROR_NO_REPORT = auto()
+    CELERY_ERROR_TIMEOUT = auto()
+    CELERY_ERROR_FAILURE = auto()
 
 
-@failure_events("TEST_RESULTS_ERROR")
+@failure_events("TEST_RESULTS_ERROR", "CELERY_ERROR_TIMEOUT", "CELERY_ERROR_FAILURE")
 @success_events("TEST_RESULTS_NOTIFY")
 @subflows(
     ("test_results_notification_latency", "TEST_RESULTS_BEGIN", "TEST_RESULTS_NOTIFY"),
@@ -80,3 +84,5 @@ class TestResultsFlow(BaseFlow):
     FLAKE_DETECTION_NOTIFY = auto()
     TEST_RESULTS_ERROR = auto()
     TEST_RESULTS_FINISHER_BEGIN = auto()
+    CELERY_ERROR_TIMEOUT = auto()
+    CELERY_ERROR_FAILURE = auto()
