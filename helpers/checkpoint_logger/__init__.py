@@ -427,7 +427,6 @@ class CheckpointLogger(Generic[T]):
         # decorator
         # Increment event, start, finish, success, failure counters
         if hasattr(checkpoint, "log_counters"):
-            # checkpoint.log_counters()
             checkpoint.log_counters(context=self.context)
 
         return self
