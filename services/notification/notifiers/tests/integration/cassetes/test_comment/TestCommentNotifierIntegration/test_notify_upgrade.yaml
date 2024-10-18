@@ -21,7 +21,7 @@ interactions:
       user-agent:
       - Default
     method: POST
-    uri: https://api.github.com/repos/codecove2e/example-python/issues/4/comments
+    uri: https://api.github.com/repos/codecove2e/example-python/issues/2/comments
   response:
     content: '{"url":"https://api.github.com/repos/codecove2e/example-python/issues/comments/1361234119","html_url":"https://github.com/codecove2e/example-python/pull/4#issuecomment-1361234119","issue_url":"https://api.github.com/repos/codecove2e/example-python/issues/4","id":1361234119,"node_id":"IC_kwDOHrbKcs5RIsjH","user":{"login":"codecove2e","id":93560619,"node_id":"U_kgDOBZOfKw","avatar_url":"https://avatars.githubusercontent.com/u/93560619?v=4","gravatar_id":"","url":"https://api.github.com/users/codecove2e","html_url":"https://github.com/codecove2e","followers_url":"https://api.github.com/users/codecove2e/followers","following_url":"https://api.github.com/users/codecove2e/following{/other_user}","gists_url":"https://api.github.com/users/codecove2e/gists{/gist_id}","starred_url":"https://api.github.com/users/codecove2e/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/codecove2e/subscriptions","organizations_url":"https://api.github.com/users/codecove2e/orgs","repos_url":"https://api.github.com/users/codecove2e/repos","events_url":"https://api.github.com/users/codecove2e/events{/privacy}","received_events_url":"https://api.github.com/users/codecove2e/received_events","type":"User","site_admin":false},"created_at":"2022-12-21T12:07:36Z","updated_at":"2022-12-21T12:07:36Z","author_association":"OWNER","body":"The
       author of this PR, codecove2e, is not an activated member of this organization
