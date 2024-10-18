@@ -272,9 +272,7 @@ def reliability_counters(klass: type[T]) -> type[T]:
     """
 
     def log_counters(obj: T, context: CheckpointContext = None) -> None:
-        print("hey 1")
         repo_id = context and context.repo_id
-        print("hey 2")
         PROMETHEUS_HANDLER.log_checkpoints(
             flow=klass.__name__, checkpoint=obj.name, repo_id=repo_id
         )
@@ -429,10 +427,8 @@ class CheckpointLogger(Generic[T]):
         # decorator
         # Increment event, start, finish, success, failure counters
         if hasattr(checkpoint, "log_counters"):
-            print("lelele", checkpoint)
             # checkpoint.log_counters()
             checkpoint.log_counters(context=self.context)
-            print("lelele 2")
 
         return self
 

@@ -147,15 +147,11 @@ class PrometheusCheckpointLoggerHandler:
             REPO_CHECKPOINTS_TOTAL_ENDED.labels(flow=flow, repo_id=repo_id).inc()
 
     def log_checkpoints(self, flow: str, checkpoint: str, repo_id: int = None):
-        print("here 2")
         CHECKPOINTS_EVENTS.labels(flow=flow, checkpoint=checkpoint).inc()
-        print("here 3")
         if repo_id and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repo_id):
-            print("here 4")
             REPO_CHECKPOINTS_EVENTS.labels(
                 flow=flow, checkpoint=checkpoint, repo_id=repo_id
             ).inc()
-        print("here 4")
 
     def log_errors(self, flow: str, repo_id: int = None):
         CHECKPOINTS_ERRORS.labels(flow=flow).inc()
