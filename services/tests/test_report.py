@@ -4154,7 +4154,7 @@ class TestReportService(BaseTestCase):
     ):
         parent_commit = CommitFactory()
         parent_commit_report = CommitReport(commit_id=parent_commit.id_)
-        parent_report_details = ReportDetails(report_id=parent_commit_report.id_)
+        parent_report_details = ReportDetails(report=parent_commit_report)
         dbsession.add(parent_commit)
         dbsession.add(parent_commit_report)
         dbsession.add(parent_report_details)
