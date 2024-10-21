@@ -127,8 +127,11 @@ class PrometheusCheckpointLoggerHandler:
     """
 
     def log_begun(self, flow: str, repoid: int = None):
+        print("here 111", flow, repoid)
         CHECKPOINTS_TOTAL_BEGUN.labels(flow=flow).inc()
+
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
+            print("lelele")
             REPO_CHECKPOINTS_TOTAL_BEGUN.labels(flow=flow, repoid=repoid).inc()
 
     def log_failure(self, flow: str, repoid: int = None):
@@ -149,6 +152,7 @@ class PrometheusCheckpointLoggerHandler:
     def log_checkpoints(self, flow: str, checkpoint: str, repoid: int = None):
         CHECKPOINTS_EVENTS.labels(flow=flow, checkpoint=checkpoint).inc()
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
+            # if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_EVENTS.labels(
                 flow=flow, checkpoint=checkpoint, repoid=repoid
             ).inc()

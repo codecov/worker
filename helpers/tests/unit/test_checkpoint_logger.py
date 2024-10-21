@@ -8,6 +8,7 @@ from prometheus_client import REGISTRY
 
 from helpers.checkpoint_logger import (
     BaseFlow,
+    CheckpointContext,
     CheckpointLogger,
     _get_milli_timestamp,
     failure_events,
@@ -41,6 +42,9 @@ class CounterAssertionSet:
                 REGISTRY.get_sample_value(assertion.metric, labels=assertion.labels)
                 or 0
             )
+            print("assertion enter!", assertion.before_value)
+            print("assertion enter!", assertion.metric)
+            print("assertion enter!", assertion.labels)
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         for assertion in self.counter_assertions:
@@ -48,6 +52,9 @@ class CounterAssertionSet:
                 REGISTRY.get_sample_value(assertion.metric, labels=assertion.labels)
                 or 0
             )
+            print("assertion exit!", assertion.after_value)
+            print("assertion exit!", assertion.metric)
+            print("assertion exit!", assertion.labels)
             assert (
                 assertion.after_value - assertion.before_value
                 == assertion.expected_value
@@ -468,6 +475,273 @@ class TestCheckpointLogger(unittest.TestCase):
             CounterAssertion(
                 "worker_checkpoints_events_total",
                 {"flow": "DecoratedEnum", "checkpoint": "BRANCH_2_SUCCESS"},
+                1,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.BRANCH_2_SUCCESS)
+
+    @patch("helpers.checkpoint_logger.prometheus.CHECKPOINT_ENABLED_REPOSITORIES")
+    def test_reliability_counters_with_context(self, mock_object):
+        repoid = 123
+        mock_object.return_value = repoid
+        checkpoints = CheckpointLogger(
+            DecoratedEnum, context=CheckpointContext(repoid=repoid)
+        )
+
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_begun_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_succeeded_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_failed_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_ended_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions) as a:
+            checkpoints.log(DecoratedEnum.BEGIN)
+
+        # Nothing special about `CHECKPOINT` - no counters should change
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_begun_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "CHECKPOINT"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "CHECKPOINT", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_succeeded_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_failed_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_reopo_checkpoints_ended_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.CHECKPOINT)
+
+        # Failures should increment both `failed` and `ended`
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_begun_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_succeeded_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_failed_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_ended_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_1_FAIL"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_events_total",
+                {
+                    "flow": "DecoratedEnum",
+                    "checkpoint": "BRANCH_1_FAIL",
+                    "repoid": "123",
+                },
+                1,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.BRANCH_1_FAIL)
+
+        # Successes should increment both `succeeded` and `ended`
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_succeeded_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_failed_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_ended_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_1_SUCCESS"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_events_total",
+                {
+                    "flow": "DecoratedEnum",
+                    "checkpoint": "BRANCH_1_SUCCESS",
+                    "repoid": "123",
+                },
+                1,
+            ),
+        ]
+        with CounterAssertionSet(counter_assertions):
+            checkpoints.log(DecoratedEnum.BRANCH_1_SUCCESS)
+
+        # A different success path should also increment `succeeded` and `ended`
+        counter_assertions = [
+            CounterAssertion(
+                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_begun_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_succeeded_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_failed_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                0,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_ended_total",
+                {"flow": "DecoratedEnum", "repoid": "123"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_checkpoints_events_total",
+                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_2_SUCCESS"},
+                1,
+            ),
+            CounterAssertion(
+                "worker_repo_checkpoints_events_total",
+                {
+                    "flow": "DecoratedEnum",
+                    "checkpoint": "BRANCH_2_SUCCESS",
+                    "repoid": "123",
+                },
                 1,
             ),
         ]
