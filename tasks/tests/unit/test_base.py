@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -104,7 +104,6 @@ class TestBaseCodecovTask(object):
     @patch("helpers.telemetry.MetricContext.log_simple_metric")
     def test_sample_run(self, mock_simple_metric, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
-        mocked_metrics = mocker.patch("tasks.base.metrics")
         mock_task_request = mocker.patch("tasks.base.BaseCodecovTask.request")
         fake_request_values = dict(
             created_timestamp="2023-06-13 10:00:00.000000",
@@ -117,23 +116,6 @@ class TestBaseCodecovTask(object):
         task_instance = SampleTask()
         result = task_instance.run()
         assert result == {"unusual": "return", "value": ["There"]}
-        assert mocked_metrics.timing.call_count == 3
-        mocked_metrics.timing.assert_has_calls(
-            [
-                call(
-                    "worker.task.test.SampleTask.time_in_queue",
-                    timedelta(seconds=61, microseconds=123),
-                ),
-                call(
-                    "worker.queues.my-queue.time_in_queue",
-                    timedelta(seconds=61, microseconds=123),
-                ),
-                call(
-                    "worker.task.test.SampleTask.my-queue.time_in_queue",
-                    timedelta(seconds=61, microseconds=123),
-                ),
-            ]
-        )
         assert (
             REGISTRY.get_sample_value(
                 "worker_tasks_timers_time_in_queue_seconds_sum",
@@ -142,10 +124,7 @@ class TestBaseCodecovTask(object):
             == 61.000123
         )
         mock_simple_metric.assert_has_calls(
-            [
-                call("worker.task.test.SampleTask.core_runtime", ANY),
-                call("worker.task.test.SampleTask.full_runtime", ANY),
-            ]
+            [call("worker.task.test.SampleTask.core_runtime", ANY)]
         )
 
     @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
@@ -329,12 +308,11 @@ class TestBaseCodecovTask(object):
 
 @pytest.mark.django_db(databases={"default", "timeseries"})
 class TestBaseCodecovTaskHooks(object):
-    def test_sample_task_success(self, celery_app, mocker):
+    def test_sample_task_success(self, celery_app):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
             def run_impl(self, dbsession):
                 return {"unusual": "return", "value": ["There"]}
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         task = celery_app.tasks[DTask.name]
 
@@ -354,16 +332,14 @@ class TestBaseCodecovTaskHooks(object):
 
         res = k.get()
         assert res == {"unusual": "return", "value": ["There"]}
-        mock_metrics.assert_called_with("worker.task.test.SampleTask.successes")
         assert prom_run_counter_after - prom_run_counter_before == 1
         assert prom_success_counter_after - prom_success_counter_before == 1
 
-    def test_sample_task_failure(self, celery_app, mocker):
+    def test_sample_task_failure(self, celery_app):
         class FailureSampleTask(BaseCodecovTask, name="test.FailureSampleTask"):
             def run_impl(self, *args, **kwargs):
                 raise Exception("Whhhhyyyyyyy")
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(FailureSampleTask())
         task = celery_app.tasks[DTask.name]
         with pytest.raises(Exception) as exc:
@@ -383,24 +359,21 @@ class TestBaseCodecovTaskHooks(object):
             assert prom_run_counter_after - prom_run_counter_before == 1
             assert prom_failure_counter_after - prom_failure_counter_before == 1
         assert exc.value.args == ("Whhhhyyyyyyy",)
-        mock_metrics.assert_called_with("worker.task.test.FailureSampleTask.failures")
 
-    def test_sample_task_retry(self, celery_app, mocker):
+    def test_sample_task_retry(self):
         # Unfortunately we cant really call the task with apply().get()
         # Something happens inside celery as of version 4.3 that makes them
         #   not call on_Retry at all.
         # best we can do is to call on_retry ourselves and ensure this makes the
         # metric be called
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         task = RetrySampleTask()
         prom_retry_counter_before = REGISTRY.get_sample_value(
             "worker_task_counts_retries_total", labels={"task": task.name}
         )
-        task.on_retry("exc", "task_id", "args", "kwargs", "einfo")
+        task.on_retry("exc", "task_id", ("args",), {"kwargs": "foo"}, "einfo")
         prom_retry_counter_after = REGISTRY.get_sample_value(
             "worker_task_counts_retries_total", labels={"task": task.name}
         )
-        mock_metrics.assert_called_with("worker.task.test.RetrySampleTask.retries")
         assert prom_retry_counter_after - prom_retry_counter_before == 1
 
 
@@ -435,7 +408,6 @@ class TestBaseCodecovRequest(object):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
             pass
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
         prom_timeout_counter_before = (
@@ -448,14 +420,12 @@ class TestBaseCodecovRequest(object):
         prom_timeout_counter_after = REGISTRY.get_sample_value(
             "worker_task_counts_timeouts_total", labels={"task": DTask.name}
         )
-        mock_metrics.assert_called_with("worker.task.test.SampleTask.timeout")
         assert prom_timeout_counter_after - prom_timeout_counter_before == 1
 
     def test_sample_task_hard_timeout(self, celery_app, mocker):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
             pass
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
         prom_timeout_counter_before = (
@@ -477,8 +447,6 @@ class TestBaseCodecovRequest(object):
         prom_hard_timeout_counter_after = REGISTRY.get_sample_value(
             "worker_task_counts_hard_timeouts_total", labels={"task": DTask.name}
         )
-        mock_metrics.assert_any_call("worker.task.test.SampleTask.hardtimeout")
-        mock_metrics.assert_any_call("worker.task.test.SampleTask.timeout")
         assert prom_timeout_counter_after - prom_timeout_counter_before == 1
         assert prom_hard_timeout_counter_after - prom_hard_timeout_counter_before == 1
 

@@ -24,7 +24,6 @@ from helpers.logging_config import (
     log_set_task_id,
     log_set_task_name,
 )
-from helpers.metrics import metrics
 from helpers.telemetry import MetricContext, TimeseriesTimer
 from helpers.timeseries import timeseries_enabled
 
@@ -51,9 +50,7 @@ class BaseCodecovRequest(Request):
         res = super().on_timeout(soft, timeout)
         if not soft:
             REQUEST_HARD_TIMEOUT_COUNTER.labels(task=self.name).inc()
-            metrics.incr(f"{self.metrics_prefix}.hardtimeout")
         REQUEST_TIMEOUT_COUNTER.labels(task=self.name).inc()
-        metrics.incr(f"{self.metrics_prefix}.timeout")
         return res
 
 
@@ -245,19 +242,12 @@ class BaseCodecovTask(celery_app.Task):
             enqueued_time = datetime.fromisoformat(created_timestamp)
             now = datetime.now()
             delta = now - enqueued_time
-            metrics.timing(f"{self.metrics_prefix}.time_in_queue", delta)
 
             queue_name = self.request.get("delivery_info", {}).get("routing_key", None)
             time_in_queue_timer = TASK_TIME_IN_QUEUE.labels(
                 task=self.name, queue=queue_name
             )  # TODO is None a valid label value
             time_in_queue_timer.observe(delta.total_seconds())
-
-            if queue_name:
-                metrics.timing(f"worker.queues.{queue_name}.time_in_queue", delta)
-                metrics.timing(
-                    f"{self.metrics_prefix}.{queue_name}.time_in_queue", delta
-                )
 
     def run(self, *args, **kwargs):
         task = get_current_task()
@@ -279,39 +269,32 @@ class BaseCodecovTask(celery_app.Task):
             owner_id=kwargs.get("ownerid"),
         )
 
-        with TimeseriesTimer(
-            metric_context, f"{self.metrics_prefix}.full_runtime", sync=True
-        ):
-            with self.task_full_runtime.time():  # Timer isn't tested
-                with metrics.timer(f"{self.metrics_prefix}.full"):
-                    db_session = get_db_session()
-                    try:
-                        with TimeseriesTimer(
-                            metric_context,
-                            f"{self.metrics_prefix}.core_runtime",
-                            sync=True,
-                        ):
-                            with self.task_core_runtime.time():  # Timer isn't tested
-                                with metrics.timer(f"{self.metrics_prefix}.run"):
-                                    return self.run_impl(db_session, *args, **kwargs)
-                    except (DataError, IntegrityError):
-                        log.exception(
-                            "Errors related to the constraints of database happened",
-                            extra=dict(task_args=args, task_kwargs=kwargs),
-                        )
-                        db_session.rollback()
-                        self._rollback_django()
-                        self.retry()
-                    except SQLAlchemyError as ex:
-                        self._analyse_error(ex, args, kwargs)
-                        db_session.rollback()
-                        self._rollback_django()
-                        self.retry()
-                    finally:
-                        log_set_task_name(None)
-                        log_set_task_id(None)
-                        self.wrap_up_dbsession(db_session)
-                        self._commit_django()
+        with self.task_full_runtime.time():  # Timer isn't tested
+            db_session = get_db_session()
+            try:
+                with TimeseriesTimer(
+                    metric_context, f"{self.metrics_prefix}.core_runtime", sync=True
+                ):
+                    with self.task_core_runtime.time():  # Timer isn't tested
+                        return self.run_impl(db_session, *args, **kwargs)
+            except (DataError, IntegrityError):
+                log.exception(
+                    "Errors related to the constraints of database happened",
+                    extra=dict(task_args=args, task_kwargs=kwargs),
+                )
+                db_session.rollback()
+                self._rollback_django()
+                self.retry()
+            except SQLAlchemyError as ex:
+                self._analyse_error(ex, args, kwargs)
+                db_session.rollback()
+                self._rollback_django()
+                self.retry()
+            finally:
+                log_set_task_name(None)
+                log_set_task_id(None)
+                self.wrap_up_dbsession(db_session)
+                self._commit_django()
 
     def wrap_up_dbsession(self, db_session):
         """
@@ -352,10 +335,9 @@ class BaseCodecovTask(celery_app.Task):
             )
             get_db_session.remove()
 
-    def on_retry(self, *args, **kwargs):
-        res = super().on_retry(*args, **kwargs)
+    def on_retry(self, exc, task_id, args, kwargs, einfo):
+        res = super().on_retry(exc, task_id, args, kwargs, einfo)
         self.task_retry_counter.inc()
-        metrics.incr(f"{self.metrics_prefix}.retries")
         metric_context = MetricContext(
             commit_sha=kwargs.get("commitid"),
             repo_id=kwargs.get("repoid"),
@@ -364,10 +346,9 @@ class BaseCodecovTask(celery_app.Task):
         metric_context.log_simple_metric(f"{self.metrics_prefix}.retry", 1.0)
         return res
 
-    def on_success(self, *args, **kwargs):
-        res = super().on_success(*args, **kwargs)
+    def on_success(self, retval, task_id, args, kwargs):
+        res = super().on_success(retval, task_id, args, kwargs)
         self.task_success_counter.inc()
-        metrics.incr(f"{self.metrics_prefix}.successes")
         metric_context = MetricContext(
             commit_sha=kwargs.get("commitid"),
             repo_id=kwargs.get("repoid"),
@@ -376,13 +357,12 @@ class BaseCodecovTask(celery_app.Task):
         metric_context.log_simple_metric(f"{self.metrics_prefix}.success", 1.0)
         return res
 
-    def on_failure(self, *args, **kwargs):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
         """
         Includes SoftTimeoutLimitException, for example
         """
-        res = super().on_failure(*args, **kwargs)
+        res = super().on_failure(exc, task_id, args, kwargs, einfo)
         self.task_failure_counter.inc()
-        metrics.incr(f"{self.metrics_prefix}.failures")
         metric_context = MetricContext(
             commit_sha=kwargs.get("commitid"),
             repo_id=kwargs.get("repoid"),

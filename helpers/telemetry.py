@@ -68,39 +68,30 @@ class MetricContext:
         sentry_sdk.set_tag("owner_id", owner_id)
         sentry_sdk.set_tag("repo_id", repo_id)
         sentry_sdk.set_tag("commit_sha", commit_sha)
-        transaction = sentry_sdk.get_current_scope().transaction
-        if transaction is not None:
-            transaction.set_tag("owner_id", owner_id)
-            transaction.set_tag("repo_id", repo_id)
-            transaction.set_tag("commit_sha", commit_sha)
 
     def populate(self):
         if self.populated:
             return
 
-        repo = None
-        commit = None
         dbsession = get_db_session()
 
         if self.repo_id:
             if not self.owner_id:
-                repo = (
-                    dbsession.query(Repository)
+                self.owner_id = (
+                    dbsession.query(Repository.ownerid)
                     .filter(Repository.repoid == self.repo_id)
-                    .first()
+                    .first()[0]
                 )
-                self.owner_id = repo.ownerid
 
             if self.commit_sha and not self.commit_id:
-                commit = (
-                    dbsession.query(Commit)
+                self.commit_id = (
+                    dbsession.query(Commit.id_)
                     .filter(
                         Commit.repoid == self.repo_id,
                         Commit.commitid == self.commit_sha,
                     )
-                    .first()
+                    .first()[0]
                 )
-                self.commit_id = commit.id_
 
         self.populated = True
 
