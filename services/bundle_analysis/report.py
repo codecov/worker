@@ -147,12 +147,13 @@ class BundleAnalysisReportService(BaseReportService):
             .first()
         )
 
+    @sentry_sdk.trace
     def _previous_bundle_analysis_report(
         self,
         bundle_loader: BundleAnalysisReportLoader,
         commit: Commit,
-        head_bundle_report: BundleAnalysisReport,
-    ) -> Optional[BundleAnalysisReport]:
+        head_bundle_report: BundleAnalysisReport | None,
+    ) -> BundleAnalysisReport | None:
         """
         Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
         Assets to the current one being parsed.
@@ -181,8 +182,43 @@ class BundleAnalysisReportService(BaseReportService):
         return bundle_loader.load(parent_commit_report.external_id)
 
     @sentry_sdk.trace
+    def _attempt_init_from_previous_report(
+        self,
+        commit: Commit,
+        bundle_loader: BundleAnalysisReportLoader,
+    ) -> BundleAnalysisReport:
+        """Attempts to carry over parent bundle analysis report if current commit doesn't have a report.
+        Fallback to creating a fresh bundle analysis report if there is no previous report to carry over.
+        """
+        # load a new copy of the previous bundle report into temp file
+        bundle_report = self._previous_bundle_analysis_report(
+            bundle_loader, commit, head_bundle_report=None
+        )
+        if bundle_report:
+            # query which bundle names has caching turned on
+            bundles_to_be_cached = CacheConfig.objects.filter(
+                is_caching=True,
+                repo_id=commit.repoid,
+            ).values_list("bundle_name", flat=True)
+
+            # For each bundle:
+            # if caching is on then update bundle.is_cached property to true
+            # if caching is off then delete that bundle from the report
+            update_fields = {}
+            for bundle in bundle_report.bundle_reports():
+                if bundle.name in bundles_to_be_cached:
+                    update_fields[bundle.name] = True
+                else:
+                    bundle_report.delete_bundle_by_name(bundle.name)
+            if update_fields:
+                bundle_report.update_is_cached(update_fields)
+            return bundle_report
+        # fallback to create a fresh bundle analysis report if there is no previous report to carry over
+        return BundleAnalysisReport()
+
+    @sentry_sdk.trace
     def process_upload(
-        self, commit: Commit, upload: Upload, compare_sha: Optional[str] = None
+        self, commit: Commit, upload: Upload, compare_sha: str | None = None
     ) -> ProcessingResult:
         """
         Download and parse the data associated with the given upload and
@@ -195,37 +231,10 @@ class BundleAnalysisReportService(BaseReportService):
 
         # fetch existing bundle report from storage
         bundle_report = bundle_loader.load(commit_report.external_id)
-
-        # attempt to carry over parent bundle analysis report if commit doesn't have a report
         if bundle_report is None:
-            # load a new copy of the previous bundle report into temp file
-            bundle_report = self._previous_bundle_analysis_report(
-                bundle_loader, commit, head_bundle_report=bundle_report
+            bundle_report = self._attempt_init_from_previous_report(
+                commit, bundle_loader
             )
-            if bundle_report:
-                # query which bundle names has caching turned on
-                qs = CacheConfig.objects.filter(
-                    is_caching=True,
-                    repo_id=commit.repoid,
-                )
-                bundles_to_be_cached = [item.bundle_name for item in qs]
-
-                # For each bundle,
-                # if caching is on then update bundle.is_cached property to true
-                # if caching is off then delete that bundle from the report
-                update_fields = {}
-                for bundle in bundle_report.bundle_reports():
-                    if bundle.name in bundles_to_be_cached:
-                        update_fields[bundle.name] = True
-                    else:
-                        bundle_report.delete_bundle_by_name(bundle.name)
-                if update_fields:
-                    bundle_report.update_is_cached(update_fields)
-
-        # fallback to create a fresh bundle analysis report if there is no previous
-        # report to carry over from
-        if bundle_report is None:
-            bundle_report = BundleAnalysisReport()
 
         # download raw upload data to local tempfile
         _, local_path = tempfile.mkstemp()

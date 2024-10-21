@@ -112,7 +112,7 @@ class CommitFactory(Factory):
         ).hexdigest()
     )
     ci_passed = True
-    pullid = 1
+    pullid = None
     timestamp = datetime(2019, 2, 1, 17, 59, 47)
     author = factory.SubFactory(OwnerFactory)
     repository = factory.SubFactory(RepositoryFactory)
