@@ -48,7 +48,7 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
         commit_yaml = UserYaml.from_dict(current_yaml)
 
         checkpoints = checkpoints_from_kwargs(
-            UploadFlow, kwargs, context=CheckpointContext(repo_id=repoid)
+            UploadFlow, kwargs, context=CheckpointContext(repoid=repoid)
         )
 
         commits_query = db_session.query(Commit).filter(  # type:ignore

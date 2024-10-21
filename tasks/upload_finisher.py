@@ -118,7 +118,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     ):
         try:
             checkpoints = checkpoints_from_kwargs(
-                UploadFlow, kwargs, context=CheckpointContext(repo_id=repoid)
+                UploadFlow, kwargs, context=CheckpointContext(repoid=repoid)
             )
             checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
         except ValueError as e:

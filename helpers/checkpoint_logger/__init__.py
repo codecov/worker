@@ -271,15 +271,15 @@ def reliability_counters(klass: type[T]) -> type[T]:
     aren't instrumented.
     """
 
-    def log_counters(obj: T, context: CheckpointContext = None) -> None:
-        repo_id = context and context.repo_id
+    def log_counters(obj: T, context: CheckpointContext | None = None) -> None:
+        repoid = context and context.repoid
         PROMETHEUS_HANDLER.log_checkpoints(
-            flow=klass.__name__, checkpoint=obj.name, repo_id=repo_id
+            flow=klass.__name__, checkpoint=obj.name, repoid=repoid
         )
 
         # If this is the first checkpoint, increment the number of flows we've begun
         if obj == next(iter(klass.__members__.values())):
-            PROMETHEUS_HANDLER.log_begun(flow=klass.__name__, repo_id=repo_id)
+            PROMETHEUS_HANDLER.log_begun(flow=klass.__name__, repoid=repoid)
             return
 
         is_failure = hasattr(obj, "is_failure") and obj.is_failure()
@@ -287,12 +287,12 @@ def reliability_counters(klass: type[T]) -> type[T]:
         is_terminal = is_failure or is_success
 
         if is_failure:
-            PROMETHEUS_HANDLER.log_failure(flow=klass.__name__, repo_id=repo_id)
+            PROMETHEUS_HANDLER.log_failure(flow=klass.__name__, repoid=repoid)
         elif is_success:
-            PROMETHEUS_HANDLER.log_success(flow=klass.__name__, repo_id=repo_id)
+            PROMETHEUS_HANDLER.log_success(flow=klass.__name__, repoid=repoid)
 
         if is_terminal:
-            PROMETHEUS_HANDLER.log_total_ended(flow=klass.__name__, repo_id=repo_id)
+            PROMETHEUS_HANDLER.log_total_ended(flow=klass.__name__, repoid=repoid)
 
     klass.log_counters = log_counters
     return klass
@@ -308,7 +308,7 @@ def _kwargs_key(cls: type[T]) -> str:
 
 @dataclass
 class CheckpointContext:
-    repo_id: int
+    repoid: int
 
 
 class CheckpointLogger(Generic[T]):
@@ -360,13 +360,13 @@ class CheckpointLogger(Generic[T]):
         cls: type[T],
         data: Optional[MutableMapping[T, int]] = None,
         strict=False,
-        context: CheckpointContext = None,
+        context: CheckpointContext | None = None,
     ):
         self.cls = cls
         self.data = data if data else {}
         self.kwargs_key = _kwargs_key(self.cls)
         self.strict = strict
-        self.context = context if context else {}
+        self.context = context
 
     def _error(self: _Self, msg: str) -> None:
         _error(msg, self.cls, self.strict)
@@ -436,12 +436,12 @@ class CheckpointLogger(Generic[T]):
         if duration:
             sentry_sdk.set_measurement(metric, duration, "milliseconds")
             duration_in_seconds = duration / 1000
-            repo_id = self.context and self.context.repo_id
+            repoid = self.context and self.context.repoid
             PROMETHEUS_HANDLER.log_subflow(
                 flow=self.cls.__name__,
                 subflow=metric,
                 duration=duration_in_seconds,
-                repo_id=repo_id,
+                repoid=repoid,
             )
 
         return self
@@ -451,7 +451,7 @@ def from_kwargs(
     cls: type[T],
     kwargs: MutableMapping[str, Any],
     strict: bool = False,
-    context: CheckpointContext = None,
+    context: CheckpointContext | None = None,
 ) -> CheckpointLogger[T]:
     data = kwargs.get(_kwargs_key(cls), {})
 

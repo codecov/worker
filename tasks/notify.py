@@ -120,7 +120,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(
                 kwargs,
                 UploadFlow.NOTIF_LOCK_ERROR,
-                checkpoint_context=CheckpointContext(repo_id=repoid),
+                checkpoint_context=CheckpointContext(repoid=repoid),
             )
             return {
                 "notified": False,
@@ -171,7 +171,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(
                 kwargs,
                 UploadFlow.NOTIF_TOO_MANY_RETRIES,
-                checkpoint_context=CheckpointContext(repo_id=commit.repoid),
+                checkpoint_context=CheckpointContext(repoid=commit.repoid),
             )
             return {
                 "notified": False,
@@ -229,7 +229,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(
                 kwargs,
                 UploadFlow.NOTIF_NO_VALID_INTEGRATION,
-                checkpoint_context=CheckpointContext(repo_id=repoid),
+                checkpoint_context=CheckpointContext(repoid=repoid),
             )
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         except NoConfiguredAppsAvailable as exp:
@@ -289,7 +289,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(
                 kwargs,
                 UploadFlow.NOTIF_GIT_CLIENT_ERROR,
-                checkpoint_context=CheckpointContext(repo_id=repoid),
+                checkpoint_context=CheckpointContext(repoid=repoid),
             )
             return {
                 "notified": False,
@@ -304,7 +304,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(
                 kwargs,
                 UploadFlow.NOTIF_GIT_SERVICE_ERROR,
-                checkpoint_context=CheckpointContext(repo_id=repoid),
+                checkpoint_context=CheckpointContext(repoid=repoid),
             )
             return {
                 "notified": False,
@@ -384,7 +384,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 self.log_checkpoint(
                     kwargs,
                     UploadFlow.NOTIF_STALE_HEAD,
-                    checkpoint_context=CheckpointContext(repo_id=repoid),
+                    checkpoint_context=CheckpointContext(repoid=repoid),
                 )
                 return {
                     "notified": False,
@@ -402,7 +402,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 self.log_checkpoint(
                     kwargs,
                     UploadFlow.NOTIF_ERROR_NO_REPORT,
-                    checkpoint_context=CheckpointContext(repo_id=repoid),
+                    checkpoint_context=CheckpointContext(repoid=repoid),
                 )
                 return {
                     "notified": False,
@@ -453,7 +453,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(
                 kwargs,
                 UploadFlow.NOTIFIED,
-                checkpoint_context=CheckpointContext(repo_id=repoid),
+                checkpoint_context=CheckpointContext(repoid=repoid),
             )
             log.info(
                 "Notifications done",
