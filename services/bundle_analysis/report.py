@@ -12,6 +12,7 @@ from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.django_apps.bundle_analysis.service.bundle_analysis import (
     BundleAnalysisCacheConfigService,
 )
+from shared.metrics import Counter
 from shared.reports.enums import UploadState, UploadType
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
 from shared.utils.sessions import SessionType
@@ -28,6 +29,17 @@ from services.storage import get_storage_client
 from services.timeseries import repository_datasets_query
 
 log = logging.getLogger(__name__)
+
+
+BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER = Counter(
+    "bundle_analysis_report_processor_runs",
+    "Number of times a BA report processor was run and with what result",
+    [
+        "result",
+        "plugin_name",
+        "repository",
+    ],
+)
 
 
 @dataclass
@@ -87,12 +99,17 @@ class ProcessingResult:
             self.upload.upload_type = SessionType.carriedforward.value
             self.upload_type_id = UploadType.CARRIEDFORWARD.db_id
 
-        sentry_sdk.metrics.incr(
-            "bundle_analysis_upload",
-            tags={
-                "result": "upload_error" if self.error else "processed",
-            },
-        )
+        try:
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="upload_error" if self.error else "processed",
+                plugin_name="n/a",
+                repository=self.commit.repository.repoid,
+            ).inc()
+        except Exception:
+            log.warn(
+                "Failed to BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER",
+                exc_info=True,
+            )
 
         db_session.flush()
 
@@ -277,13 +294,17 @@ class BundleAnalysisReportService(BaseReportService):
             )
         except PutRequestRateLimitError as e:
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "rate_limit_error",
-                    "plugin_name": plugin_name,
-                },
-            )
+            try:
+                BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                    result="rate_limit_error",
+                    plugin_name=plugin_name,
+                    repository=commit.repository.repoid,
+                ).inc()
+            except Exception:
+                log.warn(
+                    "Failed to BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER",
+                    exc_info=True,
+                )
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
@@ -296,13 +317,17 @@ class BundleAnalysisReportService(BaseReportService):
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "parser_error",
-                    "plugin_name": plugin_name,
-                },
-            )
+            try:
+                BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                    result="parser_error",
+                    plugin_name=plugin_name,
+                    repository=commit.repository.repoid,
+                ).inc()
+            except Exception:
+                log.warn(
+                    "Failed to BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER",
+                    exc_info=True,
+                )
             log.error(
                 "Unable to parse upload for bundle analysis",
                 exc_info=True,
@@ -438,13 +463,17 @@ class BundleAnalysisReportService(BaseReportService):
                 commit=commit,
             )
         except Exception:
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "parser_error",
-                    "repository": commit.repository.repoid,
-                },
-            )
+            try:
+                BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                    result="parser_error",
+                    plugin_name="n/a",
+                    repository=commit.repository.repoid,
+                ).inc()
+            except Exception:
+                log.warn(
+                    "Failed to BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER",
+                    exc_info=True,
+                )
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
