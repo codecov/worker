@@ -31,6 +31,7 @@ class TestCommitUpdate(object):
             repository__owner__service="github",
             repository__owner__service_id="104562106",
             repository__name="test_example",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
