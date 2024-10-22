@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -694,10 +694,10 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             ]
 
             assert [r.latest_run for r in rollups] == [
-                datetime(1970, 1, 1, 0, 0),
-                datetime(1970, 1, 1, 0, 0),
-                datetime(1970, 1, 2, 0, 0),
-                datetime(1970, 1, 2, 0, 0),
+                datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+                datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+                datetime(1970, 1, 2, 0, 0, tzinfo=timezone.utc),
+                datetime(1970, 1, 2, 0, 0, tzinfo=timezone.utc),
             ]
             assert [r.avg_duration_seconds for r in rollups] == [
                 7.2,
