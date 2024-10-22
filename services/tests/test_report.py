@@ -3252,9 +3252,6 @@ class TestReportService(BaseTestCase):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
-        dbsession.flush()
         report_service = ReportService({})
         res = report_service.save_report(commit, report)
         storage_hash = report_service.get_archive_service(
@@ -3961,9 +3958,6 @@ class TestReportService(BaseTestCase):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
-        dbsession.flush()
         report_service = ReportService({})
         report_service.save_report(commit, sample_report)
         res = report_service.initialize_and_save_report(commit)
@@ -4154,10 +4148,8 @@ class TestReportService(BaseTestCase):
     ):
         parent_commit = CommitFactory()
         parent_commit_report = CommitReport(commit_id=parent_commit.id_)
-        parent_report_details = ReportDetails(report_id=parent_commit_report.id_)
         dbsession.add(parent_commit)
         dbsession.add(parent_commit_report)
-        dbsession.add(parent_report_details)
         dbsession.flush()
 
         commit = CommitFactory.create(
