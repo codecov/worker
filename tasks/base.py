@@ -18,12 +18,7 @@ from sqlalchemy.exc import (
 from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
-from helpers.logging_config import (
-    log_read_task_id,
-    log_read_task_name,
-    log_set_task_id,
-    log_set_task_name,
-)
+from helpers.log_context import LogContext, set_log_context
 from helpers.telemetry import MetricContext, TimeseriesTimer
 from helpers.timeseries import timeseries_enabled
 
@@ -250,27 +245,32 @@ class BaseCodecovTask(celery_app.Task):
             time_in_queue_timer.observe(delta.total_seconds())
 
     def run(self, *args, **kwargs):
-        task = get_current_task()
-
-        if task and task.request:
-            if log_read_task_name() is not None or log_read_task_id() is not None:
-                log.warning(
-                    "There are multiple tasks concurrently writing to the task name at a given time"
-                )
-            log_set_task_name(task.name)
-            log_set_task_id(task.request.id)
-
-        self.task_run_counter.inc()
-        self._emit_queue_metrics()
-
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
-
         with self.task_full_runtime.time():  # Timer isn't tested
             db_session = get_db_session()
+
+            log_context = LogContext(
+                repo_id=kwargs.get("repoid"),
+                owner_id=kwargs.get("ownerid"),
+                commit_sha=kwargs.get("commitid"),
+            )
+
+            task = get_current_task()
+            if task and task.request:
+                log_context.task_name = task.name
+                log_context.task_id = task.request.id
+
+            log_context.populate_from_sqlalchemy(db_session)
+            set_log_context(log_context)
+
+            self.task_run_counter.inc()
+            self._emit_queue_metrics()
+
+            metric_context = MetricContext(
+                commit_sha=kwargs.get("commitid"),
+                repo_id=kwargs.get("repoid"),
+                owner_id=kwargs.get("ownerid"),
+            )
+
             try:
                 with TimeseriesTimer(
                     metric_context, f"{self.metrics_prefix}.core_runtime", sync=True
@@ -291,10 +291,9 @@ class BaseCodecovTask(celery_app.Task):
                 self._rollback_django()
                 self.retry()
             finally:
-                log_set_task_name(None)
-                log_set_task_id(None)
                 self.wrap_up_dbsession(db_session)
                 self._commit_django()
+                set_log_context(LogContext())
 
     def wrap_up_dbsession(self, db_session):
         """
