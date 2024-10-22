@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 import pytest
 from prometheus_client import REGISTRY
-from shared.utils.test_utils import mock_metrics
 
 from helpers.checkpoint_logger import (
     BaseFlow,
@@ -354,9 +353,6 @@ class TestCheckpointLogger(unittest.TestCase):
         )
 
     def test_reliability_counters(self):
-        metrics = mock_metrics(self.mocker)
-        assert not metrics.data
-
         checkpoints = CheckpointLogger(DecoratedEnum)
 
         counter_assertions = [
@@ -380,11 +376,6 @@ class TestCheckpointLogger(unittest.TestCase):
         ]
         with CounterAssertionSet(counter_assertions):
             checkpoints.log(DecoratedEnum.BEGIN)
-        assert metrics.data["DecoratedEnum.events.BEGIN"] == 1
-        assert metrics.data["DecoratedEnum.total.begun"] == 1
-        assert "DecoratedEnum.total.succeeded" not in metrics.data
-        assert "DecoratedEnum.total.failed" not in metrics.data
-        assert "DecoratedEnum.total.ended" not in metrics.data
 
         # Nothing special about `CHECKPOINT` - no counters should change
         counter_assertions = [
@@ -413,11 +404,6 @@ class TestCheckpointLogger(unittest.TestCase):
         ]
         with CounterAssertionSet(counter_assertions):
             checkpoints.log(DecoratedEnum.CHECKPOINT)
-        assert metrics.data["DecoratedEnum.events.CHECKPOINT"] == 1
-        assert metrics.data["DecoratedEnum.total.begun"] == 1
-        assert "DecoratedEnum.total.succeeded" not in metrics.data
-        assert "DecoratedEnum.total.failed" not in metrics.data
-        assert "DecoratedEnum.total.ended" not in metrics.data
 
         # Failures should increment both `failed` and `ended`
         counter_assertions = [
@@ -441,11 +427,6 @@ class TestCheckpointLogger(unittest.TestCase):
         ]
         with CounterAssertionSet(counter_assertions):
             checkpoints.log(DecoratedEnum.BRANCH_1_FAIL)
-        assert metrics.data["DecoratedEnum.events.BRANCH_1_FAIL"] == 1
-        assert metrics.data["DecoratedEnum.total.begun"] == 1
-        assert metrics.data["DecoratedEnum.total.failed"] == 1
-        assert metrics.data["DecoratedEnum.total.ended"] == 1
-        assert "DecoratedEnum.total.succeeded" not in metrics.data
 
         # Successes should increment both `succeeded` and `ended`
         counter_assertions = [
@@ -469,11 +450,6 @@ class TestCheckpointLogger(unittest.TestCase):
         ]
         with CounterAssertionSet(counter_assertions):
             checkpoints.log(DecoratedEnum.BRANCH_1_SUCCESS)
-        assert metrics.data["DecoratedEnum.events.BRANCH_1_SUCCESS"] == 1
-        assert metrics.data["DecoratedEnum.total.begun"] == 1
-        assert metrics.data["DecoratedEnum.total.failed"] == 1
-        assert metrics.data["DecoratedEnum.total.ended"] == 2
-        assert metrics.data["DecoratedEnum.total.succeeded"] == 1
 
         # A different success path should also increment `succeeded` and `ended`
         counter_assertions = [
@@ -497,11 +473,6 @@ class TestCheckpointLogger(unittest.TestCase):
         ]
         with CounterAssertionSet(counter_assertions):
             checkpoints.log(DecoratedEnum.BRANCH_2_SUCCESS)
-        assert metrics.data["DecoratedEnum.events.BRANCH_2_SUCCESS"] == 1
-        assert metrics.data["DecoratedEnum.total.begun"] == 1
-        assert metrics.data["DecoratedEnum.total.failed"] == 1
-        assert metrics.data["DecoratedEnum.total.ended"] == 3
-        assert metrics.data["DecoratedEnum.total.succeeded"] == 2
 
     def test_serialize_between_tasks(self):
         """

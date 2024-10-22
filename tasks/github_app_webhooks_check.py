@@ -6,7 +6,6 @@ from typing import Iterable, List
 from asgiref.sync import async_to_sync
 from shared.celery_config import gh_app_webhook_check_task_name
 from shared.config import get_config
-from shared.metrics import metrics
 from shared.torngit import Github
 from shared.torngit.exceptions import (
     TorngitRateLimitError,
@@ -73,14 +72,10 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
         # Since Python lists contain references to their contents, this shouldn't be too much
         # more expensive than just iterating.
         deliveries = list(deliveries)
-        metrics.incr("webhooks.github.deliveries.failed", count=len(deliveries))
 
         # Same as above, we need to materialize our filter into a list so we can both take
         # the length of it and return it.
         deliveries = list(self._apply_event_filter(deliveries))
-        metrics.incr(
-            "webhooks.github.deliveries.retry_requested", count=len(deliveries)
-        )
 
         return deliveries
 
