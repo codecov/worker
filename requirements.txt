@@ -235,7 +235,9 @@ opentelemetry-semantic-conventions==0.45b0
     #   opentelemetry-instrumentation-celery
     #   opentelemetry-sdk
 orjson==3.10.7
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   shared
 packaging==24.1
     # via pytest
 platformdirs==3.11.0
@@ -359,7 +361,7 @@ sentry-sdk[celery]==2.13.0
     # via
     #   -r requirements.in
     #   shared
-shared @ https://github.com/codecov/shared/archive/795495e3d290c2f946792ee1a35f45fba5913c1b.tar.gz
+shared @ https://github.com/codecov/shared/archive/4b937001e7c3ac9ad22ec7c9b0e83ac4135566fe.tar.gz
     # via -r requirements.in
 six==1.16.0
     # via
@@ -388,9 +390,7 @@ sqlalchemy-utils==0.36.8
 sqlparse==0.5.0
     # via django
 statsd==3.3.0
-    # via
-    #   -r requirements.in
-    #   shared
+    # via -r requirements.in
 stripe==9.6.0
     # via -r requirements.in
 test-results-parser @ https://github.com/codecov/test-results-parser/archive/ef39a0888acd62d02a316a852a15d755c74e78c6.tar.gz

@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 from jinja2 import TemplateNotFound, UndefinedError
 from shared.config import ConfigHelper
-from shared.utils.test_utils.mock_metrics import mock_metrics as utils_mock_metrics
 
 from database.tests.factories import OwnerFactory
 from services.smtp import SMTPService, SMTPServiceError
@@ -54,7 +53,6 @@ class TestSendEmailTask(object):
         mock_redis,
     ):
         mock_smtp.configure_mock(**{"send.return_value": None})
-        metrics = utils_mock_metrics(mocker)
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
@@ -68,9 +66,6 @@ class TestSendEmailTask(object):
         )
 
         assert result == {"email_successful": True, "err_msg": None}
-        assert metrics.data["worker.tasks.send_email.attempt"] == 1
-        assert metrics.data["worker.tasks.send_email.succeed"] == 1
-        assert metrics.data["worker.tasks.send_email.fail"] == 0
 
     def test_send_email_non_existent_template(
         self, mocker, mock_configuration, dbsession, mock_smtp

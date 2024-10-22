@@ -17,7 +17,6 @@ from typing import (
 )
 
 import sentry_sdk
-from shared.metrics import metrics
 
 from helpers.checkpoint_logger.prometheus import PROMETHEUS_HANDLER
 
@@ -31,7 +30,6 @@ def _error(msg, flow, strict=False):
     # When a new version of worker rolls out, it will pick up tasks that
     # may have been enqueued by the old worker and be missing checkpoints
     # data. At least for that reason, we want to allow failing softly.
-    metrics.incr("worker.checkpoint_logger.error")
     PROMETHEUS_HANDLER.log_errors(flow=flow.__name__)
     if strict:
         raise ValueError(msg)
@@ -273,12 +271,10 @@ def reliability_counters(klass: type[T]) -> type[T]:
     """
 
     def log_counters(obj: T) -> None:
-        metrics.incr(f"{klass.__name__}.events.{obj.name}")
         PROMETHEUS_HANDLER.log_checkpoints(flow=klass.__name__, checkpoint=obj.name)
 
         # If this is the first checkpoint, increment the number of flows we've begun
         if obj == next(iter(klass.__members__.values())):
-            metrics.incr(f"{klass.__name__}.total.begun")
             PROMETHEUS_HANDLER.log_begun(flow=klass.__name__)
             return
 
@@ -287,14 +283,11 @@ def reliability_counters(klass: type[T]) -> type[T]:
         is_terminal = is_failure or is_success
 
         if is_failure:
-            metrics.incr(f"{klass.__name__}.total.failed")
             PROMETHEUS_HANDLER.log_failure(flow=klass.__name__)
         elif is_success:
-            metrics.incr(f"{klass.__name__}.total.succeeded")
             PROMETHEUS_HANDLER.log_success(flow=klass.__name__)
 
         if is_terminal:
-            metrics.incr(f"{klass.__name__}.total.ended")
             PROMETHEUS_HANDLER.log_total_ended(flow=klass.__name__)
 
     klass.log_counters = log_counters
