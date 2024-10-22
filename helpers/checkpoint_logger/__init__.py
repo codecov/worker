@@ -394,6 +394,7 @@ class CheckpointLogger(Generic[T]):
         ignore_repeat: bool = False,
         kwargs: Optional[MutableMapping[str, Any]] = None,
     ) -> _Self:
+        print("test - 1", checkpoint, kwargs, self.data)
         if checkpoint not in self.data:
             self._validate_checkpoint(checkpoint)
             self.data[checkpoint] = _get_milli_timestamp()
@@ -403,8 +404,11 @@ class CheckpointLogger(Generic[T]):
         else:
             return self
 
+        print("test - 2", checkpoint, kwargs, self.data)
         if kwargs is not None:
             kwargs[self.kwargs_key] = self.data
+
+        print("test - 3", checkpoint, kwargs, self.data)
 
         # `self.cls._subflows()` comes from the `@subflows` decorator
         # If the flow has pre-defined subflows, we can automatically submit

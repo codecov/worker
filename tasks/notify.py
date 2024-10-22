@@ -144,7 +144,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             checkpoint.__class__,
             kwargs,
         )
-        if checkpoints.data:
+        # We previously checked for checkpoints.data, but context will be
+        # in every entry, so we're checking for the existence of keys
+        # other than context to log the checkpoint
+        if any(key != "context" for key in checkpoints.data):
             checkpoints.log(checkpoint)
 
     def _attempt_retry(
