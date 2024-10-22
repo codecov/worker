@@ -23,7 +23,7 @@ from shared.yaml import UserYaml
 from app import celery_app
 from celery_config import notify_error_task_name
 from database.models import Commit, Pull
-from helpers.checkpoint_logger import CheckpointContext, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.metrics import KiB, MiB
@@ -118,7 +118,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     ):
         try:
             checkpoints = checkpoints_from_kwargs(
-                UploadFlow, kwargs, context=CheckpointContext(repoid=repoid)
+                UploadFlow, dict(**kwargs, context={"repoid": repoid})
             )
             checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
         except ValueError as e:

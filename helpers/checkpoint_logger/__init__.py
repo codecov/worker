@@ -2,7 +2,6 @@ import functools
 import itertools
 import logging
 import time
-from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Any,
@@ -19,7 +18,7 @@ from typing import (
 
 import sentry_sdk
 
-from helpers.checkpoint_logger.prometheus import PROMETHEUS_HANDLER
+from helpers.checkpoint_logger.prometheus import PROMETHEUS_HANDLER, CheckpointContext
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +26,11 @@ T = TypeVar("T", bound="BaseFlow")
 TSubflows: TypeAlias = Mapping[T, Iterable[tuple[str, T]]]
 
 
-def _error(msg, flow, strict=False):
+def _error(msg, flow, strict=False, context: CheckpointContext | None = None):
     # When a new version of worker rolls out, it will pick up tasks that
     # may have been enqueued by the old worker and be missing checkpoints
     # data. At least for that reason, we want to allow failing softly.
-    PROMETHEUS_HANDLER.log_errors(flow=flow.__name__)
+    PROMETHEUS_HANDLER.log_errors(flow=flow.__name__, context=context)
     if strict:
         raise ValueError(msg)
     else:
@@ -272,14 +271,13 @@ def reliability_counters(klass: type[T]) -> type[T]:
     """
 
     def log_counters(obj: T, context: CheckpointContext | None = None) -> None:
-        repoid = context and context.repoid
         PROMETHEUS_HANDLER.log_checkpoints(
-            flow=klass.__name__, checkpoint=obj.name, repoid=repoid
+            flow=klass.__name__, checkpoint=obj.name, context=context
         )
 
         # If this is the first checkpoint, increment the number of flows we've begun
         if obj == next(iter(klass.__members__.values())):
-            PROMETHEUS_HANDLER.log_begun(flow=klass.__name__, repoid=repoid)
+            PROMETHEUS_HANDLER.log_begun(flow=klass.__name__, context=context)
             return
 
         is_failure = hasattr(obj, "is_failure") and obj.is_failure()
@@ -287,12 +285,12 @@ def reliability_counters(klass: type[T]) -> type[T]:
         is_terminal = is_failure or is_success
 
         if is_failure:
-            PROMETHEUS_HANDLER.log_failure(flow=klass.__name__, repoid=repoid)
+            PROMETHEUS_HANDLER.log_failure(flow=klass.__name__, context=context)
         elif is_success:
-            PROMETHEUS_HANDLER.log_success(flow=klass.__name__, repoid=repoid)
+            PROMETHEUS_HANDLER.log_success(flow=klass.__name__, context=context)
 
         if is_terminal:
-            PROMETHEUS_HANDLER.log_total_ended(flow=klass.__name__, repoid=repoid)
+            PROMETHEUS_HANDLER.log_total_ended(flow=klass.__name__, context=context)
 
     klass.log_counters = log_counters
     return klass
@@ -304,11 +302,6 @@ def _get_milli_timestamp() -> int:
 
 def _kwargs_key(cls: type[T]) -> str:
     return f"checkpoints_{cls.__name__}"
-
-
-@dataclass
-class CheckpointContext:
-    repoid: int
 
 
 class CheckpointLogger(Generic[T]):
@@ -358,18 +351,16 @@ class CheckpointLogger(Generic[T]):
     def __init__(
         self: _Self,
         cls: type[T],
-        data: Optional[MutableMapping[T, int]] = None,
+        data: Optional[MutableMapping[T | str, int | CheckpointContext]] = None,
         strict=False,
-        context: CheckpointContext | None = None,
     ):
         self.cls = cls
         self.data = data if data else {}
         self.kwargs_key = _kwargs_key(self.cls)
         self.strict = strict
-        self.context = context
 
     def _error(self: _Self, msg: str) -> None:
-        _error(msg, self.cls, self.strict)
+        _error(msg, self.cls, self.strict, context=self.data.get("context"))
 
     def _validate_checkpoint(self: _Self, checkpoint: T) -> None:
         if checkpoint.__class__ != self.cls:
@@ -427,7 +418,7 @@ class CheckpointLogger(Generic[T]):
         # decorator
         # Increment event, start, finish, success, failure counters
         if hasattr(checkpoint, "log_counters"):
-            checkpoint.log_counters(context=self.context)
+            checkpoint.log_counters(context=self.data.get("context"))
 
         return self
 
@@ -436,12 +427,11 @@ class CheckpointLogger(Generic[T]):
         if duration:
             sentry_sdk.set_measurement(metric, duration, "milliseconds")
             duration_in_seconds = duration / 1000
-            repoid = self.context and self.context.repoid
             PROMETHEUS_HANDLER.log_subflow(
                 flow=self.cls.__name__,
                 subflow=metric,
                 duration=duration_in_seconds,
-                repoid=repoid,
+                context=self.data.get("context"),
             )
 
         return self
@@ -451,14 +441,16 @@ def from_kwargs(
     cls: type[T],
     kwargs: MutableMapping[str, Any],
     strict: bool = False,
-    context: CheckpointContext | None = None,
 ) -> CheckpointLogger[T]:
+    context = kwargs.pop("context", CheckpointContext())
     data = kwargs.get(_kwargs_key(cls), {})
 
     # kwargs has been deserialized into a Python dictionary, but our enum values
     # are deserialized as simple strings. We need to ensure the strings are all
     # proper enum values as best we can, and then downcast to enum instances.
     deserialized_data = {}
+    deserialized_data["context"] = context
+
     for checkpoint, timestamp in data.items():
         try:
             deserialized_data[cls(checkpoint)] = timestamp
@@ -471,4 +463,4 @@ def from_kwargs(
             deserialized_data = {}
             break
 
-    return CheckpointLogger(cls, deserialized_data, strict, context=context)
+    return CheckpointLogger(cls, deserialized_data, strict)

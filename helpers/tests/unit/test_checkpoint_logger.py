@@ -8,7 +8,6 @@ from prometheus_client import REGISTRY
 
 from helpers.checkpoint_logger import (
     BaseFlow,
-    CheckpointContext,
     CheckpointLogger,
     _get_milli_timestamp,
     failure_events,
@@ -42,9 +41,6 @@ class CounterAssertionSet:
                 REGISTRY.get_sample_value(assertion.metric, labels=assertion.labels)
                 or 0
             )
-            print("assertion enter!", assertion.before_value)
-            print("assertion enter!", assertion.metric)
-            print("assertion enter!", assertion.labels)
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         for assertion in self.counter_assertions:
@@ -52,9 +48,6 @@ class CounterAssertionSet:
                 REGISTRY.get_sample_value(assertion.metric, labels=assertion.labels)
                 or 0
             )
-            print("assertion exit!", assertion.after_value)
-            print("assertion exit!", assertion.metric)
-            print("assertion exit!", assertion.labels)
             assert (
                 assertion.after_value - assertion.before_value
                 == assertion.expected_value
@@ -231,7 +224,17 @@ class TestCheckpointLogger(unittest.TestCase):
             "checkpoints_TestEnum1": deserialized_good_data,
         }
         checkpoints = from_kwargs(TestEnum1, good_kwargs, strict=True)
-        assert checkpoints.data == good_data
+
+        assert checkpoints.data == {**good_data, "context": {}}
+
+        # Data with context
+        good_kwargs_with_context = {
+            "checkpoints_TestEnum1": deserialized_good_data,
+            "context": {"repoid": 123},
+        }
+        checkpoints = from_kwargs(TestEnum1, good_kwargs_with_context, strict=True)
+
+        assert checkpoints.data == {**good_data, "context": {"repoid": 123}}
 
         # Data is from TestEnum2 but we expected TestEnum1
         bad_data = {
@@ -485,9 +488,7 @@ class TestCheckpointLogger(unittest.TestCase):
     def test_reliability_counters_with_context(self, mock_object):
         repoid = 123
         mock_object.return_value = repoid
-        checkpoints = CheckpointLogger(
-            DecoratedEnum, context=CheckpointContext(repoid=repoid)
-        )
+        checkpoints = CheckpointLogger(DecoratedEnum, dict(context={"repoid": repoid}))
 
         counter_assertions = [
             CounterAssertion(
@@ -495,7 +496,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_begun_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -505,7 +506,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "BEGIN", "repoid": "123"},
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -513,7 +514,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_succeeded_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -521,7 +522,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_failed_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -529,7 +530,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_ended_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
         ]
@@ -543,7 +544,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_begun_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -553,7 +554,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "BEGIN", "repoid": "123"},
+                {"flow": "DecoratedEnum", "checkpoint": "BEGIN", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -563,7 +564,11 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "CHECKPOINT", "repoid": "123"},
+                {
+                    "flow": "DecoratedEnum",
+                    "checkpoint": "CHECKPOINT",
+                    "repoid": f"{repoid}",
+                },
                 1,
             ),
             CounterAssertion(
@@ -571,7 +576,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_succeeded_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -579,7 +584,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_failed_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -587,7 +592,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_reopo_checkpoints_ended_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
         ]
@@ -601,7 +606,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_begun_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -609,7 +614,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_succeeded_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -617,7 +622,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_failed_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -625,7 +630,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_ended_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -638,7 +643,7 @@ class TestCheckpointLogger(unittest.TestCase):
                 {
                     "flow": "DecoratedEnum",
                     "checkpoint": "BRANCH_1_FAIL",
-                    "repoid": "123",
+                    "repoid": f"{repoid}",
                 },
                 1,
             ),
@@ -659,7 +664,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_succeeded_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -667,7 +672,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_failed_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -675,7 +680,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_ended_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -688,7 +693,7 @@ class TestCheckpointLogger(unittest.TestCase):
                 {
                     "flow": "DecoratedEnum",
                     "checkpoint": "BRANCH_1_SUCCESS",
-                    "repoid": "123",
+                    "repoid": f"{repoid}",
                 },
                 1,
             ),
@@ -703,7 +708,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_begun_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -711,7 +716,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_succeeded_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -719,7 +724,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_failed_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 0,
             ),
             CounterAssertion(
@@ -727,7 +732,7 @@ class TestCheckpointLogger(unittest.TestCase):
             ),
             CounterAssertion(
                 "worker_repo_checkpoints_ended_total",
-                {"flow": "DecoratedEnum", "repoid": "123"},
+                {"flow": "DecoratedEnum", "repoid": f"{repoid}"},
                 1,
             ),
             CounterAssertion(
@@ -740,7 +745,7 @@ class TestCheckpointLogger(unittest.TestCase):
                 {
                     "flow": "DecoratedEnum",
                     "checkpoint": "BRANCH_2_SUCCESS",
-                    "repoid": "123",
+                    "repoid": f"{repoid}",
                 },
                 1,
             ),

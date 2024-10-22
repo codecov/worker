@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from celery_config import notify_error_task_name
 from database.enums import ReportType
 from database.models import Commit, CommitReport, Upload
-from helpers.checkpoint_logger import CheckpointContext
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.notifier import BaseNotifier, NotifierResult
@@ -44,11 +43,11 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
         )
 
         # get all upload errors for this commit
-        #
         commit_yaml = UserYaml.from_dict(current_yaml)
 
         checkpoints = checkpoints_from_kwargs(
-            UploadFlow, kwargs, context=CheckpointContext(repoid=repoid)
+            UploadFlow,
+            dict(**kwargs, context={"repoid": repoid}),
         )
 
         commits_query = db_session.query(Commit).filter(  # type:ignore

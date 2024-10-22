@@ -103,16 +103,16 @@ class UploadContext:
 
     def get_checkpoints(self, kwargs: dict) -> CheckpointLogger | None:
         # TODO: setup checkpoint flows for other coverage types
-        checkpoint_context = CheckpointContext(repoid=self.repoid)
+        checkpoint_context: CheckpointContext = {"repoid": self.repoid}
         if self.report_type == ReportType.COVERAGE:
             # If we're a retry, kwargs will already have our first checkpoint.
             # If not, log it directly into kwargs so we can pass it onto other tasks
             return checkpoints_from_kwargs(
-                UploadFlow, kwargs, context=checkpoint_context
+                UploadFlow, dict(**kwargs, context=checkpoint_context)
             ).log(UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True)
         elif self.report_type == ReportType.TEST_RESULTS:
             return checkpoints_from_kwargs(
-                TestResultsFlow, kwargs, context=checkpoint_context
+                TestResultsFlow, dict(**kwargs, context=checkpoint_context)
             ).log(TestResultsFlow.TEST_RESULTS_BEGIN, kwargs=kwargs, ignore_repeat=True)
         return None
 
