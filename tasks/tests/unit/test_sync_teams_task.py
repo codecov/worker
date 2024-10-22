@@ -133,6 +133,6 @@ class TestSyncTeamsTaskUnit(object):
             expected_data = expected_groups.get(service_id, {})
             assert g.username == expected_data.get("username")
             assert g.name == expected_data["name"]
-            assert g.createstamp.isoformat() == "2024-03-28T00:00:00"
+            assert g.createstamp.isoformat() == "2024-03-28T00:00:00+00:00"
             if expected_data["parent_service_id"]:
                 assert g.parent_service_id == expected_data["parent_service_id"]
