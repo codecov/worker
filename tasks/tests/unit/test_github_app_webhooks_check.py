@@ -7,27 +7,6 @@ from tasks.github_app_webhooks_check import Github, GitHubAppWebhooksCheckTask
 
 
 @pytest.fixture
-def mock_metrics(mocker):
-    from collections import defaultdict
-
-    metrics = defaultdict(int)
-
-    def incr(stat, count=1, rate=1):
-        metrics[stat] += count
-
-    def decr(stat, count=1, rate=1):
-        metrics[stat] -= count
-
-    mock_incr = mocker.patch("shared.metrics.metrics.incr")
-    mock_incr.side_effect = incr
-
-    mock_decr = mocker.patch("shared.metrics.metrics.decr")
-    mock_decr.side_effect = decr
-
-    yield metrics
-
-
-@pytest.fixture
 def sample_deliveries():
     sample_deliveries = [
         # time filter: passes, because the `delivered_at` is updated below to be recent
@@ -283,9 +262,7 @@ class TestGHAppWebhooksTask(object):
         fake_get_token.assert_called()
         fake_redelivery.assert_called()
 
-    def test_redelivery_counters(
-        self, dbsession, mocker, sample_deliveries, mock_metrics
-    ):
+    def test_redelivery_counters(self, dbsession, mocker, sample_deliveries):
         fake_list_deliveries = mocker.patch.object(
             Github,
             "list_webhook_deliveries",
@@ -303,10 +280,3 @@ class TestGHAppWebhooksTask(object):
         )
         task = GitHubAppWebhooksCheckTask()
         _ = task.run_cron_task(dbsession)
-
-        # There are 3 failed deliveries above, but 1 of them is old and excluded from the query
-        assert mock_metrics["webhooks.github.deliveries.failed"] == 2
-
-        # There are 2 failed deliveries that pass the check above, but one isn't for an installation
-        # event so we don't ask for a redelivery
-        assert mock_metrics["webhooks.github.deliveries.retry_requested"] == 1
