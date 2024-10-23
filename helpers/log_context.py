@@ -1,8 +1,8 @@
 import contextvars
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 
-from database.models.core import Commit, Repository
+from database.models.core import Commit, Owner, Repository
 
 log = logging.getLogger("log_context")
 
@@ -17,10 +17,18 @@ class LogContext:
     task_id: str = "???"
 
     _populated_from_db = False
+    owner_username: str | None = None
+    owner_service: str | None = None
     owner_id: int | None = None
+    repo_name: str | None = None
     repo_id: int | None = None
     commit_sha: str | None = None
     commit_id: int | None = None
+
+    def as_dict(self):
+        d = asdict(self)
+        d.pop("_populated_from_db", None)
+        return d
 
     def populate_from_sqlalchemy(self, dbsession):
         """
@@ -34,23 +42,74 @@ class LogContext:
             return
 
         try:
-            if self.repo_id:
-                if not self.owner_id:
-                    self.owner_id = (
-                        dbsession.query(Repository.ownerid)
-                        .filter(Repository.repoid == self.repo_id)
-                        .first()[0]
+            incomplete_sha = self.commit_id is None or self.commit_sha is None
+            incomplete_repo = self.repo_name is None or self.repo_id is None
+            incomplete_owner = (
+                self.owner_id is None
+                or self.owner_username is None
+                or self.owner_service is None
+            )
+
+            can_identify_commit = self.commit_id is not None or (
+                self.commit_sha is not None and self.repo_id is not None
+            )
+
+            # commit_id or (commit_sha + repo_id) is enough to get everything else
+            if can_identify_commit and (
+                incomplete_sha or incomplete_repo or incomplete_owner
+            ):
+                if self.commit_id is not None:
+                    commit = (
+                        dbsession.query(Commit)
+                        .filter(Commit.id_ == self.commit_id)
+                        .first()
+                    )
+                else:
+                    commit = (
+                        dbsession.query(Commit)
+                        .filter(
+                            Commit.commitid == self.commit_sha,
+                            Commit.repoid == self.repo_id,
+                        )
+                        .first()
                     )
 
-                if self.commit_sha and not self.commit_id:
-                    self.commit_id = (
-                        dbsession.query(Commit.id_)
-                        .filter(
-                            Commit.repoid == self.repo_id,
-                            Commit.commitid == self.commit_sha,
-                        )
-                        .first()[0]
-                    )
+                self.commit_id = commit.id_
+                self.commit_sha = commit.commitid
+
+                if incomplete_repo:
+                    self.repo_id = commit.repository.repoid
+                    self.repo_name = commit.repository.name
+
+                if incomplete_owner:
+                    self.owner_id = commit.repository.owner.ownerid
+                    self.owner_username = commit.repository.owner.username
+                    self.owner_service = commit.repository.owner.service
+
+            # repo_id is enough to get repo and owner
+            elif self.repo_id and (incomplete_repo or incomplete_owner):
+                repo = (
+                    dbsession.query(Repository)
+                    .filter(Repository.repoid == self.repo_id)
+                    .first()
+                )
+                self.repo_name = repo.name
+
+                if incomplete_owner:
+                    self.owner_id = repo.owner.ownerid
+                    self.owner_username = repo.owner.username
+                    self.owner_service = repo.owner.service
+
+            # owner_id is just enough for owner
+            elif self.owner_id and incomplete_owner:
+                owner = (
+                    dbsession.query(Owner)
+                    .filter(Owner.ownerid == self.owner_id)
+                    .first()
+                )
+                self.owner_username = owner.username
+                self.owner_service = owner.service
+
         except Exception:
             log.exception("Failed to populate log context")
 

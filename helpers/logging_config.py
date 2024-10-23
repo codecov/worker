@@ -12,8 +12,13 @@ class BaseLogger(JsonFormatter):
         super(BaseLogger, self).add_fields(log_record, record, message_dict)
 
         log_context = get_log_context()
+
+        # Leaving these fields where they were for saved queries
         log_record["task_name"] = log_context.task_name
         log_record["task_id"] = log_context.task_id
+
+        # Context collected in "context" log field. Task name/ID also present.
+        log_record["context"] = log_context.as_dict()
 
     def format_json_on_new_lines(self, json_str):
         # Parse the input JSON string
