@@ -1,4 +1,5 @@
 from helpers.environment import Environment
+from helpers.log_context import LogContext, set_log_context
 from helpers.logging_config import (
     CustomLocalJsonFormatter,
     config_dict,
@@ -40,8 +41,7 @@ class TestLoggingConfig(object):
         }
 
     def test_add_fields_with_task(self, mocker):
-        _ = mocker.patch("helpers.logging_config.task_name", "lkjhg")
-        _ = mocker.patch("helpers.logging_config.task_id", "abcdef")
+        set_log_context(LogContext(task_name="lkjhg", task_id="abcdef"))
         log_record, record, message_dict = {}, mocker.MagicMock(), {"message": "aaa"}
         log_formatter = CustomLocalJsonFormatter()
         log_formatter.add_fields(log_record, record, message_dict)

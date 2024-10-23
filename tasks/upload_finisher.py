@@ -36,6 +36,7 @@ from services.processing.loading import (
     load_intermediate_reports,
 )
 from services.processing.merging import merge_reports, update_uploads
+from services.processing.metrics import LABELS_USAGE
 from services.processing.state import ProcessingState, should_trigger_postprocessing
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -403,6 +404,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             commit.state = "skipped"
 
         if self.should_clean_labels_index(commit_yaml, processing_results):
+            # NOTE: according to tracing, the cleanup task is never actually run.
+            # reasons for that might be that we indeed *never* have any flags
+            # configured for `carryforward_mode=labels`, or the logic is somehow wrong?
+            LABELS_USAGE.labels(codepath="cleanup_task").inc()
             task = self.app.tasks[clean_labels_index_task_name].apply_async(
                 kwargs={
                     "repoid": repoid,
