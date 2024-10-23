@@ -4,51 +4,16 @@ from copy import deepcopy
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
 from helpers.environment import Environment, get_current_env
-
-task_name = None
-task_id = None
-
-# this is a temporary hack to get the task information working in the logs again
-# the issue is that the method we were using prior to this stored the information
-# in thread local storage and async_to_sync starts up another python thread to execute
-# the function so the logs within those async functions being called weren't able to
-# access the task info.
-# this method copies over the task information to global state (exists across threads)
-# this is not optimal and is only being done to avoid rewriting all of the code that is
-# being done in async functions
-
-
-def log_set_task_name(name):
-    global task_name
-    task_name = name
-
-
-def log_set_task_id(id):
-    global task_id
-    task_id = id
-
-
-def log_read_task_name():
-    global task_name
-    return task_name
-
-
-def log_read_task_id():
-    global task_id
-    return task_id
+from helpers.log_context import get_log_context
 
 
 class BaseLogger(JsonFormatter):
     def add_fields(self, log_record, record, message_dict) -> None:
         super(BaseLogger, self).add_fields(log_record, record, message_dict)
-        global task_name
-        global task_id
-        if task_name and task_id:
-            log_record["task_name"] = task_name
-            log_record["task_id"] = task_id
-        else:
-            log_record["task_name"] = "???"
-            log_record["task_id"] = "???"
+
+        log_context = get_log_context()
+        log_record["task_name"] = log_context.task_name
+        log_record["task_id"] = log_context.task_id
 
     def format_json_on_new_lines(self, json_str):
         # Parse the input JSON string
