@@ -17,6 +17,7 @@ from helpers.checkpoint_logger import (
     success_events,
 )
 from helpers.log_context import LogContext, set_log_context
+from rollouts import CHECKPOINT_ENABLED_REPOSITORIES
 
 
 class CounterAssertion:
@@ -475,7 +476,7 @@ class TestCheckpointLogger(unittest.TestCase):
         with CounterAssertionSet(counter_assertions):
             checkpoints.log(DecoratedEnum.BRANCH_2_SUCCESS)
 
-    @patch("helpers.checkpoint_logger.prometheus.CHECKPOINT_ENABLED_REPOSITORIES")
+    @patch.object(CHECKPOINT_ENABLED_REPOSITORIES, "check_value", return_value=123)
     def test_reliability_counters_with_context(self, mock_object):
         repoid = 123
         mock_object.return_value = repoid
