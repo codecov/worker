@@ -297,7 +297,7 @@ class BundleAnalysisReportService(BaseReportService):
                     result="rate_limit_error",
                     plugin_name=plugin_name,
                     repository=commit.repository.repoid,
-            ),
+                ),
             )
             return ProcessingResult(
                 upload=upload,

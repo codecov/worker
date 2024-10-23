@@ -3,6 +3,7 @@ import logging
 
 import sentry_sdk
 from shared.celery_config import parallel_verification_task_name
+from shared.metrics import Counter, inc_counter
 
 from app import celery_app
 from database.models import Commit
