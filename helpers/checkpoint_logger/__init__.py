@@ -426,9 +426,7 @@ class CheckpointLogger(Generic[T]):
             sentry_sdk.set_measurement(metric, duration, "milliseconds")
             duration_in_seconds = duration / 1000
             PROMETHEUS_HANDLER.log_subflow(
-                flow=self.cls.__name__,
-                subflow=metric,
-                duration=duration_in_seconds,
+                flow=self.cls.__name__, subflow=metric, duration=duration_in_seconds
             )
 
         return self
@@ -443,7 +441,6 @@ def from_kwargs(
     # are deserialized as simple strings. We need to ensure the strings are all
     # proper enum values as best we can, and then downcast to enum instances.
     deserialized_data = {}
-
     for checkpoint, timestamp in data.items():
         try:
             deserialized_data[cls(checkpoint)] = timestamp

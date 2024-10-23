@@ -225,7 +225,6 @@ class TestCheckpointLogger(unittest.TestCase):
             "checkpoints_TestEnum1": deserialized_good_data,
         }
         checkpoints = from_kwargs(TestEnum1, good_kwargs, strict=True)
-
         assert checkpoints.data == good_data
 
         # Data is from TestEnum2 but we expected TestEnum1
