@@ -279,7 +279,7 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="file_not_in_storage",
                 plugin_name="n/a",
-                repository=self.commit.repository.repoid,
+                repository=commit.repository.repoid,
             ).inc()
             return ProcessingResult(
                 upload=upload,
