@@ -1,4 +1,4 @@
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 from database.models.core import Commit
 from database.models.reports import CommitReport, ReportDetails
@@ -81,12 +81,11 @@ class TestBackfillCommitDataToStorageTask(object):
         task = BackfillCommitDataToStorageTask()
         result = task.handle_all_report_rows(dbsession, commit)
         assert result == {"success": False, "errors": ["missing_data"]}
-        mock_handle_single_row.assert_has_calls(
-            [
-                call(dbsession, commit, report_default),
-                call(dbsession, commit, report_code),
-            ]
-        )
+        assert mock_handle_single_row.call_count == 2
+        called_report_rows = {
+            row[0][2] for row in mock_handle_single_row.call_args_list
+        }
+        assert called_report_rows == {report_default, report_code}
 
     @patch(
         "tasks.backfill_commit_data_to_storage.BackfillCommitDataToStorageTask.handle_single_report_row"

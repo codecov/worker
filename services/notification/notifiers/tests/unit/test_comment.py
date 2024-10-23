@@ -5041,6 +5041,8 @@ class TestCommentNotifierWelcome:
 
         owner = OwnerFactory.create(
             service="github",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         repository = RepositoryFactory.create(owner=owner)
         branch = "new_branch"

@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, call
 
@@ -130,7 +130,7 @@ class TestUploadTaskIntegration(object):
         celery_app,
         mock_checkpoint_submit,
     ):
-        mocked_1 = mocker.patch("tasks.upload.chain")
+        mocked_task_upload_chain = mocker.patch("tasks.upload.chain")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": url, "build": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
@@ -145,6 +145,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -200,7 +202,7 @@ class TestUploadTaskIntegration(object):
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t2 = upload_finisher_task.signature(kwargs=kwargs)
-        mocked_1.assert_called_with([t1, t2])
+        mocked_task_upload_chain.assert_called_with([t1, t2])
 
         calls = [
             mock.call(
@@ -246,6 +248,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -312,6 +316,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -378,6 +384,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -629,6 +637,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -713,6 +723,8 @@ class TestUploadTaskIntegration(object):
             service="github",
             username="ThiagoCodecov",
             unencrypted_oauth_token="test76zow6xgh7modd88noxr245j2z25t4ustoff",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(owner)
 
@@ -797,6 +809,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
             repository__name="example-python",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -853,6 +867,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
             repository__name="example-python",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -908,6 +924,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         mock_repo_provider.data = dict(repo=dict(repoid=commit.repoid))
         dbsession.add(commit)
@@ -986,6 +1004,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         report = CommitReport(commit_id=commit.id_)
         upload = Upload(
@@ -993,7 +1013,7 @@ class TestUploadTaskIntegration(object):
             build_code="part1",
             build_url="build_url",
             env=None,
-            report_id=report.id_,
+            report=report,
             job_code="job",
             name="name",
             provider="service",
