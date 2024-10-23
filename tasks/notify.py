@@ -117,7 +117,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 ),
             )
             self.log_checkpoint(
-                dict(**kwargs, context={"repoid": repoid}),
+                kwargs,
                 UploadFlow.NOTIF_LOCK_ERROR,
             )
             return {
@@ -173,7 +173,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 ),
             )
             self.log_checkpoint(
-                dict(**kwargs, context={"repoid": commit.repoid}),
+                kwargs,
                 UploadFlow.NOTIF_TOO_MANY_RETRIES,
             )
             return {
@@ -230,7 +230,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 extra=dict(repoid=repoid, commit=commitid),
             )
             self.log_checkpoint(
-                dict(**kwargs, context={"repoid": repoid}),
+                kwargs,
                 UploadFlow.NOTIF_NO_VALID_INTEGRATION,
             )
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
@@ -289,7 +289,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 extra=dict(repoid=commit.repoid, commit=commit.commitid, code=ex.code),
             )
             self.log_checkpoint(
-                dict(**kwargs, context={"repoid": repoid}),
+                kwargs,
                 UploadFlow.NOTIF_GIT_CLIENT_ERROR,
             )
             return {
@@ -303,7 +303,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
             self.log_checkpoint(
-                dict(**kwargs, context={"repoid": repoid}),
+                kwargs,
                 UploadFlow.NOTIF_GIT_SERVICE_ERROR,
             )
             return {
@@ -382,7 +382,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     ),
                 )
                 self.log_checkpoint(
-                    dict(**kwargs, context={"repoid": repoid}),
+                    kwargs,
                     UploadFlow.NOTIF_STALE_HEAD,
                 )
                 return {
@@ -399,7 +399,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 base_report = None
             if head_report is None and empty_upload is None:
                 self.log_checkpoint(
-                    dict(**kwargs, context={"repoid": repoid}),
+                    kwargs,
                     UploadFlow.NOTIF_ERROR_NO_REPORT,
                 )
                 return {
@@ -449,7 +449,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 gitlab_extra_shas_to_notify=gitlab_extra_shas_to_notify,
             )
             self.log_checkpoint(
-                dict(**kwargs, context={"repoid": repoid}),
+                kwargs,
                 UploadFlow.NOTIFIED,
             )
             log.info(

@@ -118,9 +118,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         **kwargs,
     ):
         try:
-            checkpoints = checkpoints_from_kwargs(
-                UploadFlow, dict(**kwargs, context={"repoid": repoid})
-            )
+            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
             checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
         except ValueError as e:
             log.warning("CheckpointLogger failed to log/submit", extra=dict(error=e))

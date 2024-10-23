@@ -1,7 +1,6 @@
-from typing import TypedDict
-
 from shared.metrics import Counter, Histogram
 
+from helpers.log_context import get_log_context
 from rollouts import CHECKPOINT_ENABLED_REPOSITORIES
 
 _subflow_buckets = [
@@ -102,10 +101,6 @@ REPO_CHECKPOINTS_SUBFLOW_DURATION = Histogram(
 )
 
 
-class CheckpointContext(TypedDict):
-    repoid: int
-
-
 class PrometheusCheckpointLoggerHandler:
     """
     PrometheusCheckpointLoggerHandler is a class that is responsible for all
@@ -115,43 +110,48 @@ class PrometheusCheckpointLoggerHandler:
     methods in this class are mainly used by the CheckpointLogger class.
     """
 
-    def log_begun(self, flow: str, context: CheckpointContext | None = None):
+    def log_begun(self, flow: str):
         CHECKPOINTS_TOTAL_BEGUN.labels(flow=flow).inc()
-        repoid = context and context["repoid"]
+        context = get_log_context()
+        repoid = context and context.repo_id
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_TOTAL_BEGUN.labels(flow=flow, repoid=repoid).inc()
 
-    def log_failure(self, flow: str, context: CheckpointContext | None = None):
+    def log_failure(self, flow: str):
         CHECKPOINTS_TOTAL_FAILED.labels(flow=flow).inc()
-        repoid = context and context["repoid"]
+        context = get_log_context()
+        repoid = context and context.repo_id
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_TOTAL_FAILED.labels(flow=flow, repoid=repoid).inc()
 
-    def log_success(self, flow: str, context: CheckpointContext | None = None):
+    def log_success(self, flow: str):
+        print("test - log success!", get_log_context())
         CHECKPOINTS_TOTAL_SUCCEEDED.labels(flow=flow).inc()
-        repoid = context and context["repoid"]
+        context = get_log_context()
+        repoid = context and context.repo_id
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_TOTAL_SUCCEEDED.labels(flow=flow, repoid=repoid).inc()
 
-    def log_total_ended(self, flow: str, context: CheckpointContext | None = None):
+    def log_total_ended(self, flow: str):
         CHECKPOINTS_TOTAL_ENDED.labels(flow=flow).inc()
-        repoid = context and context["repoid"]
+        context = get_log_context()
+        repoid = context and context.repo_id
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_TOTAL_ENDED.labels(flow=flow, repoid=repoid).inc()
 
-    def log_checkpoints(
-        self, flow: str, checkpoint: str, context: CheckpointContext | None = None
-    ):
+    def log_checkpoints(self, flow: str, checkpoint: str):
         CHECKPOINTS_EVENTS.labels(flow=flow, checkpoint=checkpoint).inc()
-        repoid = context and context["repoid"]
+        context = get_log_context()
+        repoid = context and context.repo_id
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_EVENTS.labels(
                 flow=flow, checkpoint=checkpoint, repoid=repoid
             ).inc()
 
-    def log_errors(self, flow: str, context: CheckpointContext | None = None):
+    def log_errors(self, flow: str):
         CHECKPOINTS_ERRORS.labels(flow=flow).inc()
-        repoid = context and context["repoid"]
+        context = get_log_context()
+        repoid = context and context.repo_id
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_ERRORS.labels(flow=flow, repoid=repoid).inc()
 
@@ -160,12 +160,12 @@ class PrometheusCheckpointLoggerHandler:
         flow: str,
         subflow: str,
         duration: int,
-        context: CheckpointContext | None = None,
     ):
         CHECKPOINTS_SUBFLOW_DURATION.labels(flow=flow, subflow=subflow).observe(
             duration
         )
-        repoid = context and context["repoid"]
+        context = get_log_context()
+        repoid = context and context.repo_id
         if repoid and CHECKPOINT_ENABLED_REPOSITORIES.check_value(identifier=repoid):
             REPO_CHECKPOINTS_SUBFLOW_DURATION.labels(
                 flow=flow, subflow=subflow, repoid=repoid

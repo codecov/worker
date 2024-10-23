@@ -27,7 +27,7 @@ from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from helpers.checkpoint_logger import CheckpointContext, CheckpointLogger, _kwargs_key
+from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -103,17 +103,16 @@ class UploadContext:
 
     def get_checkpoints(self, kwargs: dict) -> CheckpointLogger | None:
         # TODO: setup checkpoint flows for other coverage types
-        checkpoint_context: CheckpointContext = {"repoid": self.repoid}
         if self.report_type == ReportType.COVERAGE:
             # If we're a retry, kwargs will already have our first checkpoint.
             # If not, log it directly into kwargs so we can pass it onto other tasks
-            return checkpoints_from_kwargs(
-                UploadFlow, dict(**kwargs, context=checkpoint_context)
-            ).log(UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True)
+            return checkpoints_from_kwargs(UploadFlow, kwargs).log(
+                UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
+            )
         elif self.report_type == ReportType.TEST_RESULTS:
-            return checkpoints_from_kwargs(
-                TestResultsFlow, dict(**kwargs, context=checkpoint_context)
-            ).log(TestResultsFlow.TEST_RESULTS_BEGIN, kwargs=kwargs, ignore_repeat=True)
+            return checkpoints_from_kwargs(TestResultsFlow, kwargs).log(
+                TestResultsFlow.TEST_RESULTS_BEGIN, kwargs=kwargs, ignore_repeat=True
+            )
         return None
 
     def lock_name(self, lock_type: str):
