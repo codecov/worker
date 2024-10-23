@@ -2,6 +2,8 @@ import contextvars
 import logging
 from dataclasses import asdict, dataclass, replace
 
+from sentry_sdk import get_current_span
+
 from database.models.core import Commit, Owner, Repository
 
 log = logging.getLogger("log_context")
@@ -25,9 +27,16 @@ class LogContext:
     commit_sha: str | None = None
     commit_id: int | None = None
 
+    @property
+    def sentry_trace_id(self):
+        if span := get_current_span():
+            return span.trace_id
+        return None
+
     def as_dict(self):
         d = asdict(self)
         d.pop("_populated_from_db", None)
+        d["sentry_trace_id"] = self.sentry_trace_id
         return d
 
     def populate_from_sqlalchemy(self, dbsession):

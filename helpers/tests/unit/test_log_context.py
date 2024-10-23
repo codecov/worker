@@ -139,12 +139,17 @@ def test_update_log_context(dbsession):
     assert get_log_context() == LogContext(repo_id=1, commit_sha="abcde", owner_id=5)
 
 
-def test_as_dict(dbsession):
+def test_as_dict(dbsession, mocker):
     owner, repo, commit = create_db_records(dbsession)
     log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
     log_context.populate_from_sqlalchemy(dbsession)
 
-    # Ensure that `_populated_from_db` flag is stripped
+    mock_span = mocker.Mock()
+    mock_span.trace_id = 123
+    mocker.patch("helpers.log_context.get_current_span", return_value=mock_span)
+
+    # `_populated_from_db` is a dataclass field that we want to strip
+    # `sentry_trace_id` is a property that we want to include
     assert log_context.as_dict() == {
         "task_name": "foo",
         "task_id": "bar",
@@ -155,4 +160,5 @@ def test_as_dict(dbsession):
         "owner_id": owner.ownerid,
         "owner_username": owner.username,
         "owner_service": owner.service,
+        "sentry_trace_id": 123,
     }
