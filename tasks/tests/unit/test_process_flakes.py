@@ -1,6 +1,7 @@
 import datetime as dt
 from collections import defaultdict
 
+import pytest
 import time_machine
 from shared.django_apps.core.tests.factories import CommitFactory, RepositoryFactory
 from shared.django_apps.reports.models import DailyTestRollup, Flake, TestInstance
@@ -102,7 +103,8 @@ class RepoSimulator:
         self.test_count = 0
 
 
-def test_generate_flake_dict(transactional_db):
+@pytest.mark.django_db
+def test_generate_flake_dict():
     repo = RepositoryFactory()
 
     flake_dict = generate_flake_dict(repo.repoid)
@@ -118,7 +120,8 @@ def test_generate_flake_dict(transactional_db):
     assert ("id", 10) in flake_dict
 
 
-def test_get_test_instances_when_test_is_flaky(transactional_db):
+@pytest.mark.django_db
+def test_get_test_instances_when_test_is_flaky():
     repo = RepositoryFactory()
     commit = CommitFactory()
 
@@ -137,7 +140,8 @@ def test_get_test_instances_when_test_is_flaky(transactional_db):
     assert tis[0].commitid
 
 
-def test_get_test_instances_when_instance_is_failure(transactional_db):
+@pytest.mark.django_db
+def test_get_test_instances_when_instance_is_failure():
     repo = RepositoryFactory()
     commit = CommitFactory()
 
@@ -154,7 +158,8 @@ def test_get_test_instances_when_instance_is_failure(transactional_db):
     assert tis[0].commitid
 
 
-def test_get_test_instances_when_test_is_flaky_and_instance_is_skip(transactional_db):
+@pytest.mark.django_db
+def test_get_test_instances_when_test_is_flaky_and_instance_is_skip():
     repo = RepositoryFactory()
     commit = CommitFactory()
 
@@ -172,7 +177,8 @@ def test_get_test_instances_when_test_is_flaky_and_instance_is_skip(transactiona
     assert len(tis) == 0
 
 
-def test_get_test_instances_when_instance_is_pass(transactional_db):
+@pytest.mark.django_db
+def test_get_test_instances_when_instance_is_pass():
     repo = RepositoryFactory()
     commit = CommitFactory()
 
@@ -188,7 +194,8 @@ def test_get_test_instances_when_instance_is_pass(transactional_db):
     assert len(tis) == 0
 
 
-def test_update_passed_flakes(transactional_db):
+@pytest.mark.django_db
+def test_update_passed_flakes():
     rs = RepoSimulator()
     c = rs.create_commit()
     ti = rs.add_test_instance(c, outcome=TestInstance.Outcome.FAILURE.value)
@@ -204,7 +211,8 @@ def test_update_passed_flakes(transactional_db):
     assert f.recent_passes_count == 1
 
 
-def test_upsert_failed_flakes(transactional_db):
+@pytest.mark.django_db
+def test_upsert_failed_flakes():
     repo = RepositoryFactory()
     repo.save()
     commit = CommitFactory()
@@ -221,7 +229,8 @@ def test_upsert_failed_flakes(transactional_db):
     upsert_failed_flake(ti, f, repo.repoid)
 
 
-def test_it_does_not_detect_unmerged_tests(transactional_db):
+@pytest.mark.django_db
+def test_it_does_not_detect_unmerged_tests():
     rs = RepoSimulator()
     c1 = rs.create_commit()
 
@@ -236,7 +245,8 @@ def test_it_does_not_detect_unmerged_tests(transactional_db):
     assert len(Flake.objects.all()) == 0
 
 
-def test_it_handles_only_passes(transactional_db):
+@pytest.mark.django_db
+def test_it_handles_only_passes():
     rs = RepoSimulator()
     c1 = rs.create_commit()
 
@@ -254,7 +264,8 @@ def test_it_handles_only_passes(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_creates_flakes_from_orig_branch(transactional_db):
+@pytest.mark.django_db
+def test_it_creates_flakes_from_orig_branch():
     rs = RepoSimulator()
     c1 = rs.create_commit()
     orig_branch = c1.branch
@@ -274,7 +285,8 @@ def test_it_creates_flakes_from_orig_branch(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_creates_flakes_from_new_branch_only(transactional_db):
+@pytest.mark.django_db
+def test_it_creates_flakes_from_new_branch_only():
     rs = RepoSimulator()
     c1 = rs.create_commit()
     orig_branch = c1.branch
@@ -294,7 +306,8 @@ def test_it_creates_flakes_from_new_branch_only(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_creates_flakes_fail_after_merge(transactional_db):
+@pytest.mark.django_db
+def test_it_creates_flakes_fail_after_merge():
     rs = RepoSimulator()
     c1 = rs.create_commit()
 
@@ -327,7 +340,8 @@ def test_it_creates_flakes_fail_after_merge(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_processes_two_commits_together(transactional_db):
+@pytest.mark.django_db
+def test_it_processes_two_commits_together():
     rs = RepoSimulator()
     c1 = rs.create_commit()
     rs.merge(c1)
@@ -353,7 +367,8 @@ def test_it_processes_two_commits_together(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_processes_two_commits_separately(transactional_db):
+@pytest.mark.django_db
+def test_it_processes_two_commits_separately():
     rs = RepoSimulator()
     c1 = rs.create_commit()
     rs.merge(c1)
@@ -385,7 +400,8 @@ def test_it_processes_two_commits_separately(transactional_db):
     assert flake.start_date == dt.datetime.now(dt.UTC)
 
 
-def test_it_creates_flakes_expires(transactional_db):
+@pytest.mark.django_db
+def test_it_creates_flakes_expires():
     with time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False) as traveller:
         rs = RepoSimulator()
         commits = []
@@ -442,7 +458,8 @@ def test_it_creates_flakes_expires(transactional_db):
         assert flake.end_date == new_time
 
 
-def test_it_creates_rollups(transactional_db):
+@pytest.mark.django_db
+def test_it_creates_rollups():
     traveller = time_machine.travel("1970-1-1T00:00:00Z")
     traveller.start()
     rs = RepoSimulator()
