@@ -16,6 +16,7 @@ from helpers.checkpoint_logger import (
     subflows,
     success_events,
 )
+from helpers.log_context import LogContext, set_log_context
 
 
 class CounterAssertion:
@@ -225,16 +226,7 @@ class TestCheckpointLogger(unittest.TestCase):
         }
         checkpoints = from_kwargs(TestEnum1, good_kwargs, strict=True)
 
-        assert checkpoints.data == {**good_data, "context": {}}
-
-        # Data with context
-        good_kwargs_with_context = {
-            "checkpoints_TestEnum1": deserialized_good_data,
-            "context": {"repoid": 123},
-        }
-        checkpoints = from_kwargs(TestEnum1, good_kwargs_with_context, strict=True)
-
-        assert checkpoints.data == {**good_data, "context": {"repoid": 123}}
+        assert checkpoints.data == good_data
 
         # Data is from TestEnum2 but we expected TestEnum1
         bad_data = {
@@ -488,6 +480,7 @@ class TestCheckpointLogger(unittest.TestCase):
     def test_reliability_counters_with_context(self, mock_object):
         repoid = 123
         mock_object.return_value = repoid
+        set_log_context(LogContext(repo_id=repoid))
         checkpoints = CheckpointLogger(DecoratedEnum, dict(context={"repoid": repoid}))
 
         counter_assertions = [

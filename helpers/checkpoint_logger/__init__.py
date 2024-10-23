@@ -270,9 +270,7 @@ def reliability_counters(klass: type[T]) -> type[T]:
     aren't instrumented.
     """
 
-    def log_counters(
-        obj: T,
-    ) -> None:
+    def log_counters(obj: T) -> None:
         PROMETHEUS_HANDLER.log_checkpoints(flow=klass.__name__, checkpoint=obj.name)
 
         # If this is the first checkpoint, increment the number of flows we've begun
@@ -360,7 +358,7 @@ class CheckpointLogger(Generic[T]):
         self.strict = strict
 
     def _error(self: _Self, msg: str) -> None:
-        _error(msg, self.cls, self.strict, context=self.data.get("context"))
+        _error(msg, self.cls, self.strict)
 
     def _validate_checkpoint(self: _Self, checkpoint: T) -> None:
         if checkpoint.__class__ != self.cls:
@@ -418,7 +416,7 @@ class CheckpointLogger(Generic[T]):
         # decorator
         # Increment event, start, finish, success, failure counters
         if hasattr(checkpoint, "log_counters"):
-            checkpoint.log_counters(context=self.data.get("context"))
+            checkpoint.log_counters()
 
         return self
 
@@ -431,16 +429,13 @@ class CheckpointLogger(Generic[T]):
                 flow=self.cls.__name__,
                 subflow=metric,
                 duration=duration_in_seconds,
-                context=self.data.get("context"),
             )
 
         return self
 
 
 def from_kwargs(
-    cls: type[T],
-    kwargs: MutableMapping[str, Any],
-    strict: bool = False,
+    cls: type[T], kwargs: MutableMapping[str, Any], strict: bool = False
 ) -> CheckpointLogger[T]:
     data = kwargs.get(_kwargs_key(cls), {})
 
