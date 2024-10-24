@@ -315,19 +315,6 @@ def mock_checkpoint_submit(mocker, request):
 
 
 @pytest.fixture(autouse=True)
-def mock_metric_context(mocker, request):
-    if request.node.get_closest_marker("real_metric_context"):
-        return
-
-    from helpers.telemetry import MetricContext
-
-    def populate(self):
-        self.populated = True
-
-    return mocker.patch.object(MetricContext, "populate", populate)
-
-
-@pytest.fixture(autouse=True)
 def mock_feature(mocker, request):
     if request.node.get_closest_marker("real_feature"):
         return
