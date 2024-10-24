@@ -32,8 +32,6 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.parallel import ParallelFeature
-from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
@@ -573,12 +571,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             assert checkpoints
             return self._schedule_coverage_processing_task(
-                db_session,
                 commit,
                 commit_yaml,
                 argument_list,
                 commit_report,
-                upload_context,
                 checkpoints,
             )
         elif upload_context.report_type == ReportType.BUNDLE_ANALYSIS:
@@ -597,81 +593,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def _schedule_coverage_processing_task(
         self,
-        db_session: Session,
         commit: Commit,
         commit_yaml: dict,
         argument_list: list[dict],
         commit_report: CommitReport,
-        upload_context: UploadContext,
         checkpoints: CheckpointLogger,
     ):
         checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
 
-        parallel_feature = ParallelFeature.load(upload_context.repoid)
-        if parallel_feature is ParallelFeature.EXPERIMENT and delete_archive_setting(
-            commit_yaml
-        ):
-            parallel_feature = ParallelFeature.SERIAL
-
-        if parallel_feature is not ParallelFeature.SERIAL:
-            parallel_tasks = self.create_parallel_tasks(
-                commit,
-                commit_yaml,
-                argument_list,
-                commit_report,
-                checkpoints,
-                parallel_feature is ParallelFeature.PARALLEL,
-            )
-
-            if parallel_feature is ParallelFeature.PARALLEL:
-                return parallel_tasks.apply_async()
-
-        processing_tasks = [
-            upload_processor_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml,
-                arguments_list=list(chunk),
-                report_code=commit_report.code,
-                in_parallel=False,
-                is_final=False,
-            )
-            for chunk in itertools.batched(argument_list, CHUNK_SIZE)
-        ]
-        processing_tasks[0].args = ({},)  # this is the first `previous_results`
-        if parallel_feature is ParallelFeature.EXPERIMENT:
-            processing_tasks[-1].kwargs.update(is_final=True)
-
-        processing_tasks.append(
-            upload_finisher_task.signature(
-                kwargs={
-                    "repoid": commit.repoid,
-                    "commitid": commit.commitid,
-                    "commit_yaml": commit_yaml,
-                    "report_code": commit_report.code,
-                    "in_parallel": False,
-                    _kwargs_key(UploadFlow): checkpoints.data,
-                },
-            )
-        )
-        serial_tasks = chain(processing_tasks)
-
-        if parallel_feature is ParallelFeature.EXPERIMENT:
-            parallel_shadow_experiment = serial_tasks | parallel_tasks
-            return parallel_shadow_experiment.apply_async()
-
-        return serial_tasks.apply_async()
-
-    @sentry_sdk.trace
-    def create_parallel_tasks(
-        self,
-        commit: Commit,
-        commit_yaml: dict,
-        argument_list: list[dict],
-        commit_report: CommitReport,
-        checkpoints: CheckpointLogger,
-        run_fully_parallel: bool,
-    ):
         state = ProcessingState(commit.repoid, commit.commitid)
         state.mark_uploads_as_processing(
             [int(upload["upload_pk"]) for upload in argument_list]
@@ -679,22 +608,19 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         parallel_processing_tasks = [
             upload_processor_task.s(
+                {},  # this is the `previous_results` argument
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml,
+                arguments=arguments,
                 arguments_list=[arguments],
                 report_code=commit_report.code,
-                run_fully_parallel=run_fully_parallel,
+                run_fully_parallel=True,
                 in_parallel=True,
                 is_final=False,
             )
             for arguments in argument_list
         ]
-        if run_fully_parallel:
-            for task in parallel_processing_tasks:
-                # this is the `previous_results`, which celery provides when running
-                # in a chain as part of the experiment, otherwise we have to provide this.
-                task.args = ({},)
 
         finish_parallel_sig = upload_finisher_task.signature(
             kwargs={
@@ -702,14 +628,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": commit_report.code,
-                "run_fully_parallel": run_fully_parallel,
+                "run_fully_parallel": True,
                 "in_parallel": True,
                 _kwargs_key(UploadFlow): checkpoints.data,
             },
         )
 
         parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
-        return parallel_tasks
+        return parallel_tasks.apply_async()
 
     def _schedule_bundle_analysis_processing_task(
         self,

@@ -160,7 +160,7 @@ def setup_mocks(
 
 
 @pytest.mark.integration
-@pytest.mark.django_db()
+@pytest.mark.django_db
 @pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
 def test_full_upload(
     dbsession: DbSession,
