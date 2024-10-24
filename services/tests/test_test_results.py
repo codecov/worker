@@ -80,16 +80,17 @@ def test_generate_failure_info():
         1.0,
         "https://example.com/build_url",
     )
+    commit = CommitFactory(branch="thing/thing")
 
-    res = generate_failure_info(fail)
+    res = generate_failure_info(fail, commit)
 
     assert (
         res
         == """
 ```
+{commit.repository.language}
 hello world
 ```
-
 [View](https://example.com/build_url) the CI Build"""
     )
 
@@ -120,6 +121,7 @@ def test_build_message():
 
 > 
 > ```
+{commit.repository.language}
 > testname
 > ```
 > 
@@ -127,6 +129,7 @@ def test_build_message():
 > 
 > > 
 > > ```
+{commit.repository.language}
 > > hello world
 > > ```
 > > 
@@ -169,6 +172,7 @@ def test_build_message_with_flake():
 
 > 
 > ```
+{commit.repository.language}
 > testname
 > ```
 > 
@@ -177,6 +181,7 @@ def test_build_message_with_flake():
 > 
 > > 
 > > ```
+> > {commit.repository.language}
 > > hello world
 > > ```
 > > 
