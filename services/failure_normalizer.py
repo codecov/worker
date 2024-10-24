@@ -100,14 +100,13 @@ class FailureNormalizer:
 
     @sentry_sdk.trace
     def normalize_failure_message(self, failure_message: str):
-        with sentry_sdk.metrics.timing("failure_normalizer.normalize_failure_message"):
-            key_ordering = self.key_analysis_order or self.dict_of_regex.keys()
-            for key in key_ordering:
-                list_of_compiled_regex = self.dict_of_regex[key]
-                for compiled_regex in list_of_compiled_regex:
-                    for match_obj in compiled_regex.finditer(failure_message):
-                        actual_match = match_obj.group()
-                        # Limit number of replaces to 1 so one match doesn't interfere
-                        # With future matches
-                        failure_message = failure_message.replace(actual_match, key, 1)
+        key_ordering = self.key_analysis_order or self.dict_of_regex.keys()
+        for key in key_ordering:
+            list_of_compiled_regex = self.dict_of_regex[key]
+            for compiled_regex in list_of_compiled_regex:
+                for match_obj in compiled_regex.finditer(failure_message):
+                    actual_match = match_obj.group()
+                    # Limit number of replaces to 1 so one match doesn't interfere
+                    # With future matches
+                    failure_message = failure_message.replace(actual_match, key, 1)
         return failure_message

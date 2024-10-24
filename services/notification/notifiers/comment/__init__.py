@@ -4,6 +4,7 @@ from typing import Any, Mapping
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
+from shared.metrics import Counter, inc_counter
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -33,6 +34,12 @@ from services.repository import get_repo_provider_service
 from services.urls import append_tracking_params_to_urls, get_members_url, get_plan_url
 
 log = logging.getLogger(__name__)
+
+COMMENT_NOTIFIER_COUNTER = Counter(
+    "notifiers_comment_pull_closed_notifying_anyways",
+    "Number of comment notifier runs when pull is closed",
+    ["repo_using_integration"],
+)
 
 
 class CommentNotifier(MessageMixin, AbstractBaseNotifier):
@@ -83,13 +90,13 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
         if comparison.pull is not None and comparison.pull.state != "open":
-            sentry_sdk.metrics.incr(
-                "notifiers.comment.pull_closed_notifying_anyways",
-                tags={
-                    "repo_using_integration": self.repository_service.data["repo"][
-                        "using_integration"
-                    ]
-                },
+            inc_counter(
+                COMMENT_NOTIFIER_COUNTER,
+                labels=dict(
+                    repo_using_integration="true"
+                    if self.repository_service.data["repo"]["using_integration"]
+                    else "false",
+                ),
             )
 
         for condition in self.notify_conditions:

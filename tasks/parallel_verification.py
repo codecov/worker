@@ -3,6 +3,7 @@ import logging
 
 import sentry_sdk
 from shared.celery_config import parallel_verification_task_name
+from shared.metrics import Counter, inc_counter
 
 from app import celery_app
 from database.models import Commit
@@ -10,6 +11,12 @@ from services.report import ReportService
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
+
+PARALLEL_VERIFICATION_COUNTER = Counter(
+    "parallel_verification",
+    "Number of parallel verification runs",
+    ["success"],
+)
 
 
 class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_name):
@@ -159,9 +166,9 @@ class ParallelVerificationTask(BaseCodecovTask, name=parallel_verification_task_
         )
 
         is_success = top_level_totals_match and file_level_totals_match
-        sentry_sdk.metrics.incr(
-            "parallel_verification.comparisons",
-            tags={"result": "success" if is_success else "failure"},
+        inc_counter(
+            PARALLEL_VERIFICATION_COUNTER,
+            labels=dict(success="true" if is_success else "false"),
         )
         if not is_success:
             with sentry_sdk.new_scope() as scope:
