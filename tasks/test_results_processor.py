@@ -117,7 +117,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     if candidate.test_file_path == filename or (
                         network is not None and candidate.test_file_path in network
                     ):
-                        return f"{candidate.test_file_path}::{f"{candidate.actual_class_name}::" if candidate.actual_class_name else ""}{raw_name}"
+                        possible_class_name = (
+                            f"{candidate.actual_class_name}::"
+                            if candidate.actual_class_name
+                            else ""
+                        )
+                        return f"{candidate.test_file_path}::{possible_class_name}{raw_name}"
             case Framework.Vitest:
                 return f"{raw_classname} > {raw_name}"
             case Framework.PHPUnit:
