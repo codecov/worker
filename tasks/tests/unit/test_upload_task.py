@@ -27,6 +27,7 @@ from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
+from services.redis import get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
@@ -126,14 +127,11 @@ class TestUploadTaskIntegration(object):
         dbsession,
         codecov_vcr,
         mock_storage,
-        mock_redis,
         celery_app,
         mock_checkpoint_submit,
     ):
-        mocked_1 = mocker.patch("tasks.upload.chain")
+        mocked_chord = mocker.patch("tasks.upload.chord")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        redis_queue = [{"url": url, "build": "some_random_build"}]
-        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocker.patch.object(UploadTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -150,8 +148,10 @@ class TestUploadTaskIntegration(object):
         dbsession.flush()
         dbsession.refresh(commit)
         repo_updatestamp = commit.repository.updatestamp
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
+        redis = get_redis_connection()
+        redis.lpush(
+            f"uploads/{commit.repoid}/{commit.commitid}",
+            json.dumps({"url": url, "build": "some_random_build"}),
         )
         checkpoints = _create_checkpoint_logger(mocker)
         kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
@@ -175,11 +175,16 @@ class TestUploadTaskIntegration(object):
             .filter_by(report_id=commit.report.id, build_code="some_random_build")
             .first()
         )
-        t1 = upload_processor_task.s(
+        processor = upload_processor_task.s(
             {},
             repoid=commit.repoid,
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments={
+                "url": url,
+                "build": "some_random_build",
+                "upload_pk": first_session.id,
+            },
             arguments_list=[
                 {
                     "url": url,
@@ -188,7 +193,8 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report_code=None,
-            in_parallel=False,
+            run_fully_parallel=True,
+            in_parallel=True,
             is_final=False,
         )
         kwargs = dict(
@@ -196,11 +202,12 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            in_parallel=False,
+            run_fully_parallel=True,
+            in_parallel=True,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
-        t2 = upload_finisher_task.signature(kwargs=kwargs)
-        mocked_1.assert_called_with([t1, t2])
+        finisher = upload_finisher_task.signature(kwargs=kwargs)
+        mocked_chord.assert_called_with([processor], finisher)
 
         calls = [
             mock.call(
@@ -458,14 +465,13 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
-    @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.django_db
     def test_upload_task_upload_processing_delay_not_enough_delay(
         self,
         mocker,
         mock_configuration,
         dbsession,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mock_possibly_update_commit_from_provider_info = mocker.patch(
@@ -474,11 +480,6 @@ class TestUploadTaskIntegration(object):
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
-        redis_queue = [
-            {"build": "part1", "url": "someurl1"},
-            {"build": "part2", "url": "someurl2"},
-        ]
-        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
 
         commit = CommitFactory.create(
             parent_commit_id=None,
@@ -492,27 +493,36 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
+
+        redis = get_redis_connection()
+        redis.lpush(
+            f"uploads/{commit.repoid}/{commit.commitid}",
+            '{"build": "part1", "url": "someurl1"}',
         )
-        mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
-            datetime.now() - timedelta(seconds=10)
-        ).timestamp()
+        redis.lpush(
+            f"uploads/{commit.repoid}/{commit.commitid}",
+            '{"build": "part2", "url": "someurl2"}',
+        )
+        redis.set(
+            f"latest_upload/{commit.repoid}/{commit.commitid}",
+            (datetime.now() - timedelta(seconds=10)).timestamp(),
+        )
+
         with pytest.raises(Retry):
             UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
+
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        assert mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
+        assert redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         assert not mock_possibly_update_commit_from_provider_info.called
 
-    @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.django_db
     def test_upload_task_upload_processing_delay_enough_delay(
         self,
         mocker,
         mock_configuration,
         dbsession,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mocker.patch(
@@ -529,37 +539,42 @@ class TestUploadTaskIntegration(object):
             repository__name="example-python",
             pullid=1,
         )
-        mock_redis.keys[f"latest_upload/{commit.repoid}/{commit.commitid}"] = (
-            datetime.now() - timedelta(seconds=1200)
-        ).timestamp()
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocked_chain = mocker.patch("tasks.upload.chain")
-        redis_queue = [
-            {"build": "part1", "url": "someurl1"},
-            {"build": "part2", "url": "someurl2"},
-        ]
+        mocked_chord = mocker.patch("tasks.upload.chord")
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = [
-            json.dumps(x) for x in redis_queue
-        ]
+
+        redis = get_redis_connection()
+        redis.set(
+            f"latest_upload/{commit.repoid}/{commit.commitid}",
+            (datetime.now() - timedelta(seconds=1200)).timestamp(),
+        )
+        redis.lpush(
+            f"uploads/{commit.repoid}/{commit.commitid}",
+            '{"build": "part1", "url": "someurl1"}',
+        )
+        redis.lpush(
+            f"uploads/{commit.repoid}/{commit.commitid}",
+            '{"build": "part2", "url": "someurl2"}',
+        )
+
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
+
         assert result == {"was_setup": True, "was_updated": True}
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
-        mocked_chain.assert_called_with([mocker.ANY, mocker.ANY])
+        assert not redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
+        mocked_chord.assert_called_with([mocker.ANY, mocker.ANY], mocker.ANY)
 
-    @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.django_db
     def test_upload_task_upload_processing_delay_upload_is_none(
         self,
         mocker,
         mock_configuration,
         dbsession,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
@@ -568,11 +583,7 @@ class TestUploadTaskIntegration(object):
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mocker.patch.object(UploadTask, "possibly_setup_webhooks", return_value=True)
-        mocked_chain = mocker.patch("tasks.upload.chain")
-        redis_queue = [
-            {"build": "part1", "url": "someurl1"},
-            {"build": "part2", "url": "someurl2"},
-        ]
+        mocked_chord = mocker.patch("tasks.upload.chord")
         commit = CommitFactory.create(
             parent_commit_id=None,
             message="",
@@ -585,17 +596,26 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = [
-            json.dumps(x) for x in redis_queue
-        ]
+
+        redis = get_redis_connection()
+        redis.lpush(
+            f"uploads/{commit.repoid}/{commit.commitid}",
+            '{"build": "part1", "url": "someurl1"}',
+        )
+        redis.lpush(
+            f"uploads/{commit.repoid}/{commit.commitid}",
+            '{"build": "part2", "url": "someurl2"}',
+        )
+
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
+
         assert result == {"was_setup": True, "was_updated": True}
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        assert not mock_redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
-        mocked_chain.assert_called_with([mocker.ANY, mocker.ANY])
+        assert not redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
+        mocked_chord.assert_called_with([mocker.ANY, mocker.ANY], mocker.ANY)
 
-    @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.django_db
     def test_upload_task_call_multiple_processors(
         self,
         mocker,
@@ -603,21 +623,9 @@ class TestUploadTaskIntegration(object):
         dbsession,
         codecov_vcr,
         mock_storage,
-        mock_redis,
         celery_app,
     ):
-        mocked_1 = mocker.patch("tasks.upload.chain")
-        redis_queue = [
-            {"build": "part1", "url": "someurl1"},
-            {"build": "part2", "url": "someurl2"},
-            {"build": "part3", "url": "someurl3"},
-            {"build": "part4", "url": "someurl4"},
-            {"build": "part5", "url": "someurl5"},
-            {"build": "part6", "url": "someurl6"},
-            {"build": "part7", "url": "someurl7"},
-            {"build": "part8", "url": "someurl8"},
-        ]
-        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocked_chord = mocker.patch("tasks.upload.chord")
         mocker.patch.object(UploadTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -632,68 +640,56 @@ class TestUploadTaskIntegration(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
-            jsonified_redis_queue
-        )
+
+        redis = get_redis_connection()
+
+        redis_queue = [
+            {"build": "part1", "url": "someurl1"},
+            {"build": "part2", "url": "someurl2"},
+            {"build": "part3", "url": "someurl3"},
+            {"build": "part4", "url": "someurl4"},
+            {"build": "part5", "url": "someurl5"},
+            {"build": "part6", "url": "someurl6"},
+            {"build": "part7", "url": "someurl7"},
+            {"build": "part8", "url": "someurl8"},
+        ]
+        for arguments in redis_queue:
+            redis.lpush(
+                f"uploads/{commit.repoid}/{commit.commitid}", json.dumps(arguments)
+            )
+
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
-        expected_result = {"was_setup": False, "was_updated": True}
-        assert expected_result == result
+
+        assert result == {"was_setup": False, "was_updated": True}
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id is None
-        t1 = upload_processor_task.s(
-            {},
-            repoid=commit.repoid,
-            commitid="abf6d4df662c47e32460020ab14abf9303581429",
-            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            arguments_list=[
-                {"build": "part1", "url": "someurl1", "upload_pk": mocker.ANY},
-                {"build": "part2", "url": "someurl2", "upload_pk": mocker.ANY},
-                {"build": "part3", "url": "someurl3", "upload_pk": mocker.ANY},
-            ],
-            report_code=None,
-            in_parallel=False,
-            is_final=False,
-        )
-        t2 = upload_processor_task.s(
-            repoid=commit.repoid,
-            commitid="abf6d4df662c47e32460020ab14abf9303581429",
-            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            arguments_list=[
-                {"build": "part4", "url": "someurl4", "upload_pk": mocker.ANY},
-                {"build": "part5", "url": "someurl5", "upload_pk": mocker.ANY},
-                {"build": "part6", "url": "someurl6", "upload_pk": mocker.ANY},
-            ],
-            report_code=None,
-            in_parallel=False,
-            is_final=False,
-        )
-        t3 = upload_processor_task.s(
-            repoid=commit.repoid,
-            commitid="abf6d4df662c47e32460020ab14abf9303581429",
-            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            arguments_list=[
-                {"build": "part7", "url": "someurl7", "upload_pk": mocker.ANY},
-                {"build": "part8", "url": "someurl8", "upload_pk": mocker.ANY},
-            ],
-            report_code=None,
-            in_parallel=False,
-            is_final=False,
-        )
+        processors = [
+            upload_processor_task.s(
+                {},
+                repoid=commit.repoid,
+                commitid="abf6d4df662c47e32460020ab14abf9303581429",
+                commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+                arguments={**arguments, "upload_pk": mocker.ANY},
+                arguments_list=[{**arguments, "upload_pk": mocker.ANY}],
+                report_code=None,
+                run_fully_parallel=True,
+                in_parallel=True,
+                is_final=False,
+            )
+            for arguments in redis_queue
+        ]
+        processors.reverse()  # whatever the reason
         kwargs = dict(
             repoid=commit.repoid,
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            in_parallel=False,
+            run_fully_parallel=True,
+            in_parallel=True,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t_final = upload_finisher_task.signature(kwargs=kwargs)
-        mocked_1.assert_called_with([t1, t2, t3, t_final])
-        mock_redis.lock.assert_any_call(
-            f"upload_lock_{commit.repoid}_{commit.commitid}",
-            blocking_timeout=5,
-            timeout=300,
-        )
+        mocked_chord.assert_called_with(processors, t_final)
 
     def test_upload_task_proper_parent(
         self,
@@ -1151,13 +1147,18 @@ class TestUploadTaskUnit(object):
         ]
         assert b"Some weird value" == content
 
-    @pytest.mark.django_db(databases={"default"})
-    def test_schedule_task_with_one_task(self, dbsession, mocker):
-        mocked_chain = mocker.patch("tasks.upload.chain")
+    @pytest.mark.django_db
+    def test_schedule_task_with_one_task(self, dbsession, mocker, mock_repo_provider):
+        mocker.patch(
+            "tasks.upload.get_repo_provider_service", return_value=mock_repo_provider
+        )
+        mocker.patch(
+            "tasks.upload.UploadTask.possibly_setup_webhooks", return_value=True
+        )
+        mocked_chord = mocker.patch("tasks.upload.chord")
         commit = CommitFactory.create()
         commit_yaml = {"codecov": {"max_report_age": "100y ago"}}
-        argument_dict = {"argument_dict": 1}
-        argument_list = [argument_dict]
+        argument_list = [{"upload_pk": 1}]
         dbsession.add(commit)
         dbsession.flush()
         upload_args = UploadContext(
@@ -1175,28 +1176,31 @@ class TestUploadTaskUnit(object):
             upload_args,
             checkpoints=mock_checkpoints,
         )
-        assert result == mocked_chain.return_value.apply_async.return_value
-        t1 = upload_processor_task.s(
+        assert result == mocked_chord.return_value.apply_async.return_value
+        processor = upload_processor_task.s(
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml=commit_yaml,
+            arguments={"upload_pk": 1},
             arguments_list=argument_list,
             report_code=None,
-            in_parallel=False,
+            run_fully_parallel=True,
+            in_parallel=True,
             is_final=False,
         )
-        t2 = upload_finisher_task.signature(
+        finisher = upload_finisher_task.signature(
             kwargs={
                 "repoid": commit.repoid,
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": None,
-                "in_parallel": False,
+                "run_fully_parallel": True,
+                "in_parallel": True,
                 _kwargs_key(UploadFlow): mocker.ANY,
             }
         )
-        mocked_chain.assert_called_with([t1, t2])
+        mocked_chord.assert_called_with([processor], finisher)
 
     def test_run_impl_unobtainable_lock_no_pending_jobs(
         self, dbsession, mocker, mock_redis
