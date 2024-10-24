@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from shared.storage.exceptions import FileNotInStorageError
-from test_results_parser import Outcome
+from test_results_parser import Framework, Outcome
 from time_machine import travel
 
 from database.models import CommitReport, RepositoryFlag
@@ -20,6 +20,78 @@ here = Path(__file__)
 
 
 class TestUploadTestProcessorTask(object):
+    def test_compute_name(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Pytest,
+                "api.temp.calculator.test_calculator",
+                "test_divide",
+                "api/temp/calculator/test_calculator.py",
+                None,
+            )
+            == "api/temp/calculator/test_calculator.py::test_divide"
+        )
+
+    def test_compute_name_with_class(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Pytest,
+                "api.temp.calculator.test_calculator.TestCalculator",
+                "test_divide",
+                "api/temp/calculator/test_calculator.py",
+                None,
+            )
+            == "api/temp/calculator/test_calculator.py::TestCalculator::test_divide"
+        )
+
+    def test_compute_name_with_network(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Pytest,
+                "api.temp.calculator.test_calculator.TestCalculator",
+                "test_divide",
+                "api/temp/calculator/test_calculator.py",
+                ["api/temp/calculator/test_calculator.py"],
+            )
+            == "api/temp/calculator/test_calculator.py::TestCalculator::test_divide"
+        )
+
+    def test_compute_name_jest(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Jest,
+                "test_calculator.test_divide",
+                "test_divide",
+                None,
+                None,
+            )
+            == "test_divide"
+        )
+
+    def test_compute_name_vitest(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Vitest, "thing.ts", "test_divide", None, None
+            )
+            == "thing.ts > test_divide"
+        )
+
+    def test_compute_name_phpunit(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.PHPUnit, "thing::test_divide", "test_divide", None, None
+            )
+            == "thing::test_divide::test_divide"
+        )
+
+    def test_compute_name_unknown(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                None, "thing::test_divide", "test_divide", None, None
+            )
+            == "thing::test_divide\x1ftest_divide"
+        )
+
     @pytest.mark.integration
     def test_upload_processor_task_call(
         self,
