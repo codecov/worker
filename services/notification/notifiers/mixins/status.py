@@ -303,8 +303,11 @@ class StatusProjectMixin(object):
     def _get_project_status(
         self, comparison: ComparisonProxy | FilteredComparison
     ) -> tuple[str, str]:
-        head_report_totals = comparison.head.report.totals
-        if head_report_totals.coverage is None:
+        if (
+            not comparison.head.report
+            or (head_report_totals := comparison.head.report.totals) is None
+            or head_report_totals.coverage is None
+        ):
             state = self.notifier_yaml_settings.get("if_not_found", "success")
             message = "No coverage information found on head"
             return (state, message)

@@ -84,6 +84,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             message = "unknown"
             notation = ""
             comparison_url = None
+        head_report = comparison.head.report
         return {
             "url": comparison_url,
             "message": message,
@@ -99,7 +100,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
                 if comparison.project_coverage_base
                 else None
             ),
-            "head_totals_c": str(comparison.head.report.totals.coverage),
+            "head_totals_c": str(head_report.totals.coverage) if head_report else "0",
         }
 
     def notify(self, comparison: ComparisonProxy) -> NotificationResult:
