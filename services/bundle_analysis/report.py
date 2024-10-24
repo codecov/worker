@@ -99,15 +99,10 @@ class ProcessingResult:
             self.upload.upload_type = SessionType.carriedforward.value
             self.upload_type_id = UploadType.CARRIEDFORWARD.db_id
 
-        inc_counter(
-            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER,
-            labels=dict(
-                result="upload_error" if self.error else "processed",
-                plugin_name="n/a",
-                repository=self.commit.repository.repoid,
-            ),
-        )
-
+        BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+            result="upload_error" if self.error else "processed",
+            plugin_name="n/a",
+        ).inc()
         db_session.flush()
 
 
@@ -280,6 +275,11 @@ class BundleAnalysisReportService(BaseReportService):
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
         except FileNotInStorageError:
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="file_not_in_storage",
+                plugin_name="n/a",
+                repository=commit.repository.repoid,
+            ).inc()
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
@@ -291,14 +291,10 @@ class BundleAnalysisReportService(BaseReportService):
             )
         except PutRequestRateLimitError as e:
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            inc_counter(
-                BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER,
-                labels=dict(
-                    result="rate_limit_error",
-                    plugin_name=plugin_name,
-                    repository=commit.repository.repoid,
-                ),
-            )
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="rate_limit_error",
+                plugin_name=plugin_name,
+            ).inc()
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
@@ -311,14 +307,10 @@ class BundleAnalysisReportService(BaseReportService):
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            inc_counter(
-                BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER,
-                labels=dict(
-                    result="parser_error",
-                    plugin_name=plugin_name,
-                    repository=commit.repository.repoid,
-                ),
-            )
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="parser_error",
+                plugin_name=plugin_name,
+            ).inc()
             log.error(
                 "Unable to parse upload for bundle analysis",
                 exc_info=True,
@@ -454,14 +446,10 @@ class BundleAnalysisReportService(BaseReportService):
                 commit=commit,
             )
         except Exception:
-            inc_counter(
-                BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER,
-                labels=dict(
-                    result="parser_error",
-                    plugin_name="n/a",
-                    repository=commit.repository.repoid,
-                ),
-            )
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="parser_error",
+                plugin_name="n/a",
+            ).inc()
             return ProcessingResult(
                 upload=upload,
                 commit=commit,

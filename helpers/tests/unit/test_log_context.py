@@ -47,7 +47,9 @@ def test_populate_just_owner(dbsession):
     log_context = LogContext(owner_id=owner.ownerid)
     log_context.populate_from_sqlalchemy(dbsession)
 
-    assert log_context == LogContext(owner_id=owner.ownerid)
+    assert log_context == LogContext(
+        owner_id=owner.ownerid, owner_username="codecove2e", owner_service="github"
+    )
 
 
 def test_populate_just_repo(dbsession):
@@ -55,7 +57,13 @@ def test_populate_just_repo(dbsession):
     log_context = LogContext(repo_id=repo.repoid)
     log_context.populate_from_sqlalchemy(dbsession)
 
-    assert log_context == LogContext(repo_id=repo.repoid, owner_id=owner.ownerid)
+    assert log_context == LogContext(
+        repo_id=repo.repoid,
+        repo_name="example-python",
+        owner_id=owner.ownerid,
+        owner_username="codecove2e",
+        owner_service="github",
+    )
 
 
 def test_populate_just_commit_sha(dbsession):
@@ -66,6 +74,22 @@ def test_populate_just_commit_sha(dbsession):
     assert log_context == LogContext(commit_sha=commit.commitid)
 
 
+def test_populate_just_commit_id(dbsession):
+    owner, repo, commit = create_db_records(dbsession)
+    log_context = LogContext(commit_id=commit.id_)
+    log_context.populate_from_sqlalchemy(dbsession)
+
+    assert log_context == LogContext(
+        repo_id=repo.repoid,
+        repo_name="example-python",
+        owner_id=owner.ownerid,
+        owner_username="codecove2e",
+        owner_service="github",
+        commit_sha=commit.commitid,
+        commit_id=commit.id_,
+    )
+
+
 def test_populate_repo_and_commit_sha(dbsession):
     owner, repo, commit = create_db_records(dbsession)
     log_context = LogContext(repo_id=repo.repoid, commit_sha=commit.commitid)
@@ -73,7 +97,10 @@ def test_populate_repo_and_commit_sha(dbsession):
 
     assert log_context == LogContext(
         repo_id=repo.repoid,
+        repo_name="example-python",
         owner_id=owner.ownerid,
+        owner_username="codecove2e",
+        owner_service="github",
         commit_sha=commit.commitid,
         commit_id=commit.id_,
     )
@@ -110,3 +137,28 @@ def test_update_log_context(dbsession):
 
     update_log_context({"commit_sha": "abcde", "owner_id": 5})
     assert get_log_context() == LogContext(repo_id=1, commit_sha="abcde", owner_id=5)
+
+
+def test_as_dict(dbsession, mocker):
+    owner, repo, commit = create_db_records(dbsession)
+    log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
+    log_context.populate_from_sqlalchemy(dbsession)
+
+    mock_span = mocker.Mock()
+    mock_span.trace_id = 123
+    mocker.patch("helpers.log_context.get_current_span", return_value=mock_span)
+
+    # `_populated_from_db` is a dataclass field that we want to strip
+    # `sentry_trace_id` is a property that we want to include
+    assert log_context.as_dict() == {
+        "task_name": "foo",
+        "task_id": "bar",
+        "commit_id": commit.id_,
+        "commit_sha": commit.commitid,
+        "repo_id": repo.repoid,
+        "repo_name": repo.name,
+        "owner_id": owner.ownerid,
+        "owner_username": owner.username,
+        "owner_service": owner.service,
+        "sentry_trace_id": 123,
+    }
