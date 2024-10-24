@@ -37,7 +37,6 @@ BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER = Counter(
     [
         "result",
         "plugin_name",
-        "repository",
     ],
 )
 
