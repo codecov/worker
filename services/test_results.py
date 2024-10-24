@@ -167,7 +167,7 @@ def properly_backtick(content: str, language: str = "") -> str:
 def wrap_in_code(content: str, language: str = "") -> str:
     """
     Wraps the given content in a markdown code block with optional syntax highlighting.
-    
+
     :param content: The code content to wrap.
     :param language: The language of the code for syntax highlighting (optional).
     :return: The content wrapped in markdown code block.
@@ -177,11 +177,11 @@ def wrap_in_code(content: str, language: str = "") -> str:
     else:
         return f"\n```{language}\n{content}\n```\n"
 
-    
+
 def get_code_language_from_repo(commit: Commit) -> str:
     """
     Retrieves the repository language from the commit object.
-    
+
     :param commit: The commit object that contains repository info.
     :return: The repository language as a string, in lowercase.
     """
@@ -197,10 +197,7 @@ def display_duration(f: float) -> str:
         return f"{f:.3g}"
 
 
-def generate_failure_info(
-    fail: TestResultsNotificationFailure,
-    commit: Commit
-):
+def generate_failure_info(fail: TestResultsNotificationFailure, commit: Commit):
     if fail.failure_message is not None:
         failure_message = fail.failure_message
     else:
@@ -219,11 +216,10 @@ def generate_view_test_analytics_line(commit: Commit) -> str:
     return f"\To view more test analytics go to the [Test Analytics Dashboard]({test_analytics_url})\nGot feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"
 
 
-def messagify_failure(
-    failure: TestResultsNotificationFailure,
-    commit: Commit
-) -> str:
-    test_name = wrap_in_code(failure.display_name.replace("\x1f", " "), get_code_language_from_repo(commit))
+def messagify_failure(failure: TestResultsNotificationFailure, commit: Commit) -> str:
+    test_name = wrap_in_code(
+        failure.display_name.replace("\x1f", " "), get_code_language_from_repo(commit)
+    )
     formatted_duration = display_duration(failure.duration_seconds)
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
     stack_trace = wrap_in_details(
@@ -234,11 +230,12 @@ def messagify_failure(
 
 
 def messagify_flake(
-    flaky_failure: TestResultsNotificationFailure,
-    flake_info: FlakeInfo,
-    commit: Commit
+    flaky_failure: TestResultsNotificationFailure, flake_info: FlakeInfo, commit: Commit
 ) -> str:
-    test_name = wrap_in_code(flaky_failure.display_name.replace("\x1f", " "), get_code_language_from_repo(commit))
+    test_name = wrap_in_code(
+        flaky_failure.display_name.replace("\x1f", " "),
+        get_code_language_from_repo(commit),
+    )
     formatted_duration = display_duration(flaky_failure.duration_seconds)
     flake_rate = flake_info.failed / flake_info.count * 100
     flake_rate_section = f"**Flake rate in main:** {flake_rate:.2f}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
@@ -279,7 +276,9 @@ class TestResultsNotifier(BaseNotifier):
         )
 
         if failures:
-            failure_content = [f"{messagify_failure(failure, self.commit)}" for failure in failures]
+            failure_content = [
+                f"{messagify_failure(failure, self.commit)}" for failure in failures
+            ]
 
             top_3_failed_section = wrap_in_details(
                 f"View the top {min(3, len(failures))} failed tests by shortest run time",
