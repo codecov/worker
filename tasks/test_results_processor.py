@@ -57,9 +57,16 @@ class ParserFailureError(Exception):
 class ParserNotSupportedError(Exception): ...
 
 
-def get_existing_tests(db_session: Session, repoid: int) -> dict[str, Test]:
-    existing_tests = db_session.query(Test).filter(Test.repoid == repoid).all()
-    return {test.id_: test for test in existing_tests}
+def get_existing_flag_bridges(
+    db_session: Session, repoid: int, flags: list[str]
+) -> dict[str, TestFlagBridge]:
+    existing_flag_bridges = (
+        db_session.query(TestFlagBridge)
+        .join(RepositoryFlag, TestFlagBridge.flag_id == RepositoryFlag.id_)
+        .filter(RepositoryFlag.repository_id == repoid)
+        .all()
+    )
+    return {flag_bridge.test_id: flag_bridge for flag_bridge in existing_flag_bridges}
 
 
 def get_repo_flags(
@@ -218,7 +225,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         repo_flags: dict[str, int] = get_repo_flags(db_session, repoid, flags)
 
-        existing_tests: dict[str, Test] = get_existing_tests(db_session, repoid)
+        existing_flag_bridges: dict[str, TestFlagBridge] = get_existing_flag_bridges(
+            db_session, repoid, flags
+        )
 
         for p in parsing_results:
             framework = str(p.framework) if p.framework else None
@@ -249,7 +258,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     computed_name=computed_name,
                 )
 
-                if test_id not in existing_tests:
+                if test_id not in existing_flag_bridges and flags:
                     test_flag_bridge_data += [
                         {"test_id": test_id, "flag_id": repo_flags[flag]}
                         for flag in flags
