@@ -28,7 +28,7 @@ def get_repo_yaml(repository: Repository):
     )
 
 
-async def get_current_yaml(commit: Commit, repository_service) -> dict:
+async def get_current_yaml(commit: Commit, repository_service) -> UserYaml:
     """
         Fetches what the current yaml is supposed to be
 

@@ -7,7 +7,7 @@ class OverlayType(Enum):
     line_execution_count = auto()
 
 
-def get_overlay(overlay_type: OverlayType, comparison, **kwargs):
+def get_overlay(overlay_type: OverlayType, comparison, **kwargs) -> CriticalPathOverlay:
     """
     @param comparison: ComparisonProxy (not imported due to circular imports)
     """

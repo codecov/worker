@@ -10,8 +10,8 @@ from services.repository import EnrichedPull
 
 @dataclass
 class FullCommit(object):
-    commit: Commit
-    report: Report
+    commit: Commit | None
+    report: Report | None
 
 
 class ReportUploadedCount(TypedDict):

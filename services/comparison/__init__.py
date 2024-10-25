@@ -1,10 +1,11 @@
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
+from shared.reports.resources import Report
 from shared.reports.types import Change, ReportTotals
 from shared.torngit.exceptions import TorngitClientGeneralError
 from shared.utils.sessions import SessionType
@@ -106,7 +107,7 @@ class ComparisonProxy(object):
         return self.comparison.head
 
     @property
-    def project_coverage_base(self):
+    def project_coverage_base(self) -> FullCommit:
         return self.comparison.project_coverage_base
 
     @property
@@ -119,6 +120,10 @@ class ComparisonProxy(object):
 
     def get_diff(self, use_original_base=False) -> dict | None:
         head = self.comparison.head.commit
+        if head is None:
+            log.warning("Comparison doesn't have a HEAD. Unable to get diff")
+            return None
+
         base = self.comparison.project_coverage_base.commit
         patch_coverage_base_commitid = self.comparison.patch_coverage_base_commitid
 
@@ -140,6 +145,7 @@ class ComparisonProxy(object):
                     patch_coverage_base_commitid, head.commitid, with_commits=False
                 )
                 self._original_base_diff = pull_diff["diff"]
+
             else:
                 return None
         elif populate_adjusted_base_diff:
@@ -302,7 +308,10 @@ class ComparisonProxy(object):
         per_flag_dict: dict[str, ReportUploadedCount] = dict()
         base_report = self.comparison.project_coverage_base.report
         head_report = self.comparison.head.report
-        ops = [(base_report, "base_count"), (head_report, "head_count")]
+        ops: list[tuple[Report, Literal["base_count", "head_count"]]] = [
+            (base_report, "base_count"),
+            (head_report, "head_count"),
+        ]
         for curr_report, curr_counter in ops:
             for session in curr_report.sessions.values():
                 # We ignore carryforward sessions
@@ -392,6 +401,9 @@ class FilteredComparison(object):
         """
         if self._patch_totals:
             return self._patch_totals
+        if self.head.report is None:
+            log.warning("HEAD report is None. Unable to get patch totals")
+            return None
         diff = self.get_diff(use_original_base=True)
         self._patch_totals = self.head.report.apply_diff(diff)
         return self._patch_totals

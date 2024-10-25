@@ -1,12 +1,13 @@
 import json
 import re
-from typing import Sequence
+from typing import Self, Sequence
 
 from asgiref.sync import async_to_sync
 from cc_rustyribs import rustify_diff
 from shared.profiling import ProfilingDataFullAnalyzer, ProfilingSummaryDataAnalyzer
 from shared.storage.exceptions import FileNotInStorageError
 
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.models.profiling import ProfilingCommit
 from services.repository import get_repo_provider_service
 from services.yaml import get_current_yaml
@@ -14,7 +15,12 @@ from services.yaml import get_current_yaml
 sentinel = object()
 
 
-def _get_latest_profiling_commit(comparison):
+def _get_latest_profiling_commit(comparison) -> ProfilingCommit | None:
+    """
+    @param comparison: ComparisonProxy (not imported due to circular imports)
+    """
+    if comparison.project_coverage_base.commit is None:
+        return None
     db_session = comparison.head.commit.get_db_session()
     return (
         db_session.query(ProfilingCommit)
@@ -28,7 +34,12 @@ def _get_latest_profiling_commit(comparison):
     )
 
 
-def _load_critical_path_report(comparison) -> ProfilingSummaryDataAnalyzer:
+def _load_critical_path_report(
+    comparison,
+) -> ProfilingSummaryDataAnalyzer | None:
+    """
+    @param comparison: ComparisonProxy (not imported due to circular imports)
+    """
     latest_profiling_commit = _get_latest_profiling_commit(comparison)
     if latest_profiling_commit is None:
         return None
@@ -43,7 +54,12 @@ def _load_critical_path_report(comparison) -> ProfilingSummaryDataAnalyzer:
     return ProfilingSummaryDataAnalyzer(data)
 
 
-def _load_full_profiling_analyzer(comparison) -> ProfilingDataFullAnalyzer:
+def _load_full_profiling_analyzer(
+    comparison,
+) -> ProfilingDataFullAnalyzer | None:
+    """
+    @param comparison: ComparisonProxy (not imported due to circular imports)
+    """
     latest_profiling_commit = _get_latest_profiling_commit(comparison)
     if latest_profiling_commit is None:
         return None
@@ -59,13 +75,23 @@ def _load_full_profiling_analyzer(comparison) -> ProfilingDataFullAnalyzer:
 
 
 class CriticalPathOverlay(object):
-    def __init__(self, comparison, critical_path_report):
+    def __init__(
+        self,
+        comparison,
+        critical_path_report: ProfilingSummaryDataAnalyzer | None,
+    ) -> None:
+        """
+        @param comparison: ComparisonProxy (not imported due to circular imports)
+        """
         self._comparison = comparison
         self._critical_path_report = critical_path_report
         self._profiling_analyzer = sentinel
 
     @classmethod
-    def init_from_comparison(cls, comparison):
+    def init_from_comparison(cls, comparison) -> Self:
+        """
+        @param comparison: ComparisonProxy (not imported due to circular imports)
+        """
         return cls(
             comparison=comparison,
             critical_path_report=_load_critical_path_report(comparison),
@@ -84,7 +110,10 @@ class CriticalPathOverlay(object):
         current_yaml = self._comparison.comparison.current_yaml
         if current_yaml is None:
             repo = self._comparison.head.commit.repository
-            gh_app_installation_name = self._comparison.context.gh_app_installation_name
+            gh_app_installation_name = (
+                self._comparison.context.gh_app_installation_name
+                or GITHUB_APP_INSTALLATION_DEFAULT_NAME
+            )
             repo_provider = get_repo_provider_service(
                 repo, installation_name_to_use=gh_app_installation_name
             )
