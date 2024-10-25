@@ -16,7 +16,7 @@ from database.models.labelanalysis import (
 from database.models.staticanalysis import StaticAnalysisSuite
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from helpers.metrics import metrics
-from helpers.telemetry import MetricContext
+from helpers.telemetry import log_simple_metric
 from services.report import Report, ReportService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
@@ -70,7 +70,6 @@ class LabelAnalysisRequestProcessingTask(
 ):
     errors: List[LabelAnalysisProcessingError] = None
     dbsession: Session = None
-    metrics_context: MetricContext = None
 
     def reset_task_context(self):
         """Resets the task's attributes to None to avoid spilling information
@@ -79,7 +78,6 @@ class LabelAnalysisRequestProcessingTask(
         """
         self.errors = None
         self.dbsession = None
-        self.metrics_context = None
 
     def run_impl(self, db_session, request_id, *args, **kwargs):
         self.errors = []
@@ -117,10 +115,6 @@ class LabelAnalysisRequestProcessingTask(
                 external_id=label_analysis_request.external_id,
                 commit=label_analysis_request.head_commit.commitid,
             ),
-        )
-        self.metrics_context = MetricContext(
-            repo_id=label_analysis_request.head_commit.repository.repoid,
-            commit_id=label_analysis_request.head_commit.id,
         )
 
         if label_analysis_request.state_id == LabelAnalysisRequestState.FINISHED.db_id:
@@ -437,10 +431,8 @@ class LabelAnalysisRequestProcessingTask(
                 commit=commit_sha,
             ),
         )
-        self.metrics_context.log_simple_metric(
-            "label_analysis.tests_saved_count", len(all_report_labels)
-        )
-        self.metrics_context.log_simple_metric(
+        log_simple_metric("label_analysis.tests_saved_count", len(all_report_labels))
+        log_simple_metric(
             "label_analysis.requests_with_requested_labels",
             float(requested_labels is not None),
         )
@@ -454,10 +446,10 @@ class LabelAnalysisRequestProcessingTask(
                 "absent_labels": sorted(requested_labels - all_report_labels),
                 "global_level_labels": sorted(global_level_labels & requested_labels),
             }
-            self.metrics_context.log_simple_metric(
+            log_simple_metric(
                 "label_analysis.requested_labels_count", len(requested_labels)
             )
-            self.metrics_context.log_simple_metric(
+            log_simple_metric(
                 "label_analysis.tests_to_run_count",
                 len(
                     ans["present_diff_labels"]
@@ -466,7 +458,7 @@ class LabelAnalysisRequestProcessingTask(
                 ),
             )
             return ans
-        self.metrics_context.log_simple_metric(
+        log_simple_metric(
             "label_analysis.tests_to_run_count",
             len(executable_lines_labels | global_level_labels),
         )
