@@ -21,8 +21,10 @@ openai
 opentelemetry-instrumentation-celery>=0.45b0
 opentelemetry-sdk>=1.24.0
 orjson
+pandas
 pre-commit
 psycopg2
+pyarrow
 PyJWT>=2.4.0
 pytest
 pytest-asyncio

@@ -32,6 +32,7 @@ from services.test_results import (
     should_write_flaky_detection,
 )
 from tasks.base import BaseCodecovTask
+from tasks.cache_test_rollups import cache_test_rollups_task_name
 from tasks.notify import notify_task_name
 from tasks.process_flakes import process_flakes_task_name
 
@@ -149,6 +150,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                         branch=repo.branch,
                     )
                 )
+
+        self.app.tasks[cache_test_rollups_task_name].apply_async(
+            args=None,
+            kwargs=dict(repoid=repoid, branch=commit.branch),
+        )
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
 

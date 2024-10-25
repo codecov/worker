@@ -39,6 +39,7 @@ def test_results_mock_app(mocker):
         tasks={
             "app.tasks.notify.Notify": mocker.MagicMock(),
             "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
+            "app.tasks.test_results.CacheTestRollupsTask": mocker.MagicMock(),
         },
     )
     return mocked_app
@@ -233,6 +234,7 @@ def test_results_setup_no_instances(mocker, dbsession):
         repository__owner__service="github",
         repository__name="codecov-demo",
     )
+    commit.branch = "main"
     dbsession.add(commit)
     dbsession.flush()
 
@@ -358,6 +360,16 @@ class TestUploadTestFinisherTask(object):
             "notify_succeeded": True,
             QUEUE_NOTIFY_KEY: False,
         }
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
@@ -485,6 +497,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
             },
         )
 
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         assert expected_result == result
 
     @pytest.mark.integration
@@ -537,6 +559,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
                 "commitid": commit.commitid,
                 "current_yaml": {"codecov": {"max_report_age": False}},
                 "repoid": repoid,
+            },
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
             },
         )
 
@@ -607,6 +639,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         test_results_mock_app.tasks["app.tasks.notify.Notify"].assert_not_called()
 
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
     @pytest.mark.integration
     def test_upload_finisher_task_call_existing_comment(
         self,
@@ -644,6 +686,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
             "notify_succeeded": True,
             QUEUE_NOTIFY_KEY: False,
         }
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
@@ -761,6 +813,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
             QUEUE_NOTIFY_KEY: False,
         }
 
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         assert expected_result == result
 
     @pytest.mark.parametrize(
@@ -832,6 +894,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
         }
 
         assert expected_result == result
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
@@ -933,6 +1005,15 @@ To view individual test run time comparison to the main branch, go to the [Test 
                     "branch": "main",
                 },
             )
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
