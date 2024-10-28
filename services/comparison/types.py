@@ -13,6 +13,11 @@ class FullCommit(object):
     commit: Commit | None
     report: Report | None
 
+    def __repr__(self) -> str:
+        commit = self.commit.commitid if self.commit else "NO_COMMIT"
+        has_report = self.report is not None
+        return f"FullCommit<commit={commit}, has_report={has_report}>"
+
 
 class ReportUploadedCount(TypedDict):
     flag: str
