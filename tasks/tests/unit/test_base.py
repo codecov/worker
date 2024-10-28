@@ -101,7 +101,7 @@ class TestBaseCodecovTask(object):
         assert r.hard_time_limit_task == 480
 
     @patch("tasks.base.datetime", MockDateTime)
-    @patch("helpers.telemetry.MetricContext.log_simple_metric")
+    @patch("helpers.telemetry.log_simple_metric")
     def test_sample_run(self, mock_simple_metric, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mock_task_request = mocker.patch("tasks.base.BaseCodecovTask.request")

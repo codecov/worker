@@ -37,8 +37,6 @@ class TestLoggingConfig(object):
         assert log_record == {
             "message": "aaa",
             "method_calls": [],
-            "task_id": "???",
-            "task_name": "???",
             "context": LogContext().as_dict(),
         }
 
@@ -55,7 +53,5 @@ class TestLoggingConfig(object):
         assert log_record == {
             "message": "aaa",
             "method_calls": [],
-            "task_id": "abcdef",
-            "task_name": "lkjhg",
             "context": log_context.as_dict(),
         }
