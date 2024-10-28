@@ -80,6 +80,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commitid,
         commit_yaml,
         arguments_list,
+        arguments=None,
         report_code=None,
         **kwargs,
     ):
@@ -92,6 +93,10 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         )
 
         parallel_processing = ParallelProcessing.from_task_args(**kwargs)
+
+        # TODO(swatinem): this makes us forwards-compatible to remove `arguments_list` in the future
+        if arguments and not arguments_list:
+            arguments_list = [arguments]
 
         if parallel_processing.is_parallel:
             log.info(
