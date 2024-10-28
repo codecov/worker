@@ -1,10 +1,8 @@
-import contextlib
 import logging
 import random
 import re
 from enum import Enum
 
-import orjson
 import sentry_sdk
 from redis.exceptions import LockError
 from redis.lock import Lock
@@ -15,9 +13,7 @@ from shared.celery_config import (
     timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
-from shared.metrics import Histogram
 from shared.reports.resources import Report
-from shared.storage.exceptions import FileNotInStorageError
 from shared.yaml import UserYaml
 
 from app import celery_app
@@ -26,13 +22,10 @@ from database.models import Commit, Pull
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
-from helpers.metrics import KiB, MiB
-from helpers.parallel import ParallelProcessing
 from services.archive import ArchiveService
 from services.comparison import get_or_create_comparison
 from services.processing.loading import (
     cleanup_intermediate_reports,
-    experiment_report_paths,
     load_intermediate_reports,
 )
 from services.processing.merging import merge_reports, update_uploads
@@ -42,7 +35,6 @@ from services.redis import get_redis_connection
 from services.report import ReportService
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
-from tasks.parallel_verification import parallel_verification_task
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
 from tasks.upload_processor import (
     MAX_RETRIES,
@@ -54,36 +46,6 @@ from tasks.upload_processor import (
 log = logging.getLogger(__name__)
 
 regexp_ci_skip = re.compile(r"\[(ci|skip| |-){3,}\]")
-
-PYREPORT_REPORT_JSON_SIZE = Histogram(
-    "worker_tasks_upload_finisher_report_json_size",
-    "Size (in bytes) of a report's report_json measured in `UploadFinisherTask`. Be aware: if we get more uploads for the same commit after `UploadFinisherTask` finishes, we will emit this metric again without deleting the first value. As a result, aggregate metrics will be biased towards smaller sizes.",
-    buckets=[
-        10 * KiB,
-        100 * KiB,
-        500 * KiB,
-        1 * MiB,
-        10 * MiB,
-        100 * MiB,
-        500 * MiB,
-        1000 * MiB,
-    ],
-)
-
-PYREPORT_CHUNKS_FILE_SIZE = Histogram(
-    "worker_tasks_upload_finisher_chunks_file_size",
-    "Size (in bytes) of a report's chunks file measured in `UploadFinisherTask`. Be aware: if we get more uploads for the same commit after `UploadFinisherTask` finishes, we will emit this metric again without deleting the first value. As a result, aggregate metrics will be biased towards smaller sizes.",
-    buckets=[
-        100 * KiB,
-        500 * KiB,
-        1 * MiB,
-        10 * MiB,
-        100 * MiB,
-        500 * MiB,
-        1000 * MiB,
-        1500 * MiB,
-    ],
-)
 
 
 class ShouldCallNotifyResult(Enum):
@@ -110,7 +72,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         self,
         db_session,
         processing_results,
-        *,
+        *args,
         repoid,
         commitid,
         commit_yaml,
@@ -142,103 +104,67 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         repository = commit.repository
 
         state = ProcessingState(repoid, commitid)
-        parallel_processing = ParallelProcessing.from_task_args(**kwargs)
-        parallel_processing.emit_metrics("upload_finisher")
 
-        if parallel_processing.is_parallel:
-            # need to transform processing_results produced by chord to get it into the
-            # same format as the processing_results produced from chain
-            processing_results = {
-                "processings_so_far": [
-                    task["processings_so_far"][0] for task in processing_results
-                ],
-                "parallel_incremental_result": [
-                    task["parallel_incremental_result"] for task in processing_results
-                ],
-            }
-            upload_ids = [
-                int(upload["upload_pk"])
-                for upload in processing_results["parallel_incremental_result"]
-            ]
-            pr = processing_results["processings_so_far"][0]["arguments"].get("pr")
-            diff = load_commit_diff(commit, pr, self.name)
+        processing_results = {
+            "processings_so_far": [
+                task["processings_so_far"][0] for task in processing_results
+            ],
+            "parallel_incremental_result": [
+                task["parallel_incremental_result"] for task in processing_results
+            ],
+        }
+        upload_ids = [
+            int(upload["upload_pk"])
+            for upload in processing_results["parallel_incremental_result"]
+        ]
+        pr = processing_results["processings_so_far"][0]["arguments"].get("pr")
+        diff = load_commit_diff(commit, pr, self.name)
 
-            try:
-                report_lock = (
-                    get_report_lock(repoid, commitid, self.hard_time_limit_task)
-                    if parallel_processing is ParallelProcessing.PARALLEL
-                    else contextlib.nullcontext()
+        try:
+            with get_report_lock(repoid, commitid, self.hard_time_limit_task):
+                report_service = ReportService(commit_yaml)
+                archive_service = report_service.get_archive_service(repository)
+                report = perform_report_merging(
+                    report_service,
+                    archive_service,
+                    commit_yaml,
+                    commit,
+                    upload_ids,
                 )
-                with report_lock:
-                    report_service = ReportService(commit_yaml)
-                    archive_service = report_service.get_archive_service(repository)
-                    report = perform_report_merging(
-                        report_service,
-                        archive_service,
-                        commit_yaml,
-                        commit,
-                        upload_ids,
-                        parallel_processing,
-                    )
 
-                    log.info(
-                        "Saving combined report",
-                        extra=dict(
-                            repoid=repoid,
-                            commit=commitid,
-                            processing_results=processing_results,
-                            parent_task=self.request.parent_id,
-                        ),
-                    )
-
-                    if parallel_processing is ParallelProcessing.PARALLEL:
-                        save_report_results(
-                            report_service, commit, report, diff, pr, report_code
-                        )
-                        state.mark_uploads_as_merged(upload_ids)
-
-                    else:
-                        parallel_paths = report_service.save_parallel_report_to_archive(
-                            commit, report, report_code
-                        )
-                        # now that we've built the report and stored it to GCS, we have what we need to
-                        # compare the results with the current upload pipeline. We end execution of the
-                        # finisher task here so that we don't cause any additional side-effects
-
-                        # The verification task that will compare the results of the serial flow and
-                        # the parallel flow, and log the result to determine if parallel flow is
-                        # working properly.
-                        parallel_verification_task.apply_async(
-                            kwargs=dict(
-                                repoid=repoid,
-                                commitid=commitid,
-                                commit_yaml=commit_yaml,
-                                report_code=report_code,
-                                parallel_paths=parallel_paths,
-                                processing_results=processing_results,
-                            ),
-                        )
-            except LockError:
-                max_retry = 200 * 3**self.request.retries
-                retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
-                log.warning(
-                    "Unable to acquire report lock. Retrying",
+                log.info(
+                    "Saving combined report",
                     extra=dict(
-                        commit=commitid,
                         repoid=repoid,
-                        countdown=retry_in,
-                        number_retries=self.request.retries,
+                        commit=commitid,
+                        processing_results=processing_results,
+                        parent_task=self.request.parent_id,
                     ),
                 )
-                self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
 
-            cleanup_intermediate_reports(archive_service, commit.commitid, upload_ids)
+                save_report_results(
+                    report_service, commit, report, diff, pr, report_code
+                )
+                state.mark_uploads_as_merged(upload_ids)
 
-            if (
-                parallel_processing is not ParallelProcessing.PARALLEL
-                or not should_trigger_postprocessing(state.get_upload_numbers())
-            ):
-                return
+        except LockError:
+            max_retry = 200 * 3**self.request.retries
+            retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
+            log.warning(
+                "Unable to acquire report lock. Retrying",
+                extra=dict(
+                    commit=commitid,
+                    repoid=repoid,
+                    countdown=retry_in,
+                    number_retries=self.request.retries,
+                ),
+            )
+            self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
+
+        cleanup_intermediate_reports(archive_service, commit.commitid, upload_ids)
+
+        if not should_trigger_postprocessing(state.get_upload_numbers()):
+            return
 
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
         redis_connection = get_redis_connection()
@@ -280,30 +206,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ),
             )
 
-    def _emit_report_size_metrics(self, commit: Commit, report_code: str):
-        # This is only used to emit chunks/report_json size metrics. We have to
-        # do it here instead of in UploadProcessorTask where the report is
-        # normally saved because that task saves after every upload and can't
-        # tell when the report is final.
-        try:
-            if commit.report_json:
-                report_json_size = len(orjson.dumps(commit.report_json))
-                archive_service = ArchiveService(commit.repository)
-                chunks_size = len(
-                    archive_service.read_chunks(commit.commitid, report_code)
-                )
-
-                PYREPORT_REPORT_JSON_SIZE.observe(report_json_size)
-                PYREPORT_CHUNKS_FILE_SIZE.observe(chunks_size)
-        except Exception as e:
-            log.exception(
-                "Failed to emit report size metrics",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                ),
-            )
-
     def finish_reports_processing(
         self,
         db_session,
@@ -316,8 +218,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
         repoid = commit.repoid
-
-        self._emit_report_size_metrics(commit, report_code)
 
         # always notify, let the notify handle if it should submit
         notifications_called = False
@@ -554,55 +454,21 @@ def perform_report_merging(
     commit_yaml: dict,
     commit: Commit,
     upload_ids: list[int],
-    parallel_processing: ParallelProcessing,
 ) -> Report:
-    master_report = load_master_report(
-        report_service, archive_service, commit, parallel_processing
-    )
+    master_report = report_service.get_existing_report_for_commit(commit)
+    if master_report is None:
+        master_report = Report()
+
     intermediate_reports = load_intermediate_reports(
         archive_service, commit.commitid, upload_ids
     )
+
     merge_result = merge_reports(
         UserYaml(commit_yaml), master_report, intermediate_reports
     )
 
-    if parallel_processing is ParallelProcessing.PARALLEL:
-        # When we are fully parallel, we need to update the `Upload` in the database
-        # with the final session_id (aka `order_number`) and other statuses
-        update_uploads(commit.get_db_session(), merge_result)
+    # Update the `Upload` in the database with the final session_id
+    # (aka `order_number`) and other statuses
+    update_uploads(commit.get_db_session(), merge_result)
 
     return master_report
-
-
-@sentry_sdk.trace
-def load_master_report(
-    report_service: ReportService,
-    archive_service: ArchiveService,
-    commit: Commit,
-    parallel_processing: ParallelProcessing,
-) -> Report:
-    report: Report | None = None
-
-    if parallel_processing is ParallelProcessing.PARALLEL:
-        report = report_service.get_existing_report_for_commit(commit)
-    else:
-        repo_hash = archive_service.storage_hash
-        json_path, chunks_path = experiment_report_paths(repo_hash, commit.commitid)
-
-        try:
-            chunks = archive_service.read_file(chunks_path).decode(errors="replace")
-            report_json = orjson.loads(archive_service.read_file(json_path))
-
-            report = report_service.build_report(
-                chunks,
-                report_json["files"],
-                report_json["sessions"],
-                report_json.get("totals"),
-            )
-        except FileNotInStorageError:
-            pass
-
-    if report is None:
-        report = Report()
-
-    return report
