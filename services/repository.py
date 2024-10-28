@@ -8,12 +8,7 @@ import sentry_sdk
 import shared.torngit as torngit
 from asgiref.sync import async_to_sync
 from shared.bots import get_adapter_auth_information
-from shared.bots.github_apps import (
-    get_github_app_token,
-    get_specific_github_app_details,
-)
 from shared.config import get_config, get_verify_ssl
-from shared.django_apps.codecov_auth.models import Service
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -32,58 +27,12 @@ from database.models import Commit, Owner, Pull, Repository
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.save_commit_error import save_commit_error
 from helpers.token_refresh import get_token_refresh_callback
-from services.github import get_github_app_for_commit
 from services.yaml import read_yaml_field, save_repo_yaml_to_database_if_needed
 from services.yaml.fetcher import fetch_commit_yaml_from_provider
 
 log = logging.getLogger(__name__)
 
 merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
-
-
-def get_repo_provider_service_for_specific_commit(
-    commit: Commit,
-    fallback_installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-) -> TorngitBaseAdapter:
-    """Gets a Torngit adapter (potentially) using a specific GitHub app as the authentication source.
-    If the commit doesn't have a particular app assigned to it, return regular `get_repo_provider_service` choice
-
-    This is done specifically after emitting checks for a PR using GitHub apps, because only the app
-    that posted the check can edit it later on. The "app for a commit" info is saved in Redis by the NotifyTask.
-    """
-    repository = commit.repository
-    installation_for_commit = get_github_app_for_commit(commit)
-    if installation_for_commit is None:
-        return get_repo_provider_service(repository, fallback_installation_name)
-
-    ghapp_details = get_specific_github_app_details(
-        repository.owner, int(installation_for_commit), commit.commitid
-    )
-    token, _ = get_github_app_token(Service(repository.service), ghapp_details)
-
-    data = TorngitInstanceData(
-        repo=RepoInfo(
-            name=repository.name,
-            using_integration=True,
-            service_id=repository.service_id,
-            repoid=repository.repoid,
-        ),
-        owner=OwnerInfo(
-            service_id=repository.owner.service_id,
-            ownerid=repository.ownerid,
-            username=repository.owner.username,
-        ),
-        installation=ghapp_details,
-        fallback_installations=None,
-    )
-
-    adapter_params = dict(
-        token=token,
-        token_type_mapping=None,
-        on_token_refresh=None,
-        **data,
-    )
-    return _get_repo_provider_service_instance(repository.service, adapter_params)
 
 
 @sentry_sdk.trace
