@@ -12,6 +12,7 @@ from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.path_fixer import PathFixer
+from services.processing.metrics import LABELS_USAGE
 from services.report.parser.types import ParsedRawReport
 from services.report.report_builder import ReportBuilder, SpecialLabelsEnum
 from services.report.report_processor import process_report
@@ -122,6 +123,10 @@ def process_raw_upload(
             path_fixer_to_use,
             should_use_encoded_labels,
         )
+        if report_builder_to_use.supports_labels():
+            # NOTE: this here is very conservative, as it checks for *any* `carryforward_mode=labels`,
+            # not taking the `flags` into account at all.
+            LABELS_USAGE.labels(codepath="report_builder").inc()
         try:
             report_from_file = process_report(
                 report=report_file, report_builder=report_builder_to_use
@@ -286,6 +291,11 @@ def clear_carryforward_sessions(
         for f in flags_under_carryforward_rules
         if current_yaml.get_flag_configuration(f).get("carryforward_mode") == "labels"
     }
+    if to_partially_overwrite_flags:
+        # NOTE: this here might be the most accurate counter, as it takes into account the
+        # actual `to_merge_flags` that were used for this particular upload.
+        LABELS_USAGE.labels(codepath="carryforward_cleanup").inc()
+
     to_fully_overwrite_flags = flags_under_carryforward_rules.difference(
         to_partially_overwrite_flags
     )

@@ -2,7 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from mock import PropertyMock
+from mock import AsyncMock, PropertyMock
 from shared.validation.types import CoverageCommentRequiredChanges
 
 from database.models import Pull
@@ -11,6 +11,7 @@ from database.tests.factories import CommitFactory, PullFactory, RepositoryFacto
 from services.archive import ArchiveService
 from services.comparison import get_or_create_comparison
 from services.notification.notifiers.base import NotificationResult
+from services.repository import EnrichedPull
 from tasks.notify import NotifyTask
 
 sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
@@ -1314,3 +1315,82 @@ class TestNotifyTask(object):
             "reason": "no_head_report",
         }
         assert result == expected_result
+
+    @patch("requests.post")
+    def test_notifier_call_no_head_commit_report_empty_upload(
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
+        mock_repo_provider,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
+        mocked_app = mocker.patch.object(NotifyTask, "app")
+        repository = RepositoryFactory.create(
+            owner__unencrypted_oauth_token=sample_token,
+            owner__username="ThiagoCodecov",
+            owner__service="github",
+            owner__service_id="44376991",
+            name="example-python",
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        master_commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="master",
+            commitid="17a71a9a2f5335ed4d00496c7bbc6405f547a527",
+            repository=repository,
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=1234,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            repository=repository,
+            _report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.add(master_commit)
+        dbsession.flush()
+        pull = PullFactory.create(
+            repository=repository,
+            pullid=1234,
+            head=commit.commitid,
+            base=master_commit.commitid,
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+        task = NotifyTask()
+        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            master_chunks_url = (
+                f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
+            )
+            mock_storage.write_file("archive", master_chunks_url, content)
+
+        mocker.patch("tasks.notify.NotifyTask.fetch_and_update_whether_ci_passed")
+        mocker.patch(
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit",
+            return_value=EnrichedPull(database_pull=pull, provider_pull=None),
+        )
+        mock_repo_provider.get_commit_statuses = AsyncMock(return_value=None)
+
+        result = task.run_impl_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"coverage": {"status": {"project": True}}},
+            empty_upload="pass",
+        )
+
+        assert result["notified"]
+        assert len(result["notifications"]) == 2
+        assert result["notifications"][0]["result"] is not None
+        assert result["notifications"][1]["result"] is not None

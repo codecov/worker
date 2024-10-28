@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from shared.storage.exceptions import FileNotInStorageError
-from test_results_parser import Outcome
+from test_results_parser import Framework, Outcome
 from time_machine import travel
 
 from database.models import CommitReport, RepositoryFlag
@@ -20,6 +20,78 @@ here = Path(__file__)
 
 
 class TestUploadTestProcessorTask(object):
+    def test_compute_name(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Pytest,
+                "api.temp.calculator.test_calculator",
+                "test_divide",
+                "api/temp/calculator/test_calculator.py",
+                None,
+            )
+            == "api/temp/calculator/test_calculator.py::test_divide"
+        )
+
+    def test_compute_name_with_class(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Pytest,
+                "api.temp.calculator.test_calculator.TestCalculator",
+                "test_divide",
+                "api/temp/calculator/test_calculator.py",
+                None,
+            )
+            == "api/temp/calculator/test_calculator.py::TestCalculator::test_divide"
+        )
+
+    def test_compute_name_with_network(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Pytest,
+                "api.temp.calculator.test_calculator.TestCalculator",
+                "test_divide",
+                "api/temp/calculator/test_calculator.py",
+                ["api/temp/calculator/test_calculator.py"],
+            )
+            == "api/temp/calculator/test_calculator.py::TestCalculator::test_divide"
+        )
+
+    def test_compute_name_jest(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Jest,
+                "test_calculator.test_divide",
+                "test_divide",
+                None,
+                None,
+            )
+            == "test_divide"
+        )
+
+    def test_compute_name_vitest(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.Vitest, "thing.ts", "test_divide", None, None
+            )
+            == "thing.ts > test_divide"
+        )
+
+    def test_compute_name_phpunit(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                Framework.PHPUnit, "thing::test_divide", "test_divide", None, None
+            )
+            == "thing::test_divide::test_divide"
+        )
+
+    def test_compute_name_unknown(self):
+        assert (
+            TestResultsProcessorTask().compute_name(
+                None, "thing::test_divide", "test_divide", None, None
+            )
+            == "thing::test_divide\x1ftest_divide"
+        )
+
     @pytest.mark.integration
     def test_upload_processor_task_call(
         self,
@@ -91,7 +163,22 @@ class TestUploadTestProcessorTask(object):
         )
         assert expected_result == result
         assert commit.message == "hello world"
+        assert (
+            mock_storage.read_file("archive", url)
+            == b"""# path=codecov-demo/temp.junit.xml
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="4" time="0.052" timestamp="2023-11-06T11:17:04.011072" hostname="VFHNWJDWH9.local"><testcase classname="api.temp.calculator.test_calculator" name="test_add" time="0.001" /><testcase classname="api.temp.calculator.test_calculator" name="test_subtract" time="0.001" /><testcase classname="api.temp.calculator.test_calculator" name="test_multiply" time="0.000" /><testcase classname="api.temp.calculator.test_calculator" name="test_divide" time="0.001"><failure message="assert 1.0 == 0.5&#10; +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)&#10; +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide">def test_divide():
+&gt;       assert Calculator.divide(1, 2) == 0.5
+E       assert 1.0 == 0.5
+E        +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)
+E        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide
 
+api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></testsuite></testsuites>
+<<<<<< EOF
+
+"""
+        )
+
+    @pytest.mark.integration
     @pytest.mark.integration
     def test_test_result_processor_task_error_parsing_file(
         self,
@@ -702,3 +789,16 @@ class TestUploadTestProcessorTask(object):
         )
         assert expected_result == result
         assert commit.message == "hello world"
+
+        if "missing" not in source_file_name:
+            assert mock_storage.read_file("archive", url).startswith(
+                b"""# path=api/temp/calculator/test_calculator.py
+<<<<<< network
+
+"""
+            )
+        else:
+            assert mock_storage.read_file("archive", url).startswith(
+                b"""# path=codecov-demo/temp.junit.xml
+"""
+            )

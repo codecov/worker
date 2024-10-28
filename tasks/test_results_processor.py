@@ -40,6 +40,12 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
+@dataclass
+class ReadableFile:
+    path: str
+    contents: bytes
+
+
 class ParserFailureError(Exception):
     def __init__(self, err_msg, file_content, parser="", parser_err_msg=""):
         self.err_msg = err_msg
@@ -93,7 +99,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
     def compute_name(
         self,
-        framework: Framework,
+        framework: Framework | None,
         raw_classname: str,
         raw_name: str,
         filename: str | None,
@@ -117,7 +123,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     if candidate.test_file_path == filename or (
                         network is not None and candidate.test_file_path in network
                     ):
-                        return f"{candidate.test_file_path}::{candidate.actual_class_name}::{raw_name}"
+                        possible_class_name = (
+                            f"{candidate.actual_class_name}::"
+                            if candidate.actual_class_name
+                            else ""
+                        )
+                        return f"{candidate.test_file_path}::{possible_class_name}{raw_name}"
             case Framework.Vitest:
                 return f"{raw_classname} > {raw_name}"
             case Framework.PHPUnit:
@@ -210,7 +221,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         existing_tests: dict[str, Test] = get_existing_tests(db_session, repoid)
 
         for p in parsing_results:
-            framework = str(p.framework)
+            framework = str(p.framework) if p.framework else None
 
             for testrun in p.testruns:
                 # Build up the data for bulk insert
@@ -433,6 +444,21 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "successful": True,
         }
 
+    def rewrite_readable(
+        self, network: list[str] | None, report_contents: list[ReadableFile]
+    ):
+        buffer = BytesIO()
+        if network is not None:
+            for path in network:
+                buffer.write(f"# path={path}\n".encode("utf-8"))
+            buffer.write(b"<<<<<< network\n\n")
+        for report_content in report_contents:
+            buffer.write(f"# path={report_content.path}\n".encode("utf-8"))
+            buffer.write(report_content.contents)
+            buffer.write(b"\n<<<<<< EOF\n\n")
+        buffer.seek(0)
+        return buffer
+
     def process_individual_arg(
         self, upload: Upload, repository
     ) -> TestResultsProcessingResult:
@@ -445,9 +471,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         network: list[str] | None = data.get("network_files")
 
+        report_contents = []
+
         for file_dict in data["test_results_files"]:
             file = file_dict["data"]
             file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
+            report_contents.append(
+                ReadableFile(path=file_dict["filename"], contents=file_bytes.getvalue())
+            )
             try:
                 parsing_results.append(self.parse_single_file(file_bytes))
             except ParserFailureError as exc:
@@ -461,6 +492,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         parser_err_msg=exc.parser_err_msg,
                     ),
                 )
+
+            readable_report = self.rewrite_readable(network, report_contents)
+
+            archive_service.write_file(upload.storage_path, readable_report.getvalue())
 
         return TestResultsProcessingResult(
             network_files=network, parsing_results=parsing_results

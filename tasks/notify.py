@@ -346,6 +346,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 and not self.send_notifications_if_commit_differs_from_pulls_head(
                     commit, enriched_pull, current_yaml
                 )
+                and empty_upload is None
             ):
                 log.info(
                     "Not sending notifications for commit when it differs from pull's most recent head",
@@ -531,7 +532,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         This is done to make sure the patch coverage reported by notifications and UI is the same
         (because they come from the same source)
         """
-        if comparison.comparison.patch_coverage_base_commitid is None:
+        if (
+            comparison.comparison.patch_coverage_base_commitid is None
+            or not comparison.has_head_report()
+        ):
             # Can't get diff to calculate patch totals
             return
         head_commit = comparison.head.commit
