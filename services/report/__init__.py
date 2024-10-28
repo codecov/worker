@@ -17,7 +17,6 @@ from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
-from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitError
 from shared.upload.constants import UploadErrorCode
 from shared.upload.utils import UploaderType, insert_coverage_measurement
@@ -40,10 +39,13 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from helpers.parallel import ParallelFeature
 from helpers.telemetry import log_simple_metric
 from rollouts import CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER
 from services.archive import ArchiveService
+from services.processing.metrics import (
+    PYREPORT_CHUNKS_FILE_SIZE,
+    PYREPORT_REPORT_JSON_SIZE,
+)
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.parser.version_one import VersionOneReportParser
@@ -253,12 +255,6 @@ class ReportService(BaseReportService):
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
-
-                parallel_processing = ParallelFeature.load(commit.repository.repoid)
-                # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
-                # finisher can build off of it later.
-                if parallel_processing is ParallelFeature.EXPERIMENT:
-                    self.save_parallel_report_to_archive(commit, report, report_code)
 
         return current_report_row
 
@@ -830,11 +826,12 @@ class ReportService(BaseReportService):
         archive_service = self.get_archive_service(commit.repository)
 
         totals, report_json = report.to_database()
+        chunks = report.to_archive().encode()
 
-        archive_data = report.to_archive().encode()
-        chunks_url = archive_service.write_chunks(
-            commit.commitid, archive_data, report_code
-        )
+        PYREPORT_REPORT_JSON_SIZE.observe(len(report_json))
+        PYREPORT_CHUNKS_FILE_SIZE.observe(len(chunks))
+
+        chunks_url = archive_service.write_chunks(commit.commitid, chunks, report_code)
 
         commit.state = "complete" if report else "error"
         commit.totals = totals
@@ -959,55 +956,6 @@ class ReportService(BaseReportService):
                 db_session.flush()
 
         return res
-
-    @sentry_sdk.trace
-    def save_parallel_report_to_archive(
-        self, commit: Commit, report: Report, report_code=None
-    ):
-        commitid = commit.commitid
-        repository = commit.repository
-        archive_service = self.get_archive_service(commit.repository)
-
-        # Attempt to calculate diff of report (which uses commit info from the git provider), but it it fails to do so, it just moves on without such diff
-        try:
-            repository_service: TorngitBaseAdapter = get_repo_provider_service(
-                repository,
-                installation_name_to_use=self.gh_app_installation_name,
-            )
-            diff = async_to_sync(repository_service.get_commit_diff)(commitid)
-            report.apply_diff(diff)
-        except TorngitError:
-            # When this happens, we have that commit.totals["diff"] is not available.
-            # Since there is no way to calculate such diff without the git commit,
-            # then we assume having the rest of the report saved there is better than the
-            # alternative of refusing an otherwise "good" report because of the lack of diff
-            log.warning(
-                "Could not apply diff to report because there was an error fetching diff from provider",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    parent_task=self.request.parent_id,
-                ),
-                exc_info=True,
-            )
-
-        # save incremental results to archive storage,
-        # upload_finisher will combine
-        chunks = report.to_archive().encode()
-        _, files_and_sessions = report.to_database()
-
-        chunks_url = archive_service.write_parallel_experiment_file(
-            commitid, chunks, report_code, "chunks"
-        )
-
-        files_and_sessions_url = archive_service.write_parallel_experiment_file(
-            commitid, files_and_sessions, report_code, "files_and_sessions"
-        )
-
-        return {
-            "chunks_path": chunks_url,
-            "files_and_sessions_path": files_and_sessions_url,
-        }
 
 
 @sentry_sdk.trace

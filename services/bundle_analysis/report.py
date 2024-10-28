@@ -37,7 +37,6 @@ BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER = Counter(
     [
         "result",
         "plugin_name",
-        "repository",
     ],
 )
 
@@ -102,7 +101,6 @@ class ProcessingResult:
         BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
             result="upload_error" if self.error else "processed",
             plugin_name="n/a",
-            repository=self.commit.repository.repoid,
         ).inc()
         db_session.flush()
 
@@ -279,7 +277,6 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="file_not_in_storage",
                 plugin_name="n/a",
-                repository=commit.repository.repoid,
             ).inc()
             return ProcessingResult(
                 upload=upload,
@@ -295,7 +292,6 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="rate_limit_error",
                 plugin_name=plugin_name,
-                repository=commit.repository.repoid,
             ).inc()
             return ProcessingResult(
                 upload=upload,
@@ -312,7 +308,6 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="parser_error",
                 plugin_name=plugin_name,
-                repository=commit.repository.repoid,
             ).inc()
             log.error(
                 "Unable to parse upload for bundle analysis",
@@ -452,7 +447,6 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="parser_error",
                 plugin_name="n/a",
-                repository=commit.repository.repoid,
             ).inc()
             return ProcessingResult(
                 upload=upload,

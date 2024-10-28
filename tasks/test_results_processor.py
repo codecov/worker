@@ -99,7 +99,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
     def compute_name(
         self,
-        framework: Framework,
+        framework: Framework | None,
         raw_classname: str,
         raw_name: str,
         filename: str | None,
@@ -123,7 +123,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     if candidate.test_file_path == filename or (
                         network is not None and candidate.test_file_path in network
                     ):
-                        return f"{candidate.test_file_path}::{candidate.actual_class_name}::{raw_name}"
+                        possible_class_name = (
+                            f"{candidate.actual_class_name}::"
+                            if candidate.actual_class_name
+                            else ""
+                        )
+                        return f"{candidate.test_file_path}::{possible_class_name}{raw_name}"
             case Framework.Vitest:
                 return f"{raw_classname} > {raw_name}"
             case Framework.PHPUnit:
@@ -216,7 +221,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         existing_tests: dict[str, Test] = get_existing_tests(db_session, repoid)
 
         for p in parsing_results:
-            framework = str(p.framework)
+            framework = str(p.framework) if p.framework else None
 
             for testrun in p.testruns:
                 # Build up the data for bulk insert
