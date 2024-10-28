@@ -16,7 +16,6 @@ from database.models.core import Commit, CompareCommit, Repository
 from database.models.reports import Upload
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.core import PullFactory
-from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -161,23 +160,14 @@ def setup_mocks(
 
 @pytest.mark.integration
 @pytest.mark.django_db
-@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
 def test_full_upload(
     dbsession: DbSession,
-    parallel_processing: str,
     mocker,
     mock_repo_provider,
     mock_storage,
     mock_configuration,
 ):
     setup_mocks(mocker, dbsession, mock_configuration, mock_repo_provider)
-
-    # use parallel processing:
-    mocker.patch.object(
-        PARALLEL_UPLOAD_PROCESSING_BY_REPO,
-        "check_value",
-        return_value=parallel_processing,
-    )
 
     repository = RepositoryFactory.create()
     dbsession.add(repository)
@@ -367,10 +357,8 @@ end_of_record
 
 @pytest.mark.integration
 @pytest.mark.django_db()
-@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
 def test_full_carryforward(
     dbsession: DbSession,
-    parallel_processing: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -379,13 +367,6 @@ def test_full_carryforward(
     user_yaml = {"flag_management": {"default_rules": {"carryforward": True}}}
     setup_mocks(
         mocker, dbsession, mock_configuration, mock_repo_provider, user_yaml=user_yaml
-    )
-
-    # use parallel processing:
-    mocker.patch.object(
-        PARALLEL_UPLOAD_PROCESSING_BY_REPO,
-        "check_value",
-        return_value=parallel_processing,
     )
 
     repository = RepositoryFactory.create()

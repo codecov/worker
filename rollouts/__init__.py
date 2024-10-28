@@ -10,8 +10,6 @@ USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID = Feature(
     "use_label_index_in_report_processing"
 )
 
-PARALLEL_UPLOAD_PROCESSING_BY_REPO = Feature("parallel_upload_processing")
-
 CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER = Feature("carryforward_base_search_range")
 
 SYNC_PULL_USE_MERGE_COMMIT_SHA = Feature("sync_pull_use_merge_commit_sha")
