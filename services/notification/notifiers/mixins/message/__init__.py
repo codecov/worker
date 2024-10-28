@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, List
+from typing import Callable
 
 from shared.django_apps.core.models import Repository
 from shared.reports.resources import ReportTotals
@@ -7,7 +7,6 @@ from shared.validation.helpers import LayoutStructure
 
 from database.models.core import Owner
 from helpers.environment import is_enterprise
-from helpers.metrics import metrics
 from services.billing import BillingPlan
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.message.helpers import (
@@ -202,98 +201,92 @@ class MessageMixin(object):
     def _team_plan_notification(
         self,
         comparison: ComparisonProxy,
-        message: List[str],
+        message: list[str],
         diff,
         settings,
         links,
         current_yaml,
-    ) -> List[str]:
+    ) -> list[str]:
         writer_class = TeamPlanWriter()
 
-        with metrics.timer(
-            f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
-        ):
-            # Settings here enable failed tests results for now as a new product
-            message.extend(
-                line
-                for line in writer_class.header_lines(
-                    comparison=comparison, diff=diff, settings=settings
-                )
+        # Settings here enable failed tests results for now as a new product
+        message.extend(
+            writer_class.header_lines(
+                comparison=comparison, diff=diff, settings=settings
             )
-            message.extend(
-                line
-                for line in writer_class.middle_lines(
-                    comparison=comparison,
-                    diff=diff,
-                    links=links,
-                    current_yaml=current_yaml,
-                )
+        )
+        message.extend(
+            writer_class.middle_lines(
+                comparison=comparison,
+                diff=diff,
+                links=links,
+                current_yaml=current_yaml,
             )
-            message.extend(line for line in writer_class.footer_lines())
+        )
+        message.extend(writer_class.footer_lines())
 
-            return message
+        return message
 
     def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer, behind_by=None
     ):
         wrote_something: bool = False
-        with metrics.timer(
-            f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
+
+        for line in section_writer.write_section(
+            comparison, diff, changes, links, behind_by=behind_by
         ):
-            for line in section_writer.write_section(
-                comparison, diff, changes, links, behind_by=behind_by
-            ):
-                wrote_something |= line is not None
-                write(line)
+            wrote_something |= line is not None
+            write(line)
+
         if wrote_something:
             write("")
 
-    def get_middle_layout_section_names(self, settings):
-        sections = map(
-            lambda layout: layout.strip(), (settings["layout"] or "").split(",")
-        )
-        return [
-            section
-            for section in sections
-            if section
-            not in [
-                "header",
-                "newheader",
-                "newfooter",
-                "newfiles",
-                "condensed_header",
-                "condensed_footer",
-                "condensed_files",
-            ]
-        ]
+    def get_middle_layout_section_names(self, settings: dict) -> list[str]:
+        filtered_sections = {
+            "header",
+            "newheader",
+            "newfooter",
+            "newfiles",
+            "condensed_header",
+            "condensed_footer",
+            "condensed_files",
+        }
 
-    def get_upper_section_names(self, settings):
-        sections = list(
-            map(lambda layout: layout.strip(), (settings["layout"] or "").split(","))
-        )
-        headers = ["newheader", "header", "condensed_header"]
-        if all(x not in sections for x in headers):
+        sections = get_sections(settings)
+
+        return [section for section in sections if section not in filtered_sections]
+
+    def get_upper_section_names(self, settings: dict) -> list[str]:
+        headers = {"newheader", "header", "condensed_header"}
+        allowed_sections = {
+            "header",
+            "newheader",
+            "condensed_header",
+            "newfiles",
+            "condensed_files",
+        }
+
+        sections = get_sections(settings)
+
+        if set(sections).isdisjoint(headers):
             sections.insert(0, "condensed_header")
 
         if "files" in sections or "tree" in sections:
             sections.append("newfiles")
 
-        return [
-            section
-            for section in sections
-            if section
-            in [
-                "header",
-                "newheader",
-                "condensed_header",
-                "newfiles",
-                "condensed_files",
-            ]
-        ]
+        return [section for section in sections if section in allowed_sections]
 
-    def get_lower_section_name(self, settings):
-        if (
-            "newfooter" in settings["layout"]
-            or "condensed_footer" in settings["layout"]
-        ):
+    def get_lower_section_name(self, settings: dict) -> str | None:
+        sections = get_sections(settings)
+
+        if "newfooter" in sections or "condensed_footer" in sections:
             return "newfooter"
+        return None
+
+
+def get_sections(settings: dict) -> list[str]:
+    layout = (settings.get("layout") or "").strip()
+    if not layout:
+        return []
+
+    return [section.strip() for section in layout.split(",")]
