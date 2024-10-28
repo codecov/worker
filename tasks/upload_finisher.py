@@ -1,6 +1,7 @@
 import logging
 import random
 import re
+from datetime import datetime
 from enum import Enum
 
 import sentry_sdk
@@ -162,6 +163,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
 
         cleanup_intermediate_reports(archive_service, commit.commitid, upload_ids)
+
+        # Mark the repository as updated so it will appear earlier in the list
+        # of recently-active repositories
+        repository.updatestamp = datetime.now()
 
         if not should_trigger_postprocessing(state.get_upload_numbers()):
             return

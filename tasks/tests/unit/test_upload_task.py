@@ -167,7 +167,6 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         assert commit.report is not None
         assert commit.report.details is not None
-        assert commit.repository.updatestamp > repo_updatestamp
         sessions = commit.report.uploads
         assert len(sessions) == 1
         first_session = (

@@ -3,7 +3,6 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import orjson
@@ -416,7 +415,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
         assert commit, "Commit not found in database."
         repository = commit.repository
-        repository.updatestamp = datetime.now()
         repository_service = None
 
         was_updated, was_setup = False, False
