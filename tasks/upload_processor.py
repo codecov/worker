@@ -17,9 +17,9 @@ from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Pull
 from helpers.cache import cache
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.parallel_upload_processing import save_incremental_report_results
 from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
+from services.processing.intermediate import save_intermediate_report
 from services.processing.state import ProcessingState
 from services.report import ProcessingResult, RawReportInfo, Report, ReportService
 from services.report.parser.types import VersionOneParsedRawReport
@@ -116,6 +116,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         assert commit, "Commit not found in database."
 
         report_service = ReportService(UserYaml(commit_yaml))
+        archive_service = report_service.get_archive_service(commit.repository)
         report = Report()
 
         state = ProcessingState(repoid, commitid)
@@ -181,23 +182,15 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
                 ),
             )
 
-            parallel_incremental_result = None
-            upload_id = arguments_list[0]["upload_pk"]
-            parallel_incremental_result = save_incremental_report_results(
-                report_service,
-                commit,
-                report,
-                upload_id,
-                report_code,
-            )
-            state.mark_upload_as_processed(int(upload_id))
+            upload_id = int(arguments_list[0]["upload_pk"])
+            save_intermediate_report(archive_service, commitid, upload_id, report)
+            state.mark_upload_as_processed(upload_id)
 
             log.info(
                 "Saved incremental report results to storage",
                 extra=dict(
                     repoid=repoid,
                     commit=commitid,
-                    incremental_result_path=parallel_incremental_result,
                 ),
             )
 
@@ -216,7 +209,7 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
             processing_results: dict = {
                 "processings_so_far": processings_so_far,
-                "parallel_incremental_result": parallel_incremental_result,
+                "parallel_incremental_result": {"upload_pk": upload_id},
             }
             return processing_results
         except CeleryError:

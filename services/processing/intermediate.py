@@ -3,9 +3,12 @@ from dataclasses import dataclass
 
 import orjson
 import sentry_sdk
+import zstandard
 from shared.reports.editable import EditableReport
+from shared.reports.resources import Report
 
-from services.archive import ArchiveService, MinioEndpoints
+from services.archive import ArchiveService
+from services.processing.metrics import INTERMEDIATE_REPORT_SIZE
 
 
 @dataclass
@@ -55,6 +58,25 @@ def load_intermediate_reports(
 
 
 @sentry_sdk.trace
+def save_intermediate_report(
+    archive_service: ArchiveService,
+    commitsha: str,
+    upload_id: int,
+    report: Report,
+):
+    _totals, report_json = report.to_database()
+    report_json = report_json.encode()
+    chunks = report.to_archive().encode()
+    emit_size_metrics(report_json, chunks)
+
+    repo_hash = archive_service.storage_hash
+    json_path, chunks_path = intermediate_report_paths(repo_hash, commitsha, upload_id)
+
+    archive_service.write_file(json_path, report_json)
+    archive_service.write_file(chunks_path, chunks)
+
+
+@sentry_sdk.trace
 def cleanup_intermediate_reports(
     archive_service: ArchiveService,
     commitsha: str,
@@ -67,8 +89,7 @@ def cleanup_intermediate_reports(
     """
     repo_hash = archive_service.storage_hash
 
-    # there are only relevant for the "experiment" mode:
-    files_to_delete = list(experiment_report_paths(repo_hash, commitsha))
+    files_to_delete: list[str] = []
 
     for upload_id in upload_ids:
         files_to_delete.extend(
@@ -88,15 +109,16 @@ def intermediate_report_paths(
     return json_path, chunks_path
 
 
-def experiment_report_paths(repo_hash: str, commitsha: str) -> tuple[str, str]:
-    return MinioEndpoints.parallel_upload_experiment.get_path(
-        version="v4",
-        repo_hash=repo_hash,
-        commitid=commitsha,
-        file_name="files_and_sessions",
-    ), MinioEndpoints.parallel_upload_experiment.get_path(
-        version="v4",
-        repo_hash=repo_hash,
-        commitid=commitsha,
-        file_name="chunks",
+def emit_size_metrics(report_json: bytes, chunks: bytes):
+    INTERMEDIATE_REPORT_SIZE.labels(type="report_json", compression="none").observe(
+        len(report_json)
+    )
+    INTERMEDIATE_REPORT_SIZE.labels(type="chunks", compression="none").observe(
+        len(chunks)
+    )
+    INTERMEDIATE_REPORT_SIZE.labels(type="report_json", compression="zstd").observe(
+        len(zstandard.compress(report_json))
+    )
+    INTERMEDIATE_REPORT_SIZE.labels(type="chunks", compression="zstd").observe(
+        len(zstandard.compress(chunks))
     )

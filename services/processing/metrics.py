@@ -21,3 +21,10 @@ PYREPORT_CHUNKS_FILE_SIZE = Histogram(
     "Size (in bytes) of a report's `chunks` file.",
     buckets=BYTE_SIZE_BUCKETS,
 )
+
+INTERMEDIATE_REPORT_SIZE = Histogram(
+    "worker_intermediate_report_size",
+    "Size (in bytes) of a serialized intermediate report. The `type` can be `report_json` or `chunks`.",
+    ["type", "compression"],
+    buckets=BYTE_SIZE_BUCKETS,
+)
