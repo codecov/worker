@@ -4,7 +4,6 @@ import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.config import get_config
 from shared.helpers.cache import NO_VALUE, make_hash_sha256
-from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
 from helpers.cache import cache
@@ -22,10 +21,6 @@ log = logging.getLogger(__name__)
 
 
 class StatusNotifier(AbstractBaseNotifier):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._repository_service: TorngitBaseAdapter = None
-
     def is_enabled(self) -> bool:
         return True
 
@@ -139,7 +134,7 @@ class StatusNotifier(AbstractBaseNotifier):
         return True
 
     def get_github_app_used(self) -> int | None:
-        torngit = self._repository_service
+        torngit = self.repository_service
         if torngit is None:
             return None
         torngit_installation = torngit.data.get("installation")

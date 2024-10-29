@@ -3,6 +3,7 @@ from decimal import Decimal
 from database.tests.factories import CommitFactory, RepositoryFactory
 from services.comparison.types import FullCommit
 from services.notification.notifiers.webhook import WebhookNotifier
+from services.repository import get_repo_provider_service
 
 
 class TestWebhookNotifier(object):
@@ -28,6 +29,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -88,6 +92,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -146,6 +153,7 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(repository),
         )
         result = notifier.build_commit_payload(head_full_commit)
         expected_result = {
@@ -194,6 +202,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -317,6 +328,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={"coverage": {"precision": 5, "round": "up"}},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -433,6 +447,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                comparison.head.commit.repository
+            ),
         )
         result = notifier.build_payload(comparison)
         expected_result = {
@@ -526,7 +543,9 @@ class TestWebhookNotifier(object):
         assert result == expected_result
 
     def test_build_payload_without_base_report(
-        self, sample_comparison_without_base_report, mock_configuration
+        self,
+        sample_comparison_without_base_report,
+        mock_configuration,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_report
@@ -538,6 +557,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                comparison.head.commit.repository
+            ),
         )
         result = notifier.build_payload(comparison)
         head_commit = comparison.head.commit
@@ -627,7 +649,9 @@ class TestWebhookNotifier(object):
         assert result == expected_result
 
     def test_build_payload_without_base(
-        self, sample_comparison_without_base_with_pull, mock_configuration
+        self,
+        sample_comparison_without_base_with_pull,
+        mock_configuration,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_with_pull
@@ -639,6 +663,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                comparison.head.commit.repository
+            ),
         )
         result = notifier.build_payload(comparison)
         head_commit = comparison.head.commit
