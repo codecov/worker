@@ -25,7 +25,7 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from services.archive import ArchiveService
 from services.comparison import get_or_create_comparison
-from services.processing.loading import (
+from services.processing.intermediate import (
     cleanup_intermediate_reports,
     load_intermediate_reports,
 )

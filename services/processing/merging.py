@@ -8,7 +8,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session as DbSession
 
 from database.models.reports import Upload
-from services.processing.loading import IntermediateReport
+from services.processing.intermediate import IntermediateReport
 from services.report import delete_uploads_by_sessionid
 from services.report.raw_upload_processor import clear_carryforward_sessions
 
