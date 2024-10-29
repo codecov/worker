@@ -2,6 +2,7 @@ import logging
 from typing import Callable, NotRequired, TypedDict
 
 import sentry_sdk
+from celery.exceptions import CeleryError
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session as DbSession
 
@@ -78,7 +79,15 @@ def process_upload(
 
         rewrite_or_delete_upload(archive_service, commit_yaml, report_info)
 
+    except CeleryError:
+        raise
     except Exception:
+        commit.state = "error"
+        db_session.commit()
+        log.exception("Could not properly process commit")
+        raise
+
+    finally:
         # this is a noop in the success case, but makes sure unrecoverable errors
         # or retries are not blocking later merge/notify stages
         state.clear_in_progress_uploads([upload_id])
