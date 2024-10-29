@@ -2,7 +2,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import mock
 import pytest
