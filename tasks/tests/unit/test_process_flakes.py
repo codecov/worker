@@ -443,57 +443,50 @@ def test_it_creates_flakes_expires(transactional_db):
 
 
 def test_it_creates_rollups(transactional_db):
-    traveller = time_machine.travel("1970-1-1T00:00:00Z")
-    traveller.start()
-    rs = RepoSimulator()
-    commits = []
-    c1 = rs.create_commit()
-    rs.merge(c1)
-    rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
-    rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
+    with time_machine.travel("1970-1-1T00:00:00Z"):
+        rs = RepoSimulator()
+        commits = []
+        c1 = rs.create_commit()
+        rs.merge(c1)
+        rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
+        rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
 
-    ProcessFlakesTask().run_impl(
-        None,
-        repo_id=rs.repo.repoid,
-        commit_id_list=[c1.commitid],
-        branch=rs.repo.branch,
-    )
+        ProcessFlakesTask().run_impl(
+            None,
+            repo_id=rs.repo.repoid,
+            commit_id_list=[c1.commitid],
+            branch=rs.repo.branch,
+        )
 
-    traveller.stop()
+    with time_machine.travel("1970-1-2T00:00:00Z"):
+        c2 = rs.create_commit()
+        rs.merge(c2)
+        rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
+        rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
 
-    traveller = time_machine.travel("1970-1-2T00:00:00Z")
-    traveller.start()
+        ProcessFlakesTask().run_impl(
+            None,
+            repo_id=rs.repo.repoid,
+            commit_id_list=[c2.commitid],
+            branch=rs.repo.branch,
+        )
 
-    c2 = rs.create_commit()
-    rs.merge(c2)
-    rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
-    rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
+        rollups = DailyTestRollup.objects.all()
 
-    ProcessFlakesTask().run_impl(
-        None,
-        repo_id=rs.repo.repoid,
-        commit_id_list=[c2.commitid],
-        branch=rs.repo.branch,
-    )
+        assert len(rollups) == 4
 
-    rollups = DailyTestRollup.objects.all()
+        assert rollups[0].fail_count == 1
+        assert rollups[0].flaky_fail_count == 1
+        assert rollups[0].date == dt.date.today() - dt.timedelta(days=1)
 
-    assert len(rollups) == 4
+        assert rollups[1].fail_count == 1
+        assert rollups[1].flaky_fail_count == 1
+        assert rollups[1].date == dt.date.today() - dt.timedelta(days=1)
 
-    assert rollups[0].fail_count == 1
-    assert rollups[0].flaky_fail_count == 1
-    assert rollups[0].date == dt.date.today() - dt.timedelta(days=1)
+        assert rollups[2].fail_count == 1
+        assert rollups[2].flaky_fail_count == 1
+        assert rollups[2].date == dt.date.today()
 
-    assert rollups[1].fail_count == 1
-    assert rollups[1].flaky_fail_count == 1
-    assert rollups[1].date == dt.date.today() - dt.timedelta(days=1)
-
-    assert rollups[2].fail_count == 1
-    assert rollups[2].flaky_fail_count == 1
-    assert rollups[2].date == dt.date.today()
-
-    assert rollups[3].fail_count == 1
-    assert rollups[3].flaky_fail_count == 1
-    assert rollups[3].date == dt.date.today()
-
-    traveller.stop()
+        assert rollups[3].fail_count == 1
+        assert rollups[3].flaky_fail_count == 1
+        assert rollups[3].date == dt.date.today()
