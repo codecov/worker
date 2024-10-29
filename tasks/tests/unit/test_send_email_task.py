@@ -41,6 +41,7 @@ def mock_configuration_no_smtp(mocker):
     mock_config.set_params(our_config)
     return mock_config
 
+
 class TestSendEmailTask(object):
     def test_send_email(
         self,
@@ -214,4 +215,3 @@ class TestSendEmailTask(object):
             "email_successful": False,
             "err_msg": "Cannot send email because SMTP is not configured for this installation of codecov",
         }
-

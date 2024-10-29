@@ -1,14 +1,13 @@
 import logging
 
 from shared.celery_config import send_email_task_name
+from shared.config import get_config
 
 import services.smtp
 from app import celery_app
-from database.models import Owner
 from helpers.email import Email
 from helpers.metrics import metrics
 from services.template import TemplateService
-from shared.config import get_config
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -20,7 +19,9 @@ class SendEmailTask(BaseCodecovTask, name=send_email_task_name):
     ):
         with metrics.timer("worker.tasks.send_email"):
             if from_addr is None:
-                from_addr = get_config("services", "smtp", "from_address", default="noreply@codecov.io")
+                from_addr = get_config(
+                    "services", "smtp", "from_address", default="noreply@codecov.io"
+                )
 
             log_extra_dict = {
                 "to_addr": to_addr,
