@@ -560,152 +560,155 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         mock_redis,
         celery_app,
     ):
-        traveller = travel("1970-1-1T00:00:00Z", tick=False)
-        traveller.start()
-        first_url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(
-            here.parent.parent / "samples" / "sample_multi_test_part_1.json"
-        ) as f:
-            content = f.read()
-            mock_storage.write_file("archive", first_url, content)
+        with travel("1970-1-1T00:00:00Z", tick=False):
+            first_url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+            with open(
+                here.parent.parent / "samples" / "sample_multi_test_part_1.json"
+            ) as f:
+                content = f.read()
+                mock_storage.write_file("archive", first_url, content)
 
-        first_commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-            branch="first_branch",
-        )
-        dbsession.add(first_commit)
-        dbsession.flush()
-
-        first_report_row = CommitReport(commit_id=first_commit.id_)
-        dbsession.add(first_report_row)
-        dbsession.flush()
-
-        upload = UploadFactory.create(storage_path=first_url, report=first_report_row)
-        dbsession.add(upload)
-        dbsession.flush()
-
-        repoid = upload.report.commit.repoid
-        redis_queue = [{"url": first_url, "upload_pk": upload.id_}]
-        mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
-
-        result = TestResultsProcessorTask().run_impl(
-            dbsession,
-            repoid=repoid,
-            commitid=first_commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
-        )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
-
-        rollups = dbsession.query(DailyTestRollup).all()
-
-        assert [r.branch for r in rollups] == [
-            "first_branch",
-            "first_branch",
-        ]
-
-        assert [r.date for r in rollups] == [
-            date.today(),
-            date.today(),
-        ]
-
-        traveller.stop()
-
-        traveller = travel("1970-1-2T00:00:00Z", tick=False)
-        traveller.start()
-
-        second_commit = CommitFactory.create(
-            message="hello world 2",
-            commitid="bd76b0821854a780b60012aed85af0a8263004ad",
-            repository=first_commit.repository,
-            branch="second_branch",
-        )
-        dbsession.add(second_commit)
-        dbsession.flush()
-
-        second_report_row = CommitReport(commit_id=second_commit.id_)
-        dbsession.add(second_report_row)
-        dbsession.flush()
-
-        second_url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/b84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(
-            here.parent.parent / "samples" / "sample_multi_test_part_2.json"
-        ) as f:
-            content = f.read()
-            mock_storage.write_file("archive", second_url, content)
-        upload = UploadFactory.create(storage_path=second_url, report=second_report_row)
-        dbsession.add(upload)
-        dbsession.flush()
-
-        tests = dbsession.query(Test).all()
-        for test in tests:
-            flake = FlakeFactory.create(test=test)
-            dbsession.add(flake)
+            first_commit = CommitFactory.create(
+                message="hello world",
+                commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+                repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+                repository__owner__username="joseph-sentry",
+                repository__owner__service="github",
+                repository__name="codecov-demo",
+                branch="first_branch",
+            )
+            dbsession.add(first_commit)
             dbsession.flush()
 
-        redis_queue = [{"url": second_url, "upload_pk": upload.id_}]
+            first_report_row = CommitReport(commit_id=first_commit.id_)
+            dbsession.add(first_report_row)
+            dbsession.flush()
 
-        result = TestResultsProcessorTask().run_impl(
-            dbsession,
-            repoid=repoid,
-            commitid=second_commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
-        )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+            upload = UploadFactory.create(
+                storage_path=first_url, report=first_report_row
+            )
+            dbsession.add(upload)
+            dbsession.flush()
 
-        rollups: list[DailyTestRollup] = dbsession.query(DailyTestRollup).all()
+            repoid = upload.report.commit.repoid
+            redis_queue = [{"url": first_url, "upload_pk": upload.id_}]
+            mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
-        assert result == expected_result
+            result = TestResultsProcessorTask().run_impl(
+                dbsession,
+                repoid=repoid,
+                commitid=first_commit.commitid,
+                commit_yaml={"codecov": {"max_report_age": False}},
+                arguments_list=redis_queue,
+            )
+            expected_result = [
+                {
+                    "successful": True,
+                }
+            ]
 
-        assert [r.branch for r in rollups] == [
-            "first_branch",
-            "first_branch",
-            "second_branch",
-            "second_branch",
-        ]
+            rollups = dbsession.query(DailyTestRollup).all()
 
-        assert [r.date for r in rollups] == [
-            date.today() - timedelta(days=1),
-            date.today() - timedelta(days=1),
-            date.today(),
-            date.today(),
-        ]
+            assert [r.branch for r in rollups] == [
+                "first_branch",
+                "first_branch",
+            ]
 
-        assert [r.fail_count for r in rollups] == [1, 0, 0, 1]
-        assert [r.pass_count for r in rollups] == [1, 1, 2, 0]
-        assert [r.skip_count for r in rollups] == [0, 0, 0, 0]
-        assert [r.flaky_fail_count for r in rollups] == [0, 0, 0, 1]
+            assert [r.date for r in rollups] == [
+                date.today(),
+                date.today(),
+            ]
 
-        assert [r.commits_where_fail for r in rollups] == [
-            ["cd76b0821854a780b60012aed85af0a8263004ad"],
-            [],
-            [],
-            ["bd76b0821854a780b60012aed85af0a8263004ad"],
-        ]
+        with travel("1970-1-2T00:00:00Z", tick=False):
+            second_commit = CommitFactory.create(
+                message="hello world 2",
+                commitid="bd76b0821854a780b60012aed85af0a8263004ad",
+                repository=first_commit.repository,
+                branch="second_branch",
+            )
+            dbsession.add(second_commit)
+            dbsession.flush()
 
-        assert [r.latest_run for r in rollups] == [
-            datetime(1970, 1, 1, 0, 0),
-            datetime(1970, 1, 1, 0, 0),
-            datetime(1970, 1, 2, 0, 0),
-            datetime(1970, 1, 2, 0, 0),
-        ]
-        assert [r.avg_duration_seconds for r in rollups] == [0.001, 7.2, 0.002, 3.6]
-        assert [r.last_duration_seconds for r in rollups] == [0.001, 7.2, 0.002, 3.6]
-        traveller.stop()
+            second_report_row = CommitReport(commit_id=second_commit.id_)
+            dbsession.add(second_report_row)
+            dbsession.flush()
+
+            second_url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/b84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+            with open(
+                here.parent.parent / "samples" / "sample_multi_test_part_2.json"
+            ) as f:
+                content = f.read()
+                mock_storage.write_file("archive", second_url, content)
+            upload = UploadFactory.create(
+                storage_path=second_url, report=second_report_row
+            )
+            dbsession.add(upload)
+            dbsession.flush()
+
+            tests = dbsession.query(Test).all()
+            for test in tests:
+                flake = FlakeFactory.create(test=test)
+                dbsession.add(flake)
+                dbsession.flush()
+
+            redis_queue = [{"url": second_url, "upload_pk": upload.id_}]
+
+            result = TestResultsProcessorTask().run_impl(
+                dbsession,
+                repoid=repoid,
+                commitid=second_commit.commitid,
+                commit_yaml={"codecov": {"max_report_age": False}},
+                arguments_list=redis_queue,
+            )
+            expected_result = [
+                {
+                    "successful": True,
+                }
+            ]
+
+            rollups: list[DailyTestRollup] = dbsession.query(DailyTestRollup).all()
+
+            assert result == expected_result
+
+            assert [r.branch for r in rollups] == [
+                "first_branch",
+                "first_branch",
+                "second_branch",
+                "second_branch",
+            ]
+
+            assert [r.date for r in rollups] == [
+                date.today() - timedelta(days=1),
+                date.today() - timedelta(days=1),
+                date.today(),
+                date.today(),
+            ]
+
+            assert [r.fail_count for r in rollups] == [1, 0, 0, 1]
+            assert [r.pass_count for r in rollups] == [1, 1, 2, 0]
+            assert [r.skip_count for r in rollups] == [0, 0, 0, 0]
+            assert [r.flaky_fail_count for r in rollups] == [0, 0, 0, 1]
+
+            assert [r.commits_where_fail for r in rollups] == [
+                ["cd76b0821854a780b60012aed85af0a8263004ad"],
+                [],
+                [],
+                ["bd76b0821854a780b60012aed85af0a8263004ad"],
+            ]
+
+            assert [r.latest_run for r in rollups] == [
+                datetime(1970, 1, 1, 0, 0),
+                datetime(1970, 1, 1, 0, 0),
+                datetime(1970, 1, 2, 0, 0),
+                datetime(1970, 1, 2, 0, 0),
+            ]
+            assert [r.avg_duration_seconds for r in rollups] == [0.001, 7.2, 0.002, 3.6]
+            assert [r.last_duration_seconds for r in rollups] == [
+                0.001,
+                7.2,
+                0.002,
+                3.6,
+            ]
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
