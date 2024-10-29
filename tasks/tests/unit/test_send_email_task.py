@@ -41,7 +41,6 @@ def mock_configuration_no_smtp(mocker):
     mock_config.set_params(our_config)
     return mock_config
 
-
 class TestSendEmailTask(object):
     def test_send_email(
         self,
@@ -58,14 +57,33 @@ class TestSendEmailTask(object):
         dbsession.flush()
         result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
+            from_addr="test_from@codecov.io",
             username="test_username",
         )
 
         assert result == {"email_successful": True, "err_msg": None}
+
+    def test_send_email_uses_default_from_addr(
+        self, mocker, mock_configuration, dbsession, mock_smtp
+    ):
+        mock_smtp.configure_mock(**{"send.return_value": None})
+        owner = OwnerFactory.create(email=to_addr)
+        dbsession.add(owner)
+        dbsession.flush()
+        result = SendEmailTask().run_impl(
+            db_session=dbsession,
+            to_addr=owner.email,
+            subject="Test",
+            template_name="test",
+            username="test_username",
+        )
+        assert result == {
+            "email_successful": True,
+            "err_msg": None,
+        }
 
     def test_send_email_non_existent_template(
         self, mocker, mock_configuration, dbsession, mock_smtp
@@ -74,34 +92,13 @@ class TestSendEmailTask(object):
         dbsession.add(owner)
         dbsession.flush()
         with pytest.raises(TemplateNotFound):
-            result = SendEmailTask().run_impl(
+            _ = SendEmailTask().run_impl(
                 db_session=dbsession,
-                ownerid=owner.ownerid,
-                from_addr="test_from@codecov.io",
-                template_name="non_existent",
+                to_addr=owner.email,
                 subject="Test",
+                template_name="non_existent",
                 username="test_username",
             )
-
-    def test_send_email_no_owner(
-        self, mocker, mock_configuration, dbsession, mock_smtp
-    ):
-        owner = OwnerFactory.create(email=None)
-        dbsession.add(owner)
-        dbsession.flush()
-        result = SendEmailTask().run_impl(
-            db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
-            subject="Test",
-            username="test_username",
-        )
-
-        assert result == {
-            "email_successful": False,
-            "err_msg": "Owner does not have email",
-        }
 
     def test_send_email_missing_kwargs(
         self, mocker, mock_configuration, dbsession, mock_smtp
@@ -112,24 +109,10 @@ class TestSendEmailTask(object):
         with pytest.raises(UndefinedError):
             result = SendEmailTask().run_impl(
                 db_session=dbsession,
-                ownerid=owner.ownerid,
-                from_addr="test_from@codecov.io",
+                to_addr=owner.email,
                 subject="Test",
                 template_name="test",
             )
-
-    def test_send_email_invalid_owner_no_list_type(
-        self, mocker, mock_configuration, dbsession, mock_smtp
-    ):
-        result = SendEmailTask().run_impl(
-            db_session=dbsession,
-            ownerid=99999999,
-            from_addr="test_from@codecov.io",
-            template_name="test",
-            subject="Test",
-            username="test_username",
-        )
-        assert result == {"email_successful": False, "err_msg": "Unable to find owner"}
 
     def test_send_email_recipients_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
@@ -143,10 +126,9 @@ class TestSendEmailTask(object):
         dbsession.flush()
         result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
 
@@ -164,10 +146,9 @@ class TestSendEmailTask(object):
         dbsession.flush()
         result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result["email_successful"] == False
@@ -188,10 +169,9 @@ class TestSendEmailTask(object):
         dbsession.flush()
         result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result["email_successful"] == False
@@ -208,10 +188,9 @@ class TestSendEmailTask(object):
         dbsession.flush()
         result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result["email_successful"] == False
@@ -226,13 +205,13 @@ class TestSendEmailTask(object):
         dbsession.flush()
         result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result == {
             "email_successful": False,
             "err_msg": "Cannot send email because SMTP is not configured for this installation of codecov",
         }
+
