@@ -1,5 +1,6 @@
 import logging
-from typing import Callable, NotRequired, TypedDict
+from collections.abc import Callable
+from typing import NotRequired, TypedDict
 
 import sentry_sdk
 from celery.exceptions import CeleryError
