@@ -1,6 +1,6 @@
 import contextvars
 import logging
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass
 
 import sentry_sdk
 from sentry_sdk import get_current_span
@@ -144,15 +144,6 @@ def set_log_context(context: LogContext):
     """
     _log_context.set(context)
     context.add_to_sentry()
-
-
-def update_log_context(context: dict):
-    """
-    Add new fields to the log context without removing old ones.
-    """
-    current_context: LogContext = _log_context.get()
-    new_context = replace(current_context, **context)
-    set_log_context(new_context)
 
 
 def get_log_context() -> LogContext:

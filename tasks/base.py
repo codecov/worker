@@ -285,7 +285,6 @@ class BaseCodecovTask(celery_app.Task):
             finally:
                 self.wrap_up_dbsession(db_session)
                 self._commit_django()
-                set_log_context(LogContext())
 
     def wrap_up_dbsession(self, db_session):
         """
