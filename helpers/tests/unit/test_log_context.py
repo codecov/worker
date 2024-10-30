@@ -162,3 +162,28 @@ def test_as_dict(dbsession, mocker):
         "owner_service": owner.service,
         "sentry_trace_id": 123,
     }
+
+
+def test_add_to_log_record(dbsession):
+    owner, repo, commit = create_db_records(dbsession)
+    log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
+    log_context.populate_from_sqlalchemy(dbsession)
+
+    log_record = {}
+    log_context.add_to_log_record(log_record)
+    assert log_record["context"] == log_context.as_dict()
+
+
+def test_add_to_sentry(dbsession, mocker):
+    mock_set_tags = mocker.patch("sentry_sdk.set_tags")
+
+    owner, repo, commit = create_db_records(dbsession)
+    log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
+    log_context.populate_from_sqlalchemy(dbsession)
+
+    # Calls `log_context.set_to_sentry()`
+    set_log_context(log_context)
+
+    expected_sentry_fields = log_context.as_dict()
+    expected_sentry_fields.pop("sentry_trace_id")
+    mock_set_tags.assert_called_with(expected_sentry_fields)

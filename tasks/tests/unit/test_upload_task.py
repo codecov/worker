@@ -2,7 +2,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import mock
 import pytest
@@ -167,7 +167,6 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         assert commit.report is not None
         assert commit.report.details is not None
-        assert commit.repository.updatestamp > repo_updatestamp
         sessions = commit.report.uploads
         assert len(sessions) == 1
         first_session = (
@@ -234,9 +233,6 @@ class TestUploadTaskIntegration(object):
         celery_app,
     ):
         chain = mocker.patch("tasks.upload.chain")
-        mocker.patch(
-            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
-        )
         storage_path = (
             "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
         )
@@ -302,9 +298,6 @@ class TestUploadTaskIntegration(object):
         celery_app,
     ):
         chain = mocker.patch("tasks.upload.chain")
-        mocker.patch(
-            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
-        )
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
@@ -368,9 +361,6 @@ class TestUploadTaskIntegration(object):
         celery_app,
     ):
         chord = mocker.patch("tasks.upload.chord")
-        mocker.patch(
-            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
-        )
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
@@ -740,20 +730,10 @@ class TestUploadTaskIntegration(object):
         mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}"] = (
             jsonified_redis_queue
         )
-        mock_create_user_onboarding_metric = mocker.patch(
-            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
-        )
 
         result = UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
         expected_result = {"was_setup": False, "was_updated": True}
         assert expected_result == result
-        expected_call = call(
-            org_id=owner.ownerid,
-            event="COMPLETED_UPLOAD",
-            payload={},
-        )
-        assert mock_create_user_onboarding_metric.call_args_list == [expected_call]
-
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id == "c5b67303452bbff57cc1f49984339cde39eb1db5"
         assert not mocked_1.called
@@ -960,9 +940,6 @@ class TestUploadTaskIntegration(object):
         mock_storage,
     ):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
-        mocker.patch(
-            "shared.django_apps.codecov_metrics.service.codecov_metrics.UserOnboardingMetricsService.create_user_onboarding_metric"
-        )
         mock_possibly_update_commit_from_provider_info = mocker.patch(
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )

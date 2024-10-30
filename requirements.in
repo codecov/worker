@@ -49,3 +49,4 @@ stripe>=9.6.0
 time-machine
 urllib3>=1.26.18
 vcrpy
+zstandard

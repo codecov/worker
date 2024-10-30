@@ -3,7 +3,6 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import orjson
@@ -14,9 +13,6 @@ from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
-from shared.django_apps.codecov_metrics.service.codecov_metrics import (
-    UserOnboardingMetricsService,
-)
 from shared.metrics import Histogram
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.yaml import UserYaml
@@ -416,7 +412,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
         assert commit, "Commit not found in database."
         repository = commit.repository
-        repository.updatestamp = datetime.now()
         repository_service = None
 
         was_updated, was_setup = False, False
@@ -495,10 +490,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 extra=upload_context.log_extra(),
             )
             self.retry(countdown=60, kwargs=upload_context.kwargs_for_retry(kwargs))
-
-        UserOnboardingMetricsService.create_user_onboarding_metric(
-            org_id=repository.ownerid, event="COMPLETED_UPLOAD", payload={}
-        )
 
         argument_list = []
         for arguments in upload_context.arguments_list():

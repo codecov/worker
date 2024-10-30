@@ -446,6 +446,8 @@ yarl==1.9.4
     # via vcrpy
 zipp==3.19.2
     # via importlib-metadata
+zstandard==0.23.0
+    # via -r requirements.in
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
