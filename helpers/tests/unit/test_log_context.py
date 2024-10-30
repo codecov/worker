@@ -4,12 +4,7 @@ from asgiref.sync import async_to_sync
 from sqlalchemy.exc import IntegrityError
 
 from database.tests.factories.core import CommitFactory, OwnerFactory, RepositoryFactory
-from helpers.log_context import (
-    LogContext,
-    get_log_context,
-    set_log_context,
-    update_log_context,
-)
+from helpers.log_context import LogContext, get_log_context, set_log_context
 
 
 def create_db_records(dbsession):
@@ -129,14 +124,6 @@ def test_set_and_get_log_context(dbsession):
     # async functions
     asyncio.run(check_context_in_coroutine())
     async_to_sync(check_context_in_coroutine)()
-
-
-def test_update_log_context(dbsession):
-    log_context = LogContext(repo_id=1)
-    set_log_context(log_context)
-
-    update_log_context({"commit_sha": "abcde", "owner_id": 5})
-    assert get_log_context() == LogContext(repo_id=1, commit_sha="abcde", owner_id=5)
 
 
 def test_as_dict(dbsession, mocker):
