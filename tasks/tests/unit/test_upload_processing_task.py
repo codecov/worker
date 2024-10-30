@@ -9,6 +9,7 @@ from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotal
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.upload.constants import UploadErrorCode
+from shared.yaml import UserYaml
 
 from database.models import CommitReport, ReportDetails, UploadError
 from database.tests.factories import CommitFactory, UploadFactory
@@ -19,6 +20,7 @@ from helpers.exceptions import (
 )
 from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
+from services.processing.processing import process_upload
 from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
 from services.report.raw_upload_processor import (
@@ -68,7 +70,6 @@ class TestUploadProcessorTask(object):
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -95,7 +96,7 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            arguments={"url": url, "upload_pk": upload.id_},
         )
 
         assert result["processings_so_far"] == [
@@ -134,7 +135,6 @@ class TestUploadProcessorTask(object):
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -161,7 +161,7 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            arguments={"url": url, "upload_pk": upload.id_},
         )
 
         mock_delete_file.assert_called()
@@ -217,17 +217,13 @@ class TestUploadProcessorTask(object):
         ) as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
-        mocked_3 = mocker.patch.object(UploadProcessorTask, "app")
-        mocked_3.send_task.return_value = True
-        result = UploadProcessorTask().process_upload(
+        result = process_upload(
+            lambda _e: None,
             db_session=dbsession,
-            previous_results={},
-            repoid=commit.repoid,
-            commitid=commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
-            report_code=None,
+            repo_id=commit.repoid,
+            commit_sha=commit.commitid,
+            commit_yaml=UserYaml({"codecov": {"max_report_age": False}}),
+            arguments={"url": url, "upload_pk": upload.id_},
         )
 
         assert result["processings_so_far"] == [
@@ -281,18 +277,17 @@ class TestUploadProcessorTask(object):
         mocker.patch("tasks.upload_processor.load_commit_diff")
         mocker.patch("tasks.upload_processor.save_report_results")
 
-        mocked_post_process = mocker.patch.object(
-            UploadProcessorTask, "postprocess_raw_reports"
+        mocked_post_process = mocker.patch(
+            "services.processing.processing.rewrite_or_delete_upload"
         )
 
-        redis_queue = [{"url": "url", "upload_pk": upload.id_}]
         result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments_list=redis_queue,
+            arguments={"url": "url", "upload_pk": upload.id_},
         )
 
         assert result["processings_so_far"] == [
@@ -319,18 +314,16 @@ class TestUploadProcessorTask(object):
         mocked_post_process.assert_called_with(
             mocker.ANY,
             mocker.ANY,
-            [
-                RawReportInfo(
-                    raw_report="ParsedRawReport()",
-                    archive_url="url",
-                    upload=upload.external_id,
-                    error=ProcessingError(
-                        code=UploadErrorCode.UNKNOWN_PROCESSING,
-                        params={"location": "url"},
-                        is_retryable=False,
-                    ),
-                )
-            ],
+            RawReportInfo(
+                raw_report="ParsedRawReport()",
+                archive_url="url",
+                upload=upload.external_id,
+                error=ProcessingError(
+                    code=UploadErrorCode.UNKNOWN_PROCESSING,
+                    params={"location": "url"},
+                    is_retryable=False,
+                ),
+            ),
         )
 
     @pytest.mark.django_db(databases={"default"})
@@ -387,19 +380,15 @@ class TestUploadProcessorTask(object):
         dbsession.add(upload_1)
         dbsession.add(upload_2)
         dbsession.flush()
-        redis_queue = [
-            {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-            {"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
-        ]
+
         result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments_list=redis_queue,
+            arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
         )
-
         assert result["processings_so_far"] == [
             {
                 "arguments": {
@@ -408,7 +397,18 @@ class TestUploadProcessorTask(object):
                     "upload_pk": upload_1.id_,
                 },
                 "successful": True,
-            },
+            }
+        ]
+
+        result = UploadProcessorTask().run_impl(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            arguments={"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
+        )
+        assert result["processings_so_far"] == [
             {
                 "arguments": {
                     "extra_param": 45,
@@ -431,9 +431,6 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        false_report = mocker.MagicMock(
-            to_database=mocker.MagicMock(return_value=({}, "{}")), totals=ReportTotals()
-        )
         # Mocking retry to also raise the exception so we can see how it is called
         mocked_4 = mocker.patch.object(UploadProcessorTask, "app")
         mocked_4.send_task.return_value = True
@@ -450,16 +447,17 @@ class TestUploadProcessorTask(object):
             report__commit=commit, storage_path="locationlocation"
         )
         dbsession.add(upload)
-        task = UploadProcessorTask()
-        task.request.retries = 1
-        result = task.process_individual_report(
-            report_service=ReportService({"codecov": {"max_report_age": False}}),
-            commit=commit,
-            report=false_report,
-            raw_report_info=RawReportInfo(),
-            upload=upload,
+        dbsession.flush()
+
+        result = process_upload(
+            lambda error: None,
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            UserYaml({"codecov": {"max_report_age": False}}),
+            {"upload_pk": upload.id_},
         )
-        assert result.error.as_dict() == {
+        assert result["processings_so_far"][0]["error"] == {
             "code": "file_not_in_storage",
             "params": {"location": "locationlocation"},
         }
@@ -467,22 +465,33 @@ class TestUploadProcessorTask(object):
         assert upload.state == "error"
 
     def test_upload_task_process_individual_report_with_notfound_report_no_retries_yet(
-        self, mocker
+        self, dbsession, mocker
     ):
+        commit = CommitFactory.create()
+        dbsession.add(commit)
+        dbsession.flush()
+        upload = UploadFactory.create(report__commit=commit)
+        dbsession.add(upload)
+        dbsession.flush()
+
         # throw an error thats retryable:
         mocker.patch.object(
             ReportService,
             "parse_raw_report_from_storage",
             side_effect=FileNotInStorageError(),
         )
-        task = UploadProcessorTask()
+
+        def on_error(_error):
+            raise Retry()
+
         with pytest.raises(Retry):
-            task.process_individual_report(
-                ReportService({}),
-                CommitFactory.create(),
-                Report(),
-                UploadFactory.create(),
-                RawReportInfo(),
+            process_upload(
+                on_error,
+                dbsession,
+                commit.repoid,
+                commit.commitid,
+                UserYaml({}),
+                {"upload_pk": upload.id_},
             )
 
     @pytest.mark.django_db(databases={"default"})
@@ -538,19 +547,15 @@ class TestUploadProcessorTask(object):
         dbsession.add(upload_1)
         dbsession.add(upload_2)
         dbsession.flush()
-        redis_queue = [
-            {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-            {"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
-        ]
+
         result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments_list=redis_queue,
+            arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
         )
-
         assert result["processings_so_far"] == [
             {
                 "arguments": {
@@ -559,7 +564,18 @@ class TestUploadProcessorTask(object):
                     "upload_pk": upload_1.id_,
                 },
                 "successful": True,
-            },
+            }
+        ]
+
+        result = UploadProcessorTask().run_impl(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            arguments={"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
+        )
+        assert result["processings_so_far"] == [
             {
                 "arguments": {
                     "extra_param": 45,
@@ -622,19 +638,15 @@ class TestUploadProcessorTask(object):
         dbsession.add(upload_1)
         dbsession.add(upload_2)
         dbsession.flush()
-        redis_queue = [
-            {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-            {"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
-        ]
+
         result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments_list=redis_queue,
+            arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
         )
-
         assert result["processings_so_far"] == [
             {
                 "arguments": {
@@ -644,7 +656,18 @@ class TestUploadProcessorTask(object):
                 },
                 "error": {"code": "report_empty", "params": {}},
                 "successful": False,
-            },
+            }
+        ]
+
+        result = UploadProcessorTask().run_impl(
+            dbsession,
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={},
+            arguments={"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
+        )
+        assert result["processings_so_far"] == [
             {
                 "arguments": {
                     "extra_param": 45,
@@ -676,7 +699,7 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(UploadProcessorTask, "process_individual_report")
+        mocked_2 = mocker.patch.object(ReportService, "build_report_from_raw_content")
         mocked_2.side_effect = celery.exceptions.SoftTimeLimitExceeded("banana")
         # Mocking retry to also raise the exception so we can see how it is called
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
@@ -696,7 +719,6 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(upload_1)
         dbsession.flush()
-        redis_queue = [{"url": "url", "what": "huh", "upload_pk": upload_1.id_}]
         with pytest.raises(celery.exceptions.SoftTimeLimitExceeded, match="banana"):
             UploadProcessorTask().run_impl(
                 dbsession,
@@ -704,7 +726,7 @@ class TestUploadProcessorTask(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},
-                arguments_list=redis_queue,
+                arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
             )
         assert commit.state == "error"
 
@@ -720,7 +742,7 @@ class TestUploadProcessorTask(object):
     ):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
-        mocked_2 = mocker.patch.object(UploadProcessorTask, "process_individual_report")
+        mocked_2 = mocker.patch.object(ReportService, "build_report_from_raw_content")
         mocked_2.side_effect = celery.exceptions.Retry("banana")
         # Mocking retry to also raise the exception so we can see how it is called
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
@@ -740,7 +762,6 @@ class TestUploadProcessorTask(object):
         )
         dbsession.add(upload_1)
         dbsession.flush()
-        redis_queue = [{"url": "url", "what": "huh", "upload_pk": upload_1.id_}]
         with pytest.raises(celery.exceptions.Retry, match="banana"):
             UploadProcessorTask().run_impl(
                 dbsession,
@@ -748,7 +769,7 @@ class TestUploadProcessorTask(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},
-                arguments_list=redis_queue,
+                arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
             )
         assert commit.state == "pending"
 
