@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -163,6 +164,9 @@ def empty_configuration(mocker):
 
 @pytest.fixture
 def codecov_vcr(request):
+    vcr_log = logging.getLogger("vcr")
+    vcr_log.setLevel(logging.ERROR)
+
     current_path = Path(request.node.fspath)
     current_path_name = current_path.name.replace(".py", "")
     cassete_path = current_path.parent / "cassetes" / current_path_name
