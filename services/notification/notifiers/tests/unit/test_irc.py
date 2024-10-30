@@ -13,6 +13,7 @@ class TestIRCNotifier(object):
             notifier_yaml_settings={"server": ""},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
@@ -60,6 +61,7 @@ class TestIRCNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         commit = comparison.head.commit
         repository = commit.repository

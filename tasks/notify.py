@@ -4,6 +4,10 @@ from typing import Optional
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
+from shared.bots.github_apps import (
+    get_github_app_token,
+    get_specific_github_app_details,
+)
 from shared.celery_config import (
     activate_account_user_task_name,
     new_user_activated_task_name,
@@ -11,9 +15,11 @@ from shared.celery_config import (
     status_set_error_task_name,
 )
 from shared.config import get_config
+from shared.django_apps.codecov_auth.models import Service
 from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.base import TokenType, TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
+from shared.typings.torngit import OwnerInfo, RepoInfo, TorngitInstanceData
 from shared.yaml import UserYaml
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
@@ -45,6 +51,7 @@ from services.redis import Redis, get_redis_connection
 from services.report import ReportService
 from services.repository import (
     EnrichedPull,
+    _get_repo_provider_service_instance,
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
@@ -200,10 +207,9 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             installation_name_to_use = get_installation_name_for_owner_for_task(
                 self.name, commit.repository.owner
             )
-            repository_service = get_repo_provider_service(
-                commit.repository, installation_name_to_use=installation_name_to_use
+            repository_service = get_repo_provider_service_for_specific_commit(
+                commit, installation_name_to_use
             )
-            self._possibly_pin_commit_to_github_app(commit, repository_service)
         except RepositoryWithoutValidBotError:
             save_commit_error(
                 commit, error_code=CommitErrorTypes.REPO_BOT_INVALID.value
@@ -400,6 +406,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 base_report,
                 head_report,
                 enriched_pull,
+                repository_service,
                 empty_upload,
                 all_tests_passed=(
                     test_result_commit_report is not None
@@ -455,55 +462,6 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             and repository_service.get_token_by_type(TokenType.comment)
             == commenter_bot_token
         )
-
-    def _possibly_refresh_previous_selection(self, commit: Commit) -> bool:
-        installation_cached: str = get_github_app_for_commit(commit)
-        app_id_used_in_successful_comment: int = next(
-            (
-                obj.gh_app_id
-                for obj in commit.notifications
-                if obj.gh_app_id is not None and obj.state == NotificationState.success
-            ),
-            None,
-        )
-        if installation_cached or app_id_used_in_successful_comment:
-            id_to_cache = installation_cached or app_id_used_in_successful_comment
-            # Some app is already set for this commit, so we renew the caching of the app.
-            # It's OK if this app is not the same as the one chosen by torngit (argument), because the
-            # different notifiers have their own torngit adapter and will look at the pinned app first.
-            set_github_app_for_commit(id_to_cache, commit)
-            return True
-        return False
-
-    def _possibly_pin_commit_to_github_app(
-        self, commit: Commit, torngit: TorngitBaseAdapter
-    ) -> int | str | None:
-        """Pin the GitHub app to use when emitting notifications for this commit, as needed.
-
-        For non-GitHub, do nothing.
-        For situations that we don't use a GithubAppInstance to communicate, do nothing.
-
-        If there is already an app cached in redis for this commit, OR a CommitNotification that was
-        successful with an app, renew that app's caching (it might be different from our selection, but that's ok)
-
-        Returns:
-            the cached app's id (int | str | None) - to make it easier to test
-        """
-        is_github = commit.repository.service in ["github", "github_enterprise"]
-        if not is_github:
-            return
-        refreshed_previous_selection = self._possibly_refresh_previous_selection(commit)
-        if refreshed_previous_selection:
-            # If a selection was already made we shouldn't overwrite it
-            return
-        torngit_installation = torngit.data.get("installation")
-        selected_installation_id = (
-            torngit_installation.get("id") if torngit_installation else None
-        )
-        if selected_installation_id is not None:
-            # Here we pin our selection to be the app to use
-            set_github_app_for_commit(selected_installation_id, commit)
-            return selected_installation_id
 
     def has_upcoming_notifies_according_to_redis(
         self, redis_connection: Redis, repoid: int, commitid: str
@@ -624,6 +582,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         base_report: ReadOnlyReport | None,
         head_report: ReadOnlyReport | None,
         enriched_pull: EnrichedPull,
+        repository_service: TorngitBaseAdapter,
         empty_upload=None,
         # It's only true if the test_result processing is setup
         # And all tests indeed passed
@@ -661,6 +620,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 current_yaml=current_yaml,
             ),
             context=ComparisonContext(
+                repository_service=repository_service,
                 all_tests_passed=all_tests_passed,
                 test_results_error=test_results_error,
                 gh_app_installation_name=installation_name_to_use,
@@ -678,6 +638,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         notifications_service = NotificationService(
             commit.repository,
             current_yaml,
+            repository_service,
             decoration_type,
             gh_installation_name_to_use=installation_name_to_use,
         )
@@ -819,3 +780,105 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
 
 RegisteredNotifyTask = celery_app.register_task(NotifyTask())
 notify_task = celery_app.tasks[RegisteredNotifyTask.name]
+
+
+def _possibly_refresh_previous_selection(commit: Commit) -> bool:
+    installation_cached = get_github_app_for_commit(commit)
+    app_id_used_in_successful_comment: int | None = next(
+        (
+            obj.gh_app_id
+            for obj in commit.notifications
+            if obj.gh_app_id is not None and obj.state == NotificationState.success
+        ),
+        None,
+    )
+    if installation_cached or app_id_used_in_successful_comment:
+        id_to_cache = installation_cached or app_id_used_in_successful_comment
+        # Some app is already set for this commit, so we renew the caching of the app.
+        # It's OK if this app is not the same as the one chosen by torngit (argument), because the
+        # different notifiers have their own torngit adapter and will look at the pinned app first.
+        set_github_app_for_commit(id_to_cache, commit)
+        return True
+    return False
+
+
+def _possibly_pin_commit_to_github_app(
+    commit: Commit, torngit: TorngitBaseAdapter
+) -> int | str | None:
+    """Pin the GitHub app to use when emitting notifications for this commit, as needed.
+
+    For non-GitHub, do nothing.
+    For situations that we don't use a GithubAppInstance to communicate, do nothing.
+
+    If there is already an app cached in redis for this commit, OR a CommitNotification that was
+    successful with an app, renew that app's caching (it might be different from our selection, but that's ok)
+
+    Returns:
+        the cached app's id (int | str | None) - to make it easier to test
+    """
+    is_github = commit.repository.service in ["github", "github_enterprise"]
+    if not is_github:
+        return None
+    refreshed_previous_selection = _possibly_refresh_previous_selection(commit)
+    if refreshed_previous_selection:
+        # If a selection was already made we shouldn't overwrite it
+        return None
+    torngit_installation = torngit.data.get("installation")
+    selected_installation_id = (
+        torngit_installation.get("id") if torngit_installation else None
+    )
+    if selected_installation_id is not None:
+        # Here we pin our selection to be the app to use
+        set_github_app_for_commit(selected_installation_id, commit)
+        return selected_installation_id
+    return None
+
+
+@sentry_sdk.trace
+def get_repo_provider_service_for_specific_commit(
+    commit: Commit,
+    fallback_installation_name: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+) -> TorngitBaseAdapter:
+    """Gets a Torngit adapter (potentially) using a specific GitHub app as the authentication source.
+    If the commit doesn't have a particular app assigned to it, return regular `get_repo_provider_service` choice
+
+    This is done specifically after emitting checks for a PR using GitHub apps, because only the app
+    that posted the check can edit it later on. The "app for a commit" info is saved in Redis by the NotifyTask.
+    """
+    repository = commit.repository
+    installation_for_commit = get_github_app_for_commit(commit)
+    if installation_for_commit is None:
+        repository_provider = get_repo_provider_service(
+            repository, fallback_installation_name
+        )
+        _possibly_pin_commit_to_github_app(commit, repository_provider)
+        return repository_provider
+
+    ghapp_details = get_specific_github_app_details(
+        repository.owner, int(installation_for_commit), commit.commitid
+    )
+    token, _ = get_github_app_token(Service(repository.service), ghapp_details)
+
+    data = TorngitInstanceData(
+        repo=RepoInfo(
+            name=repository.name,
+            using_integration=True,
+            service_id=repository.service_id,
+            repoid=repository.repoid,
+        ),
+        owner=OwnerInfo(
+            service_id=repository.owner.service_id,
+            ownerid=repository.ownerid,
+            username=repository.owner.username,
+        ),
+        installation=ghapp_details,
+        fallback_installations=None,
+    )
+
+    adapter_params = dict(
+        token=token,
+        token_type_mapping=None,
+        on_token_refresh=None,
+        **data,
+    )
+    return _get_repo_provider_service_instance(repository.service, adapter_params)

@@ -4,10 +4,8 @@ import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.config import get_config
 from shared.helpers.cache import NO_VALUE, make_hash_sha256
-from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
-from database.models.core import Commit
 from helpers.cache import cache
 from helpers.match import match
 from services.comparison import ComparisonProxy, FilteredComparison
@@ -15,7 +13,6 @@ from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.repository import get_repo_provider_service_for_specific_commit
 from services.urls import get_commit_url, get_pull_url
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_paths_from_flags
@@ -24,10 +21,6 @@ log = logging.getLogger(__name__)
 
 
 class StatusNotifier(AbstractBaseNotifier):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._repository_service: TorngitBaseAdapter = None
-
     def is_enabled(self) -> bool:
         return True
 
@@ -104,13 +97,6 @@ class StatusNotifier(AbstractBaseNotifier):
             len(report_uploaded_flags.intersection(flags_included_in_status_check)) > 0
         )
 
-    def repository_service(self, commit: Commit) -> TorngitBaseAdapter:
-        if not self._repository_service:
-            self._repository_service = get_repo_provider_service_for_specific_commit(
-                commit, fallback_installation_name=self.gh_installation_name
-            )
-        return self._repository_service
-
     def get_notifier_filters(self) -> dict:
         flag_list = self.notifier_yaml_settings.get("flags") or []
         return dict(
@@ -148,7 +134,7 @@ class StatusNotifier(AbstractBaseNotifier):
         return True
 
     def get_github_app_used(self) -> int | None:
-        torngit = self._repository_service
+        torngit = self.repository_service
         if torngit is None:
             return None
         torngit_installation = torngit.data.get("installation")
@@ -317,9 +303,9 @@ class StatusNotifier(AbstractBaseNotifier):
             )
 
     def send_notification(self, comparison: ComparisonProxy, payload):
+        repository_service = self.repository_service
         title = self.get_status_external_name()
         head_commit_sha = comparison.head.commit.commitid
-        repository_service = self.repository_service(comparison.head.commit)
         head_report = comparison.head.report
         state = payload["state"]
         message = payload["message"]

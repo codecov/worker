@@ -61,6 +61,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(
@@ -94,6 +95,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(
@@ -125,6 +127,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         result_dict = None
@@ -157,6 +160,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(
@@ -195,6 +199,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(

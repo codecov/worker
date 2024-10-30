@@ -351,6 +351,7 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
         )
         result = notifier.notify(comparison)
         assert result.notification_attempted
@@ -425,6 +426,7 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
         )
         result = notifier.notify(comparison)
         assert result.notification_attempted
@@ -492,6 +494,7 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
             decoration_type=Decoration.upgrade,
         )
         result = notifier.notify(comparison)
@@ -532,6 +535,7 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
             decoration_type=Decoration.upload_limit,
         )
         result = notifier.notify(comparison)
@@ -570,6 +574,7 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
         )
         result = notifier.notify(comparison)
         assert result.notification_attempted
@@ -635,6 +640,7 @@ class TestCommentNotifierIntegration(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
         )
         result = notifier.notify(comparison)
         assert result.notification_attempted
@@ -710,6 +716,7 @@ class TestCommentNotifierIntegration(object):
                     ]
                 }
             },
+            repository_service=comparison.repository_service,
         )
         result = notifier.notify(comparison)
         assert result.notification_attempted

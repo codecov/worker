@@ -42,9 +42,9 @@ from services.repository import (
     get_or_create_author,
     get_repo_provider_service,
     get_repo_provider_service_by_id,
-    get_repo_provider_service_for_specific_commit,
     update_commit_from_provider_info,
 )
+from tasks.notify import get_repo_provider_service_for_specific_commit
 
 
 @pytest.fixture
@@ -1108,7 +1108,7 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
     @pytest.fixture
     def mock_get_repo_provider_service(self, mocker):
         mock_get_repo_provider_service = mocker.patch(
-            "services.repository.get_repo_provider_service"
+            "tasks.notify.get_repo_provider_service"
         )
         return mock_get_repo_provider_service
 
@@ -1130,8 +1130,9 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
             commit.repository, "some_name"
         )
 
+    @patch("tasks.notify._possibly_pin_commit_to_github_app")
     def test_get_repo_provider_service_for_specific_commit_no_specific_app_for_commit(
-        self, dbsession, mock_get_repo_provider_service, mock_redis
+        self, mock_pin, dbsession, mock_get_repo_provider_service, mock_redis
     ):
         commit = CommitFactory(repository__owner__service="github")
         assert commit.id not in [10000, 15000]
@@ -1142,17 +1143,16 @@ class TestGetRepoProviderServiceForSpecificCommit(object):
         mock_redis.get.side_effect = lambda key: redis_keys.get(key)
 
         mock_get_repo_provider_service.return_value = "the TorngitAdapter"
+
         response = get_repo_provider_service_for_specific_commit(commit, "some_name")
         assert response == "the TorngitAdapter"
         mock_get_repo_provider_service.assert_called_with(
             commit.repository, "some_name"
         )
 
+    @patch("tasks.notify.get_github_app_token", return_value=("the app token", None))
     @patch(
-        "services.repository.get_github_app_token", return_value=("the app token", None)
-    )
-    @patch(
-        "services.repository._get_repo_provider_service_instance",
+        "tasks.notify._get_repo_provider_service_instance",
         return_value="the TorngitAdapter",
     )
     def test_get_repo_provider_service_for_specific_commit(

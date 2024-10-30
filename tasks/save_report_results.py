@@ -10,7 +10,7 @@ from database.models import Commit, Pull
 from database.models.reports import CommitReport, ReportResults
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.notification.notifiers.status.patch import PatchStatusNotifier
 from services.report import ReportService
@@ -74,7 +74,8 @@ class SaveReportResultsTask(
                     commit=base_commit, report=base_report
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
-            )
+            ),
+            ComparisonContext(repository_service=repository_service),
         )
 
         notifier = PatchStatusNotifier(
@@ -83,6 +84,7 @@ class SaveReportResultsTask(
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=current_yaml,
+            repository_service=repository_service,
         )
         result = notifier.build_payload(comparison)
         report = self.fetch_report(commit, report_code)

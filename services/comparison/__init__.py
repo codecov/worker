@@ -6,6 +6,7 @@ import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.reports.changes import get_changes_using_rust, run_comparison_using_rust
 from shared.reports.types import Change, ReportTotals
+from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientGeneralError
 from shared.utils.sessions import SessionType
 
@@ -24,6 +25,7 @@ log = logging.getLogger(__name__)
 class ComparisonContext(object):
     """Extra information not necessarily related to coverage that may affect notifications"""
 
+    repository_service: TorngitBaseAdapter | None = None
     all_tests_passed: bool | None = None
     test_results_error: TestResultsProcessingError | None = None
     gh_app_installation_name: str | None = None
@@ -89,10 +91,13 @@ class ComparisonProxy(object):
     @property
     def repository_service(self):
         if self._repository_service is None:
-            self._repository_service = get_repo_provider_service(
-                self.comparison.head.commit.repository,
-                installation_name_to_use=self.context.gh_app_installation_name,
-            )
+            if self.context.repository_service is not None:
+                self._repository_service = self.context.repository_service
+            else:
+                self._repository_service = get_repo_provider_service(
+                    self.comparison.head.commit.repository,
+                    installation_name_to_use=self.context.gh_app_installation_name,
+                )
         return self._repository_service
 
     def has_project_coverage_base_report(self):
