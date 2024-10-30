@@ -182,12 +182,14 @@ class TestUploadTaskIntegration(object):
             arguments={
                 "url": url,
                 "build": "some_random_build",
+                "upload_id": first_session.id,
                 "upload_pk": first_session.id,
             },
             arguments_list=[
                 {
                     "url": url,
                     "build": "some_random_build",
+                    "upload_id": first_session.id,
                     "upload_pk": first_session.id,
                 }
             ],
@@ -277,6 +279,7 @@ class TestUploadTaskIntegration(object):
             params={
                 "url": storage_path,
                 "build_code": "some_random_build",
+                "upload_id": upload.id,
                 "upload_pk": upload.id,
             },
         )
@@ -403,6 +406,7 @@ class TestUploadTaskIntegration(object):
                 {
                     "url": storage_path,
                     "build_code": "some_random_build",
+                    "upload_id": upload.id,
                     "upload_pk": upload.id,
                 }
             ],
@@ -659,8 +663,14 @@ class TestUploadTaskIntegration(object):
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-                arguments={**arguments, "upload_pk": mocker.ANY},
-                arguments_list=[{**arguments, "upload_pk": mocker.ANY}],
+                arguments={
+                    **arguments,
+                    "upload_id": mocker.ANY,
+                    "upload_pk": mocker.ANY,
+                },
+                arguments_list=[
+                    {**arguments, "upload_id": mocker.ANY, "upload_pk": mocker.ANY}
+                ],
                 report_code=None,
                 run_fully_parallel=True,
                 in_parallel=True,
@@ -789,8 +799,18 @@ class TestUploadTaskIntegration(object):
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
-                {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
-                {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
+                {
+                    "build": "part1",
+                    "url": "url1",
+                    "upload_id": mocker.ANY,
+                    "upload_pk": mocker.ANY,
+                },
+                {
+                    "build": "part2",
+                    "url": "url2",
+                    "upload_id": mocker.ANY,
+                    "upload_pk": mocker.ANY,
+                },
             ],
             commit.report,
             mocker.ANY,
@@ -845,8 +865,18 @@ class TestUploadTaskIntegration(object):
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
-                {"build": "part1", "url": "url1", "upload_pk": mocker.ANY},
-                {"build": "part2", "url": "url2", "upload_pk": mocker.ANY},
+                {
+                    "build": "part1",
+                    "url": "url1",
+                    "upload_id": mocker.ANY,
+                    "upload_pk": mocker.ANY,
+                },
+                {
+                    "build": "part2",
+                    "url": "url2",
+                    "upload_id": mocker.ANY,
+                    "upload_pk": mocker.ANY,
+                },
             ],
             commit.report,
             mocker.ANY,
@@ -922,8 +952,18 @@ class TestUploadTaskIntegration(object):
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
-                {"build": "part1", "url": "url1", "upload_pk": first_session.id},
-                {"build": "part2", "url": "url2", "upload_pk": second_session.id},
+                {
+                    "build": "part1",
+                    "url": "url1",
+                    "upload_id": first_session.id,
+                    "upload_pk": first_session.id,
+                },
+                {
+                    "build": "part2",
+                    "url": "url2",
+                    "upload_id": second_session.id,
+                    "upload_pk": second_session.id,
+                },
             ],
             commit.report,
             mocker.ANY,
@@ -1013,8 +1053,8 @@ class TestUploadTaskIntegration(object):
                 {
                     "build": "part1",
                     "url": "url1",
-                    "upload_pk": upload.id_,
                     "upload_id": upload.id_,
+                    "upload_pk": upload.id_,
                 }
             ],
             report,
@@ -1135,7 +1175,7 @@ class TestUploadTaskUnit(object):
         mocked_chord = mocker.patch("tasks.upload.chord")
         commit = CommitFactory.create()
         commit_yaml = {"codecov": {"max_report_age": "100y ago"}}
-        argument_list = [{"upload_pk": 1}]
+        argument_list = [{"upload_id": 1, "upload_pk": 1}]
         dbsession.add(commit)
         dbsession.flush()
         upload_args = UploadContext(
@@ -1159,7 +1199,7 @@ class TestUploadTaskUnit(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml=commit_yaml,
-            arguments={"upload_pk": 1},
+            arguments={"upload_id": 1, "upload_pk": 1},
             arguments_list=argument_list,
             report_code=None,
             run_fully_parallel=True,

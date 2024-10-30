@@ -101,11 +101,11 @@ class TestUploadProcessorTask(object):
 
         assert result["processings_so_far"] == [
             {
+                "upload_id": upload.id_,
                 "arguments": {"upload_pk": upload.id_, "url": url},
                 "successful": True,
             }
         ]
-        assert commit.message == "dsidsahdsahdsa"
 
     @pytest.mark.integration
     @pytest.mark.django_db
@@ -171,11 +171,11 @@ class TestUploadProcessorTask(object):
         )
         assert result["processings_so_far"] == [
             {
+                "upload_id": upload.id_,
                 "arguments": {"upload_pk": upload.id_, "url": url},
                 "successful": True,
             }
         ]
-        assert commit.message == "dsidsahdsahdsa"
 
     @pytest.mark.django_db
     def test_upload_processor_call_with_upload_obj(
@@ -228,11 +228,11 @@ class TestUploadProcessorTask(object):
 
         assert result["processings_so_far"] == [
             {
+                "upload_id": upload.id_,
                 "arguments": {"url": url, "upload_pk": upload.id_},
                 "successful": True,
             }
         ]
-        assert commit.message == "dsidsahdsahdsa"
         assert upload.state == "processed"
 
         # storage is overwritten with parsed contents
@@ -292,12 +292,13 @@ class TestUploadProcessorTask(object):
 
         assert result["processings_so_far"] == [
             {
+                "upload_id": upload.id_,
                 "arguments": {"upload_pk": upload.id, "url": "url"},
+                "successful": False,
                 "error": {
                     "code": UploadErrorCode.UNKNOWN_PROCESSING,
                     "params": {"location": "url"},
                 },
-                "successful": False,
             }
         ]
         assert upload.state_id == UploadState.ERROR.db_id
@@ -391,11 +392,8 @@ class TestUploadProcessorTask(object):
         )
         assert result["processings_so_far"] == [
             {
-                "arguments": {
-                    "url": "url",
-                    "what": "huh",
-                    "upload_pk": upload_1.id_,
-                },
+                "upload_id": upload_1.id_,
+                "arguments": {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
                 "successful": True,
             }
         ]
@@ -410,13 +408,14 @@ class TestUploadProcessorTask(object):
         )
         assert result["processings_so_far"] == [
             {
+                "upload_id": upload_2.id_,
                 "arguments": {
                     "extra_param": 45,
                     "url": "url2",
                     "upload_pk": upload_2.id_,
                 },
-                "error": {"code": "report_expired", "params": {}},
                 "successful": False,
+                "error": {"code": "report_expired", "params": {}},
             },
         ]
         assert commit.state == "complete"
@@ -457,10 +456,17 @@ class TestUploadProcessorTask(object):
             UserYaml({"codecov": {"max_report_age": False}}),
             {"upload_pk": upload.id_},
         )
-        assert result["processings_so_far"][0]["error"] == {
-            "code": "file_not_in_storage",
-            "params": {"location": "locationlocation"},
-        }
+        assert result["processings_so_far"] == [
+            {
+                "upload_id": upload.id_,
+                "arguments": {"upload_pk": upload.id_},
+                "successful": False,
+                "error": {
+                    "code": "file_not_in_storage",
+                    "params": {"location": "locationlocation"},
+                },
+            }
+        ]
         assert commit.state == "complete"
         assert upload.state == "error"
 
@@ -558,11 +564,8 @@ class TestUploadProcessorTask(object):
         )
         assert result["processings_so_far"] == [
             {
-                "arguments": {
-                    "url": "url",
-                    "what": "huh",
-                    "upload_pk": upload_1.id_,
-                },
+                "upload_id": upload_1.id_,
+                "arguments": {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
                 "successful": True,
             }
         ]
@@ -577,13 +580,14 @@ class TestUploadProcessorTask(object):
         )
         assert result["processings_so_far"] == [
             {
+                "upload_id": upload_2.id_,
                 "arguments": {
                     "extra_param": 45,
                     "url": "url2",
                     "upload_pk": upload_2.id_,
                 },
-                "error": {"code": "report_empty", "params": {}},
                 "successful": False,
+                "error": {"code": "report_empty", "params": {}},
             },
         ]
         assert commit.state == "complete"
@@ -649,13 +653,10 @@ class TestUploadProcessorTask(object):
         )
         assert result["processings_so_far"] == [
             {
-                "arguments": {
-                    "url": "url",
-                    "what": "huh",
-                    "upload_pk": upload_1.id_,
-                },
-                "error": {"code": "report_empty", "params": {}},
+                "upload_id": upload_1.id_,
+                "arguments": {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
                 "successful": False,
+                "error": {"code": "report_empty", "params": {}},
             }
         ]
 
@@ -669,13 +670,14 @@ class TestUploadProcessorTask(object):
         )
         assert result["processings_so_far"] == [
             {
+                "upload_id": upload_2.id_,
                 "arguments": {
                     "extra_param": 45,
                     "url": "url2",
                     "upload_pk": upload_2.id_,
                 },
-                "error": {"code": "report_expired", "params": {}},
                 "successful": False,
+                "error": {"code": "report_expired", "params": {}},
             },
         ]
         assert len(upload_2.errors) == 1

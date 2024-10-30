@@ -15,6 +15,7 @@ from tasks.upload_finisher import (
     ReportService,
     ShouldCallNotifyResult,
     UploadFinisherTask,
+    get_processing_results,
 )
 
 here = Path(__file__)
@@ -30,6 +31,47 @@ def _create_checkpoint_logger(mocker):
     checkpoints.log(UploadFlow.PROCESSING_BEGIN)
     checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
     return checkpoints
+
+
+def test_results_arg_old_no_id():
+    results = get_processing_results(
+        [
+            {
+                "processings_so_far": [
+                    {"arguments": {"foo": "bar"}, "successful": True}
+                ],
+                "parallel_incremental_result": {"upload_pk": 123},
+            }
+        ]
+    )
+    assert results == [
+        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
+    ]
+
+
+def test_results_arg_old_with_id():
+    results = get_processing_results(
+        [
+            {
+                "processings_so_far": [
+                    {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
+                ],
+                "parallel_incremental_result": {"upload_pk": "something else entirely"},
+            }
+        ]
+    )
+    assert results == [
+        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
+    ]
+
+
+def test_results_arg_new():
+    results = get_processing_results(
+        [{"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}]
+    )
+    assert results == [
+        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
+    ]
 
 
 class TestUploadFinisherTask(object):
@@ -202,12 +244,13 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        processing_results = {
-            "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
-        }
+
         assert (
             UploadFinisherTask().should_call_notifications(
-                commit, commit_yaml, processing_results, None
+                commit,
+                commit_yaml,
+                [{"arguments": {"url": "url"}, "successful": True}],
+                None,
             )
             == ShouldCallNotifyResult.NOTIFY
         )
@@ -223,10 +266,10 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        processing_results = {}
+
         assert (
             UploadFinisherTask().should_call_notifications(
-                commit, commit_yaml, processing_results, "local_report1"
+                commit, commit_yaml, [], "local_report1"
             )
             == ShouldCallNotifyResult.DO_NOT_NOTIFY
         )
@@ -242,10 +285,10 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        processing_results = {}
+
         assert (
             UploadFinisherTask().should_call_notifications(
-                commit, commit_yaml, processing_results, None
+                commit, commit_yaml, [], None
             )
             == ShouldCallNotifyResult.DO_NOT_NOTIFY
         )
@@ -263,12 +306,13 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        processing_results = {
-            "processings_so_far": [{"arguments": {"url": "url"}, "successful": True}]
-        }
+
         assert (
             UploadFinisherTask().should_call_notifications(
-                commit, commit_yaml, processing_results, None
+                commit,
+                commit_yaml,
+                [{"arguments": {"url": "url"}, "successful": True}],
+                None,
             )
             == ShouldCallNotifyResult.NOTIFY
         )
@@ -298,13 +342,13 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        processing_results = {
-            "processings_so_far": 12
-            * [{"arguments": {"url": "url"}, "successful": False}]
-        }
+
         assert (
             UploadFinisherTask().should_call_notifications(
-                commit, commit_yaml, processing_results, None
+                commit,
+                commit_yaml,
+                12 * [{"arguments": {"url": "url"}, "successful": False}],
+                None,
             )
             == result
         )
@@ -327,13 +371,12 @@ class TestUploadFinisherTask(object):
             sessions=[mocker.MagicMock()] * 8
         )  # 8 sessions
 
-        processing_results = {
-            "processings_so_far": 9
-            * [{"arguments": {"url": "url"}, "successful": True}]
-        }
         assert (
             UploadFinisherTask().should_call_notifications(
-                commit, commit_yaml, processing_results, None
+                commit,
+                commit_yaml,
+                9 * [{"arguments": {"url": "url"}, "successful": True}],
+                None,
             )
             == ShouldCallNotifyResult.DO_NOT_NOTIFY
         )
@@ -356,13 +399,12 @@ class TestUploadFinisherTask(object):
             sessions=[mocker.MagicMock()] * 10
         )  # 10 sessions
 
-        processing_results = {
-            "processings_so_far": 2
-            * [{"arguments": {"url": "url"}, "successful": True}]
-        }
         assert (
             UploadFinisherTask().should_call_notifications(
-                commit, commit_yaml, processing_results, None
+                commit,
+                commit_yaml,
+                2 * [{"arguments": {"url": "url"}, "successful": True}],
+                None,
             )
             == ShouldCallNotifyResult.NOTIFY
         )
@@ -377,7 +419,6 @@ class TestUploadFinisherTask(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml=commit_yaml,
         )
-        processing_results = {"processings_so_far": [{"successful": True}]}
         dbsession.add(commit)
         dbsession.flush()
 
@@ -386,7 +427,7 @@ class TestUploadFinisherTask(object):
             dbsession,
             commit,
             UserYaml(commit_yaml),
-            processing_results,
+            [{"successful": True}],
             None,
             checkpoints,
         )
@@ -429,7 +470,6 @@ class TestUploadFinisherTask(object):
             repository=repository,
             pullid=pull.pullid,
         )
-        processing_results = {"processings_so_far": [{"successful": True}]}
         dbsession.add(commit)
         dbsession.add(compared_to)
         dbsession.add(pull)
@@ -440,7 +480,7 @@ class TestUploadFinisherTask(object):
             dbsession,
             commit,
             UserYaml(commit_yaml),
-            processing_results,
+            [{"successful": True}],
             None,
             checkpoints,
         )
@@ -493,11 +533,6 @@ class TestUploadFinisherTask(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml=commit_yaml,
         )
-        processing_results = {
-            "processings_so_far": [
-                {"successful": True, "arguments": {"flags": "smart-tests"}}
-            ]
-        }
         dbsession.add(commit)
         dbsession.flush()
 
@@ -506,7 +541,7 @@ class TestUploadFinisherTask(object):
             dbsession,
             commit,
             UserYaml(commit_yaml),
-            processing_results,
+            [{"successful": True, "arguments": {"flags": "smart-tests"}}],
             None,
             checkpoints,
         )
@@ -553,7 +588,6 @@ class TestUploadFinisherTask(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml=commit_yaml,
         )
-        processing_results = {"processings_so_far": [{"successful": False}]}
         dbsession.add(commit)
         dbsession.flush()
 
@@ -562,7 +596,7 @@ class TestUploadFinisherTask(object):
             dbsession,
             commit,
             UserYaml(commit_yaml),
-            processing_results,
+            [{"successful": False}],
             None,
             checkpoints,
         )
@@ -653,47 +687,31 @@ class TestShouldCleanLabelsIndex(object):
         "processing_results, expected",
         [
             (
-                {
-                    "processings_so_far": [
-                        {"successful": True, "arguments": {"flags": "smart-tests"}}
-                    ]
-                },
+                [{"successful": True, "arguments": {"flags": "smart-tests"}}],
                 True,
             ),
             (
-                {
-                    "processings_so_far": [
-                        {"successful": True, "arguments": {"flags": "just-tests"}}
-                    ]
-                },
+                [{"successful": True, "arguments": {"flags": "just-tests"}}],
                 False,
             ),
             (
-                {
-                    "processings_so_far": [
-                        {
-                            "successful": True,
-                            "arguments": {"flags": "just-tests,smart-tests"},
-                        }
-                    ]
-                },
+                [
+                    {
+                        "successful": True,
+                        "arguments": {"flags": "just-tests,smart-tests"},
+                    }
+                ],
                 True,
             ),
             (
-                {
-                    "processings_so_far": [
-                        {"successful": False, "arguments": {"flags": "smart-tests"}}
-                    ]
-                },
+                [{"successful": False, "arguments": {"flags": "smart-tests"}}],
                 False,
             ),
             (
-                {
-                    "processings_so_far": [
-                        {"successful": True, "arguments": {"flags": "just-tests"}},
-                        {"successful": True, "arguments": {"flags": "smart-tests"}},
-                    ]
-                },
+                [
+                    {"successful": True, "arguments": {"flags": "just-tests"}},
+                    {"successful": True, "arguments": {"flags": "smart-tests"}},
+                ],
                 True,
             ),
         ],

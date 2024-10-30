@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Callable
-from typing import NotRequired, TypedDict
 
 import sentry_sdk
 from celery.exceptions import CeleryError
@@ -11,23 +10,14 @@ from database.models.core import Commit
 from database.models.reports import Upload
 from helpers.reports import delete_archive_setting
 from services.archive import ArchiveService
-from services.processing.intermediate import save_intermediate_report
-from services.processing.state import ProcessingState
 from services.report import ProcessingError, RawReportInfo, Report, ReportService
 from services.report.parser.types import VersionOneParsedRawReport
 
+from .intermediate import save_intermediate_report
+from .state import ProcessingState
+from .types import ProcessingResult, UploadArguments
+
 log = logging.getLogger(__name__)
-
-
-class UploadArguments(TypedDict):
-    # TODO(swatinem): migrate this over to `upload_id`
-    upload_pk: int
-
-
-class ProcessingResult(TypedDict):
-    arguments: UploadArguments
-    successful: bool
-    error: NotRequired[dict]
 
 
 @sentry_sdk.trace
@@ -58,7 +48,9 @@ def process_upload(
     report_service = ReportService(commit_yaml)
     archive_service = report_service.get_archive_service(commit.repository)
 
-    result = ProcessingResult(arguments=arguments, successful=False)
+    result = ProcessingResult(
+        upload_id=upload_id, arguments=arguments, successful=False
+    )
 
     try:
         report = Report()

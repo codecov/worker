@@ -1,5 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 
 import orjson
 import sentry_sdk
@@ -8,20 +7,9 @@ from shared.reports.editable import EditableReport
 from shared.reports.resources import Report
 
 from services.archive import ArchiveService
-from services.processing.metrics import INTERMEDIATE_REPORT_SIZE
 
-
-@dataclass
-class IntermediateReport:
-    upload_id: int
-    """
-    The `Upload` id for which this report was loaded.
-    """
-
-    report: EditableReport
-    """
-    The loaded Report.
-    """
+from .metrics import INTERMEDIATE_REPORT_SIZE
+from .types import IntermediateReport
 
 
 @sentry_sdk.trace
