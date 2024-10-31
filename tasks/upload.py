@@ -32,6 +32,7 @@ from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
+from services.processing.types import UploadArguments
 from services.redis import download_archive_from_redis, get_redis_connection
 from services.report import (
     BaseReportService,
@@ -491,17 +492,17 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             self.retry(countdown=60, kwargs=upload_context.kwargs_for_retry(kwargs))
 
-        argument_list = []
+        argument_list: list[UploadArguments] = []
         for arguments in upload_context.arguments_list():
             normalized_arguments = upload_context.normalize_arguments(commit, arguments)
-            if "upload_id" in normalized_arguments:
-                normalized_arguments["upload_pk"] = normalized_arguments["upload_id"]
-            else:
+            if "upload_id" not in normalized_arguments:
                 upload = report_service.create_report_upload(
                     normalized_arguments, commit_report
                 )
+                normalized_arguments["upload_id"] = upload.id_
 
-                normalized_arguments["upload_pk"] = upload.id_
+            # TODO(swatinem): eventually migrate from `upload_pk` to `upload_id`:
+            normalized_arguments["upload_pk"] = normalized_arguments["upload_id"]
             argument_list.append(normalized_arguments)
 
         if argument_list:
@@ -594,7 +595,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         state = ProcessingState(commit.repoid, commit.commitid)
         state.mark_uploads_as_processing(
-            [int(upload["upload_pk"]) for upload in argument_list]
+            [int(upload["upload_id"]) for upload in argument_list]
         )
 
         parallel_processing_tasks = [
@@ -714,6 +715,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             ba_argument_list = []
             for arg in argument_list:
                 ba_arg = deepcopy(arg)
+                del ba_arg["upload_id"]
                 ba_arg["upload_pk"] = None
                 ba_argument_list.append(ba_arg)
 

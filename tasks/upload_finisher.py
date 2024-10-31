@@ -32,6 +32,7 @@ from services.processing.intermediate import (
 from services.processing.merging import merge_reports, update_uploads
 from services.processing.metrics import LABELS_USAGE
 from services.processing.state import ProcessingState, should_trigger_postprocessing
+from services.processing.types import ProcessingResult
 from services.redis import get_redis_connection
 from services.report import ReportService
 from services.yaml import read_yaml_field
@@ -106,19 +107,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         state = ProcessingState(repoid, commitid)
 
-        processing_results = {
-            "processings_so_far": [
-                task["processings_so_far"][0] for task in processing_results
-            ],
-            "parallel_incremental_result": [
-                task["parallel_incremental_result"] for task in processing_results
-            ],
-        }
-        upload_ids = [
-            int(upload["upload_pk"])
-            for upload in processing_results["parallel_incremental_result"]
-        ]
-        pr = processing_results["processings_so_far"][0]["arguments"].get("pr")
+        processing_results = get_processing_results(processing_results)
+        upload_ids = [upload["upload_id"] for upload in processing_results]
+        pr = processing_results[0]["arguments"].get("pr")
         diff = load_commit_diff(commit, pr, self.name)
 
         try:
@@ -216,7 +207,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         db_session,
         commit: Commit,
         commit_yaml: UserYaml,
-        processing_results: dict,
+        processing_results: list[ProcessingResult],
         report_code,
         checkpoints,
     ):
@@ -336,7 +327,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         return {"notifications_called": notifications_called}
 
     def should_clean_labels_index(
-        self, commit_yaml: UserYaml, processing_results: dict
+        self, commit_yaml: UserYaml, processing_results: list[ProcessingResult]
     ):
         """Returns True if any of the successful processings was uploaded using a flag
         that implies labels were uploaded with the report.
@@ -352,14 +343,13 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             flags = flags_str.split(",") if flags_str else []
             return results["successful"] and any(map(should_clean_for_flag, flags))
 
-        actual_processing_results = processing_results.get("processings_so_far", [])
-        return any(map(should_clean_for_processing_result, actual_processing_results))
+        return any(map(should_clean_for_processing_result, processing_results))
 
     def should_call_notifications(
         self,
         commit: Commit,
         commit_yaml: UserYaml,
-        processing_results: dict,
+        processing_results: list[ProcessingResult],
         report_code,
     ) -> ShouldCallNotifyResult:
         extra_dict = {
@@ -403,9 +393,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 )
                 return ShouldCallNotifyResult.DO_NOT_NOTIFY
 
-        processing_successses = [
-            x["successful"] for x in processing_results.get("processings_so_far", [])
-        ]
+        processing_successses = [x["successful"] for x in processing_results]
 
         if read_yaml_field(
             commit_yaml,
@@ -477,3 +465,19 @@ def perform_report_merging(
     update_uploads(commit.get_db_session(), merge_result)
 
     return master_report
+
+
+def get_processing_results(processing_results: list) -> list[ProcessingResult]:
+    results: list[ProcessingResult] = []
+    for input_result in processing_results:
+        if "processings_so_far" in input_result:
+            result = input_result["processings_so_far"][0]
+            if "upload_id" not in result:
+                result["upload_id"] = input_result["parallel_incremental_result"][
+                    "upload_pk"
+                ]
+            results.append(result)
+        else:
+            results.append(input_result)
+
+    return results
