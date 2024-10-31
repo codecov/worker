@@ -25,6 +25,29 @@ here = Path(__file__)
 folder = here.parent
 
 
+@pytest.mark.skip(reason="this is supposed to be invoked manually")
+def test_manual():
+    # The intention of this test is to easily reproduce production problems with real reports.
+    # So download the relevant report, fill in its filename below, comment out the `skip` annotation,
+    # and run this test directly.
+    filename = "..."
+    with open(filename, "rb") as d:
+        contents = d.read()
+
+    parsed_report = LegacyReportParser().parse_raw_report_from_bytes(contents)
+    master = Report()
+    result = process.process_raw_upload(
+        commit_yaml=None,
+        report=master,
+        raw_reports=parsed_report,
+        flags=[],
+        session=Session(),
+    )
+    master = result.report
+
+    assert not master.is_empty()
+
+
 class TestProcessRawUpload(BaseTestCase):
     def readjson(self, filename):
         with open(folder / filename, "r") as d:
