@@ -363,7 +363,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         # Upsert Daily Test Totals
         if len(daily_totals) > 0:
             rollup_table = DailyTestRollup.__table__
-            stmt = insert(rollup_table).values(list(daily_totals.values()))
+            stmt = insert(rollup_table).values(
+                sorted(list(daily_totals.values()), key=lambda x: str(x["test_id"]))
+            )
             stmt = stmt.on_conflict_do_update(
                 index_elements=[
                     "repoid",
