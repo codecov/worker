@@ -26,11 +26,9 @@ class TestUploadCompletionTask(object):
                 "app.tasks.compute_comparison.ComputeComparison": mocker.MagicMock(),
             },
         )
-
-        commit = CommitFactory.create(pullid=10)
-        pull = PullFactory.create(
-            repository=commit.repository, head=commit.commitid, pullid=commit.pullid
-        )
+        commit = CommitFactory.create()
+        pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+        commit.pullid = pull.pullid
         upload = UploadFactory.create(report__commit=commit)
         compared_to = CommitFactory.create(repository=commit.repository)
         pull.compared_to = compared_to.commitid
