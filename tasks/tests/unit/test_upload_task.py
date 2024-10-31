@@ -166,7 +166,6 @@ class TestUploadTaskIntegration(object):
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id is None
         assert commit.report is not None
-        assert commit.report.details is not None
         sessions = commit.report.uploads
         assert len(sessions) == 1
         first_session = (
@@ -904,7 +903,6 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         assert commit.report is not None
-        assert commit.report.details is not None
         sessions = commit.report.uploads
         assert len(sessions) == 2
         first_session = (
@@ -1004,7 +1002,6 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         assert commit.report is not None
-        assert commit.report.details is not None
         mocked_schedule_task.assert_called_with(
             mocker.ANY,
             commit,

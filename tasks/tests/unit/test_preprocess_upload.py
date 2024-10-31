@@ -1,6 +1,5 @@
 import pytest
 from redis.exceptions import LockError
-from shared.reports.types import ReportTotals
 
 from database.models.reports import Upload
 from database.tests.factories.core import (
@@ -65,49 +64,6 @@ class TestPreProcessUpload(object):
             commitid=commit.commitid,
             report_code=None,
         )
-        # assert that commit.report has carried forwarded flags sessions from its parent
-        assert commit.report.details.files_array == [
-            {
-                "filename": "file_1.go",
-                "file_index": 0,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=8,
-                    hits=5,
-                    misses=3,
-                    partials=0,
-                    coverage="62.50000",
-                    branches=0,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=10,
-                    complexity_total=2,
-                    diff=0,
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_2.py",
-                "file_index": 1,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=2,
-                    hits=1,
-                    misses=0,
-                    partials=1,
-                    coverage="50.00000",
-                    branches=1,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=0,
-                    complexity_total=0,
-                    diff=0,
-                ),
-                "diff_totals": None,
-            },
-        ]
         for sess_id in sample_report.sessions.keys():
             upload = (
                 dbsession.query(Upload)
