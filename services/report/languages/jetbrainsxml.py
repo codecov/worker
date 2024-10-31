@@ -21,10 +21,9 @@ class JetBrainsXMLProcessor(BaseLanguageProcessor):
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
     file_by_id: dict[str, ReportFile] = {}
     for f in xml.iter("File"):
-        _file = report_builder_session.create_coverage_file(
-            f.attrib["Name"].replace("\\", "/")
-        )
-        if _file:
+        filename = f.attrib["Name"].replace("\\", "/")
+        _file = report_builder_session.create_coverage_file(filename)
+        if _file is not None:
             file_by_id[str(f.attrib["Index"])] = _file
 
     for statement in xml.iter("Statement"):
