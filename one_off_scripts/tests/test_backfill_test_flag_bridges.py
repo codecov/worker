@@ -9,10 +9,12 @@ from shared.django_apps.reports.tests.factories import (
 )
 
 from one_off_scripts.backfill_test_flag_bridges import backfill_test_flag_bridges
+from one_off_scripts.tests.utils import setup_one_off_tests
 
 
-@pytest.mark.django_db
-def test_it_backfills_test_flag_bridges(setup_tests):
+@pytest.mark.django_db(transaction=True)
+def test_it_backfills_test_flag_bridges():
+    setup_one_off_tests()
     repo = RepositoryFactory(test_analytics_enabled=True)
 
     flag_1 = RepositoryFlagFactory(repository=repo, flag_name="first")
