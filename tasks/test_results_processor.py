@@ -337,7 +337,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         # Upsert Tests
         if len(test_data) > 0:
-            test_insert = insert(Test.__table__).values(list(test_data.values()))
+            test_insert = insert(Test.__table__).values(
+                sorted(list(test_data.values()), key=lambda x: str(x["flags_hash"]))
+            )
             insert_on_conflict_do_update = test_insert.on_conflict_do_update(
                 index_elements=["repoid", "name", "testsuite", "flags_hash"],
                 set_={
