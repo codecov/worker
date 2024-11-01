@@ -147,10 +147,10 @@ class TestDeleteOwnerTaskUnit(object):
     def test_delete_owner_from_orgs_removes_ownerid_from_organizations_of_related_owners(
         self, mocker, mock_configuration, mock_storage, dbsession
     ):
-        org_ownerid = 123
-
-        org = OwnerFactory.create(ownerid=org_ownerid, service_id="9000")
+        org = OwnerFactory.create(service_id="9000")
         dbsession.add(org)
+        dbsession.flush()
+        org_ownerid = org.ownerid
 
         user_1 = OwnerFactory.create(
             ownerid=1001, service_id="9001", organizations=[org_ownerid]
@@ -201,9 +201,7 @@ class TestDeleteOwnerTaskUnit(object):
     def test_delete_owner_timeout(
         self, mocker, mock_configuration, mock_storage, dbsession
     ):
-        org_ownerid = 123
-
-        org = OwnerFactory.create(ownerid=org_ownerid, service_id="9000")
+        org = OwnerFactory.create(service_id="9000")
         dbsession.add(org)
 
         dbsession.flush()
@@ -211,4 +209,4 @@ class TestDeleteOwnerTaskUnit(object):
             DeleteOwnerTask, "delete_repo_archives", side_effect=SoftTimeLimitExceeded()
         )
         with pytest.raises(Retry):
-            DeleteOwnerTask().run_impl(dbsession, org_ownerid)
+            DeleteOwnerTask().run_impl(dbsession, org.ownerid)
