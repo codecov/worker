@@ -39,7 +39,7 @@ def pytest_itemcollected(item):
 
 
 @pytest.fixture(scope="session")
-def engine(request, sqlalchemy_connect_url, app_config):
+def engine(request, sqlalchemy_db, sqlalchemy_connect_url, app_config):
     """Engine configuration.
     See http://docs.sqlalchemy.org/en/latest/core/engines.html
     for more details.
@@ -66,22 +66,11 @@ def engine(request, sqlalchemy_connect_url, app_config):
         engine.url.database = "{}_{}".format(engine.url.database, xdist_suffix)
         engine = create_engine(engine.url)  # override engine
 
-    def fin():
-        print("Disposing engine")
-        engine.dispose()
-
-    request.addfinalizer(fin)
-    return engine
-
-
-@pytest.fixture(scope="session")
-def db(engine, sqlalchemy_connect_url, django_db_setup):
-    # Bootstrap the DB by running the Django bootstrap version.
+    # Check that the DB exist and migrate the unmigrated SQLALchemy models as a stop-gap
     database_url = sqlalchemy_connect_url
     if not database_exists(database_url):
         raise RuntimeError(f"SQLAlchemy cannot connect to DB at {database_url}")
 
-    # Create the unmigrated models as a stopgap
     Base.metadata.tables["profiling_profilingcommit"].create(bind=engine)
     Base.metadata.tables["profiling_profilingupload"].create(bind=engine)
     Base.metadata.tables["timeseries_measurement"].create(bind=engine)
@@ -104,9 +93,59 @@ def db(engine, sqlalchemy_connect_url, django_db_setup):
         bind=engine
     )
 
+    yield engine
+
+    print("Disposing engine")
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def sqlalchemy_db(request: pytest.FixtureRequest, django_db_blocker, django_db_setup):
+    # Bootstrap the DB by running the Django bootstrap version.
+    from django.conf import settings
+    from django.db import connections
+    from django.test.utils import setup_databases, teardown_databases
+
+    with django_db_blocker.unblock():
+        # Temporarily reset the database to the SQLAlchemy DBs to run the migrations.
+        original_test_name = settings.DATABASES["default"]["TEST"]["NAME"]
+        settings.DATABASES["default"]["TEST"]["NAME"] = "test_postgres_sqlalchemy"
+        db_cfg = setup_databases(
+            verbosity=request.config.option.verbose,
+            interactive=False,
+        )
+        settings.DATABASES["default"]["TEST"]["NAME"] = original_test_name
+
+        # Hack to get the default connection for the test database to _actually_ be the
+        # Django database that the django_db should actually use. It was set to the SQLAlchemy database,
+        # but this makes sure that the default Django DB connection goes to the Django database.
+        # Since the database was already created and migrated in the django_db_setup fixture,
+        # we set keepdb=True to avoid recreating the database and rerunning the migrations.
+        connections.configure_settings(settings.DATABASES)
+        connections["default"].creation.create_test_db(
+            verbosity=request.config.option.verbose,
+            autoclobber=True,
+            keepdb=True,
+        )
+
+    yield
+
+    # Cleanup with Django version as well
+    try:
+        with django_db_blocker.unblock():
+            settings.DATABASES["default"]["TEST"]["NAME"] = "test_postgres_sqlalchemy"
+            teardown_databases(db_cfg, verbosity=request.config.option.verbose)
+            settings.DATABASES["default"]["TEST"]["NAME"] = original_test_name
+    except Exception as exc:  # noqa: BLE001
+        request.node.warn(
+            pytest.PytestWarning(
+                f"Error when trying to teardown test databases: {exc!r}"
+            )
+        )
+
 
 @pytest.fixture
-def dbsession(db, engine):
+def dbsession(sqlalchemy_db, engine):
     """Sets up the SQLAlchemy dbsession."""
     connection = engine.connect()
 
