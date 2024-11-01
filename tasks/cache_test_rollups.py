@@ -1,23 +1,14 @@
-import pyarrow as pa
+import polars as pl
 from django.db import connection
 from shared.celery_config import cache_test_rollups_task_name
 from shared.django_apps.core.models import Repository
 
-from services.redis import get_redis_connection
+from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
 
-class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
-    def run_impl(self, *, repoid, branch, **kwargs):
-        repo = Repository.objects.get(repoid=repoid)
-        default_branch = repo.branch
-
-        if branch == default_branch:
-            pin = True
-        else:
-            pin = False
-
-        base_query = """
+def get_query(with_end: bool) -> str:
+    base_query = f"""
 with
 base_cte as (
 	select rd.*
@@ -25,6 +16,7 @@ base_cte as (
 	where
         rd.repoid = %(repoid)s
 		and rd.date >= current_date - interval %(interval)s
+        {"and rd.date < current_date - interval %(interval_end)s" if with_end else ""}
         and rd.branch = %(branch)s
 ),
 failure_rate_cte as (
@@ -90,58 +82,67 @@ join reports_test rt on results.test_id = rt.id
 left join flags_cte using (test_id)
 """
 
+    return base_query
+
+
+class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
+    def run_impl(self, *, repoid, branch, **kwargs):
+        repository = Repository.objects.get(repoid=repoid)
+        storage_service = get_storage_client()
+
         with connection.cursor() as cursor:
-            for interval in [1, 7, 30]:
+            for interval_start, interval_end in [
+                (1, None),
+                (7, None),
+                (30, None),
+                (2, 1),
+                (14, 7),
+                (60, 30),
+            ]:
+                base_query = get_query(with_end=interval_end is not None)
+                query_params = {
+                    "repoid": repoid,
+                    "branch": branch,
+                    "interval": f"{interval_start} days",
+                }
+
+                if interval_end is not None:
+                    query_params["interval_end"] = f"{interval_end} days"
+
                 cursor.execute(
                     base_query,
-                    {
-                        "repoid": repoid,
-                        "branch": branch,
-                        "interval": f"{interval} days",
-                    },
+                    query_params,
                 )
                 aggregation_of_test_results = cursor.fetchall()
-                data = map(list, zip(*aggregation_of_test_results))
-                columns = {
-                    column_name: column_values
-                    for column_name, column_values in zip(
-                        [col[0] for col in cursor.description],
-                        data,
-                    )
-                }
-                test_results_aggregate_schema = pa.schema(
+
+                df = pl.DataFrame(
+                    aggregation_of_test_results,
                     [
-                        pa.field("name", pa.string()),
-                        pa.field("test_id", pa.string()),
-                        pa.field("testsuite", pa.string()),
-                        pa.field("flags", pa.list_(pa.string())),
-                        pa.field("failure_rate", pa.float64()),
-                        pa.field("flake_rate", pa.float64()),
-                        pa.field("updated_at", pa.timestamp("s", tz="UTC")),
-                        pa.field("avg_duration", pa.float64()),
-                        pa.field("total_fail_count", pa.int64()),
-                        pa.field("total_flaky_fail_count", pa.int64()),
-                        pa.field("total_pass_count", pa.int64()),
-                        pa.field("total_skip_count", pa.int64()),
-                        pa.field("commits_where_fail", pa.int64()),
-                        pa.field("last_duration", pa.float64()),
+                        "name",
+                        "testsuite",
+                        "flags",
+                        "test_id",
+                        "failure_rate",
+                        "flake_rate",
+                        "updated_at",
+                        "avg_duration",
+                        "total_fail_count",
+                        "total_flaky_fail_count",
+                        "total_pass_count",
+                        "total_skip_count",
+                        "commits_where_fail",
+                        "last_duration",
                     ],
+                    orient="row",
                 )
-                table = pa.Table.from_pydict(
-                    columns, schema=test_results_aggregate_schema
+                storage_key = (
+                    f"test_results/rollups/{repoid}/{branch}/{interval_start}"
+                    if interval_end is None
+                    else f"test_results/rollups/{repoid}/{branch}/{interval_start}_{interval_end}"
                 )
 
-                redis_key = f"ta:{repoid}:{branch}:{interval}"
-                redis_connection = get_redis_connection()
+                serialized_table = df.write_ipc(None)
 
-                buf = pa.BufferOutputStream()
-                with pa.ipc.new_file(buf, test_results_aggregate_schema) as writer:
-                    writer.write_table(table)
-                serialized_table = buf.getvalue().to_pybytes()
-
-                if pin:
-                    redis_connection.set(redis_key, serialized_table)
-                else:
-                    redis_connection.set(redis_key, serialized_table, ex=259200)
+                storage_service.write_file("codecov", storage_key, serialized_table)
 
         return {"success": True}

@@ -211,10 +211,6 @@ multidict==5.1.0
     # via yarl
 nodeenv==1.8.0
     # via pre-commit
-numpy==2.1.2
-    # via
-    #   pandas
-    #   pyarrow
 oauth2==1.9.0.post1
     # via shared
 oauthlib==3.1.0
@@ -244,12 +240,12 @@ orjson==3.10.7
     #   shared
 packaging==24.1
     # via pytest
-pandas==2.2.3
-    # via -r requirements.in
 platformdirs==3.11.0
     # via virtualenv
 pluggy==1.5.0
     # via pytest
+polars==1.12.0
+    # via -r requirements.in
 pre-commit==3.4.0
     # via -r requirements.in
 prometheus-client==0.17.1
@@ -270,8 +266,6 @@ protobuf==4.24.3
     #   proto-plus
     #   shared
 psycopg2==2.9.3
-    # via -r requirements.in
-pyarrow==17.0.0
     # via -r requirements.in
 pyasn1==0.4.8
     # via
@@ -325,7 +319,6 @@ python-dateutil==2.9.0.post0
     #   django-postgres-extra
     #   faker
     #   freezegun
-    #   pandas
     #   time-machine
 python-json-logger==0.1.11
     # via -r requirements.in
@@ -335,7 +328,6 @@ python-redis-lock==4.0.0
     #   shared
 pytz==2022.1
     # via
-    #   pandas
     #   shared
     #   timestring
 pyyaml==6.0.1
@@ -426,9 +418,7 @@ typing-extensions==4.6.3
     #   shared
     #   stripe
 tzdata==2024.1
-    # via
-    #   celery
-    #   pandas
+    # via celery
 urllib3==1.26.19
     # via
     #   -r requirements.in
