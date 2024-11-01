@@ -495,7 +495,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
             readable_report = self.rewrite_readable(network, report_contents)
 
-            archive_service.write_file(upload.storage_path, readable_report.getvalue())
+        archive_service.write_file(upload.storage_path, readable_report.getvalue())
 
         return TestResultsProcessingResult(
             network_files=network, parsing_results=parsing_results
