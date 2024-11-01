@@ -826,6 +826,9 @@ class TestNotifyTask(object):
         )
         dbsession.add(repository)
         dbsession.flush()
+        repository.owner.plan_activated_users = [repository.owner.ownerid]
+        dbsession.add(repository)
+        dbsession.flush()
         head_commitid = "5601846871b8142ab0df1e0b8774756c658bcc7d"
         master_sha = "5b174c2b40d501a70c479e91025d5109b1ad5c1b"
         master_commit = CommitFactory.create(
