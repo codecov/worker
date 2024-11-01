@@ -30,8 +30,9 @@ class TestUploadCompletionTask(object):
         pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
         commit.pullid = pull.pullid
         dbsession.add(pull)
-        dbsession.add(commit)
         dbsession.flush()
+
+        dbsession.add(commit)
 
         upload = UploadFactory.create(report__commit=commit)
         compared_to = CommitFactory.create(repository=commit.repository)

@@ -187,6 +187,8 @@ def test_full_upload(
         repository=repository, commitid=commitid, pullid=12, _report_json=None
     )
     dbsession.add(pull)
+    dbsession.flush()
+
     dbsession.add(commit)
     dbsession.flush()
 
