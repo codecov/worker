@@ -9,6 +9,7 @@ celery>=5.3.6
 click
 codecov-ribs
 coverage
+Django>=4.2.16
 django-postgres-extra>=2.0.8
 factory-boy
 google-cloud-pubsub
