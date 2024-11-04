@@ -32,14 +32,11 @@ class ReportBuilderSession(object):
         self,
         report_builder: "ReportBuilder",
         report_filepath: str,
-        should_use_label_index: bool = False,
     ):
         self.filepath = report_filepath
         self._report_builder = report_builder
         self._report = Report()
-        self.label_index = {}
         self._present_labels = set()
-        self.should_use_label_index = should_use_label_index
 
     @property
     def path_fixer(self):
@@ -55,15 +52,13 @@ class ReportBuilderSession(object):
         return self._report.get(filename)
 
     def append(self, file: ReportFile):
-        if not self.should_use_label_index:
-            # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
-            if file is not None:
-                for line_number, line in file.lines:
-                    if line.datapoints:
-                        for datapoint in line.datapoints:
-                            if datapoint.label_ids:
-                                for label in datapoint.label_ids:
-                                    self._present_labels.add(label)
+        if file is not None:
+            for line_number, line in file.lines:
+                if line.datapoints:
+                    for datapoint in line.datapoints:
+                        if datapoint.label_ids:
+                            for label in datapoint.label_ids:
+                                self._present_labels.add(label)
         return self._report.append(file)
 
     def output_report(self) -> Report:
@@ -75,33 +70,21 @@ class ReportBuilderSession(object):
         Returns:
             Report: The legacy report desired
         """
-        if self.should_use_label_index:
-            if len(self.label_index) > 0:
-                if len(self.label_index) == 1 and self.label_index.values() == [
-                    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
-                ]:
-                    log.warning(
-                        "Report only has SpecialLabels. Might indicate it was not generated with contexts"
+        if self._present_labels:
+            if self._present_labels == {
+                SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
+            }:
+                log.warning(
+                    "Report only has SpecialLabels. Might indicate it was not generated with contexts"
+                )
+            for file in self._report:
+                for line_number, line in file.lines:
+                    self._possibly_modify_line_to_account_for_special_labels(
+                        file, line_number, line
                     )
-                self._report._totals = None
-                self._report.labels_index = self.label_index
-        else:
-            if self._present_labels:
-                if self._present_labels and self._present_labels == {
-                    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER
-                }:
-                    log.warning(
-                        "Report only has SpecialLabels. Might indicate it was not generated with contexts"
-                    )
-                for file in self._report:
-                    for line_number, line in file.lines:
-                        self._possibly_modify_line_to_account_for_special_labels(
-                            file, line_number, line
-                        )
-                self._report._totals = None
+            self._report._totals = None
         return self._report
 
-    # TODO: [codecov/engineering-team#869] This behavior can be removed after label indexing is rolled out for all customers
     def _possibly_modify_line_to_account_for_special_labels(
         self, file: ReportFile, line_number: int, line: ReportLine
     ) -> None:
@@ -137,7 +120,6 @@ class ReportBuilderSession(object):
             )
             file._totals = None
 
-    # TODO: This can be removed after label indexing is rolled out for all customers
     def _possibly_convert_datapoints(
         self, datapoint: CoverageDatapoint
     ) -> List[CoverageDatapoint]:
@@ -237,16 +219,14 @@ class ReportBuilder(object):
         sessionid: int,
         ignored_lines: dict,
         path_fixer: PathFixer,
-        should_use_label_index: bool = False,
     ):
         self.current_yaml = current_yaml
         self.sessionid = sessionid
         self.ignored_lines = ignored_lines
         self.path_fixer = path_fixer
-        self.should_use_label_index = should_use_label_index
 
     def create_report_builder_session(self, filepath) -> ReportBuilderSession:
-        return ReportBuilderSession(self, filepath, self.should_use_label_index)
+        return ReportBuilderSession(self, filepath)
 
     def supports_labels(self) -> bool:
         """Returns wether a report supports labels.
