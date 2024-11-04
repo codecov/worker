@@ -31,21 +31,14 @@ class SessionAdjustmentResult:
     partially_deleted_sessions: list[int]
 
 
-@dataclass
-class UploadProcessingResult:
-    report: Report  # NOTE: this is just returning the input argument, and primarily used in tests
-    session_adjustment: SessionAdjustmentResult
-
-
 @sentry_sdk.trace
 def process_raw_upload(
     commit_yaml,
-    report: Report,
     raw_reports: ParsedRawReport,
-    flags,
+    flags: list[str],
     session: Session,
     upload: Upload | None = None,
-) -> UploadProcessingResult:
+) -> Report:
     toc, env = None, None
 
     # ----------------------
@@ -74,16 +67,14 @@ def process_raw_upload(
     if flags:
         session.flags = flags
 
-    sessionid = report.next_session_number()
-    session.id = sessionid
-
     # [javascript] check for both coverage.json and coverage/coverage.lcov
     skip_files = set()
     for report_file in raw_reports.get_uploaded_files():
         if report_file.filename == "coverage/coverage.json":
             skip_files.add("coverage/coverage.lcov")
 
-    temporary_report = Report()
+    report = Report()
+    sessionid = session.id = report.next_session_number()
 
     should_use_encoded_labels = (
         upload
@@ -94,8 +85,9 @@ def process_raw_upload(
     if should_use_encoded_labels:
         # We initialize the labels_index (which defaults to {}) to force the special label
         # to always be index 0
-        temporary_report.labels_index = dict(DEFAULT_LABEL_INDEX)
+        report.labels_index = dict(DEFAULT_LABEL_INDEX)
 
+    # TODO(swatinem): make this work in parallel mode:
     joined = True
     for flag in flags or []:
         if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
@@ -139,36 +131,22 @@ def process_raw_upload(
             if should_use_encoded_labels:
                 # Copies the labels from report into temporary_report
                 # If needed
-                make_sure_label_indexes_match(temporary_report, report_from_file)
-            temporary_report.merge(report_from_file, joined=True)
+                make_sure_label_indexes_match(report, report_from_file)
+            report.merge(report_from_file, joined=True)
 
-    if not temporary_report:
+    if not report:
         raise ReportEmptyError("No files found in report.")
 
-    if (
-        should_use_encoded_labels
-        and temporary_report.labels_index == DEFAULT_LABEL_INDEX
-    ):
+    if should_use_encoded_labels and report.labels_index == DEFAULT_LABEL_INDEX:
         # This means that, even though this report _could_ use encoded labels,
         # none of the reports processed contributed any new labels to it.
         # So we assume there are no labels and just reset the _labels_index of temporary_report
-        temporary_report.labels_index = None
+        report.labels_index = None
 
-    # Now we actually add the session to the original_report
-    # Because we know that the processing was successful
     _sessionid, session = report.add_session(session, use_id_from_session=True)
-    # Adjust sessions removed carryforward sessions that are being replaced
-    if session.flags:
-        session_adjustment = clear_carryforward_sessions(
-            report, temporary_report, session.flags, commit_yaml, upload
-        )
-    else:
-        session_adjustment = SessionAdjustmentResult([], [])
+    session.totals = report.totals
 
-    report.merge(temporary_report, joined=joined)
-    session.totals = temporary_report.totals
-
-    return UploadProcessingResult(report=report, session_adjustment=session_adjustment)
+    return report
 
 
 @sentry_sdk.trace
