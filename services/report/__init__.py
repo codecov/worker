@@ -1,7 +1,6 @@
 import copy
 import itertools
 import logging
-import sys
 import uuid
 from dataclasses import dataclass
 from time import time
@@ -27,7 +26,6 @@ from sqlalchemy.orm import Session as DbSession
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
     CommitReport,
-    ReportDetails,
     ReportLevelTotals,
     RepositoryFlag,
     UploadLevelTotals,
@@ -181,8 +179,7 @@ class ReportService(BaseReportService):
 
 
             This is one of the main entrypoint of this class. It takes care of:
-                - Creating the most basic models relating to that commit
-                    report (CommitReport and ReportDetails), if needed
+                - Creating the `CommitReport`, if needed
                 - If that commit is old-style (was created before the report models were installed),
                     it takes care of backfilling all the information from the report into the new
                     report models
@@ -215,19 +212,6 @@ class ReportService(BaseReportService):
             )
             db_session.add(current_report_row)
             db_session.flush()
-            report_details = (
-                db_session.query(ReportDetails)
-                .filter_by(report_id=current_report_row.id_)
-                .first()
-            )
-            if report_details is None:
-                report_details = ReportDetails(
-                    report_id=current_report_row.id_,
-                    _files_array=[],
-                    report=current_report_row,
-                )
-                db_session.add(report_details)
-                db_session.flush()
 
             actual_report = self.get_existing_report_for_commit(
                 commit, report_code=report_code
@@ -240,15 +224,6 @@ class ReportService(BaseReportService):
                 # This case means the report exists in our system, it was just not saved
                 #   yet into the new models therefore it needs backfilling
                 self.save_full_report(commit, actual_report)
-
-        elif current_report_row.details is None:
-            report_details = ReportDetails(
-                report_id=current_report_row.id_,
-                _files_array=[],
-                report=current_report_row,
-            )
-            db_session.add(report_details)
-            db_session.flush()
 
         if not self.has_initialized_report(commit):
             report = self.create_new_report_for_commit(commit)
@@ -859,28 +834,8 @@ class ReportService(BaseReportService):
 
         # `report` is an accessor which implicitly queries `CommitReport`
         if commit_report := commit.report:
-            files_array = [
-                {
-                    "filename": k,
-                    "file_index": v.file_index,
-                    "file_totals": v.file_totals,
-                    "diff_totals": v.diff_totals,
-                }
-                for k, v in report._files.items()
-            ]
-            log.info(
-                "Calling update to reports_reportdetails.files_array",
-                extra=dict(
-                    size=sys.getsizeof(files_array),
-                    ownerid=commit.repository.ownerid,
-                    repoid=commit.repoid,
-                    commitid=commit.commitid,
-                ),
-            )
             db_session = commit.get_db_session()
 
-            # `files_array` is an `ArchiveField`, so this will trigger an upload
-            commit_report.details.files_array = files_array
             report_totals = commit_report.totals
             if report_totals is None:
                 report_totals = ReportLevelTotals(report_id=commit_report.id)
