@@ -127,3 +127,25 @@ class TestBasePathAwarePathFixer(object):
             base_aware_pf("__init__.py", bases_to_try=["/home/travis/build/project"])
             == "project/__init__.py"
         )
+
+
+def test_ambiguous_paths():
+    toc = [
+        "foobar/bar/baz.py",
+        "barfoo/bar/baz.py",
+    ]
+    base_path = "/home/runner/work/owner/repo/foobar/build/coverage/coverage.xml"
+    #                                         ~~~~~~
+    bases_to_try = ["/app"]
+    # The problem here is that the given `file_name` is ambiguous, and neither the
+    # `base_path` nor the `bases_to_try` is helping us narrow this down.
+    # The `base_path` does include one of the relevant parent directories,
+    # but the paths within the coverage file are not relative to *that* file,
+    # and the `bases_to_try` seem to be completely unrelated.
+    file_name = "bar/baz.py"
+
+    pf = PathFixer.init_from_user_yaml({}, toc, [])
+    base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
+
+    assert pf(file_name) is None
+    assert base_aware_pf(file_name, bases_to_try=bases_to_try) is None
