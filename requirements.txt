@@ -93,8 +93,9 @@ distlib==0.3.7
     # via virtualenv
 distro==1.8.0
     # via openai
-django==4.2.15
+django==4.2.16
     # via
+    #   -r requirements.in
     #   django-model-utils
     #   django-postgres-extra
     #   shared
