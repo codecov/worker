@@ -174,7 +174,6 @@ class TestUploadTaskIntegration(object):
             .first()
         )
         processor = upload_processor_task.s(
-            {},
             repoid=commit.repoid,
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
@@ -184,26 +183,12 @@ class TestUploadTaskIntegration(object):
                 "upload_id": first_session.id,
                 "upload_pk": first_session.id,
             },
-            arguments_list=[
-                {
-                    "url": url,
-                    "build": "some_random_build",
-                    "upload_id": first_session.id,
-                    "upload_pk": first_session.id,
-                }
-            ],
-            report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
-            is_final=False,
         )
         kwargs = dict(
             repoid=commit.repoid,
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         finisher = upload_finisher_task.signature(kwargs=kwargs)
@@ -658,7 +643,6 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         processors = [
             upload_processor_task.s(
-                {},
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
@@ -667,13 +651,6 @@ class TestUploadTaskIntegration(object):
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
-                arguments_list=[
-                    {**arguments, "upload_id": mocker.ANY, "upload_pk": mocker.ANY}
-                ],
-                report_code=None,
-                run_fully_parallel=True,
-                in_parallel=True,
-                is_final=False,
             )
             for arguments in redis_queue
         ]
@@ -683,8 +660,6 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t_final = upload_finisher_task.signature(kwargs=kwargs)
@@ -762,7 +737,7 @@ class TestUploadTaskIntegration(object):
         mock_storage,
         celery_app,
     ):
-        mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
+        mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
         mocked_fetch_yaml = mocker.patch(
             "services.repository.fetch_commit_yaml_and_possibly_store"
@@ -793,8 +768,7 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        mocked_1.assert_called_with(
-            mocker.ANY,
+        mocked_schedule_task.assert_called_with(
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -827,7 +801,7 @@ class TestUploadTaskIntegration(object):
         mock_storage,
         celery_app,
     ):
-        mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
+        mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
         mocked_fetch_yaml = mocker.patch(
             "services.repository.fetch_commit_yaml_and_possibly_store"
@@ -859,8 +833,7 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        mocked_1.assert_called_with(
-            mocker.ANY,
+        mocked_schedule_task.assert_called_with(
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -946,7 +919,6 @@ class TestUploadTaskIntegration(object):
             .first()
         )
         mocked_schedule_task.assert_called_with(
-            mocker.ANY,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -1043,7 +1015,6 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         assert commit.report is not None
         mocked_schedule_task.assert_called_with(
-            mocker.ANY,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -1182,7 +1153,6 @@ class TestUploadTaskUnit(object):
         )
         mock_checkpoints = MagicMock(name="checkpoints")
         result = UploadTask().schedule_task(
-            dbsession,
             commit,
             commit_yaml,
             argument_list,
@@ -1192,16 +1162,10 @@ class TestUploadTaskUnit(object):
         )
         assert result == mocked_chord.return_value.apply_async.return_value
         processor = upload_processor_task.s(
-            {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml=commit_yaml,
             arguments={"upload_id": 1, "upload_pk": 1},
-            arguments_list=argument_list,
-            report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
-            is_final=False,
         )
         finisher = upload_finisher_task.signature(
             kwargs={
@@ -1209,8 +1173,6 @@ class TestUploadTaskUnit(object):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": None,
-                "run_fully_parallel": True,
-                "in_parallel": True,
                 _kwargs_key(UploadFlow): mocker.ANY,
             }
         )
