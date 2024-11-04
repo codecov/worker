@@ -79,6 +79,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         commitid,
         commit_yaml,
         report_code=None,
+        intermediate_reports_in_redis=False,
         **kwargs,
     ):
         try:
@@ -122,6 +123,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     commit_yaml,
                     commit,
                     upload_ids,
+                    intermediate_reports_in_redis,
                 )
 
                 log.info(
@@ -153,7 +155,9 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
             self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
 
-        cleanup_intermediate_reports(archive_service, commit.commitid, upload_ids)
+        cleanup_intermediate_reports(
+            archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
+        )
 
         # Mark the repository as updated so it will appear earlier in the list
         # of recently-active repositories
@@ -447,13 +451,14 @@ def perform_report_merging(
     commit_yaml: dict,
     commit: Commit,
     upload_ids: list[int],
+    intermediate_reports_in_redis=False,
 ) -> Report:
     master_report = report_service.get_existing_report_for_commit(commit)
     if master_report is None:
         master_report = Report()
 
     intermediate_reports = load_intermediate_reports(
-        archive_service, commit.commitid, upload_ids
+        archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
     )
 
     merge_result = merge_reports(
