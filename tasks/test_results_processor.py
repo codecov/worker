@@ -57,11 +57,6 @@ class ParserFailureError(Exception):
 class ParserNotSupportedError(Exception): ...
 
 
-def get_existing_tests(db_session: Session, repoid: int) -> dict[str, Test]:
-    existing_tests = db_session.query(Test).filter(Test.repoid == repoid).all()
-    return {test.id_: test for test in existing_tests}
-
-
 def get_repo_flags(
     db_session: Session, repoid: int, flags: list[str]
 ) -> dict[str, int]:
@@ -218,8 +213,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         repo_flags: dict[str, int] = get_repo_flags(db_session, repoid, flags)
 
-        existing_tests: dict[str, Test] = get_existing_tests(db_session, repoid)
-
         for p in parsing_results:
             framework = str(p.framework) if p.framework else None
 
@@ -249,11 +242,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     computed_name=computed_name,
                 )
 
-                if test_id not in existing_tests:
-                    test_flag_bridge_data += [
-                        {"test_id": test_id, "flag_id": repo_flags[flag]}
-                        for flag in flags
-                    ]
+                test_flag_bridge_data += [
+                    {"test_id": test_id, "flag_id": repo_flags[flag]} for flag in flags
+                ]
 
                 test_instance_data.append(
                     dict(
@@ -353,7 +344,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             insert_on_conflict_do_nothing_flags = (
                 insert(TestFlagBridge.__table__)
                 .values(test_flag_bridge_data)
-                .on_conflict_do_nothing()
+                .on_conflict_do_nothing(index_elements=["test_id", "flag_id"])
             )
             db_session.execute(insert_on_conflict_do_nothing_flags)
             db_session.flush()
