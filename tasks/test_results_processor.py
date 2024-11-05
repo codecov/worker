@@ -338,7 +338,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         # Upsert Tests
         if len(test_data) > 0:
             test_insert = insert(Test.__table__).values(
-                sorted(list(test_data.values()), key=lambda x: str(x["flags_hash"]))
+                sorted(test_data.values(), key=lambda x: str(x["flags_hash"]))
             )
             insert_on_conflict_do_update = test_insert.on_conflict_do_update(
                 index_elements=["repoid", "name", "testsuite", "flags_hash"],
@@ -364,7 +364,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         if len(daily_totals) > 0:
             rollup_table = DailyTestRollup.__table__
             stmt = insert(rollup_table).values(
-                sorted(list(daily_totals.values()), key=lambda x: str(x["test_id"]))
+                sorted(daily_totals.values(), key=lambda x: str(x["test_id"]))
             )
             stmt = stmt.on_conflict_do_update(
                 index_elements=[
