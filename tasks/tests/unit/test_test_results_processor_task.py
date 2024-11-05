@@ -681,16 +681,16 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
                 date.today(),
             ]
 
-            assert [r.fail_count for r in rollups] == [1, 0, 0, 1]
-            assert [r.pass_count for r in rollups] == [1, 1, 2, 0]
+            assert [r.fail_count for r in rollups] == [0, 1, 1, 0]
+            assert [r.pass_count for r in rollups] == [1, 1, 0, 2]
             assert [r.skip_count for r in rollups] == [0, 0, 0, 0]
-            assert [r.flaky_fail_count for r in rollups] == [0, 0, 0, 1]
+            assert [r.flaky_fail_count for r in rollups] == [0, 0, 1, 0]
 
             assert [r.commits_where_fail for r in rollups] == [
+                [],
                 ["cd76b0821854a780b60012aed85af0a8263004ad"],
-                [],
-                [],
                 ["bd76b0821854a780b60012aed85af0a8263004ad"],
+                [],
             ]
 
             assert [r.latest_run for r in rollups] == [
@@ -699,12 +699,17 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
                 datetime(1970, 1, 2, 0, 0),
                 datetime(1970, 1, 2, 0, 0),
             ]
-            assert [r.avg_duration_seconds for r in rollups] == [0.001, 7.2, 0.002, 3.6]
-            assert [r.last_duration_seconds for r in rollups] == [
-                0.001,
+            assert [r.avg_duration_seconds for r in rollups] == [
                 7.2,
-                0.002,
+                0.001,
                 3.6,
+                0.002,
+            ]
+            assert [r.last_duration_seconds for r in rollups] == [
+                7.2,
+                0.001,
+                3.6,
+                0.002,
             ]
 
     @pytest.mark.integration
