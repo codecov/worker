@@ -177,20 +177,21 @@ def test_full_upload(
 
     repoid = repository.repoid
     commitid = uuid4().hex
-    commit = CommitFactory.create(
-        repository=repository, commitid=commitid, pullid=12, _report_json=None
-    )
-    dbsession.add(commit)
-    dbsession.flush()
-
     # BASE and HEAD are connected in a PR
     pull = PullFactory(
         pullid=12,
         repository=repository,
         compared_to=base_commit.commitid,
     )
+    commit = CommitFactory.create(
+        repository=repository, commitid=commitid, pullid=12, _report_json=None
+    )
     dbsession.add(pull)
     dbsession.flush()
+
+    dbsession.add(commit)
+    dbsession.flush()
+
     setup_mock_get_compare(base_commit, commit, mock_repo_provider)
 
     archive_service = ArchiveService(repository)

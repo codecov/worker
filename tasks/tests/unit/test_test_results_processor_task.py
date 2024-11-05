@@ -525,12 +525,9 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         test_flag_bridges = dbsession.query(TestFlagBridge).all()
 
-        assert [bridge.test_id for bridge in test_flag_bridges] == [
-            tests[1].id,
-            tests[2].id,
-            tests[3].id,
-            tests[4].id,
-        ]
+        assert set(bridge.test_id for bridge in test_flag_bridges) == set(
+            instance.test_id for instance in test_instances
+        )
         for bridge in test_flag_bridges:
             assert bridge.flag == repo_flag
 
