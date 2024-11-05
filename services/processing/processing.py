@@ -29,7 +29,7 @@ def process_upload(
     commit_yaml: UserYaml,
     arguments: UploadArguments,
 ) -> dict:
-    upload_id = arguments["upload_pk"]
+    upload_id = arguments["upload_id"]
 
     commit = (
         db_session.query(Commit)
@@ -85,11 +85,7 @@ def process_upload(
         # or retries are not blocking later merge/notify stages
         state.clear_in_progress_uploads([upload_id])
 
-    # TODO(swatinem): migrate this to just `return result`:
-    return {
-        "processings_so_far": [result],
-        "parallel_incremental_result": {"upload_pk": upload_id},
-    }
+    return result
 
 
 def rewrite_or_delete_upload(

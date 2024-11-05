@@ -678,7 +678,6 @@ class TestUploadFinisherTask(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},
-                run_fully_parallel=True,
             )
 
 

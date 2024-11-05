@@ -5,6 +5,8 @@ from shared.reports.editable import EditableReport
 
 
 class UploadArguments(TypedDict):
+    upload_id: int
+
     # TODO(swatinem): migrate this over to `upload_id`
     upload_pk: int
 

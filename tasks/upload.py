@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import orjson
 import sentry_sdk
@@ -512,7 +512,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 len(argument_list)
             )
             scheduled_tasks = self.schedule_task(
-                db_session,
                 commit,
                 commit_yaml.to_dict(),
                 argument_list,
@@ -542,10 +541,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def schedule_task(
         self,
-        db_session: Session,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         commit_report: CommitReport,
         upload_context: UploadContext,
         checkpoints: CheckpointLogger | None,
@@ -587,7 +585,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         commit_report: CommitReport,
         checkpoints: CheckpointLogger,
     ):
@@ -600,16 +598,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         parallel_processing_tasks = [
             upload_processor_task.s(
-                {},  # this is the `previous_results` argument
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml,
                 arguments=arguments,
-                arguments_list=[arguments],
-                report_code=commit_report.code,
-                run_fully_parallel=True,
-                in_parallel=True,
-                is_final=False,
             )
             for arguments in argument_list
         ]
@@ -620,8 +612,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": commit_report.code,
-                "run_fully_parallel": True,
-                "in_parallel": True,
                 _kwargs_key(UploadFlow): checkpoints.data,
             },
         )
@@ -633,7 +623,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         do_notify: Optional[bool] = True,
     ):
         task_signatures = [
@@ -664,7 +654,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         commit_report: CommitReport,
         checkpoints: CheckpointLogger,
     ):
@@ -696,7 +686,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit: Commit,
         commit_report: CommitReport,
         commit_yaml: dict,
-        argument_list: List[Dict],
+        argument_list: list[UploadArguments],
     ):
         """
         If an upload is not of bundle analysis type we will create an additional BA report and upload for it.
