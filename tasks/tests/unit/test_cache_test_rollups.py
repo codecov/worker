@@ -5,8 +5,10 @@ import polars as pl
 import pytest
 import time_machine
 from shared.django_apps.core.tests.factories import RepositoryFactory
+from shared.django_apps.reports.models import LastCacheRollupDate
 from shared.django_apps.reports.tests.factories import (
     DailyTestRollupFactory,
+    LastCacheRollupDateFactory,
     RepositoryFlagFactory,
     TestFactory,
     TestFlagBridgeFactory,
@@ -220,3 +222,60 @@ class TestCacheTestRollupsTask:
                     "last_duration": 0.0,
                 },
             ]
+
+    def test_cache_test_rollups_no_update_date(self, mock_storage, transactional_db):
+        with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
+            rollup_date = LastCacheRollupDateFactory(
+                repository=self.repo,
+                last_rollup_date=dt.date.today() - dt.timedelta(days=30),
+            )
+
+            task = CacheTestRollupsTask()
+            _ = task.run_impl(
+                _db_session=None,
+                repoid=rollup_date.repository_id,
+                branch=rollup_date.branch,
+                update_date=False,
+            )
+
+            obj = LastCacheRollupDate.objects.filter(
+                repository_id=self.repo.repoid, branch="main"
+            ).first()
+            assert obj.last_rollup_date == dt.date.today() - dt.timedelta(days=30)
+
+    def test_cache_test_rollups_update_date(self, mock_storage, transactional_db):
+        with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
+            rollup_date = LastCacheRollupDateFactory(
+                repository=self.repo,
+                last_rollup_date=dt.date.today() - dt.timedelta(days=1),
+            )
+
+            task = CacheTestRollupsTask()
+            _ = task.run_impl(
+                _db_session=None,
+                repoid=self.repo.repoid,
+                branch="main",
+                update_date=True,
+            )
+
+            obj = LastCacheRollupDate.objects.filter(
+                repository_id=self.repo.repoid, branch="main"
+            ).first()
+            assert obj.last_rollup_date == dt.date.today()
+
+    def test_cache_test_rollups_update_date_does_not_exist(
+        self, mock_storage, transactional_db
+    ):
+        with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
+            task = CacheTestRollupsTask()
+            _ = task.run_impl(
+                _db_session=None,
+                repoid=self.repo.repoid,
+                branch="main",
+                update_date=True,
+            )
+
+            obj = LastCacheRollupDate.objects.filter(
+                repository_id=self.repo.repoid, branch="main"
+            ).first()
+            assert obj.last_rollup_date == dt.date.today()

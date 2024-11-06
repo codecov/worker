@@ -16,6 +16,7 @@ from tasks.bundle_analysis_processor import bundle_analysis_processor_task
 from tasks.bundle_analysis_save_measurements import (
     bundle_analysis_save_measurements_task,
 )
+from tasks.cache_rollup_cron_task import cache_rollup_task
 from tasks.cache_test_rollups import cache_test_rollups_task
 from tasks.cache_test_rollups_redis import cache_test_rollups_redis_task
 from tasks.commit_update import commit_update_task
