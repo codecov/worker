@@ -90,6 +90,7 @@ def _get_repo_provider_service_instance(service: str, adapter_params: dict):
     )
 
 
+@sentry_sdk.trace
 async def fetch_appropriate_parent_for_commit(
     repository_service, commit: Commit, git_commit=None
 ):
@@ -107,6 +108,7 @@ async def fetch_appropriate_parent_for_commit(
         possible_commit = possibly_filter_out_branch(commit, possible_commit_query)
         if possible_commit:
             return possible_commit.commitid
+
     ancestors_tree = await repository_service.get_ancestors_tree(commitid)
     elements = [ancestors_tree]
     while elements:
@@ -121,16 +123,18 @@ async def fetch_appropriate_parent_for_commit(
         closest_parent = possibly_filter_out_branch(commit, closest_parent_query)
         if closest_parent:
             return closest_parent.commitid
+
         if closest_parent_without_message is None:
-            res = db_session.query(Commit.commitid).filter(
+            parent_query = db_session.query(Commit.commitid).filter(
                 Commit.commitid.in_(parent_commits),
                 Commit.repoid == commit.repoid,
                 ~Commit.deleted.is_(True),
             )
-            res = possibly_filter_out_branch(commit, res)
-            if res:
-                closest_parent_without_message = res[0]
+            parent = possibly_filter_out_branch(commit, parent_query)
+            if parent:
+                closest_parent_without_message = parent
         elements = parents
+
     log.warning(
         "Unable to find a parent commit that was properly found on Github",
         extra=dict(commit=commit.commitid, repoid=commit.repoid),
@@ -139,41 +143,41 @@ async def fetch_appropriate_parent_for_commit(
 
 
 def possibly_filter_out_branch(commit: Commit, query: Query) -> Commit | None:
-    if query.count() <= 1:
-        query = query.first()
-    else:
-        query = query.filter(
-            Commit.branch == commit.branch,
-        ).first()
-    return query
+    commits = query.all()
+    if len(commits) == 1:
+        return commits[0]
+
+    # if we have more than one possible commit, pick the first one with a matching `branch`:
+    for possible_commit in commits:
+        if possible_commit.branch == commit.branch:
+            return possible_commit
+
+    return None
 
 
-async def possibly_update_commit_from_provider_info(commit, repository_service):
-    repoid = commit.repoid
-    commitid = commit.commitid
+def possibly_update_commit_from_provider_info(
+    commit: Commit, repository_service: TorngitBaseAdapter
+) -> bool:
     try:
         if not commit.message:
             log.info(
-                "Commit does not have all needed info. Reaching provider to fetch info",
-                extra=dict(repoid=repoid, commit=commitid),
+                "Commit does not have all needed info. Reaching provider to fetch info"
             )
-            await update_commit_from_provider_info(repository_service, commit)
+            async_to_sync(update_commit_from_provider_info)(repository_service, commit)
             return True
     except TorngitObjectNotFoundError:
         log.warning(
-            "Could not update commit with info because it was not found at the provider",
-            extra=dict(repoid=repoid, commit=commitid),
+            "Could not update commit with info because it was not found at the provider"
         )
         return False
-    log.debug(
-        "Not updating commit because it already seems to be populated",
-        extra=dict(repoid=repoid, commit=commitid),
-    )
+    log.debug("Not updating commit because it already seems to be populated")
     return False
 
 
 @sentry_sdk.trace
-async def update_commit_from_provider_info(repository_service, commit):
+async def update_commit_from_provider_info(
+    repository_service: TorngitBaseAdapter, commit: Commit
+):
     """
     Takes the result from the torngit commit details, and updates the commit
     properties with it
@@ -187,82 +191,84 @@ async def update_commit_from_provider_info(repository_service, commit):
             "Could not find commit on git provider",
             extra=dict(repoid=commit.repoid, commit=commit.commitid),
         )
-    else:
-        log.debug("Found git commit", extra=dict(commit=git_commit))
-        author_info = git_commit["author"]
-        if not author_info.get("id"):
-            commit_author = None
-            log.info(
-                "Not trying to set an author because it does not have an id",
-                extra=dict(
-                    author_info=author_info,
-                    git_commit=git_commit,
-                    commit=commit.commitid,
-                ),
-            )
-        else:
-            commit_author = get_or_create_author(
-                db_session,
-                commit.repository.service,
-                author_info["id"],
-                author_info["username"],
-                author_info["email"],
-                author_info["name"],
-            )
+        return
 
-        # attempt to populate commit.pullid from repository_service if we don't have it
-        if not commit.pullid:
-            commit.pullid = await repository_service.find_pull_request(
-                commit=commitid, branch=commit.branch
-            )
+    log.debug("Found git commit", extra=dict(commit=git_commit))
 
-        # if our records or the call above returned a pullid, fetch it's details
-        if commit.pullid:
-            commit_updates = await repository_service.get_pull_request(
-                pullid=commit.pullid
-            )
-            # There's a chance that the commit comes from a fork
-            # so we append the branch name with the fork slug
-            branch_name = commit_updates["head"]["branch"]
-            # TODO: 'slug' is in a `.get` because currently only GitHub returns that info
-            if commit_updates["head"].get("slug") != commit_updates["base"].get("slug"):
-                branch_name = commit_updates["head"]["slug"] + ":" + branch_name
-            commit.branch = branch_name
-            commit.merged = False
-        else:
-            possible_branches = await repository_service.get_best_effort_branches(
-                commit.commitid
-            )
-            if commit.repository.branch in possible_branches:
-                commit.merged = True
-                commit.branch = commit.repository.branch
-            else:
-                commit.merged = False
-        commit.message = git_commit["message"]
-        commit.parent_commit_id = await fetch_appropriate_parent_for_commit(
-            repository_service, commit, git_commit
-        )
-        commit.author = commit_author
-        commit.updatestamp = datetime.now()
-        commit.timestamp = git_commit["timestamp"]
-
-        if commit.repository.service == "bitbucket":
-            res = merged_pull(git_commit["message"])
-            if res:
-                pullid = res.groups()[0]
-                pullid = pullid
-                commit.branch = (await repository_service.get_pull_request(pullid))[
-                    "base"
-                ]["branch"]
+    author_info = git_commit["author"]
+    if not author_info.get("id"):
+        commit_author = None
         log.info(
-            "Updated commit with info from git provider",
+            "Not trying to set an author because it does not have an id",
             extra=dict(
-                repoid=commit.repoid,
+                author_info=author_info,
+                git_commit=git_commit,
                 commit=commit.commitid,
-                branch_value=commit.branch,
-                author_value=commit.author_id,
             ),
         )
+    else:
+        commit_author = get_or_create_author(
+            db_session,
+            commit.repository.service,
+            author_info["id"],
+            author_info["username"],
+            author_info["email"],
+            author_info["name"],
+        )
+
+    commit.parent_commit_id = await fetch_appropriate_parent_for_commit(
+        repository_service, commit, git_commit
+    )
+    commit.message = git_commit["message"]
+    commit.author = commit_author
+    commit.updatestamp = datetime.now()
+    commit.timestamp = git_commit["timestamp"]
+
+    # attempt to populate commit.pullid from repository_service if we don't have it
+    if not commit.pullid:
+        commit.pullid = await repository_service.find_pull_request(
+            commit=commitid, branch=commit.branch
+        )
+
+    # if our records or the call above returned a pullid, fetch it's details
+    if commit.pullid:
+        pull_details = await repository_service.get_pull_request(pullid=commit.pullid)
+        # There's a chance that the commit comes from a fork
+        # so we append the branch name with the fork slug
+        branch_name = pull_details["head"]["branch"]
+        # TODO: 'slug' is in a `.get` because currently only GitHub returns that info
+        if pull_details["head"].get("slug") != pull_details["base"].get("slug"):
+            branch_name = pull_details["head"]["slug"] + ":" + branch_name
+        commit.branch = branch_name
+        commit.merged = False
+    else:
+        possible_branches = await repository_service.get_best_effort_branches(
+            commit.commitid
+        )
+        if commit.repository.branch in possible_branches:
+            commit.merged = True
+            commit.branch = commit.repository.branch
+        else:
+            commit.merged = False
+
+    if commit.repository.service == "bitbucket":
+        res = merged_pull(git_commit["message"])
+        if res:
+            pullid = res.groups()[0]
+            if int(pullid) != int(commit.pullid):
+                pull_details = await repository_service.get_pull_request(pullid)
+            commit.branch = pull_details["base"]["branch"]
+
+    db_session.flush()
+    log.info(
+        "Updated commit with info from git provider",
+        extra=dict(
+            repoid=commit.repoid,
+            commit=commit.commitid,
+            branch_value=commit.branch,
+            author_value=commit.author_id,
+        ),
+    )
 
 
 def get_or_create_author(

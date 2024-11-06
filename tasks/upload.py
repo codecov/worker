@@ -424,7 +424,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             repository_service = get_repo_provider_service(
                 repository, installation_name_to_use=installation_name_to_use
             )
-            was_updated = async_to_sync(possibly_update_commit_from_provider_info)(
+            was_updated = possibly_update_commit_from_provider_info(
                 commit, repository_service
             )
             was_setup = self.possibly_setup_webhooks(commit, repository_service)
