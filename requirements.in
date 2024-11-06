@@ -22,6 +22,7 @@ openai
 opentelemetry-instrumentation-celery>=0.45b0
 opentelemetry-sdk>=1.24.0
 orjson
+pandas
 pre-commit
 polars
 psycopg2
