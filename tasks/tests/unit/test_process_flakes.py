@@ -65,7 +65,7 @@ class RepoSimulator:
                 "flaky_fail_count": 0,
                 "avg_duration_seconds": 0.0,
                 "last_duration_seconds": 0.0,
-                "latest_run": dt.datetime.now(),
+                "latest_run": dt.datetime.now(tz=dt.timezone.utc),
                 "commits_where_fail": [],
             },
         )
@@ -270,7 +270,7 @@ def test_it_creates_flakes_from_orig_branch(transactional_db):
     assert len(Flake.objects.all()) == 1
     assert Flake.objects.first().count == 1
     assert Flake.objects.first().fail_count == 1
-    assert Flake.objects.first().start_date == dt.datetime.now(dt.UTC)
+    assert Flake.objects.first().start_date == dt.datetime.now(tz=dt.UTC)
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
@@ -471,7 +471,7 @@ def test_it_creates_rollups(transactional_db):
             branch=rs.repo.branch,
         )
 
-        rollups = DailyTestRollup.objects.all()
+        rollups = DailyTestRollup.objects.all().order_by("date")
 
         assert len(rollups) == 4
 

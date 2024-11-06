@@ -9,10 +9,12 @@ from shared.django_apps.reports.tests.factories import (
 )
 
 from one_off_scripts.backfill_test_flag_bridges import backfill_test_flag_bridges
+from one_off_scripts.tests.utils import setup_one_off_tests
 
 
-@pytest.fixture
-def setup_tests(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_it_backfills_test_flag_bridges():
+    setup_one_off_tests()
     repo = RepositoryFactory(test_analytics_enabled=True)
 
     flag_1 = RepositoryFlagFactory(repository=repo, flag_name="first")
@@ -31,9 +33,6 @@ def setup_tests(transactional_db):
 
     test_3 = TestFactory(repository_id=repo.repoid)
 
-
-@pytest.mark.django_db(transaction=True)
-def test_it_backfills_test_flag_bridges(setup_tests):
     bridges = TestFlagBridge.objects.all()
     assert len(bridges) == 0
 
@@ -44,15 +43,15 @@ def test_it_backfills_test_flag_bridges(setup_tests):
 
     assert [(b.test.name, b.flag.flag_name) for b in bridges] == [
         (
-            "test_1",
+            test_1.name,
             "first",
         ),
         (
-            "test_1",
+            test_1.name,
             "second",
         ),
         (
-            "test_2",
+            test_2.name,
             "third",
         ),
     ]

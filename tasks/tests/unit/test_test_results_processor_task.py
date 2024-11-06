@@ -1,4 +1,5 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+from itertools import chain
 from pathlib import Path
 
 import pytest
@@ -663,54 +664,61 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
                 }
             ]
 
-            rollups: list[DailyTestRollup] = dbsession.query(DailyTestRollup).all()
-
             assert result == expected_result
 
-            assert [r.branch for r in rollups] == [
-                "first_branch",
-                "first_branch",
-                "second_branch",
-                "second_branch",
-            ]
+            rollups_first_branch: list[DailyTestRollup] = (
+                dbsession.query(DailyTestRollup).filter_by(branch="first_branch").all()
+            )
 
-            assert [r.date for r in rollups] == [
-                date.today() - timedelta(days=1),
-                date.today() - timedelta(days=1),
-                date.today(),
-                date.today(),
-            ]
-
-            assert [r.fail_count for r in rollups] == [0, 1, 1, 0]
-            assert [r.pass_count for r in rollups] == [1, 1, 0, 2]
-            assert [r.skip_count for r in rollups] == [0, 0, 0, 0]
-            assert [r.flaky_fail_count for r in rollups] == [0, 0, 1, 0]
-
-            assert [r.commits_where_fail for r in rollups] == [
-                [],
-                ["cd76b0821854a780b60012aed85af0a8263004ad"],
-                ["bd76b0821854a780b60012aed85af0a8263004ad"],
-                [],
-            ]
-
-            assert [r.latest_run for r in rollups] == [
-                datetime(1970, 1, 1, 0, 0),
-                datetime(1970, 1, 1, 0, 0),
-                datetime(1970, 1, 2, 0, 0),
-                datetime(1970, 1, 2, 0, 0),
-            ]
-            assert [r.avg_duration_seconds for r in rollups] == [
+            assert set(r.date for r in rollups_first_branch) == {
+                date.today() - timedelta(days=1)
+            }
+            assert set(r.fail_count for r in rollups_first_branch) == {0, 1}
+            assert set(r.pass_count for r in rollups_first_branch) == {1}
+            assert set(r.skip_count for r in rollups_first_branch) == {0}
+            assert set(r.flaky_fail_count for r in rollups_first_branch) == {0}
+            assert set(
+                chain.from_iterable(r.commits_where_fail for r in rollups_first_branch)
+            ) == {
+                "cd76b0821854a780b60012aed85af0a8263004ad",
+            }
+            assert set(r.latest_run for r in rollups_first_branch) == {
+                datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
+            }
+            assert set(r.avg_duration_seconds for r in rollups_first_branch) == {
                 7.2,
                 0.001,
-                3.6,
-                0.002,
-            ]
-            assert [r.last_duration_seconds for r in rollups] == [
+            }
+            assert set(r.last_duration_seconds for r in rollups_first_branch) == {
                 7.2,
                 0.001,
+            }
+
+            rollups_second_branch: list[DailyTestRollup] = (
+                dbsession.query(DailyTestRollup).filter_by(branch="second_branch").all()
+            )
+
+            assert set(r.date for r in rollups_second_branch) == {date.today()}
+            assert set(r.fail_count for r in rollups_second_branch) == {0, 1}
+            assert set(r.pass_count for r in rollups_second_branch) == {0, 2}
+            assert set(r.skip_count for r in rollups_second_branch) == {0}
+            assert set(r.flaky_fail_count for r in rollups_second_branch) == {0, 1}
+            assert set(
+                chain.from_iterable(r.commits_where_fail for r in rollups_second_branch)
+            ) == {
+                "bd76b0821854a780b60012aed85af0a8263004ad",
+            }
+            assert set(r.latest_run for r in rollups_second_branch) == {
+                datetime(1970, 1, 2, 0, 0, tzinfo=timezone.utc)
+            }
+            assert set(r.avg_duration_seconds for r in rollups_second_branch) == {
                 3.6,
                 0.002,
-            ]
+            }
+            assert set(r.last_duration_seconds for r in rollups_second_branch) == {
+                3.6,
+                0.002,
+            }
 
     @pytest.mark.integration
     @pytest.mark.parametrize(

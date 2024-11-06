@@ -452,7 +452,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_id(
         },
     )
 
-    parent_commit = CommitFactory.create(state="completed")
+    parent_commit = CommitFactory.create(state="complete")
     dbsession.add(parent_commit)
     dbsession.flush()
 
@@ -505,7 +505,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_object(
         },
     )
 
-    parent_commit = CommitFactory.create(state="completed")
+    parent_commit = CommitFactory.create(state="complete")
 
     commit = CommitFactory.create(
         state="pending", parent_commit_id=parent_commit.commitid
@@ -558,7 +558,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_report_object(
         },
     )
 
-    parent_commit = CommitFactory.create(state="completed")
+    parent_commit = CommitFactory.create(state="complete")
     dbsession.add(parent_commit)
     dbsession.flush()
 
@@ -615,7 +615,7 @@ def test_bundle_analysis_process_associate_called(
         },
     )
 
-    parent_commit = CommitFactory.create(state="completed")
+    parent_commit = CommitFactory.create(state="complete")
     dbsession.add(parent_commit)
     dbsession.flush()
 
@@ -679,7 +679,7 @@ def test_bundle_analysis_process_associate_called_two(
         },
     )
 
-    parent_commit = CommitFactory.create(state="completed")
+    parent_commit = CommitFactory.create(state="complete")
     dbsession.add(parent_commit)
     dbsession.flush()
 
@@ -754,7 +754,7 @@ def test_bundle_analysis_processor_associate_custom_compare_sha(
         },
     )
 
-    parent_commit = CommitFactory.create(state="completed")
+    parent_commit = CommitFactory.create(state="complete")
     dbsession.add(parent_commit)
     dbsession.flush()
 

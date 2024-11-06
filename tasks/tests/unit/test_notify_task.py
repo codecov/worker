@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, call
 
@@ -272,8 +273,12 @@ class TestNotifyTaskHelpers(object):
         self, cached_id, app_to_save, mocker, dbsession
     ):
         commit = CommitFactory(repository__owner__service="github")
-        app = GithubAppInstallation(id_=12, owner=commit.repository.owner)
-        other_app = GithubAppInstallation(id_=24, owner=commit.repository.owner)
+        app = GithubAppInstallation(
+            id_=12, owner=commit.repository.owner, installation_id=123
+        )
+        other_app = GithubAppInstallation(
+            id_=24, owner=commit.repository.owner, installation_id=123
+        )
         commit_notifications = [
             CommitNotification(
                 commit=commit,
@@ -453,6 +458,8 @@ class TestNotifyTask(object):
             pullid=None,
             branch="test-branch-1",
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         mocked_fetch_yaml = mocker.patch(
             "services.yaml.fetch_commit_yaml_from_provider"

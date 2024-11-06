@@ -18,7 +18,7 @@ def test_get_installation_name_for_owner_for_task(dbsession: Session):
         installation_name="my_installation",
         task_name=task_name,
     )
-    dbsession.add_all([owner, installation_task_config])
+    dbsession.add_all([owner, other_owner, installation_task_config])
     dbsession.flush()
     assert (
         get_installation_name_for_owner_for_task(task_name, owner) == "my_installation"
