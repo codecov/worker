@@ -45,7 +45,7 @@ class TestWebhookNotifier(object):
                 "name": head_commit.author.name,
             },
             "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-            "timestamp": "2019-02-01T17:59:47",
+            "timestamp": "2019-02-01T17:59:47+00:00",
             "totals": {
                 "files": 2,
                 "lines": 10,
@@ -108,7 +108,7 @@ class TestWebhookNotifier(object):
                 "name": head_commit.author.name,
             },
             "url": f"codecov.io/gl/{username_in_db}/{repository.name}/commit/{head_commit.commitid}",
-            "timestamp": "2019-02-01T17:59:47",
+            "timestamp": "2019-02-01T17:59:47+00:00",
             "totals": {
                 "files": 2,
                 "lines": 10,
@@ -159,7 +159,7 @@ class TestWebhookNotifier(object):
         expected_result = {
             "author": None,
             "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-            "timestamp": "2019-02-01T17:59:47",
+            "timestamp": "2019-02-01T17:59:47+00:00",
             "totals": {
                 "files": 2,
                 "lines": 10,
@@ -225,7 +225,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -255,7 +255,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 6,
@@ -351,7 +351,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -381,7 +381,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 6,
@@ -468,7 +468,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -498,7 +498,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 6,
@@ -581,7 +581,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -611,7 +611,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": None,
                 "commitid": base_commit.commitid,
                 "service_url": f"https://github.com/{repository.slug}/commit/{base_commit.commitid}",
@@ -686,7 +686,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,

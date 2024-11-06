@@ -30,8 +30,6 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_user_count == 1
         assert owner.plan_activated_users is None
-        # Owner was already created, we don't update this value
-        assert owner.createstamp is None
 
         dbsession.commit()
         # their repos should also be deactivated
@@ -69,12 +67,12 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.username == username
         assert owner.name == name
         assert owner.email == email
-        assert owner.createstamp.isoformat() == "2024-03-28T00:00:00"
+        assert owner.createstamp.isoformat() == "2024-03-28T00:00:00+00:00"
 
     def test_create_or_update_plan_known_user_with_plan(self, dbsession, mocker):
         owner = OwnerFactory.create(
             service="github",
-            plan="some-plan",
+            plan="users-basic",
             plan_user_count=10,
             plan_activated_users=[34123, 231, 2314212],
             stripe_customer_id="cus_123",

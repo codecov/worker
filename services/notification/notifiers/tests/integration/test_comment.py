@@ -170,7 +170,7 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=1,
+        pullid=5,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
@@ -233,7 +233,7 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=4,
+        pullid=2,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
@@ -298,7 +298,7 @@ def sample_comparison_for_limited_upload(
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=1,
+        pullid=3,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
@@ -513,7 +513,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {
             "commentid": None,
             "message": expected_message,
-            "pullid": 4,
+            "pullid": 2,
         }
         assert result.data_received == {"id": 1361234119}
 
@@ -556,7 +556,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {
             "commentid": None,
             "message": expected_message,
-            "pullid": 1,
+            "pullid": 3,
         }
         assert result.data_received == {"id": 1111984446}
 
@@ -581,15 +581,15 @@ class TestCommentNotifierIntegration(object):
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?dropdown=coverage&src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
             "> Project coverage is 60.00%. Comparing base [(`0fc784a`)](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?dropdown=coverage&el=desc) to head [(`0b6a213`)](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5?dropdown=coverage&el=desc).",
             "",
-            "[![Impacted file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
-            "##               main       #1       +/-   ##",
+            "##               main       #5       +/-   ##",
             "=============================================",
             "+ Coverage     50.00%   60.00%   +10.00%     ",
             "+ Complexity       11       10        -1     ",
@@ -603,27 +603,27 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| [Flag](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| [integration](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flag) | `?` | `?` | |",
-            "| [unit](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/indirect-changes?src=pr&el=tree-more)",
             "",
             "------",
             "",
-            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?dropdown=coverage&src=pr&el=continue).",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?dropdown=coverage&src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
         assert result.data_sent["message"] == message
-        assert result.data_sent == {"commentid": None, "message": message, "pullid": 1}
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 5}
         assert result.data_received == {"id": 1457135397}
 
     def test_notify_new_layout(

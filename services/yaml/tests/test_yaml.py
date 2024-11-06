@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 import mock
 import pytest
@@ -264,6 +265,8 @@ class TestYamlService(BaseTestCase):
             get_source=mock.AsyncMock(return_value=contents_result_future),
         )
         commit = CommitFactory.create(
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
             repository__yaml={
                 "coverage": {
                     "precision": 2,
@@ -271,7 +274,7 @@ class TestYamlService(BaseTestCase):
                     "range": [70.0, 100.0],
                     "status": {"project": True, "patch": True, "changes": False},
                 }
-            }
+            },
         )
 
         dbsession.add(commit)
@@ -319,6 +322,8 @@ class TestYamlService(BaseTestCase):
             )
         )
         commit = CommitFactory.create(
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
             repository__yaml={
                 "coverage": {
                     "precision": 2,
@@ -326,7 +331,7 @@ class TestYamlService(BaseTestCase):
                     "range": [70.0, 100.0],
                     "status": {"project": True, "patch": True, "changes": False},
                 }
-            }
+            },
         )
         dbsession.add(commit)
         res = await get_current_yaml(commit, valid_handler)
@@ -369,6 +374,8 @@ class TestYamlService(BaseTestCase):
             )
         )
         commit = CommitFactory.create(
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
             repository__yaml={
                 "coverage": {
                     "precision": 2,
@@ -376,7 +383,7 @@ class TestYamlService(BaseTestCase):
                     "range": [70.0, 100.0],
                     "status": {"project": True, "patch": True, "changes": False},
                 }
-            }
+            },
         )
         dbsession.add(commit)
         res = await get_current_yaml(commit, valid_handler)

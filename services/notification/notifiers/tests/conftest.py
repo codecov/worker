@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
@@ -312,6 +314,8 @@ def sample_comparison(dbsession, request, sample_report, mocker):
         owner__username=request.node.name,
         owner__service="github",
         owner__integration_id="10000",
+        # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+        owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         using_integration=True,
     )
     dbsession.add(repository)
@@ -330,7 +334,6 @@ def sample_comparison(dbsession, request, sample_report, mocker):
     dbsession.add(head_commit)
     dbsession.add(pull)
     dbsession.flush()
-    repository = base_commit.repository
     base_full_commit = FullCommit(
         commit=base_commit, report=ReadOnlyReport.create_from_report(get_small_report())
     )
