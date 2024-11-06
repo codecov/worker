@@ -346,7 +346,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         # Upsert Tests
         if len(test_data) > 0:
-            test_insert = insert(Test.__table__).values(list(test_data.values()))
+            test_insert = insert(Test.__table__).values(
+                sorted(test_data.values(), key=lambda x: str(x["flags_hash"]))
+            )
             insert_on_conflict_do_update = test_insert.on_conflict_do_update(
                 index_elements=["repoid", "name", "testsuite", "flags_hash"],
                 set_={
@@ -370,7 +372,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         # Upsert Daily Test Totals
         if len(daily_totals) > 0:
             rollup_table = DailyTestRollup.__table__
-            stmt = insert(rollup_table).values(list(daily_totals.values()))
+            stmt = insert(rollup_table).values(
+                sorted(daily_totals.values(), key=lambda x: str(x["test_id"]))
+            )
             stmt = stmt.on_conflict_do_update(
                 index_elements=[
                     "repoid",
@@ -502,9 +506,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     ),
                 )
 
-            readable_report = self.rewrite_readable(network, report_contents)
-
-            archive_service.write_file(upload.storage_path, readable_report.getvalue())
+        readable_report = self.rewrite_readable(network, report_contents)
+        archive_service.write_file(upload.storage_path, readable_report.getvalue())
 
         return TestResultsProcessingResult(
             network_files=network, parsing_results=parsing_results

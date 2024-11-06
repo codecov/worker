@@ -93,8 +93,9 @@ distlib==0.3.7
     # via virtualenv
 distro==1.8.0
     # via openai
-django==4.2.15
+django==4.2.16
     # via
+    #   -r requirements.in
     #   django-model-utils
     #   django-postgres-extra
     #   shared
@@ -363,7 +364,7 @@ sentry-sdk[celery]==2.13.0
     # via
     #   -r requirements.in
     #   shared
-shared @ https://github.com/codecov/shared/archive/aab26870855a544693cf96937fc5f40bd35ce8f5.tar.gz
+shared @ https://github.com/codecov/shared/archive/bf285c7d702aa40a5f2cc960f272480dddf9a6ab.tar.gz
     # via -r requirements.in
 six==1.16.0
     # via

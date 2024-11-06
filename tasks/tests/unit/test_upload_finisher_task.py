@@ -459,9 +459,12 @@ class TestUploadFinisherTask(object):
             owner__username="ThiagoCodecov",
             yaml=commit_yaml,
         )
-        dbsession.add(repository)
-        dbsession.flush()
         pull = PullFactory.create(repository=repository)
+
+        dbsession.add(repository)
+        dbsession.add(pull)
+        dbsession.flush()
+
         compared_to = CommitFactory.create(repository=repository)
         pull.compared_to = compared_to.commitid
         commit = CommitFactory.create(
@@ -472,7 +475,6 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.add(compared_to)
-        dbsession.add(pull)
         dbsession.flush()
 
         checkpoints = _create_checkpoint_logger(mocker)
@@ -678,7 +680,6 @@ class TestUploadFinisherTask(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},
-                run_fully_parallel=True,
             )
 
 

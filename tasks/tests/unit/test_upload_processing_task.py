@@ -11,7 +11,7 @@ from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.upload.constants import UploadErrorCode
 from shared.yaml import UserYaml
 
-from database.models import CommitReport, ReportDetails, UploadError
+from database.models import CommitReport, UploadError
 from database.tests.factories import CommitFactory, UploadFactory
 from helpers.exceptions import (
     ReportEmptyError,
@@ -85,27 +85,20 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments={"url": url, "upload_pk": upload.id_},
+            arguments={"url": url, "upload_id": upload.id_},
         )
 
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload.id_,
-                "arguments": {"upload_pk": upload.id_, "url": url},
-                "successful": True,
-            }
-        ]
+        assert result == {
+            "upload_id": upload.id_,
+            "arguments": {"upload_id": upload.id_, "url": url},
+            "successful": True,
+        }
 
     @pytest.mark.integration
     @pytest.mark.django_db
@@ -150,18 +143,13 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         result = UploadProcessorTask().run_impl(
             dbsession,
             {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments={"url": url, "upload_pk": upload.id_},
+            arguments={"url": url, "upload_id": upload.id_},
         )
 
         mock_delete_file.assert_called()
@@ -169,13 +157,11 @@ class TestUploadProcessorTask(object):
             upload.storage_path
             == "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7F/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         )
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload.id_,
-                "arguments": {"upload_pk": upload.id_, "url": url},
-                "successful": True,
-            }
-        ]
+        assert result == {
+            "upload_id": upload.id_,
+            "arguments": {"upload_id": upload.id_, "url": url},
+            "successful": True,
+        }
 
     @pytest.mark.django_db
     def test_upload_processor_call_with_upload_obj(
@@ -201,11 +187,6 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         upload = UploadFactory.create(
             report=current_report_row, state="started", storage_path=url
@@ -223,16 +204,15 @@ class TestUploadProcessorTask(object):
             repo_id=commit.repoid,
             commit_sha=commit.commitid,
             commit_yaml=UserYaml({"codecov": {"max_report_age": False}}),
-            arguments={"url": url, "upload_pk": upload.id_},
+            arguments={"url": url, "upload_id": upload.id_},
         )
 
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload.id_,
-                "arguments": {"url": url, "upload_pk": upload.id_},
-                "successful": True,
-            }
-        ]
+        assert result == {
+            "upload_id": upload.id_,
+            "arguments": {"url": url, "upload_id": upload.id_},
+            "successful": True,
+        }
+
         assert upload.state == "processed"
 
         # storage is overwritten with parsed contents
@@ -287,20 +267,19 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments={"url": "url", "upload_pk": upload.id_},
+            arguments={"url": "url", "upload_id": upload.id_},
         )
 
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload.id_,
-                "arguments": {"upload_pk": upload.id, "url": "url"},
-                "successful": False,
-                "error": {
-                    "code": UploadErrorCode.UNKNOWN_PROCESSING,
-                    "params": {"location": "url"},
-                },
-            }
-        ]
+        assert result == {
+            "upload_id": upload.id_,
+            "arguments": {"upload_id": upload.id, "url": "url"},
+            "successful": False,
+            "error": {
+                "code": UploadErrorCode.UNKNOWN_PROCESSING,
+                "params": {"location": "url"},
+            },
+        }
+
         assert upload.state_id == UploadState.ERROR.db_id
         assert upload.state == "error"
 
@@ -367,11 +346,6 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         upload_1 = UploadFactory.create(
             report=current_report_row, state="started", storage_path="url"
         )
@@ -388,15 +362,14 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
+            arguments={"url": "url", "what": "huh", "upload_id": upload_1.id_},
         )
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload_1.id_,
-                "arguments": {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-                "successful": True,
-            }
-        ]
+
+        assert result == {
+            "upload_id": upload_1.id_,
+            "arguments": {"url": "url", "what": "huh", "upload_id": upload_1.id_},
+            "successful": True,
+        }
 
         result = UploadProcessorTask().run_impl(
             dbsession,
@@ -404,20 +377,20 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments={"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
+            arguments={"url": "url2", "extra_param": 45, "upload_id": upload_2.id_},
         )
-        assert result["processings_so_far"] == [
-            {
+
+        assert result == {
+            "upload_id": upload_2.id_,
+            "arguments": {
+                "extra_param": 45,
+                "url": "url2",
                 "upload_id": upload_2.id_,
-                "arguments": {
-                    "extra_param": 45,
-                    "url": "url2",
-                    "upload_pk": upload_2.id_,
-                },
-                "successful": False,
-                "error": {"code": "report_expired", "params": {}},
             },
-        ]
+            "successful": False,
+            "error": {"code": "report_expired", "params": {}},
+        }
+
         assert commit.state == "complete"
 
     def test_upload_task_process_individual_report_with_notfound_report(
@@ -454,19 +427,19 @@ class TestUploadProcessorTask(object):
             commit.repoid,
             commit.commitid,
             UserYaml({"codecov": {"max_report_age": False}}),
-            {"upload_pk": upload.id_},
+            {"upload_id": upload.id_},
         )
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload.id_,
-                "arguments": {"upload_pk": upload.id_},
-                "successful": False,
-                "error": {
-                    "code": "file_not_in_storage",
-                    "params": {"location": "locationlocation"},
-                },
-            }
-        ]
+
+        assert result == {
+            "upload_id": upload.id_,
+            "arguments": {"upload_id": upload.id_},
+            "successful": False,
+            "error": {
+                "code": "file_not_in_storage",
+                "params": {"location": "locationlocation"},
+            },
+        }
+
         assert commit.state == "complete"
         assert upload.state == "error"
 
@@ -497,7 +470,7 @@ class TestUploadProcessorTask(object):
                 commit.repoid,
                 commit.commitid,
                 UserYaml({}),
-                {"upload_pk": upload.id_},
+                {"upload_id": upload.id_},
             )
 
     @pytest.mark.django_db(databases={"default"})
@@ -539,11 +512,6 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         upload_1 = UploadFactory.create(
             report=current_report_row, state="started", storage_path="url"
         )
@@ -560,15 +528,13 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
+            arguments={"url": "url", "what": "huh", "upload_id": upload_1.id_},
         )
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload_1.id_,
-                "arguments": {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-                "successful": True,
-            }
-        ]
+        assert result == {
+            "upload_id": upload_1.id_,
+            "arguments": {"url": "url", "what": "huh", "upload_id": upload_1.id_},
+            "successful": True,
+        }
 
         result = UploadProcessorTask().run_impl(
             dbsession,
@@ -576,20 +542,19 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments={"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
+            arguments={"url": "url2", "extra_param": 45, "upload_id": upload_2.id_},
         )
-        assert result["processings_so_far"] == [
-            {
+        assert result == {
+            "upload_id": upload_2.id_,
+            "arguments": {
+                "extra_param": 45,
+                "url": "url2",
                 "upload_id": upload_2.id_,
-                "arguments": {
-                    "extra_param": 45,
-                    "url": "url2",
-                    "upload_pk": upload_2.id_,
-                },
-                "successful": False,
-                "error": {"code": "report_empty", "params": {}},
             },
-        ]
+            "successful": False,
+            "error": {"code": "report_empty", "params": {}},
+        }
+
         assert commit.state == "complete"
         assert len(upload_2.errors) == 1
         assert upload_2.errors[0].error_code == "report_empty"
@@ -628,11 +593,6 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         upload_1 = UploadFactory.create(
             report=current_report_row, state="started", storage_path="url"
         )
@@ -649,16 +609,15 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
+            arguments={"url": "url", "what": "huh", "upload_id": upload_1.id_},
         )
-        assert result["processings_so_far"] == [
-            {
-                "upload_id": upload_1.id_,
-                "arguments": {"url": "url", "what": "huh", "upload_pk": upload_1.id_},
-                "successful": False,
-                "error": {"code": "report_empty", "params": {}},
-            }
-        ]
+
+        assert result == {
+            "upload_id": upload_1.id_,
+            "arguments": {"url": "url", "what": "huh", "upload_id": upload_1.id_},
+            "successful": False,
+            "error": {"code": "report_empty", "params": {}},
+        }
 
         result = UploadProcessorTask().run_impl(
             dbsession,
@@ -666,20 +625,20 @@ class TestUploadProcessorTask(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            arguments={"url": "url2", "extra_param": 45, "upload_pk": upload_2.id_},
+            arguments={"url": "url2", "extra_param": 45, "upload_id": upload_2.id_},
         )
-        assert result["processings_so_far"] == [
-            {
+
+        assert result == {
+            "upload_id": upload_2.id_,
+            "arguments": {
+                "extra_param": 45,
+                "url": "url2",
                 "upload_id": upload_2.id_,
-                "arguments": {
-                    "extra_param": 45,
-                    "url": "url2",
-                    "upload_pk": upload_2.id_,
-                },
-                "successful": False,
-                "error": {"code": "report_expired", "params": {}},
             },
-        ]
+            "successful": False,
+            "error": {"code": "report_expired", "params": {}},
+        }
+
         assert len(upload_2.errors) == 1
         assert upload_2.errors[0].error_code == "report_expired"
         assert upload_2.errors[0].error_params == {}
@@ -711,11 +670,6 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         upload_1 = UploadFactory.create(
             report=current_report_row, state="started", storage_path="url"
         )
@@ -728,7 +682,7 @@ class TestUploadProcessorTask(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},
-                arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
+                arguments={"url": "url", "what": "huh", "upload_id": upload_1.id_},
             )
         assert commit.state == "error"
 
@@ -754,11 +708,6 @@ class TestUploadProcessorTask(object):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(
-            report_id=current_report_row.id_, _files_array=[]
-        )
-        dbsession.add(report_details)
-        dbsession.flush()
         upload_1 = UploadFactory.create(
             report=current_report_row, state="started", storage_path="url"
         )
@@ -771,7 +720,7 @@ class TestUploadProcessorTask(object):
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},
-                arguments={"url": "url", "what": "huh", "upload_pk": upload_1.id_},
+                arguments={"url": "url", "what": "huh", "upload_id": upload_1.id_},
             )
         assert commit.state == "pending"
 

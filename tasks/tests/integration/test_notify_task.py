@@ -110,7 +110,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "christina84",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -252,7 +252,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -290,7 +290,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -490,7 +490,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -528,7 +528,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -717,7 +717,7 @@ class TestNotifyTask(object):
                                     "branch": "thiago/base-no-base",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -755,7 +755,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -799,6 +799,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
+    @pytest.mark.django_db
     def test_simple_call_status_and_notifiers(
         self,
         mock_post_request,
@@ -823,6 +824,9 @@ class TestNotifyTask(object):
             name="codecov-demo",
             image_token="abcdefghij",
         )
+        dbsession.add(repository)
+        dbsession.flush()
+        repository.owner.plan_activated_users = [repository.owner.ownerid]
         dbsession.add(repository)
         dbsession.flush()
         head_commitid = "5601846871b8142ab0df1e0b8774756c658bcc7d"
@@ -917,7 +921,7 @@ class TestNotifyTask(object):
                             "head": {
                                 "author": expected_author_dict,
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
-                                "timestamp": "2019-02-01T17:59:47",
+                                "timestamp": "2019-02-01T17:59:47+00:00",
                                 "totals": {
                                     "files": 3,
                                     "lines": 20,
@@ -955,7 +959,7 @@ class TestNotifyTask(object):
                             "base": {
                                 "author": expected_author_dict,
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b",
-                                "timestamp": "2019-02-01T17:59:47",
+                                "timestamp": "2019-02-01T17:59:47+00:00",
                                 "totals": {
                                     "files": 3,
                                     "lines": 20,
@@ -1100,7 +1104,7 @@ class TestNotifyTask(object):
                                     "branch": "test",
                                     "message": "",
                                     "author": "joseph-sentry",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -1138,7 +1142,7 @@ class TestNotifyTask(object):
                                     "branch": "main",
                                     "message": "",
                                     "author": "joseph-sentry",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -1358,14 +1362,13 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.add(master_commit)
         dbsession.flush()
-        pull = PullFactory.create(
-            repository=repository,
-            pullid=1234,
-            head=commit.commitid,
-            base=master_commit.commitid,
-        )
+        pull = dbsession.query(Pull).filter_by(pullid=1234).first()
+        pull.repository = repository
+        pull.head = commit.commitid
+        pull.base = master_commit.commitid
         dbsession.add(pull)
         dbsession.flush()
+
         task = NotifyTask()
         with open("tasks/tests/samples/sample_chunks_1.txt") as f:
             content = f.read().encode()

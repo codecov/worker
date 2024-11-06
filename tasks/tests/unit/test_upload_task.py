@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -143,6 +143,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -166,7 +168,6 @@ class TestUploadTaskIntegration(object):
         assert commit.message == "dsidsahdsahdsa"
         assert commit.parent_commit_id is None
         assert commit.report is not None
-        assert commit.report.details is not None
         sessions = commit.report.uploads
         assert len(sessions) == 1
         first_session = (
@@ -175,7 +176,6 @@ class TestUploadTaskIntegration(object):
             .first()
         )
         processor = upload_processor_task.s(
-            {},
             repoid=commit.repoid,
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
@@ -185,31 +185,18 @@ class TestUploadTaskIntegration(object):
                 "upload_id": first_session.id,
                 "upload_pk": first_session.id,
             },
-            arguments_list=[
-                {
-                    "url": url,
-                    "build": "some_random_build",
-                    "upload_id": first_session.id,
-                    "upload_pk": first_session.id,
-                }
-            ],
-            report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
-            is_final=False,
+            intermediate_reports_in_redis=False,
         )
         kwargs = dict(
             repoid=commit.repoid,
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
+            intermediate_reports_in_redis=False,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         finisher = upload_finisher_task.signature(kwargs=kwargs)
         mocked_chord.assert_called_with([processor], finisher)
-
         calls = [
             mock.call(
                 "time_before_processing",
@@ -251,6 +238,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -315,6 +304,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -378,6 +369,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -631,6 +624,8 @@ class TestUploadTaskIntegration(object):
             repository__yaml={"codecov": {"max_report_age": "1y ago"}},
             repository__name="example-python",
             pullid=1,
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -659,7 +654,6 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         processors = [
             upload_processor_task.s(
-                {},
                 repoid=commit.repoid,
                 commitid="abf6d4df662c47e32460020ab14abf9303581429",
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
@@ -668,13 +662,7 @@ class TestUploadTaskIntegration(object):
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
-                arguments_list=[
-                    {**arguments, "upload_id": mocker.ANY, "upload_pk": mocker.ANY}
-                ],
-                report_code=None,
-                run_fully_parallel=True,
-                in_parallel=True,
-                is_final=False,
+                intermediate_reports_in_redis=False,
             )
             for arguments in redis_queue
         ]
@@ -684,8 +672,7 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
+            intermediate_reports_in_redis=False,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t_final = upload_finisher_task.signature(kwargs=kwargs)
@@ -709,6 +696,8 @@ class TestUploadTaskIntegration(object):
             service="github",
             username="ThiagoCodecov",
             unencrypted_oauth_token="test76zow6xgh7modd88noxr245j2z25t4ustoff",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(owner)
 
@@ -763,7 +752,7 @@ class TestUploadTaskIntegration(object):
         mock_storage,
         celery_app,
     ):
-        mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
+        mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
         mocked_fetch_yaml = mocker.patch(
             "services.repository.fetch_commit_yaml_and_possibly_store"
@@ -783,6 +772,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
             repository__name="example-python",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -794,8 +785,7 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        mocked_1.assert_called_with(
-            mocker.ANY,
+        mocked_schedule_task.assert_called_with(
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -828,7 +818,7 @@ class TestUploadTaskIntegration(object):
         mock_storage,
         celery_app,
     ):
-        mocked_1 = mocker.patch.object(UploadTask, "schedule_task")
+        mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
         mocker.patch.object(UploadTask, "app", celery_app)
         mocked_fetch_yaml = mocker.patch(
             "services.repository.fetch_commit_yaml_and_possibly_store"
@@ -849,6 +839,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
             repository__name="example-python",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -860,8 +852,7 @@ class TestUploadTaskIntegration(object):
         assert expected_result == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
-        mocked_1.assert_called_with(
-            mocker.ANY,
+        mocked_schedule_task.assert_called_with(
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -914,6 +905,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         mock_repo_provider.data = dict(repo=dict(repoid=commit.repoid))
         dbsession.add(commit)
@@ -934,7 +927,6 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         assert commit.report is not None
-        assert commit.report.details is not None
         sessions = commit.report.uploads
         assert len(sessions) == 2
         first_session = (
@@ -948,7 +940,6 @@ class TestUploadTaskIntegration(object):
             .first()
         )
         mocked_schedule_task.assert_called_with(
-            mocker.ANY,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -999,6 +990,8 @@ class TestUploadTaskIntegration(object):
             repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
             repository__owner__username="ThiagoCodecov",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         report = CommitReport(commit_id=commit.id_)
         upload = Upload(
@@ -1006,7 +999,7 @@ class TestUploadTaskIntegration(object):
             build_code="part1",
             build_url="build_url",
             env=None,
-            report_id=report.id_,
+            report=report,
             job_code="job",
             name="name",
             provider="service",
@@ -1044,9 +1037,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         assert commit.report is not None
-        assert commit.report.details is not None
         mocked_schedule_task.assert_called_with(
-            mocker.ANY,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -1185,7 +1176,6 @@ class TestUploadTaskUnit(object):
         )
         mock_checkpoints = MagicMock(name="checkpoints")
         result = UploadTask().schedule_task(
-            dbsession,
             commit,
             commit_yaml,
             argument_list,
@@ -1195,16 +1185,11 @@ class TestUploadTaskUnit(object):
         )
         assert result == mocked_chord.return_value.apply_async.return_value
         processor = upload_processor_task.s(
-            {},
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml=commit_yaml,
             arguments={"upload_id": 1, "upload_pk": 1},
-            arguments_list=argument_list,
-            report_code=None,
-            run_fully_parallel=True,
-            in_parallel=True,
-            is_final=False,
+            intermediate_reports_in_redis=False,
         )
         finisher = upload_finisher_task.signature(
             kwargs={
@@ -1212,8 +1197,7 @@ class TestUploadTaskUnit(object):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": None,
-                "run_fully_parallel": True,
-                "in_parallel": True,
+                "intermediate_reports_in_redis": False,
                 _kwargs_key(UploadFlow): mocker.ANY,
             }
         )
