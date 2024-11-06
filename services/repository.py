@@ -93,19 +93,19 @@ def _get_repo_provider_service_instance(service: str, adapter_params: dict):
 @sentry_sdk.trace
 async def fetch_appropriate_parent_for_commit(
     repository_service, commit: Commit, git_commit=None
-):
+) -> str | None:
     closest_parent_without_message = None
     db_session = commit.get_db_session()
     commitid = commit.commitid
     if git_commit:
         parents = git_commit["parents"]
-        possible_commit_query = db_session.query(Commit).filter(
+        possible_commit_query = db_session.query(Commit.commitid, Commit.branch).filter(
             Commit.commitid.in_(parents),
             Commit.repoid == commit.repoid,
             ~Commit.message.is_(None),
             ~Commit.deleted.is_(True),
         )
-        possible_commit = possibly_filter_out_branch(commit, possible_commit_query)
+        possible_commit = _possibly_filter_out_branch(commit, possible_commit_query)
         if possible_commit:
             return possible_commit.commitid
 
@@ -114,25 +114,25 @@ async def fetch_appropriate_parent_for_commit(
     while elements:
         parents = [k for el in elements for k in el["parents"]]
         parent_commits = [p["commitid"] for p in parents]
-        closest_parent_query = db_session.query(Commit).filter(
+        closest_parent_query = db_session.query(Commit.commitid, Commit.branch).filter(
             Commit.commitid.in_(parent_commits),
             Commit.repoid == commit.repoid,
             ~Commit.message.is_(None),
             ~Commit.deleted.is_(True),
         )
-        closest_parent = possibly_filter_out_branch(commit, closest_parent_query)
+        closest_parent = _possibly_filter_out_branch(commit, closest_parent_query)
         if closest_parent:
             return closest_parent.commitid
 
         if closest_parent_without_message is None:
-            parent_query = db_session.query(Commit.commitid).filter(
+            parent_query = db_session.query(Commit.commitid, Commit.branch).filter(
                 Commit.commitid.in_(parent_commits),
                 Commit.repoid == commit.repoid,
                 ~Commit.deleted.is_(True),
             )
-            parent = possibly_filter_out_branch(commit, parent_query)
+            parent = _possibly_filter_out_branch(commit, parent_query)
             if parent:
-                closest_parent_without_message = parent
+                closest_parent_without_message = parent.commitid
         elements = parents
 
     log.warning(
@@ -142,7 +142,7 @@ async def fetch_appropriate_parent_for_commit(
     return closest_parent_without_message
 
 
-def possibly_filter_out_branch(commit: Commit, query: Query) -> Commit | None:
+def _possibly_filter_out_branch(commit: Commit, query: Query) -> Commit | None:
     commits = query.all()
     if len(commits) == 1:
         return commits[0]
