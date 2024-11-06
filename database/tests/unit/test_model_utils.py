@@ -56,14 +56,14 @@ class TestArchiveField(object):
             self.ClassWithArchiveFieldMissingMethods, ArchiveFieldInterface
         )
 
-    def test_archive_getter_db_field_set(self, db):
+    def test_archive_getter_db_field_set(self, sqlalchemy_db):
         commit = CommitFactory()
         test_class = self.ClassWithArchiveField(commit, "db_value", "gcs_path")
         assert test_class._archive_field == "db_value"
         assert test_class._archive_field_storage_path == "gcs_path"
         assert test_class.archive_field == "db_value"
 
-    def test_archive_getter_archive_field_set(self, db, mocker):
+    def test_archive_getter_archive_field_set(self, sqlalchemy_db, mocker):
         some_json = {"some": "data"}
         mock_read_file = mocker.MagicMock(return_value=json.dumps(some_json))
         mock_archive_service = mocker.patch("database.utils.ArchiveService")
@@ -81,7 +81,7 @@ class TestArchiveField(object):
         assert test_class.archive_field == some_json
         assert mock_read_file.call_count == 1
 
-    def test_archive_getter_file_not_in_storage(self, db, mocker):
+    def test_archive_getter_file_not_in_storage(self, sqlalchemy_db, mocker):
         mocker.patch(
             "database.utils.ArchiveField.read_timeout",
             new_callable=PropertyMock,
@@ -99,7 +99,7 @@ class TestArchiveField(object):
         mock_read_file.assert_called_with("gcs_path")
         mock_archive_service.assert_called_with(repository=commit.repository)
 
-    def test_archive_setter_db_field(self, db, mocker):
+    def test_archive_setter_db_field(self, sqlalchemy_db, mocker):
         commit = CommitFactory()
         test_class = self.ClassWithArchiveField(commit, "db_value", "gcs_path", False)
         assert test_class._archive_field == "db_value"
@@ -111,7 +111,7 @@ class TestArchiveField(object):
         assert test_class._archive_field == "batata frita"
         assert test_class.archive_field == "batata frita"
 
-    def test_archive_setter_archive_field(self, db, mocker):
+    def test_archive_setter_archive_field(self, sqlalchemy_db, mocker):
         commit = CommitFactory()
         test_class = self.ClassWithArchiveField(commit, "db_value", None, True)
         some_json = {"some": "data"}

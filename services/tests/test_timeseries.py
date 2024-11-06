@@ -617,7 +617,11 @@ class TestTimeseriesService(object):
 
         save_commit_measurements(commit)
 
-        measurements = (
+        # Want to commit here to have the results persisted properly.
+        # Otherwise the results aren't going to be reflected in the select below.
+        dbsession.commit()
+
+        measurement = (
             dbsession.query(Measurement)
             .filter_by(
                 name=MeasurementName.component_coverage.value,
@@ -625,14 +629,14 @@ class TestTimeseriesService(object):
                 timestamp=commit.timestamp,
                 measurable_id="test-component-123",
             )
-            .all()
+            .one_or_none()
         )
 
-        assert len(measurements) == 1
-        measurement = measurements[0]
+        assert measurement
         assert measurement.name == MeasurementName.component_coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
+        assert measurement.measurable_id == "test-component-123"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc

@@ -28,6 +28,7 @@ def process_upload(
     commit_sha: str,
     commit_yaml: UserYaml,
     arguments: UploadArguments,
+    intermediate_reports_in_redis=False,
 ) -> dict:
     upload_id = arguments["upload_id"]
 
@@ -67,7 +68,13 @@ def process_upload(
         log.info("Finished processing upload", extra={"result": result})
 
         report_service.update_upload_with_processing_result(upload, processing_result)
-        save_intermediate_report(archive_service, commit_sha, upload_id, report)
+        save_intermediate_report(
+            archive_service,
+            commit_sha,
+            upload_id,
+            report,
+            intermediate_reports_in_redis,
+        )
         state.mark_upload_as_processed(upload_id)
 
         rewrite_or_delete_upload(archive_service, commit_yaml, report_info)

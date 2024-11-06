@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from hashlib import sha1
 from uuid import uuid4
 
@@ -71,9 +71,11 @@ class RepositoryFactory(Factory):
 
     owner = factory.SubFactory(OwnerFactory)
     bot = None
-    updatestamp = factory.LazyAttribute(lambda o: datetime.now())
+    updatestamp = factory.LazyAttribute(lambda o: datetime.now(tz=timezone.utc))
     languages = []
-    languages_last_updated = factory.LazyAttribute(lambda o: datetime.now())
+    languages_last_updated = factory.LazyAttribute(
+        lambda o: datetime.now(tz=timezone.utc)
+    )
     bundle_analysis_enabled = False
 
 
@@ -113,7 +115,7 @@ class CommitFactory(Factory):
     )
     ci_passed = True
     pullid = None
-    timestamp = datetime(2019, 2, 1, 17, 59, 47)
+    timestamp = datetime(2019, 2, 1, 17, 59, 47, tzinfo=timezone.utc)
     author = factory.SubFactory(OwnerFactory)
     repository = factory.SubFactory(RepositoryFactory)
     totals = factory.LazyFunction(
