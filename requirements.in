@@ -25,6 +25,7 @@ orjson
 pre-commit
 polars
 psycopg2
+pyarrow
 PyJWT>=2.4.0
 pytest
 pytest-asyncio
