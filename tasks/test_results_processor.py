@@ -13,7 +13,6 @@ from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from test_results_parser import (
-    Framework,
     Outcome,
     ParserError,
     ParsingInfo,
@@ -96,44 +95,6 @@ class TestResultsProcessingResult:
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
     __test__ = False
-
-    def compute_name(
-        self,
-        framework: Framework | None,
-        raw_classname: str,
-        raw_name: str,
-        filename: str | None,
-        network: list[str] | None,
-    ) -> str:
-        match framework:
-            case Framework.Jest:
-                return raw_name
-            case Framework.Pytest:
-                split_name = raw_classname.split(".")
-                name_candidates: list[PytestName] = []
-                for i in range(len(split_name)):
-                    test_file_path = "/".join(split_name[: len(split_name) - i]) + ".py"
-                    actual_class_name = "::".join(split_name[len(split_name) - i :])
-
-                    name_candidates.append(
-                        PytestName(actual_class_name, test_file_path)
-                    )
-
-                for candidate in name_candidates:
-                    if candidate.test_file_path == filename or (
-                        network is not None and candidate.test_file_path in network
-                    ):
-                        possible_class_name = (
-                            f"{candidate.actual_class_name}::"
-                            if candidate.actual_class_name
-                            else ""
-                        )
-                        return f"{candidate.test_file_path}::{possible_class_name}{raw_name}"
-            case Framework.Vitest:
-                return f"{raw_classname} > {raw_name}"
-            case Framework.PHPUnit:
-                return f"{raw_classname}::{raw_name}"
-        return f"{raw_classname}\x1f{raw_name}"
 
     def run_impl(
         self,
@@ -234,10 +195,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
                 filename: str | None = testrun.filename
 
-                computed_name: str = self.compute_name(
-                    p.framework, testrun.classname, testrun.name, filename, network
-                )
-
                 test_data[(repoid, name, testsuite, flags_hash)] = dict(
                     id=test_id,
                     repoid=repoid,
@@ -246,7 +203,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     flags_hash=flags_hash,
                     framework=framework,
                     filename=filename,
-                    computed_name=computed_name,
+                    computed_name=testrun.computed_name,
                 )
 
                 if test_id not in existing_tests:
