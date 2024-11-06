@@ -130,7 +130,7 @@ def cleanup_intermediate_reports(
 
 
 def intermediate_report_key(upload_id: int):
-    return f"intermediate_report/{upload_id}"
+    return f"intermediate-report/{upload_id}"
 
 
 def intermediate_report_paths(
