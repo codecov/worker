@@ -187,7 +187,10 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
         Create or update plan from GitHub marketplace purchase info. Cancel Stripe
         subscription if owner currently has one.
         """
-        log.info("Create or update plan", extra=dict(service_id=service_id))
+        log.info(
+            "Github Marketplace - Create or update plan",
+            extra=dict(service_id=service_id),
+        )
 
         owner = (
             db_session.query(Owner)
@@ -203,8 +206,11 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
             owner.plan_user_count = purchase_object["unit_count"]
 
             if owner.stripe_customer_id and owner.stripe_subscription_id:
-                # cancel strip subscription
-                stripe.Subscription.delete(owner.stripe_subscription_id)
+                # cancel stripe subscription immediately
+                stripe.Subscription.cancel(
+                    owner.stripe_subscription_id,
+                    prorate=True,
+                )
                 owner.stripe_subscription_id = None
         else:
             # create the user
