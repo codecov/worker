@@ -148,10 +148,9 @@ def make_quoted(content: str) -> str:
     return f"\n{result}\n"
 
 
-def properly_backtick(content: str) -> str:
+def properly_backtick(content: str, language: str = "") -> str:
     max_backtick_count = 0
     curr_backtick_count = 0
-    prev_char = None
     for char in content:
         if char == "`":
             curr_backtick_count += 1
@@ -162,14 +161,32 @@ def properly_backtick(content: str) -> str:
             max_backtick_count = curr_backtick_count
 
     backticks = "`" * (max_backtick_count + 1)
-    return f"{backticks}\n{content}\n{backticks}"
+    return f"{backticks}{language}\n{content}\n{backticks}"
 
 
-def wrap_in_code(content: str) -> str:
+def wrap_in_code(content: str, language: str = "") -> str:
+    """
+    Wraps the given content in a markdown code block with optional syntax highlighting.
+
+    :param content: The code content to wrap.
+    :param language: The language of the code for syntax highlighting (optional).
+    :return: The content wrapped in markdown code block.
+    """
     if "```" in content:
-        return properly_backtick(content)
+        return properly_backtick(content, language)
     else:
-        return f"\n```\n{content}\n```\n"
+        return f"\n```{language}\n{content}\n```\n"
+
+
+def get_code_language_from_repo(commit: Commit) -> str:
+    """
+    Retrieves the repository language from the commit object.
+
+    :param commit: The commit object that contains repository info.
+    :return: The repository language as a string, in lowercase.
+    """
+    repo_language = commit.repository.language
+    return repo_language.lower() if repo_language else ""
 
 
 def display_duration(f: float) -> str:
@@ -180,15 +197,13 @@ def display_duration(f: float) -> str:
         return f"{f:.3g}"
 
 
-def generate_failure_info(
-    fail: TestResultsNotificationFailure,
-):
+def generate_failure_info(fail: TestResultsNotificationFailure, commit: Commit):
     if fail.failure_message is not None:
         failure_message = fail.failure_message
     else:
         failure_message = "No failure message available"
 
-    failure_message = wrap_in_code(failure_message)
+    failure_message = wrap_in_code(failure_message, get_code_language_from_repo(commit))
     if fail.build_url:
         return f"{failure_message}\n[View]({fail.build_url}) the CI Build"
     else:
@@ -198,34 +213,36 @@ def generate_failure_info(
 def generate_view_test_analytics_line(commit: Commit) -> str:
     repo = commit.repository
     test_analytics_url = get_test_analytics_url(repo, commit)
-    return f"\nTo view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard]({test_analytics_url})"
+    return f"\To view more test analytics go to the [Test Analytics Dashboard]({test_analytics_url})\nGot feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"
 
 
-def messagify_failure(
-    failure: TestResultsNotificationFailure,
-) -> str:
-    test_name = wrap_in_code(failure.display_name.replace("\x1f", " "))
+def messagify_failure(failure: TestResultsNotificationFailure, commit: Commit) -> str:
+    test_name = wrap_in_code(
+        failure.display_name.replace("\x1f", " "), get_code_language_from_repo(commit)
+    )
     formatted_duration = display_duration(failure.duration_seconds)
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
     stack_trace = wrap_in_details(
         stack_trace_summary,
-        make_quoted(generate_failure_info(failure)),
+        make_quoted(generate_failure_info(failure, commit)),
     )
     return make_quoted(f"{test_name}\n{stack_trace}")
 
 
 def messagify_flake(
-    flaky_failure: TestResultsNotificationFailure,
-    flake_info: FlakeInfo,
+    flaky_failure: TestResultsNotificationFailure, flake_info: FlakeInfo, commit: Commit
 ) -> str:
-    test_name = wrap_in_code(flaky_failure.display_name.replace("\x1f", " "))
+    test_name = wrap_in_code(
+        flaky_failure.display_name.replace("\x1f", " "),
+        get_code_language_from_repo(commit),
+    )
     formatted_duration = display_duration(flaky_failure.duration_seconds)
     flake_rate = flake_info.failed / flake_info.count * 100
     flake_rate_section = f"**Flake rate in main:** {flake_rate:.2f}% (Passed {flake_info.count - flake_info.failed} times, Failed {flake_info.failed} times)"
     stack_trace_summary = f"Stack Traces | {formatted_duration}s run time"
     stack_trace = wrap_in_details(
         stack_trace_summary,
-        make_quoted(generate_failure_info(flaky_failure)),
+        make_quoted(generate_failure_info(flaky_failure, commit)),
     )
     return make_quoted(f"{test_name}\n{flake_rate_section}\n{stack_trace}")
 
@@ -259,7 +276,9 @@ class TestResultsNotifier(BaseNotifier):
         )
 
         if failures:
-            failure_content = [f"{messagify_failure(failure)}" for failure in failures]
+            failure_content = [
+                f"{messagify_failure(failure, self.commit)}" for failure in failures
+            ]
 
             top_3_failed_section = wrap_in_details(
                 f"View the top {min(3, len(failures))} failed tests by shortest run time",
@@ -276,7 +295,7 @@ class TestResultsNotifier(BaseNotifier):
         )
 
         flake_content = [
-            f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id])}"
+            f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id], self.commit)}"
             for flaky_failure in flaky_failures
         ]
 
