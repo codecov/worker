@@ -3,6 +3,7 @@ from django.db import connection
 from shared.celery_config import cache_test_rollups_task_name
 from shared.django_apps.core.models import Repository
 
+from app import celery_app
 from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
@@ -146,3 +147,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                 storage_service.write_file("codecov", storage_key, serialized_table)
 
         return {"success": True}
+
+
+RegisteredCacheTestRollupTask = celery_app.register_task(CacheTestRollupsTask())
+cache_test_rollups_task = celery_app.tasks[RegisteredCacheTestRollupTask.name]
