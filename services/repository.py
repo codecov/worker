@@ -92,7 +92,7 @@ def _get_repo_provider_service_instance(service: str, adapter_params: dict):
 
 @sentry_sdk.trace
 async def fetch_appropriate_parent_for_commit(
-    repository_service, commit: Commit, git_commit=None
+    repository_service: TorngitBaseAdapter, commit: Commit, git_commit=None
 ) -> str | None:
     closest_parent_without_message = None
     db_session = commit.get_db_session()
