@@ -33,11 +33,11 @@ def hook_session(mocker, dbsession: Session):
 
 
 GLOBALS_USING_REPO_PROVIDER = [
+    "services.comparison.get_repo_provider_service",
     "services.report.get_repo_provider_service",
     "tasks.notify.get_repo_provider_service",
-    "tasks.upload_processor.get_repo_provider_service",
+    "tasks.upload_finisher.get_repo_provider_service",
     "tasks.upload.get_repo_provider_service",
-    "services.comparison.get_repo_provider_service",
 ]
 
 
