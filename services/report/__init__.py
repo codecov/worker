@@ -51,10 +51,7 @@ from services.report.prometheus_metrics import (
     RAW_UPLOAD_RAW_REPORT_COUNT,
     RAW_UPLOAD_SIZE,
 )
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    process_raw_upload,
-)
+from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
@@ -74,7 +71,6 @@ class ProcessingResult:
     session: Session
     report: Report | None = None
     error: ProcessingError | None = None
-    session_adjustment: SessionAdjustmentResult | None = None
 
 
 @dataclass
@@ -598,7 +594,6 @@ class ReportService(BaseReportService):
     @sentry_sdk.trace
     def build_report_from_raw_content(
         self,
-        report: Report,
         raw_report_info: RawReportInfo,
         upload: Upload,
     ) -> ProcessingResult:
@@ -669,16 +664,13 @@ class ReportService(BaseReportService):
 
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
-            process_result = process_raw_upload(
+            result.report = process_raw_upload(
                 self.current_yaml,
-                report,
                 raw_report,
                 flags,
                 session,
                 upload=upload,
             )
-            result.report = process_result.report
-            result.session_adjustment = process_result.session_adjustment
 
             log.info(
                 "Successfully processed report",
@@ -768,18 +760,6 @@ class ReportService(BaseReportService):
             if session.totals is not None:
                 upload_totals.update_from_totals(
                     session.totals, precision=precision, rounding=rounding
-                )
-
-            # delete all the carryforwarded `Upload` records corresponding to `Session`s
-            # which have been removed from the report.
-            # we always have a `session_adjustment` in the non-error case.
-            assert processing_result.session_adjustment
-            deleted_sessions = set(
-                processing_result.session_adjustment.fully_deleted_sessions
-            )
-            if deleted_sessions:
-                delete_uploads_by_sessionid(
-                    db_session, upload.report_id, deleted_sessions
                 )
 
         else:

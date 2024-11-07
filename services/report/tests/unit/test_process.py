@@ -1,13 +1,12 @@
-from json import dumps, loads
+from json import loads
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 from lxml import etree
-from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
 from shared.reports.types import ReportTotals
-from shared.utils.sessions import Session, SessionType
+from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
 from helpers.exceptions import (
@@ -35,15 +34,12 @@ def test_manual():
         contents = d.read()
 
     parsed_report = LegacyReportParser().parse_raw_report_from_bytes(contents)
-    master = Report()
-    result = process.process_raw_upload(
+    master = process.process_raw_upload(
         commit_yaml=None,
-        report=master,
         raw_reports=parsed_report,
         flags=[],
         session=Session(),
     )
-    master = result.report
 
     assert not master.is_empty()
 
@@ -86,49 +82,23 @@ class TestProcessRawUpload(BaseTestCase):
             report.append("# path=app.coverage.txt")
             report.append("/file2:\n 1 | 1|line")
 
-        if "M" in keys:
-            master = self.get_v3_report()
-        else:
-            master = Report()
         parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
             "\n".join(report).encode()
         )
-        result = process.process_raw_upload(
+        master = process.process_raw_upload(
             commit_yaml=None,
-            report=master,
             raw_reports=parsed_report,
             flags=[],
             session=Session(),
         )
-        master = result.report
 
         if "e" in keys:
             assert master.sessions[0].env == {"A": "b"}
-        else:
-            if "M" in keys:
-                assert master.sessions[3].totals == ReportTotals(
-                    files=1,
-                    lines=1,
-                    hits=1,
-                    misses=0,
-                    partials=0,
-                    coverage="100",
-                    branches=0,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                )
 
-        if "M" in keys:
-            assert master.totals.files == 7 + (
-                1 if ("m" in keys and "n" not in keys) else 0
-            )
-            assert master.totals.sessions == 4
-        else:
-            assert master.totals.files == 1 + (
-                1 if ("m" in keys and "n" not in keys) else 0
-            )
-            assert master.totals.sessions == 1
+        assert master.totals.files == 1 + (
+            1 if ("m" in keys and "n" not in keys) else 0
+        )
+        assert master.totals.sessions == 1
 
         if "n" in keys:
             assert master.get("path/to/file")
@@ -176,16 +146,14 @@ class TestProcessRawUpload(BaseTestCase):
         report.append("# path=coverage/coverage.json")
         report.extend(json_section)
 
-        result = process.process_raw_upload(
+        master = process.process_raw_upload(
             commit_yaml={},
-            report=Report(),
             raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                 "\n".join(report).encode()
             ),
             flags=[],
             session=Session(),
         )
-        master = result.report
         assert master.files == ["source", "file"]
 
     def test_process_raw_upload_empty_report(self):
@@ -221,7 +189,6 @@ class TestProcessRawUpload(BaseTestCase):
         with pytest.raises(ReportEmptyError):
             process.process_raw_upload(
                 commit_yaml=None,
-                report=original_report,
                 raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                     "\n".join(report_data).encode()
                 ),
@@ -301,7 +268,6 @@ class TestProcessRawUpload(BaseTestCase):
         with pytest.raises(ReportEmptyError, match="No files found in report."):
             process.process_raw_upload(
                 self,
-                Report(),
                 LegacyReportParser().parse_raw_report_from_bytes(b""),
                 [],
                 Session(),
@@ -322,16 +288,15 @@ class TestProcessRawUploadFixed(BaseTestCase):
                 "",
             )
         )
-        result = process.process_raw_upload(
+        report = process.process_raw_upload(
             commit_yaml={},
-            report=Report(),
             raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                 reports.encode()
             ),
             flags=[],
             session=Session(),
         )
-        report = result.report
+
         assert 2 not in report["file.go"], "2 never existed"
         assert report["file.go"][7].coverage == 1
         assert 8 not in report["file.go"], "8 should have been removed"
@@ -339,6 +304,7 @@ class TestProcessRawUploadFixed(BaseTestCase):
 
 
 class TestProcessRawUploadNotJoined(BaseTestCase):
+    @pytest.mark.skip()  # TODO(swatinem): restore `joined` functionality
     @pytest.mark.parametrize(
         "flag, joined",
         [("nightly", False), ("unittests", True), ("ui", True), ("other", True)],
@@ -362,15 +328,13 @@ class TestProcessRawUploadNotJoined(BaseTestCase):
             with pytest.raises(NotImplementedError):
                 report = process.process_raw_upload(
                     commit_yaml=UserYaml(yaml),
-                    report=Mock(
-                        merge=merge, add_session=Mock(return_value=(1, Session()))
-                    ),
                     raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                         b"a<<<<<< EOF"
                     ),
                     flags=[flag],
                     session=Session(),
                 )
+
             merge.assert_called_with(mocker.ANY, joined=joined)
             call_args, call_kwargs = merge.call_args
             assert isinstance(call_args[0], Report)
@@ -382,43 +346,17 @@ class TestProcessRawUploadFlags(BaseTestCase):
         [{"paths": ["!tests/.*"]}, {"ignore": ["tests/.*"]}, {"paths": ["folder/"]}],
     )
     def test_flags(self, flag):
-        result = process.process_raw_upload(
+        master = process.process_raw_upload(
             commit_yaml=UserYaml({"flags": {"docker": flag}}),
-            report=Report(),
             session=Session(),
             raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                 b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
             ),
             flags=["docker"],
         )
-        master = result.report
+
         assert master.files == ["folder/file.py"]
         assert master.sessions[0].flags == ["docker"]
-
-
-class TestProcessSessions(BaseTestCase):
-    def test_sessions(self):
-        report = Report()
-        process.process_raw_upload(
-            commit_yaml={},
-            report=report,
-            session=Session(),
-            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
-                b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
-            ),
-            flags=None,
-        )
-        process.process_raw_upload(
-            commit_yaml={},
-            report=report,
-            session=Session(),
-            raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
-                b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
-            ),
-            flags=None,
-        )
-        print(report.totals)
-        assert report.totals.sessions == 2
 
 
 class TestProcessReport(BaseTestCase):
@@ -448,16 +386,15 @@ class TestProcessReport(BaseTestCase):
 
     def test_report_fixes_same_final_result(self):
         commit_yaml = {"fixes": ["arroba::prefix", "bingo::prefix"]}
-        result = process.process_raw_upload(
+        master = process.process_raw_upload(
             commit_yaml=UserYaml(commit_yaml),
-            report=Report(),
             session=Session(),
             raw_reports=LegacyReportParser().parse_raw_report_from_bytes(
                 b'{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}'
             ),
             flags=None,
         )
-        master = result.report
+
         assert len(master.files) == 1
         assert master.files[0] == "prefix/test.py"
 
@@ -821,32 +758,15 @@ class TestProcessReport(BaseTestCase):
         assert res is None
 
     def test_process_raw_upload_multiple_raw_reports(self, mocker):
-        original_report = Report()
-        original_banana = ReportFile("banana.py")
-        original_banana.append(100, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_banana.append(200, ReportLine.create(0, sessions=[LineSession(0, 0)]))
-        original_banana.append(300, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_banana.append(400, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_banana.append(
-            401, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
-        )
-        original_report.append(original_banana)
-        another_file = ReportFile("another.c")
-        another_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        third_file = ReportFile("third.c")
-        third_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_report.append(another_file)
-        original_report.append(third_file)
-        original_report.add_session(Session(flags=["super"]))  # session with id 0
         first_raw_report_result = Report()
         first_banana = ReportFile("banana.py")
-        first_banana.append(1, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        first_banana.append(2, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        first_banana.append(1, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        first_banana.append(2, ReportLine.create(0, sessions=[LineSession(0, 0)]))
         first_raw_report_result.append(first_banana)
         second_raw_report_result = Report()
         second_banana = ReportFile("banana.py")
-        second_banana.append(2, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        second_banana.append(3, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        second_banana.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        second_banana.append(3, ReportLine.create(0, sessions=[LineSession(0, 0)]))
         second_raw_report_result.append(second_banana)
         second_another_file = ReportFile("another.c")
         second_another_file.append(
@@ -859,9 +779,9 @@ class TestProcessReport(BaseTestCase):
         third_raw_report_result = Report()
         third_banana = ReportFile("banana.py")
         third_banana.append(
-            3, ReportLine.create("1/2", sessions=[LineSession(1, "1/2")])
+            3, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
         )
-        third_banana.append(5, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        third_banana.append(5, ReportLine.create(0, sessions=[LineSession(0, 0)]))
         third_raw_report_result.append(third_banana)
         uploaded_reports = LegacyParsedRawReport(
             toc=None,
@@ -892,14 +812,13 @@ class TestProcessReport(BaseTestCase):
             ],
         )
         session = Session()
-        result = process.process_raw_upload(
+        res = process.process_raw_upload(
             UserYaml({}),
-            original_report,
             uploaded_reports,
             ["flag_one", "flag_two"],
             session=session,
         )
-        res = result.report
+
         assert session.totals == ReportTotals(
             files=2,
             lines=6,
@@ -910,19 +829,19 @@ class TestProcessReport(BaseTestCase):
             branches=0,
             methods=0,
             messages=0,
-            sessions=0,
+            sessions=1,
             complexity=0,
             complexity_total=0,
             diff=0,
         )
-        assert sorted(res.files) == ["another.c", "banana.py", "third.c"]
+        assert sorted(res.files) == ["another.c", "banana.py"]
         assert res.get("banana.py").totals == ReportTotals(
             files=0,
-            lines=9,
-            hits=5,
-            misses=2,
-            partials=2,
-            coverage="55.55556",
+            lines=4,
+            hits=2,
+            misses=1,
+            partials=1,
+            coverage="50.00000",
             branches=0,
             methods=0,
             messages=0,
@@ -934,25 +853,10 @@ class TestProcessReport(BaseTestCase):
         assert res.get("another.c").totals == ReportTotals(
             files=0,
             lines=2,
-            hits=2,
-            misses=0,
-            partials=0,
-            coverage="100",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert res.get("third.c").totals == ReportTotals(
-            files=0,
-            lines=1,
             hits=1,
-            misses=0,
+            misses=1,
             partials=0,
-            coverage="100",
+            coverage="50.00000",
             branches=0,
             methods=0,
             messages=0,
@@ -961,8 +865,8 @@ class TestProcessReport(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        assert sorted(res.sessions.keys()) == [0, 1]
-        assert res.sessions[1] == session
+        assert sorted(res.sessions.keys()) == [0]
+        assert res.sessions[0] == session
 
     def test_process_raw_upload_expired_report(self, mocker):
         filename = "/Users/path/to/app.coverage.txt"
@@ -988,278 +892,9 @@ class TestProcessReport(BaseTestCase):
         with pytest.raises(ReportExpiredException) as e:
             _ = process.process_raw_upload(
                 UserYaml({}),
-                Report(),
                 uploaded_reports,
                 ["flag_one", "flag_two"],
                 session=session,
             )
 
         assert e.value.filename == filename
-
-
-class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
-    def _generate_sample_report(self) -> EditableReport:
-        original_report = EditableReport()
-        first_file = EditableReportFile("banana.py")
-        first_file.append(100, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        first_file.append(200, ReportLine.create(0, sessions=[LineSession(0, 0)]))
-        first_file.append(300, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        first_file.append(400, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        first_file.append(
-            401, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
-        )
-        second_file = EditableReportFile("another.c")
-        second_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        second_file.append(5, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        second_file.append(7, ReportLine.create(1, sessions=[LineSession(0, 2)]))
-        second_file.append(7, ReportLine.create(1, sessions=[LineSession(1, 2)]))
-        third_file = EditableReportFile("third.c")
-        third_file.append(2, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        original_report.append(first_file)
-        original_report.append(second_file)
-        original_report.append(third_file)
-        original_report.add_session(Session(flags=["super"]))  # session with id 0
-        original_report.add_session(
-            Session(flags=["somethingold"], session_type=SessionType.carriedforward)
-        )  # session with id 1
-        assert self.convert_report_to_better_readable(original_report)["archive"] == {
-            "banana.py": [
-                (100, 1, None, [[0, 1, None, None, None]], None, None),
-                (200, 0, None, [[0, 0, None, None, None]], None, None),
-                (300, 1, None, [[0, 1, None, None, None]], None, None),
-                (400, 1, None, [[0, 1, None, None, None]], None, None),
-                (401, "1/2", None, [[0, "1/2", None, None, None]], None, None),
-            ],
-            "another.c": [
-                (2, 1, None, [[0, 1, None, None, None]], None, None),
-                (5, 1, None, [[1, 1, None, None, None]], None, None),
-                (
-                    7,
-                    2,
-                    None,
-                    [[0, 2, None, None, None], [1, 2, None, None, None]],
-                    None,
-                    None,
-                ),
-            ],
-            "third.c": [(2, 1, None, [[1, 1, None, None, None]], None, None)],
-        }
-        return original_report
-
-    def test_process_raw_upload_with_carryforwarded_flags(self):
-        original_report = self._generate_sample_report()
-        upload_flags = ["somethingold", "flag_two"]
-        raw_content = dumps(
-            {
-                "coverage": {
-                    "another.c": [None, 3, "1/2"],
-                    "tests/test.py": [None, 0],
-                    "folder/file.py": [None, 1],
-                }
-            }
-        )
-        uploaded_reports = LegacyParsedRawReport(
-            toc=None,
-            env=None,
-            report_fixes=None,
-            uploaded_files=[
-                ParsedUploadedReportFile(
-                    filename="/Users/path/to/app.coverage.json",
-                    file_contents=raw_content.encode(),
-                ),
-            ],
-        )
-        session = Session(flags=upload_flags)
-        result = process.process_raw_upload(
-            UserYaml(
-                {
-                    "flag_management": {
-                        "individual_flags": [
-                            {"name": "somethingold", "carryforward": True}
-                        ]
-                    }
-                }
-            ),
-            original_report,
-            uploaded_reports,
-            ["somethingold", "flag_two"],
-            session=session,
-        )
-        report = result.report
-        assert result.session_adjustment.fully_deleted_sessions == [1]
-        assert result.session_adjustment.partially_deleted_sessions == []
-        assert sorted(report.sessions.keys()) == [0, session.id]
-        assert session.id == 2
-        assert report.sessions[session.id] == session
-        assert session.totals == ReportTotals(
-            files=3,
-            lines=4,
-            hits=2,
-            misses=1,
-            partials=1,
-            coverage="50.00000",
-            branches=1,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert report.totals == ReportTotals(
-            files=4,
-            lines=10,
-            hits=7,
-            misses=2,
-            partials=1,
-            coverage="70.00000",
-            branches=1,
-            methods=0,
-            messages=0,
-            sessions=2,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert sorted(report.files) == [
-            "another.c",
-            "banana.py",
-            "folder/file.py",
-            "tests/test.py",
-        ]
-        assert "third.c" not in report.files
-        assert report.get("tests/test.py").totals == ReportTotals(
-            files=0,
-            lines=1,
-            hits=0,
-            misses=1,
-            partials=0,
-            coverage="0",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert report.get("folder/file.py").totals == ReportTotals(
-            files=0,
-            lines=1,
-            hits=1,
-            misses=0,
-            partials=0,
-            coverage="100",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-
-        assert report.get("banana.py").totals == ReportTotals(
-            files=0,
-            lines=5,
-            hits=3,
-            misses=1,
-            partials=1,
-            coverage="60.00000",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert report.get("another.c").totals == ReportTotals(
-            files=0,
-            lines=3,
-            hits=3,
-            misses=0,
-            partials=0,
-            coverage="100",
-            branches=1,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert self.convert_report_to_better_readable(report)["archive"] == {
-            "banana.py": [
-                (100, 1, None, [[0, 1, None, None, None]], None, None),
-                (200, 0, None, [[0, 0, None, None, None]], None, None),
-                (300, 1, None, [[0, 1, None, None, None]], None, None),
-                (400, 1, None, [[0, 1, None, None, None]], None, None),
-                (401, "1/2", None, [[0, "1/2", None, None, None]], None, None),
-            ],
-            "another.c": [
-                (1, 3, None, [[session.id, 3, None, None, None]], None, None),
-                (
-                    2,
-                    "2/2",
-                    "b",
-                    [[0, 1, None, None, None], [session.id, "1/2", None, None, None]],
-                    None,
-                    None,
-                ),
-                (7, 2, None, [[0, 2, None, None, None]], None, None),
-            ],
-            "tests/test.py": [
-                (1, 0, None, [[session.id, 0, None, None, None]], None, None)
-            ],
-            "folder/file.py": [
-                (1, 1, None, [[session.id, 1, None, None, None]], None, None)
-            ],
-        }
-
-    def test_process_raw_upload_carryforward_flag_empty_upload(self):
-        """Tests that an upload with carryforward flag doesn't create a new session
-        in the original report for the flag it was uploaded with.
-
-        That is, a new session is created in the commit's report only if the upload
-        was properly processed
-        """
-        original_report = self._generate_sample_report()
-        original_sessions = original_report.sessions
-        expected_sessions = {
-            0: Session(flags=["super"]),
-            1: Session(flags=["somethingold"], session_type=SessionType.carriedforward),
-        }
-        assert isinstance(original_sessions, dict)
-        assert list(original_sessions.keys()) == [0, 1]
-        assert original_sessions == expected_sessions
-        empty_uploaded_report = LegacyParsedRawReport(
-            toc=None,
-            env=None,
-            report_fixes=None,
-            uploaded_files=[
-                ParsedUploadedReportFile(
-                    filename="/Users/path/to/app.coverage.json",
-                    file_contents=b"Bogus report that shouldn't match any parser",
-                ),
-            ],
-        )
-        session = Session(flags=["somethingold"])
-        with pytest.raises(ReportEmptyError):
-            process.process_raw_upload(
-                UserYaml(
-                    {
-                        "flag_management": {
-                            "individual_flags": [
-                                {"name": "somethingold", "carryforward": True}
-                            ]
-                        }
-                    }
-                ),
-                original_report,
-                empty_uploaded_report,
-                ["somethingold"],
-                session=session,
-            )
-        assert list(original_report.sessions.keys()) == [0, 1]
-        assert original_report.sessions == expected_sessions
