@@ -1,7 +1,7 @@
 import logging
 import random
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 import sentry_sdk
@@ -159,10 +159,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
         )
 
-        # Mark the repository as updated so it will appear earlier in the list
-        # of recently-active repositories
-        repository.updatestamp = datetime.now()
-
         if not should_trigger_postprocessing(state.get_upload_numbers()):
             return
 
@@ -170,11 +166,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
-                commit_yaml = UserYaml(commit_yaml)
                 result = self.finish_reports_processing(
                     db_session,
                     commit,
-                    commit_yaml,
+                    UserYaml(commit_yaml),
                     processing_results,
                     report_code,
                     checkpoints,
@@ -184,6 +179,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ].apply_async(
                     kwargs=dict(commitid=commitid, repoid=repoid, dataset_names=None)
                 )
+                # Mark the repository as updated so it will appear earlier in the list
+                # of recently-active repositories
+                now = datetime.now(tz=timezone.utc)
+                threshold = now - timedelta(minutes=30)
+                if repository.updatestamp < threshold:
+                    repository.updatestamp = now
+                    db_session.commit()
+
                 self.invalidate_caches(redis_connection, commit)
                 log.info(
                     "Finished upload_finisher task",
