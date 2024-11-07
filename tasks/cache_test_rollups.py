@@ -1,3 +1,5 @@
+import datetime as dt
+
 import polars as pl
 from django.db import connection
 from shared.celery_config import cache_test_rollups_task_name
@@ -125,7 +127,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                         "test_id",
                         "failure_rate",
                         "flake_rate",
-                        "updated_at",
+                        ("updated_at", pl.Datetime(time_zone=dt.UTC)),
                         "avg_duration",
                         "total_fail_count",
                         "total_flaky_fail_count",
