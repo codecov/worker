@@ -5,7 +5,6 @@ from typing import Any, Mapping
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.metrics import Counter, inc_counter
-from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
@@ -30,7 +29,6 @@ from services.notification.notifiers.comment.conditions import (
     PullRequestInProvider,
 )
 from services.notification.notifiers.mixins.message import MessageMixin
-from services.repository import get_repo_provider_service
 from services.urls import append_tracking_params_to_urls, get_members_url, get_plan_url
 
 log = logging.getLogger(__name__)
@@ -50,18 +48,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         HasEnoughBuilds,
         HasEnoughRequiredChanges,
     ]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._repository_service = None
-
-    @property
-    def repository_service(self):
-        if not self._repository_service:
-            self._repository_service: TorngitBaseAdapter = get_repo_provider_service(
-                self.repository, installation_name_to_use=self.gh_installation_name
-            )
-        return self._repository_service
 
     def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pull = comparison.pull

@@ -3,6 +3,7 @@ from decimal import Decimal
 from database.tests.factories import CommitFactory, RepositoryFactory
 from services.comparison.types import FullCommit
 from services.notification.notifiers.webhook import WebhookNotifier
+from services.repository import get_repo_provider_service
 
 
 class TestWebhookNotifier(object):
@@ -28,6 +29,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -41,7 +45,7 @@ class TestWebhookNotifier(object):
                 "name": head_commit.author.name,
             },
             "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-            "timestamp": "2019-02-01T17:59:47",
+            "timestamp": "2019-02-01T17:59:47+00:00",
             "totals": {
                 "files": 2,
                 "lines": 10,
@@ -88,6 +92,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -101,7 +108,7 @@ class TestWebhookNotifier(object):
                 "name": head_commit.author.name,
             },
             "url": f"codecov.io/gl/{username_in_db}/{repository.name}/commit/{head_commit.commitid}",
-            "timestamp": "2019-02-01T17:59:47",
+            "timestamp": "2019-02-01T17:59:47+00:00",
             "totals": {
                 "files": 2,
                 "lines": 10,
@@ -146,12 +153,13 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(repository),
         )
         result = notifier.build_commit_payload(head_full_commit)
         expected_result = {
             "author": None,
             "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-            "timestamp": "2019-02-01T17:59:47",
+            "timestamp": "2019-02-01T17:59:47+00:00",
             "totals": {
                 "files": 2,
                 "lines": 10,
@@ -194,6 +202,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -214,7 +225,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -244,7 +255,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 6,
@@ -317,6 +328,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={"coverage": {"precision": 5, "round": "up"}},
+            repository_service=get_repo_provider_service(
+                sample_comparison.head.commit.repository
+            ),
         )
         repository = base_commit.repository
         comparison = sample_comparison
@@ -337,7 +351,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -367,7 +381,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 6,
@@ -433,6 +447,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                comparison.head.commit.repository
+            ),
         )
         result = notifier.build_payload(comparison)
         expected_result = {
@@ -451,7 +468,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -481,7 +498,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 6,
@@ -526,7 +543,9 @@ class TestWebhookNotifier(object):
         assert result == expected_result
 
     def test_build_payload_without_base_report(
-        self, sample_comparison_without_base_report, mock_configuration
+        self,
+        sample_comparison_without_base_report,
+        mock_configuration,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_report
@@ -538,6 +557,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                comparison.head.commit.repository
+            ),
         )
         result = notifier.build_payload(comparison)
         head_commit = comparison.head.commit
@@ -559,7 +581,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,
@@ -589,7 +611,7 @@ class TestWebhookNotifier(object):
                     "name": base_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{base_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": None,
                 "commitid": base_commit.commitid,
                 "service_url": f"https://github.com/{repository.slug}/commit/{base_commit.commitid}",
@@ -627,7 +649,9 @@ class TestWebhookNotifier(object):
         assert result == expected_result
 
     def test_build_payload_without_base(
-        self, sample_comparison_without_base_with_pull, mock_configuration
+        self,
+        sample_comparison_without_base_with_pull,
+        mock_configuration,
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison_without_base_with_pull
@@ -639,6 +663,9 @@ class TestWebhookNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=get_repo_provider_service(
+                comparison.head.commit.repository
+            ),
         )
         result = notifier.build_payload(comparison)
         head_commit = comparison.head.commit
@@ -659,7 +686,7 @@ class TestWebhookNotifier(object):
                     "name": head_commit.author.name,
                 },
                 "url": f"test.example.br/gh/{repository.slug}/commit/{head_commit.commitid}",
-                "timestamp": "2019-02-01T17:59:47",
+                "timestamp": "2019-02-01T17:59:47+00:00",
                 "totals": {
                     "files": 2,
                     "lines": 10,

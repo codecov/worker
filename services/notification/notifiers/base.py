@@ -2,8 +2,10 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from shared.torngit.base import TorngitBaseAdapter
+from shared.yaml import UserYaml
+
 from database.models import Repository
-from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 
@@ -52,9 +54,9 @@ class AbstractBaseNotifier(object):
         title: str,
         notifier_yaml_settings: Mapping[str, Any],
         notifier_site_settings: Mapping[str, Any],
-        current_yaml: Mapping[str, Any],
+        current_yaml: UserYaml,
+        repository_service: TorngitBaseAdapter,
         decoration_type: Decoration | None = None,
-        gh_installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     ):
         """
         :param repository: The repository notifications are being sent to.
@@ -64,7 +66,6 @@ class AbstractBaseNotifier(object):
         :param notifier_site_settings: Contains the codecov yaml fields under the "notify" header
         :param current_yaml: The complete codecov yaml used for this notification.
         :param decoration_type: Indicates whether the user needs to upgrade their account before they can see the notification
-        :param gh_installation_name_to_use: [GitHub exclusive] propagates choice of the installation_name in case of gh multi apps
         """
         self.repository = repository
         self.title = title
@@ -72,7 +73,7 @@ class AbstractBaseNotifier(object):
         self.site_settings = notifier_site_settings
         self.current_yaml = current_yaml
         self.decoration_type = decoration_type
-        self.gh_installation_name = gh_installation_name_to_use
+        self.repository_service = repository_service
 
     @property
     def name(self) -> str:

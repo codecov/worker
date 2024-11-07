@@ -371,9 +371,9 @@ class ChecksNotifier(StatusNotifier):
         return annotations
 
     def send_notification(self, comparison: ComparisonProxy, payload):
+        repository_service = self.repository_service
         title = self.get_status_external_name()
         head = comparison.head.commit
-        repository_service = self.repository_service(head)
         state = payload["state"]
         state = "success" if self.notifier_yaml_settings.get("informational") else state
 

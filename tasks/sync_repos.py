@@ -524,11 +524,21 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         if repo:
             # Found the exact repo. Let's just update
-            repo.private = repo_data["private"]
-            repo.language = repo_data["language"]
-            repo.name = repo_data["name"]
-            repo.deleted = False
-            repo.updatestamp = datetime.now()
+            has_changes = False
+            if repo.private != repo_data["private"]:
+                repo.private = repo_data["private"]
+                has_changes = True
+            if repo.language != repo_data["language"]:
+                repo.language = repo_data["language"]
+                has_changes = True
+            if repo.name != repo_data["name"]:
+                repo.name = repo_data["name"]
+                has_changes = True
+            if repo.deleted is not False:
+                repo.deleted = False
+                has_changes = True
+            if has_changes:
+                repo.updatestamp = datetime.now()
             repo_id = repo.repoid
             return repo_id
         # repo was not found, could be a different owner

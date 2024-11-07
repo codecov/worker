@@ -39,10 +39,10 @@ class TestSendEmailTask:
 
         result = task.run_impl(
             dbsession,
-            owner.ownerid,
+            owner.email,
+            "TestSubject",
             "test",
             "test@codecov.io",
-            "TestSubject",
             username=owner.username,
         )
 

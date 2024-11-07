@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import sentry_sdk
 from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.enums import UploadState
@@ -8,23 +6,10 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session as DbSession
 
 from database.models.reports import Upload
-from services.processing.loading import IntermediateReport
 from services.report import delete_uploads_by_sessionid
 from services.report.raw_upload_processor import clear_carryforward_sessions
 
-
-@dataclass
-class MergeResult:
-    session_mapping: dict[int, int]
-    """
-    This is a mapping from the input `upload_id` to the output `session_id`
-    as it exists in the merged "master Report".
-    """
-
-    deleted_sessions: set[int]
-    """
-    The Set of carryforwarded `session_id`s that have been removed from the "master Report".
-    """
+from .types import IntermediateReport, MergeResult
 
 
 @sentry_sdk.trace

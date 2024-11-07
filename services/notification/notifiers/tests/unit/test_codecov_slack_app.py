@@ -12,6 +12,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
+            repository_service=None,
         )
         assert notifier.is_enabled() == True
 
@@ -22,6 +23,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_yaml_settings={"enabled": False},
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": False}},
+            repository_service=None,
         )
 
         assert notifier.is_enabled() is False
@@ -33,6 +35,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
+            repository_service=None,
         )
         assert notifier.notification_type == Notification.codecov_slack_app
 
@@ -47,6 +50,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison)
         assert result.notification_successful == True
@@ -64,6 +68,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison)
         assert result.notification_successful == False
@@ -83,6 +88,7 @@ class TestCodecovSlackAppNotifier(object):
             notifier_yaml_settings={"enabled": True},
             notifier_site_settings=True,
             current_yaml={"slack_app": {"enabled": True}},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison)
         assert result.notification_successful == True

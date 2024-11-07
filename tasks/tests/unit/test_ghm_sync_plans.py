@@ -30,8 +30,6 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.plan == BillingPlan.users_basic.value
         assert owner.plan_user_count == 1
         assert owner.plan_activated_users is None
-        # Owner was already created, we don't update this value
-        assert owner.createstamp is None
 
         dbsession.commit()
         # their repos should also be deactivated
@@ -69,12 +67,12 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.username == username
         assert owner.name == name
         assert owner.email == email
-        assert owner.createstamp.isoformat() == "2024-03-28T00:00:00"
+        assert owner.createstamp.isoformat() == "2024-03-28T00:00:00+00:00"
 
     def test_create_or_update_plan_known_user_with_plan(self, dbsession, mocker):
         owner = OwnerFactory.create(
             service="github",
-            plan="some-plan",
+            plan="users-basic",
             plan_user_count=10,
             plan_activated_users=[34123, 231, 2314212],
             stripe_customer_id="cus_123",
@@ -88,7 +86,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.flush()
 
         stripe_mock = mocker.patch(
-            "tasks.github_marketplace.stripe.Subscription.delete"
+            "tasks.github_marketplace.stripe.Subscription.cancel"
         )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(
@@ -102,8 +100,8 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.plan_activated_users is None
         assert owner.plan_user_count == 5
 
-        # stripe subscription should be deleted but not customer id
-        stripe_mock.assert_called_with("sub_123")
+        # stripe subscription should be canceled but not customer id
+        stripe_mock.assert_called_with("sub_123", prorate=True)
         assert owner.stripe_subscription_id is None
         assert owner.stripe_customer_id == "cus_123"
 
@@ -124,7 +122,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.flush()
 
         stripe_mock = mocker.patch(
-            "tasks.github_marketplace.stripe.Subscription.delete"
+            "tasks.github_marketplace.stripe.Subscription.cancel"
         )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(

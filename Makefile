@@ -199,6 +199,9 @@ push.self-hosted-rolling:
 	docker push ${DOCKERHUB_REPO}:rolling_no_dependencies
 	docker push ${DOCKERHUB_REPO}:rolling
 
+shell:
+	docker-compose exec worker bash
+
 test_env.up:
 	env | grep GITHUB > .testenv; true
 	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose up -d
@@ -213,6 +216,7 @@ test_env.install_cli:
 	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
+	apt-get update
 	apt-get install -y git build-essential netcat-traditional
 	make test_env.install_cli
 	git config --global --add safe.directory /worker

@@ -1,35 +1,23 @@
 import logging
-import random
-from typing import Any
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
-from celery.exceptions import CeleryError, SoftTimeLimitExceeded
-from redis.exceptions import LockError
 from shared.celery_config import upload_processor_task_name
 from shared.config import get_config
 from shared.torngit.exceptions import TorngitError
 from shared.yaml import UserYaml
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session as DbSession
 
 from app import celery_app
 from database.enums import CommitErrorTypes
-from database.models import Commit, Upload
+from database.models import Commit
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Pull
 from helpers.cache import cache
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.parallel import ParallelProcessing
-from helpers.parallel_upload_processing import (
-    save_final_serial_report_results,
-    save_incremental_report_results,
-)
-from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
-from services.processing.state import ProcessingState
-from services.redis import get_redis_connection
-from services.report import ProcessingResult, RawReportInfo, Report, ReportService
-from services.report.parser.types import VersionOneParsedRawReport
+from services.processing.processing import UploadArguments, process_upload
+from services.report import ProcessingError, Report, ReportService
 from services.repository import get_repo_provider_service
 from tasks.base import BaseCodecovTask
 
@@ -73,368 +61,38 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
 
     def run_impl(
         self,
-        db_session,
-        previous_results,
-        *,
-        repoid,
-        commitid,
-        commit_yaml,
-        arguments_list,
-        report_code=None,
-        **kwargs,
-    ):
-        repoid = int(repoid)
-        log.info(
-            "Received upload processor task",
-            extra=dict(
-                repoid=repoid, commit=commitid, in_parallel=kwargs.get("in_parallel")
-            ),
-        )
-
-        parallel_processing = ParallelProcessing.from_task_args(**kwargs)
-
-        if parallel_processing.is_parallel:
-            log.info(
-                "Using parallel upload processing, skip acquiring upload processing lock",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    report_code=report_code,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-
-            return self.process_upload(
-                db_session=db_session,
-                previous_results={},
-                repoid=repoid,
-                commitid=commitid,
-                commit_yaml=commit_yaml,
-                arguments_list=arguments_list,
-                report_code=report_code,
-                parallel_processing=parallel_processing,
-            )
-
-        lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
-        redis_connection = get_redis_connection()
-        try:
-            log.info(
-                "Acquiring upload processing lock",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    report_code=report_code,
-                    lock_name=lock_name,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            with redis_connection.lock(
-                lock_name,
-                timeout=max(60 * 5, self.hard_time_limit_task),
-                blocking_timeout=5,
-            ):
-                log.info(
-                    "Obtained upload processing lock, starting",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        parent_task=self.request.parent_id,
-                        report_code=report_code,
-                    ),
-                )
-
-                return self.process_upload(
-                    db_session=db_session,
-                    previous_results=previous_results,
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    arguments_list=arguments_list,
-                    report_code=report_code,
-                    parallel_processing=parallel_processing,
-                )
-        except LockError:
-            max_retry = 200 * 3**self.request.retries
-            retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
-            log.warning(
-                "Unable to acquire lock for key %s. Retrying",
-                lock_name,
-                extra=dict(
-                    commit=commitid,
-                    repoid=repoid,
-                    countdown=retry_in,
-                    number_retries=self.request.retries,
-                ),
-            )
-            self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
-
-    @sentry_sdk.trace
-    def process_upload(
-        self,
-        db_session,
-        previous_results: dict,
+        db_session: DbSession,
+        *args,
         repoid: int,
         commitid: str,
         commit_yaml: dict,
-        arguments_list: list[dict],
-        report_code,
-        parallel_processing: ParallelProcessing,
+        arguments: UploadArguments,
+        intermediate_reports_in_redis=False,
+        **kwargs,
     ):
-        processings_so_far: list[dict] = previous_results.get("processings_so_far", [])
-        n_processed = 0
-        n_failed = 0
-
-        commit = (
-            db_session.query(Commit)
-            .filter(Commit.repoid == repoid, Commit.commitid == commitid)
-            .first()
+        log.info(
+            "Received upload processor task",
+            extra={"arguments": arguments, "commit_yaml": commit_yaml},
         )
-        assert commit, "Commit not found in database."
-        repository = commit.repository
-        pr = None
-        report_service = ReportService(UserYaml(commit_yaml))
 
-        in_parallel = parallel_processing.is_parallel
-        parallel_processing.emit_metrics("upload_processor")
-
-        report: Report | None
-        if in_parallel:
-            log.info(
-                "Creating empty report to store incremental result",
-                extra=dict(commit=commitid, repo=repoid),
-            )
-            report = Report()
-        else:
-            report = report_service.get_existing_report_for_commit(
-                commit, report_code=report_code
-            )
-            if report is None:
+        def on_processing_error(error: ProcessingError):
+            # the error is only retried on the first pass
+            if error.is_retryable and self.request.retries == 0:
                 log.info(
-                    "No existing report for commit",
-                    extra=dict(commit=commit.commitid),
+                    "Scheduling a retry due to retryable error",
+                    extra={"error": error.as_dict()},
                 )
-                report = Report()
+                self.retry(max_retries=MAX_RETRIES, countdown=FIRST_RETRY_DELAY)
 
-        state = ProcessingState(repoid, commitid)
-        upload_ids = [int(upload["upload_pk"]) for upload in arguments_list]
-        # this in a noop in normal cases, but relevant for task retries:
-        state.mark_uploads_as_processing(upload_ids)
-
-        raw_reports: list[RawReportInfo] = []
-        try:
-            for arguments in arguments_list:
-                pr = arguments.get("pr")
-                upload_obj = (
-                    db_session.query(Upload)
-                    .filter_by(id_=arguments["upload_pk"])
-                    .first()
-                )
-                log.info(
-                    f"Processing individual report {arguments.get('reportid')}"
-                    + (" (in parallel)" if in_parallel else ""),
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        arguments=arguments,
-                        commit_yaml=commit_yaml,
-                        upload=upload_obj.id_,
-                        parent_task=self.request.parent_id,
-                        in_parallel=in_parallel,
-                    ),
-                )
-                individual_info: dict[str, Any] = {"arguments": arguments}
-                try:
-                    raw_report_info = RawReportInfo()
-                    processing_result = self.process_individual_report(
-                        report_service,
-                        commit,
-                        report,
-                        upload_obj,
-                        raw_report_info,
-                        parallel_processing,
-                    )
-                    # NOTE: this is only used because test mocking messes with the return value here.
-                    # in normal flow, the function mutates the argument instead.
-                    if processing_result.report:
-                        report = processing_result.report
-                except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
-                    raise
-
-                if error := processing_result.error:
-                    n_failed += 1
-                    individual_info["successful"] = False
-                    individual_info["error"] = error.as_dict()
-
-                else:
-                    n_processed += 1
-                    individual_info["successful"] = True
-                processings_so_far.append(individual_info)
-
-                if raw_report_info.raw_report:
-                    raw_reports.append(raw_report_info)
-
-            log.info(
-                f"Finishing the processing of {n_processed} reports"
-                + (" (in parallel)" if in_parallel else ""),
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    parent_task=self.request.parent_id,
-                    in_parallel=in_parallel,
-                ),
-            )
-
-            parallel_incremental_result = None
-            results_dict = {}
-            if in_parallel:
-                upload_id = arguments_list[0]["upload_pk"]
-                parallel_incremental_result = save_incremental_report_results(
-                    report_service,
-                    commit,
-                    report,
-                    upload_id,
-                    report_code,
-                )
-                state.mark_upload_as_processed(int(upload_id))
-
-                log.info(
-                    "Saved incremental report results to storage",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        incremental_result_path=parallel_incremental_result,
-                    ),
-                )
-            else:
-                diff = load_commit_diff(commit, pr, self.name)
-                results_dict = save_report_results(
-                    report_service, commit, report, diff, pr, report_code
-                )
-                for upload_id in upload_ids:
-                    state.mark_upload_as_processed(upload_id)
-                state.mark_uploads_as_merged(upload_ids)
-
-                # Save the final accumulated result from the serial flow for the
-                # ParallelVerification task to compare with later, for the parallel
-                # experiment. The report being saved is not necessarily the final
-                # report for the commit, as more uploads can still be made.
-                if parallel_processing is ParallelProcessing.EXPERIMENT_SERIAL:
-                    final_serial_report_url = save_final_serial_report_results(
-                        report_service, commit, report, report_code, arguments_list
-                    )
-                    log.info(
-                        "Saved final serial report results to storage",
-                        extra=dict(
-                            repoid=repoid,
-                            commit=commitid,
-                            final_serial_result_path=final_serial_report_url,
-                        ),
-                    )
-
-            if raw_reports:
-                self.postprocess_raw_reports(report_service, commit, raw_reports)
-
-            log.info(
-                f"Processed {n_processed} reports (+ {n_failed} failed)"
-                + (" (in parallel)" if in_parallel else ""),
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    commit_yaml=commit_yaml,
-                    url=results_dict.get("url"),
-                    parent_task=self.request.parent_id,
-                    in_parallel=in_parallel,
-                ),
-            )
-
-            processing_results: dict = {
-                "processings_so_far": processings_so_far,
-            }
-            if in_parallel:
-                processing_results["parallel_incremental_result"] = (
-                    parallel_incremental_result
-                )
-
-            return processing_results
-        except CeleryError:
-            raise
-        except Exception:
-            commit.state = "error"
-            log.exception(
-                "Could not properly process commit",
-                extra=dict(repoid=repoid, commit=commitid),
-            )
-            raise
-        finally:
-            # this is a noop in the success case, but makes sure unrecoverable errors
-            # are not blocking later merge/notify stages
-            state.clear_in_progress_uploads(upload_ids)
-
-    @sentry_sdk.trace
-    def process_individual_report(
-        self,
-        report_service: ReportService,
-        commit: Commit,
-        report: Report,
-        upload: Upload,
-        raw_report_info: RawReportInfo,
-        parallel_processing: ParallelProcessing,
-    ) -> ProcessingResult:
-        processing_result = report_service.build_report_from_raw_content(
-            report, raw_report_info, upload
+        return process_upload(
+            on_processing_error,
+            db_session,
+            int(repoid),
+            commitid,
+            UserYaml(commit_yaml),
+            arguments,
+            intermediate_reports_in_redis,
         )
-        if (
-            processing_result.error is not None
-            and processing_result.error.is_retryable
-            and self.request.retries == 0  # the error is only retried on the first pass
-        ):
-            log.info(
-                f"Scheduling a retry in {FIRST_RETRY_DELAY} due to retryable error",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    upload_id=upload.id,
-                    processing_result_error_code=processing_result.error.code,
-                    processing_result_error_params=processing_result.error.params,
-                    parent_task=self.request.parent_id,
-                ),
-            )
-            self.retry(max_retries=MAX_RETRIES, countdown=FIRST_RETRY_DELAY)
-
-        # for the parallel experiment, we don't want to modify anything in the
-        # database, so we disable it here
-        if parallel_processing is not ParallelProcessing.EXPERIMENT_PARALLEL:
-            report_service.update_upload_with_processing_result(
-                upload, processing_result
-            )
-
-        return processing_result
-
-    @sentry_sdk.trace
-    def postprocess_raw_reports(
-        self,
-        report_service: ReportService,
-        commit: Commit,
-        reports: list[RawReportInfo],
-    ):
-        should_delete_archive_setting = delete_archive_setting(
-            report_service.current_yaml
-        )
-        archive_service = report_service.get_archive_service(commit.repository)
-
-        for report_info in reports:
-            archive_url = report_info.archive_url
-
-            if should_delete_archive_setting and not report_info.error:
-                if not archive_url.startswith("http"):
-                    archive_service.delete_file(archive_url)
-
-            elif isinstance(report_info.raw_report, VersionOneParsedRawReport):
-                # only a version 1 report needs to be "rewritten readable"
-
-                archive_service.write_file(
-                    archive_url, report_info.raw_report.content().getvalue()
-                )
 
 
 RegisteredUploadTask = celery_app.register_task(UploadProcessorTask())

@@ -61,6 +61,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(
@@ -85,7 +86,7 @@ class TestCommitNotificationsServiceTestCase(object):
     ):
         comparison.enriched_pull = None
         commit = comparison.head.commit
-        app = GithubAppInstallation(owner=commit.repository.owner)
+        app = GithubAppInstallation(owner=commit.repository.owner, installation_id=1234)
         dbsession.add(app)
         dbsession.flush()
         notifier = CommentNotifier(
@@ -94,6 +95,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(
@@ -125,6 +127,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         result_dict = None
@@ -157,6 +160,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(
@@ -195,6 +199,7 @@ class TestCommitNotificationsServiceTestCase(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.standard,
         )
         notify_res = NotificationResult(

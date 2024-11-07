@@ -14,7 +14,9 @@ from services.notification.notifiers.comment.conditions import HasEnoughRequired
 
 
 def _get_notifier(
-    repository: Repository, required_changes: CoverageCommentRequiredChangesANDGroup
+    repository: Repository,
+    required_changes: CoverageCommentRequiredChangesANDGroup,
+    repo_provider,
 ):
     return CommentNotifier(
         repository=repository,
@@ -22,6 +24,7 @@ def _get_notifier(
         notifier_yaml_settings={"require_changes": required_changes},
         notifier_site_settings=True,
         current_yaml={},
+        repository_service=repo_provider,
     )
 
 
@@ -105,7 +108,9 @@ def test_condition_different_comparisons_no_diff(
     # There's no diff between HEAD and BASE so we can't calculate unexpected coverage.
     # Any change then needs to be a coverage change
     mock_repo_provider.get_compare.return_value = {"diff": {"files": {}, "commits": []}}
-    notifier = _get_notifier(comparison.head.commit.repository, condition)
+    notifier = _get_notifier(
+        comparison.head.commit.repository, condition, mock_repo_provider
+    )
     assert HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected
 
 
@@ -139,7 +144,9 @@ def test_condition_exact_same_report_coverage_not_affected_by_diff(
         "README.md", ["5", "8", "5", "9"]
     )
     notifier = _get_notifier(
-        sample_comparison_no_change.head.commit.repository, condition
+        sample_comparison_no_change.head.commit.repository,
+        condition,
+        mock_repo_provider,
     )
     assert (
         HasEnoughRequiredChanges.check_condition(notifier, sample_comparison_no_change)
@@ -177,7 +184,9 @@ def test_condition_exact_same_report_coverage_affected_by_diff(
         "file_1.go", ["4", "8", "4", "8"]
     )
     notifier = _get_notifier(
-        sample_comparison_no_change.head.commit.repository, condition
+        sample_comparison_no_change.head.commit.repository,
+        condition,
+        mock_repo_provider,
     )
     assert (
         HasEnoughRequiredChanges.check_condition(notifier, sample_comparison_no_change)
@@ -201,6 +210,7 @@ def test_uncovered_patch(
     notifier = _get_notifier(
         sample_comparison_no_change.head.commit.repository,
         [CoverageCommentRequiredChanges.uncovered_patch.value],
+        mock_repo_provider,
     )
     assert (
         HasEnoughRequiredChanges.check_condition(notifier, sample_comparison_no_change)
@@ -240,5 +250,6 @@ def test_coverage_drop_with_different_project_configs(
     notifier = _get_notifier(
         comparison.head.commit.repository,
         [CoverageCommentRequiredChanges.coverage_drop.value],
+        None,
     )
     assert HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected

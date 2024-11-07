@@ -19,7 +19,7 @@ from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
 from helpers.log_context import LogContext, set_log_context
-from helpers.telemetry import MetricContext, TimeseriesTimer
+from helpers.telemetry import TimeseriesTimer, log_simple_metric
 from helpers.timeseries import timeseries_enabled
 
 log = logging.getLogger("worker")
@@ -265,16 +265,8 @@ class BaseCodecovTask(celery_app.Task):
             self.task_run_counter.inc()
             self._emit_queue_metrics()
 
-            metric_context = MetricContext(
-                commit_sha=kwargs.get("commitid"),
-                repo_id=kwargs.get("repoid"),
-                owner_id=kwargs.get("ownerid"),
-            )
-
             try:
-                with TimeseriesTimer(
-                    metric_context, f"{self.metrics_prefix}.core_runtime", sync=True
-                ):
+                with TimeseriesTimer(f"{self.metrics_prefix}.core_runtime", sync=True):
                     with self.task_core_runtime.time():  # Timer isn't tested
                         return self.run_impl(db_session, *args, **kwargs)
             except (DataError, IntegrityError):
@@ -293,7 +285,6 @@ class BaseCodecovTask(celery_app.Task):
             finally:
                 self.wrap_up_dbsession(db_session)
                 self._commit_django()
-                set_log_context(LogContext())
 
     def wrap_up_dbsession(self, db_session):
         """
@@ -337,23 +328,13 @@ class BaseCodecovTask(celery_app.Task):
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         res = super().on_retry(exc, task_id, args, kwargs, einfo)
         self.task_retry_counter.inc()
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
-        metric_context.log_simple_metric(f"{self.metrics_prefix}.retry", 1.0)
+        log_simple_metric(f"{self.metrics_prefix}.retry", 1.0)
         return res
 
     def on_success(self, retval, task_id, args, kwargs):
         res = super().on_success(retval, task_id, args, kwargs)
         self.task_success_counter.inc()
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
-        metric_context.log_simple_metric(f"{self.metrics_prefix}.success", 1.0)
+        log_simple_metric(f"{self.metrics_prefix}.success", 1.0)
         return res
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -362,10 +343,5 @@ class BaseCodecovTask(celery_app.Task):
         """
         res = super().on_failure(exc, task_id, args, kwargs, einfo)
         self.task_failure_counter.inc()
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
-        metric_context.log_simple_metric(f"{self.metrics_prefix}.failure", 1.0)
+        log_simple_metric(f"{self.metrics_prefix}.failure", 1.0)
         return res

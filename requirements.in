@@ -1,5 +1,5 @@
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
-https://github.com/codecov/shared/archive/cde98920fbec05ad7f71f934fed35a5eebab4dd3.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/6958f32e314e6d728c1ee6a976c1cd7f49ad6f9f.tar.gz#egg=shared
 https://github.com/codecov/test-results-parser/archive/ef39a0888acd62d02a316a852a15d755c74e78c6.tar.gz#egg=test-results-parser
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 asgiref>=3.7.2
@@ -9,6 +9,7 @@ celery>=5.3.6
 click
 codecov-ribs
 coverage
+Django>=4.2.16
 django-postgres-extra>=2.0.8
 factory-boy
 google-cloud-pubsub
@@ -49,3 +50,4 @@ stripe>=9.6.0
 time-machine
 urllib3>=1.26.18
 vcrpy
+zstandard

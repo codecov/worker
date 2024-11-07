@@ -64,6 +64,8 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
 
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
+        if not filename:
+            continue
         _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
         assert (
             _file is not None
@@ -194,14 +196,17 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
 
     # path rename
     path_fixer = report_builder_session.path_fixer
-    path_name_fixing = []
     source_path_list = get_sources_to_attempt(xml)
+    path_name_fixing = []
+
     for _class in xml.iter("class"):
         filename = _class.attrib["filename"]
         fixed_name = path_fixer(filename, bases_to_try=source_path_list)
         path_name_fixing.append((filename, fixed_name))
 
-    _set = set(("dist-packages", "site-packages"))
-    report_builder_session.resolve_paths(
-        sorted(path_name_fixing, key=lambda a: _set & set(a[0].split("/")))
+    # paths with `X-packages` should be sorted to the end
+    path_name_fixing.sort(
+        key=lambda a: "/dist-packages/" in a[0] or "/site-packages/" in a[0]
     )
+
+    report_builder_session.resolve_paths(path_name_fixing)

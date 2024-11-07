@@ -433,7 +433,8 @@ class TestUploadTestFinisherTask(object):
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )
 
     @pytest.mark.integration
@@ -719,7 +720,8 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )
 
         assert expected_result == result
@@ -865,7 +867,8 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )
 
     @pytest.mark.integration
@@ -1049,5 +1052,6 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )

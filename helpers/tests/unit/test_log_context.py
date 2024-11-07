@@ -4,12 +4,7 @@ from asgiref.sync import async_to_sync
 from sqlalchemy.exc import IntegrityError
 
 from database.tests.factories.core import CommitFactory, OwnerFactory, RepositoryFactory
-from helpers.log_context import (
-    LogContext,
-    get_log_context,
-    set_log_context,
-    update_log_context,
-)
+from helpers.log_context import LogContext, get_log_context, set_log_context
 
 
 def create_db_records(dbsession):
@@ -131,14 +126,6 @@ def test_set_and_get_log_context(dbsession):
     async_to_sync(check_context_in_coroutine)()
 
 
-def test_update_log_context(dbsession):
-    log_context = LogContext(repo_id=1)
-    set_log_context(log_context)
-
-    update_log_context({"commit_sha": "abcde", "owner_id": 5})
-    assert get_log_context() == LogContext(repo_id=1, commit_sha="abcde", owner_id=5)
-
-
 def test_as_dict(dbsession, mocker):
     owner, repo, commit = create_db_records(dbsession)
     log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
@@ -162,3 +149,28 @@ def test_as_dict(dbsession, mocker):
         "owner_service": owner.service,
         "sentry_trace_id": 123,
     }
+
+
+def test_add_to_log_record(dbsession):
+    owner, repo, commit = create_db_records(dbsession)
+    log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
+    log_context.populate_from_sqlalchemy(dbsession)
+
+    log_record = {}
+    log_context.add_to_log_record(log_record)
+    assert log_record["context"] == log_context.as_dict()
+
+
+def test_add_to_sentry(dbsession, mocker):
+    mock_set_tags = mocker.patch("sentry_sdk.set_tags")
+
+    owner, repo, commit = create_db_records(dbsession)
+    log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
+    log_context.populate_from_sqlalchemy(dbsession)
+
+    # Calls `log_context.set_to_sentry()`
+    set_log_context(log_context)
+
+    expected_sentry_fields = log_context.as_dict()
+    expected_sentry_fields.pop("sentry_trace_id")
+    mock_set_tags.assert_called_with(expected_sentry_fields)

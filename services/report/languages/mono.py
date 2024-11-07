@@ -45,5 +45,5 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
             )
 
     for _file in files.values():
-        if _file:
+        if _file is not None:
             report_builder_session.append(_file)

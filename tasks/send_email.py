@@ -1,10 +1,10 @@
 import logging
 
 from shared.celery_config import send_email_task_name
+from shared.config import get_config
 
 import services.smtp
 from app import celery_app
-from database.models import Owner
 from helpers.email import Email
 from helpers.metrics import metrics
 from services.template import TemplateService
@@ -15,36 +15,25 @@ log = logging.getLogger(__name__)
 
 class SendEmailTask(BaseCodecovTask, name=send_email_task_name):
     def run_impl(
-        self, db_session, ownerid, template_name, from_addr, subject, **kwargs
+        self, db_session, to_addr, subject, template_name, from_addr=None, **kwargs
     ):
         with metrics.timer("worker.tasks.send_email"):
+            if from_addr is None:
+                from_addr = get_config(
+                    "services", "smtp", "from_address", default="noreply@codecov.io"
+                )
+
             log_extra_dict = {
+                "to_addr": to_addr,
                 "from_addr": from_addr,
                 "template_name": template_name,
                 "template_kwargs": kwargs,
-                "ownerid": ownerid,
             }
 
             log.info(
                 "Received send email task",
                 extra=log_extra_dict,
             )
-
-            owner = db_session.query(Owner).filter_by(ownerid=ownerid).first()
-            if not owner:
-                log.warning(
-                    "Unable to find owner",
-                    extra=log_extra_dict,
-                )
-                return {"email_successful": False, "err_msg": "Unable to find owner"}
-
-            to_addr = owner.email
-            if not owner.email:
-                log.warning("Owner does not have email", extra=log_extra_dict)
-                return {
-                    "email_successful": False,
-                    "err_msg": "Owner does not have email",
-                }
 
             smtp_service = services.smtp.SMTPService()
 

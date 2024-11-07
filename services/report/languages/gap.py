@@ -53,5 +53,5 @@ def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> 
             )
 
     # append last file
-    if _file:
+    if _file is not None:
         report_builder_session.append(_file)

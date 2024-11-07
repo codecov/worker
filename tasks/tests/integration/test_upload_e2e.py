@@ -16,7 +16,7 @@ from database.models.core import Commit, CompareCommit, Repository
 from database.models.reports import Upload
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.core import PullFactory
-from rollouts import PARALLEL_UPLOAD_PROCESSING_BY_REPO
+from rollouts import INTERMEDIATE_REPORTS_IN_REDIS
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -141,10 +141,10 @@ def setup_mocks(
         "tasks.upload.fetch_commit_yaml_and_possibly_store",
         return_value=UserYaml(user_yaml or {}),
     )
-    # disable all the tasks being emitted from `UploadFinisher`
-    mocker.patch(
-        "tasks.notify.NotifyTask.run_impl"
-    )  # we would eventually also E2E test these
+    # disable all the tasks being emitted from `UploadFinisher`.
+    # ideally, we would really want to test their outcomes as well.
+    mocker.patch("tasks.notify.NotifyTask.run_impl")
+    mocker.patch("tasks.save_commit_measurements.SaveCommitMeasurementsTask.run_impl")
 
     # force `report_json` to be written out to storage
     mock_configuration.set_params(
@@ -152,7 +152,6 @@ def setup_mocks(
             "setup": {
                 "save_report_data_in_storage": {
                     "commit_report": "general_access",
-                    "report_details_files_array": "general_access",
                 },
             }
         }
@@ -160,11 +159,11 @@ def setup_mocks(
 
 
 @pytest.mark.integration
-@pytest.mark.django_db()
-@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
+@pytest.mark.django_db
+@pytest.mark.parametrize("redis_storage", [True, False])
 def test_full_upload(
     dbsession: DbSession,
-    parallel_processing: str,
+    redis_storage: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -172,11 +171,10 @@ def test_full_upload(
 ):
     setup_mocks(mocker, dbsession, mock_configuration, mock_repo_provider)
 
-    # use parallel processing:
     mocker.patch.object(
-        PARALLEL_UPLOAD_PROCESSING_BY_REPO,
+        INTERMEDIATE_REPORTS_IN_REDIS,
         "check_value",
-        return_value=parallel_processing,
+        return_value=redis_storage,
     )
 
     repository = RepositoryFactory.create()
@@ -188,20 +186,21 @@ def test_full_upload(
 
     repoid = repository.repoid
     commitid = uuid4().hex
-    commit = CommitFactory.create(
-        repository=repository, commitid=commitid, pullid=12, _report_json=None
-    )
-    dbsession.add(commit)
-    dbsession.flush()
-
     # BASE and HEAD are connected in a PR
     pull = PullFactory(
         pullid=12,
         repository=repository,
         compared_to=base_commit.commitid,
     )
+    commit = CommitFactory.create(
+        repository=repository, commitid=commitid, pullid=12, _report_json=None
+    )
     dbsession.add(pull)
     dbsession.flush()
+
+    dbsession.add(commit)
+    dbsession.flush()
+
     setup_mock_get_compare(base_commit, commit, mock_repo_provider)
 
     archive_service = ArchiveService(repository)
@@ -282,9 +281,9 @@ end_of_record
     # we expect the following files:
     # chunks+json for the base commit
     # 4 * raw uploads
-    # chunks+json, `files_array` and `comparison` for the finished upload
+    # chunks+json, and `comparison` for the finished upload
     archive = mock_storage.storage["archive"]
-    assert len(archive) == 2 + 4 + 4
+    assert len(archive) == 2 + 4 + 3
 
     report_service = ReportService(UserYaml({}))
     report = report_service.get_existing_report_for_commit(commit, report_code=None)
@@ -339,7 +338,7 @@ end_of_record
         (2, 4),
     ]
 
-    assert len(archive) == 2 + 5 + 4
+    assert len(archive) == 2 + 5 + 3
     repo_hash = ArchiveService.get_archive_hash(repository)
     raw_chunks_path = f"v4/repos/{repo_hash}/commits/{commitid}/chunks.txt"
     assert raw_chunks_path in archive
@@ -367,10 +366,10 @@ end_of_record
 
 @pytest.mark.integration
 @pytest.mark.django_db()
-@pytest.mark.parametrize("parallel_processing", ["serial", "experiment", "parallel"])
+@pytest.mark.parametrize("redis_storage", [True, False])
 def test_full_carryforward(
     dbsession: DbSession,
-    parallel_processing: bool,
+    redis_storage: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -380,12 +379,12 @@ def test_full_carryforward(
     setup_mocks(
         mocker, dbsession, mock_configuration, mock_repo_provider, user_yaml=user_yaml
     )
+    mocker.patch("tasks.compute_comparison.ComputeComparisonTask.run_impl")
 
-    # use parallel processing:
     mocker.patch.object(
-        PARALLEL_UPLOAD_PROCESSING_BY_REPO,
+        INTERMEDIATE_REPORTS_IN_REDIS,
         "check_value",
-        return_value=parallel_processing,
+        return_value=redis_storage,
     )
 
     repository = RepositoryFactory.create()
@@ -626,8 +625,8 @@ end_of_record
     }
 
     # we expect the following files:
-    # chunks+json, `files_array` for the base commit
+    # chunks+json for the base commit
     # 6 * raw uploads
-    # chunks+json, `files_array` for the carryforwarded commit (no `comparison`)
+    # chunks+json for the carryforwarded commit (no `comparison`)
     archive = mock_storage.storage["archive"]
-    assert len(archive) == 3 + 6 + 3
+    assert len(archive) == 2 + 6 + 2

@@ -1,7 +1,8 @@
 import contextvars
 import logging
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass
 
+import sentry_sdk
 from sentry_sdk import get_current_span
 
 from database.models.core import Commit, Owner, Repository
@@ -124,24 +125,25 @@ class LogContext:
 
         self._populated_from_db = True
 
+    def add_to_log_record(self, log_record: dict):
+        log_record["context"] = self.as_dict()
+
+    def add_to_sentry(self):
+        d = self.as_dict()
+        d.pop("sentry_trace_id", None)
+        sentry_sdk.set_tags(d)
+
 
 _log_context = contextvars.ContextVar("log_context", default=LogContext())
 
 
 def set_log_context(context: LogContext):
     """
-    Overwrite whatever is currently in the log context.
+    Overwrite whatever is currently in the log context. Also sets tags in the
+    Sentry SDK appropriately.
     """
     _log_context.set(context)
-
-
-def update_log_context(context: dict):
-    """
-    Add new fields to the log context without removing old ones.
-    """
-    current_context: LogContext = _log_context.get()
-    new_context = replace(current_context, **context)
-    set_log_context(new_context)
+    context.add_to_sentry()
 
 
 def get_log_context() -> LogContext:
