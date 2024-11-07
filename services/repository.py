@@ -255,7 +255,7 @@ async def update_commit_from_provider_info(
         res = merged_pull(git_commit["message"])
         if res:
             pullid = res.groups()[0]
-            if int(pullid) != int(commit.pullid):
+            if pullid != commit.pullid:
                 pull_details = await repository_service.get_pull_request(pullid)
             commit.branch = pull_details["base"]["branch"]
 
