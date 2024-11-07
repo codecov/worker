@@ -665,11 +665,7 @@ class ReportService(BaseReportService):
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
             result.report = process_raw_upload(
-                self.current_yaml,
-                raw_report,
-                flags,
-                session,
-                upload=upload,
+                self.current_yaml, raw_report, flags, session
             )
 
             log.info(

@@ -18,7 +18,6 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.archive import ArchiveService
 from services.processing.processing import process_upload
 from services.report import ProcessingError, RawReportInfo, ReportService
@@ -53,12 +52,6 @@ class TestUploadProcessorTask(object):
         mock_storage,
         celery_app,
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
             content = f.read()
@@ -107,12 +100,6 @@ class TestUploadProcessorTask(object):
         mock_storage,
         celery_app,
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         mock_configuration.set_params(
             {"services": {"minio": {"expire_raw_after_n_days": True}}}
         )
@@ -163,12 +150,6 @@ class TestUploadProcessorTask(object):
     def test_upload_processor_call_with_upload_obj(
         self, mocker, dbsession, mock_storage
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
