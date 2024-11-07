@@ -39,6 +39,7 @@ def test_results_mock_app(mocker):
         tasks={
             "app.tasks.notify.Notify": mocker.MagicMock(),
             "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
+            "app.tasks.test_results.CacheTestRollupsTask": mocker.MagicMock(),
         },
     )
     return mocked_app
@@ -233,6 +234,7 @@ def test_results_setup_no_instances(mocker, dbsession):
         repository__owner__service="github",
         repository__name="codecov-demo",
     )
+    commit.branch = "main"
     dbsession.add(commit)
     dbsession.flush()
 
@@ -358,6 +360,16 @@ class TestUploadTestFinisherTask(object):
             "notify_succeeded": True,
             QUEUE_NOTIFY_KEY: False,
         }
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
@@ -486,6 +498,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             },
         )
 
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         assert expected_result == result
 
     @pytest.mark.integration
@@ -538,6 +560,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
                 "commitid": commit.commitid,
                 "current_yaml": {"codecov": {"max_report_age": False}},
                 "repoid": repoid,
+            },
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
             },
         )
 
@@ -608,6 +640,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
         test_results_mock_app.tasks["app.tasks.notify.Notify"].assert_not_called()
 
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
     @pytest.mark.integration
     def test_upload_finisher_task_call_existing_comment(
         self,
@@ -645,6 +687,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             "notify_succeeded": True,
             QUEUE_NOTIFY_KEY: False,
         }
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
@@ -763,6 +815,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             QUEUE_NOTIFY_KEY: False,
         }
 
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         assert expected_result == result
 
     @pytest.mark.parametrize(
@@ -834,6 +896,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         }
 
         assert expected_result == result
+
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
@@ -936,6 +1008,15 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
                     "branch": "main",
                 },
             )
+        test_results_mock_app.tasks[
+            "app.tasks.test_results.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})

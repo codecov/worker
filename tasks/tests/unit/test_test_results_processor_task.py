@@ -11,7 +11,7 @@ from database.models import CommitReport, RepositoryFlag
 from database.models.reports import DailyTestRollup, Test, TestFlagBridge, TestInstance
 from database.tests.factories import CommitFactory, UploadFactory
 from database.tests.factories.reports import FlakeFactory
-from services.test_results import generate_test_id
+from services.test_results import generate_flags_hash, generate_test_id
 from tasks.test_results_processor import (
     ParserError,
     TestResultsProcessorTask,
@@ -488,15 +488,16 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.add(current_report_row)
         dbsession.flush()
 
+        flags_hash = generate_flags_hash(upload.flag_names)
         test_id = generate_test_id(
             repoid,
             "pytest",
             "api.temp.calculator.test_calculator\x1ftest_divide",
-            "",
+            flags_hash,
         )
         existing_test = Test(
             repoid=repoid,
-            flags_hash="",
+            flags_hash=flags_hash,
             name="api.temp.calculator.test_calculator\x1ftest_divide",
             testsuite="pytest",
             id_=test_id,
@@ -532,7 +533,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         for bridge in test_flag_bridges:
             assert bridge.flag == repo_flag
 
-        assert len(tests) == 5
+        assert len(tests) == 4
         assert len(test_instances) == 4
         assert len(failures) == 1
 

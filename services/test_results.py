@@ -97,7 +97,7 @@ class TestResultsReportService(BaseReportService):
         self.flag_dict = {flag.flag_name: flag for flag in existing_flags_on_repo}
 
 
-def generate_flags_hash(flag_names):
+def generate_flags_hash(flag_names: list[str]) -> str:
     return sha256((" ".join(sorted(flag_names))).encode("utf-8")).hexdigest()
 
 
