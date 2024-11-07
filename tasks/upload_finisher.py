@@ -171,8 +171,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
                 commit_yaml = UserYaml(commit_yaml)
-                commit.notified = False
-                db_session.commit()
                 result = self.finish_reports_processing(
                     db_session,
                     commit,

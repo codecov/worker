@@ -126,7 +126,6 @@ class TestUploadFinisherTask(object):
             commit_yaml={},
             **kwargs,
         )
-        assert commit.notified is False
         expected_result = {"notifications_called": True}
         assert expected_result == result
         dbsession.refresh(commit)
