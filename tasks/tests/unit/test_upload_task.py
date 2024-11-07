@@ -971,7 +971,7 @@ class TestUploadTaskIntegration(object):
         mock_storage,
     ):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
-        mock_possibly_update_commit_from_provider_info = mocker.patch(
+        mocker.patch(
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mock_create_upload = mocker.patch.object(ReportService, "create_report_upload")

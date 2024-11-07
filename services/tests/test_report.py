@@ -3764,10 +3764,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(upload_obj)
         dbsession.flush()
         assert len(upload_obj.errors) == 0
-        processing_result = ProcessingResult(
-            session=Session(),
-            session_adjustment=SessionAdjustmentResult([], []),
-        )
+        processing_result = ProcessingResult(session=Session())
         ReportService({}).update_upload_with_processing_result(
             upload_obj, processing_result
         )

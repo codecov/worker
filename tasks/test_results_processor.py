@@ -364,7 +364,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             insert_on_conflict_do_nothing_flags = (
                 insert(TestFlagBridge.__table__)
                 .values(test_flag_bridge_data)
-                .on_conflict_do_nothing()
+                .on_conflict_do_nothing(index_elements=["test_id", "flag_id"])
             )
             db_session.execute(insert_on_conflict_do_nothing_flags)
             db_session.flush()

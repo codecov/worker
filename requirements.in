@@ -1,5 +1,5 @@
 https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
-https://github.com/codecov/shared/archive/bf285c7d702aa40a5f2cc960f272480dddf9a6ab.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/6958f32e314e6d728c1ee6a976c1cd7f49ad6f9f.tar.gz#egg=shared
 https://github.com/codecov/test-results-parser/archive/ef39a0888acd62d02a316a852a15d755c74e78c6.tar.gz#egg=test-results-parser
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 asgiref>=3.7.2
