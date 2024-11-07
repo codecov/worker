@@ -2,10 +2,11 @@ import datetime as dt
 
 import polars as pl
 from django.db import connection
+from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
-from shared.django_apps.core.models import Repository
 
 from app import celery_app
+from services.redis import get_redis_connection
 from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
@@ -90,7 +91,17 @@ left join flags_cte using (test_id)
 
 class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
     def run_impl(self, *, repoid, branch, **kwargs):
-        repository = Repository.objects.get(repoid=repoid)
+        redis_conn = get_redis_connection()
+        try:
+            with redis_conn.lock(
+                f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
+            ):
+                self.run_impl_within_lock(repoid, branch, **kwargs)
+                return {"success": True}
+        except LockError:
+            return {"in_progress": True}
+
+    def run_impl_within_lock(self, repoid, branch):
         storage_service = get_storage_client()
 
         with connection.cursor() as cursor:
@@ -148,7 +159,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
 
                 storage_service.write_file("codecov", storage_key, serialized_table)
 
-        return {"success": True}
+        return
 
 
 RegisteredCacheTestRollupTask = celery_app.register_task(CacheTestRollupsTask())
