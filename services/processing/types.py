@@ -1,16 +1,35 @@
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from shared.reports.editable import EditableReport
+from shared.upload.constants import UploadErrorCode
 
-from services.report import ProcessingErrorDict
 
-
-class UploadArguments(TypedDict):
+class UploadArguments(TypedDict, total=False):
     upload_id: int
 
     # TODO(swatinem): migrate this over to `upload_id`
     upload_pk: int
+
+    flags: list[str]
+    url: str
+
+    name: NotRequired[str]
+    reportid: NotRequired[str]
+    build: NotRequired[str]
+    build_url: NotRequired[str]
+    job: NotRequired[str]
+    service: NotRequired[str]
+
+    # TODO(swatinem): remove these fields completely being passed from API:
+    # `redis_key` being removed in https://github.com/codecov/codecov-api/pull/960
+    redis_key: NotRequired[str]
+    token: NotRequired[str]
+
+
+class ProcessingErrorDict(TypedDict):
+    code: UploadErrorCode
+    params: dict[str, Any]
 
 
 class ProcessingResult(TypedDict):

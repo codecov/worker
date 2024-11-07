@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import List, Mapping, Sequence
+from typing import List, Sequence
 
 from shared.yaml import UserYaml
 from sqlalchemy import desc
@@ -11,6 +11,7 @@ from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, 
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
 from services.license import requires_license
+from services.processing.types import UploadArguments
 from services.report import BaseReportService
 from services.repository import get_repo_provider_service
 from services.urls import get_members_url, get_test_analytics_url
@@ -52,11 +53,10 @@ class TestResultsReportService(BaseReportService):
 
     # support flags in test results
     def create_report_upload(
-        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+        self, arguments: UploadArguments, commit_report: CommitReport
     ) -> Upload:
-        upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags = normalized_arguments.get("flags") or []
-        self._attach_flags_to_upload(upload, flags)
+        upload = super().create_report_upload(arguments, commit_report)
+        self._attach_flags_to_upload(upload, arguments["flags"])
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):

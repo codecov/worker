@@ -4,7 +4,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from time import time
-from typing import Any, Mapping, Sequence, TypedDict
+from typing import Any
 
 import orjson
 import sentry_sdk
@@ -44,6 +44,7 @@ from services.processing.metrics import (
     PYREPORT_CHUNKS_FILE_SIZE,
     PYREPORT_REPORT_JSON_SIZE,
 )
+from services.processing.types import ProcessingErrorDict, UploadArguments
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.parser.version_one import VersionOneReportParser
@@ -54,11 +55,6 @@ from services.report.prometheus_metrics import (
 from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
-
-
-class ProcessingErrorDict(TypedDict):
-    code: UploadErrorCode
-    params: dict[str, Any]
 
 
 @dataclass
@@ -113,34 +109,27 @@ class BaseReportService:
         raise NotImplementedError()
 
     def create_report_upload(
-        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+        self, arguments: UploadArguments, commit_report: CommitReport
     ) -> Upload:
         """
         Creates an `Upload` from the user-given arguments to a job
 
         The end goal here is that the `Upload` should have all the information needed to
-            hypothetically redo the job later
-
-        Args:
-            normalized_arguments (Mapping[str, str]): The arguments as given by the user
-            commit_report (CommitReport): The commit_report we will attach this `Uplaod` to
-
-        Returns:
-            Upload
+        hypothetically redo the job later.
         """
         db_session = commit_report.get_db_session()
-        name = normalized_arguments.get("name")
+        name = arguments.get("name")
         upload = Upload(
-            external_id=normalized_arguments.get("reportid"),
-            build_code=normalized_arguments.get("build"),
-            build_url=normalized_arguments.get("build_url"),
-            env=None,
             report_id=commit_report.id_,
-            job_code=normalized_arguments.get("job"),
+            external_id=arguments.get("reportid"),
+            build_code=arguments.get("build"),
+            build_url=arguments.get("build_url"),
+            env=None,
+            job_code=arguments.get("job"),
             name=(name[:100] if name else None),
-            provider=normalized_arguments.get("service"),
+            provider=arguments.get("service"),
             state="started",
-            storage_path=normalized_arguments.get("url"),
+            storage_path=arguments.get("url"),
             order_number=None,
             upload_extras={},
             upload_type=SessionType.uploaded.value,
@@ -153,8 +142,6 @@ class BaseReportService:
 
 
 class ReportService(BaseReportService):
-    metrics_prefix = "services.report"
-
     def __init__(
         self, current_yaml: UserYaml | dict, gh_app_installation_name: str | None = None
     ):
@@ -235,12 +222,10 @@ class ReportService(BaseReportService):
         return current_report_row
 
     def create_report_upload(
-        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+        self, arguments: UploadArguments, commit_report: CommitReport
     ) -> Upload:
-        upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags_str = normalized_arguments.get("flags")
-        flags = flags_str.split(",") if flags_str else []
-        self._attach_flags_to_upload(upload, flags)
+        upload = super().create_report_upload(arguments, commit_report)
+        self._attach_flags_to_upload(upload, arguments["flags"])
 
         # Insert entry in user measurements table only
         # for reports with coverage type
@@ -261,16 +246,12 @@ class ReportService(BaseReportService):
 
         return upload
 
-    def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):
-        """Internal function that manages creating the proper `RepositoryFlag`s and attach the sessions to them
-
-        Args:
-            upload (Upload): Description
-            flag_names (Sequence[str]): Description
-
-        Returns:
-            TYPE: Description
+    def _attach_flags_to_upload(self, upload: Upload, flag_names: list[str]):
         """
+        Internal function that manages creating the proper `RepositoryFlag`s,
+        and attach them to the `Upload`
+        """
+
         all_flags = []
         db_session = upload.get_db_session()
         repoid = upload.report.commit.repoid
@@ -636,8 +617,6 @@ class ReportService(BaseReportService):
             log.info(
                 "Raw report file was not found",
                 extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     archive_url=archive_url,
@@ -653,11 +632,7 @@ class ReportService(BaseReportService):
         except Exception as e:
             log.exception(
                 "Unknown error when fetching raw report from storage",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    archive_path=archive_url,
-                ),
+                extra=dict(archive_path=archive_url),
             )
             result.error = ProcessingError(
                 code=UploadErrorCode.UNKNOWN_STORAGE,
@@ -678,8 +653,6 @@ class ReportService(BaseReportService):
                 extra=dict(
                     session=session.id,
                     ci=f"{session.provider}:{session.build}:{session.job}",
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     content_len=raw_report.size,
@@ -688,13 +661,9 @@ class ReportService(BaseReportService):
             return result
         except ReportExpiredException as r:
             log.info(
-                "Report %s is expired",
-                reportid,
+                "Report is expired",
                 extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    archive_path=archive_url,
-                    file_name=r.filename,
+                    reportid=reportid, archive_path=archive_url, file_name=r.filename
                 ),
             )
             result.error = ProcessingError(
@@ -703,22 +672,14 @@ class ReportService(BaseReportService):
             raw_report_info.error = result.error
             return result
         except ReportEmptyError:
-            log.warning(
-                "Report %s is empty",
-                reportid,
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-            )
+            log.warning("Report is empty", extra=dict(reportid=reportid))
             result.error = ProcessingError(code=UploadErrorCode.REPORT_EMPTY, params={})
             raw_report_info.error = result.error
             return result
         except Exception as e:
             log.exception(
                 "Unknown error when processing raw upload",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    archive_path=archive_url,
-                ),
+                extra=dict(archive_path=archive_url),
             )
             result.error = ProcessingError(
                 code=UploadErrorCode.UNKNOWN_PROCESSING,
