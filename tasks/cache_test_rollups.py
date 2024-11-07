@@ -96,7 +96,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
             with redis_conn.lock(
                 f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
             ):
-                self.run_impl_within_lock(repoid, branch, **kwargs)
+                self.run_impl_within_lock(repoid, branch)
                 return {"success": True}
         except LockError:
             return {"in_progress": True}

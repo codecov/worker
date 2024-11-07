@@ -24,7 +24,7 @@ class CacheTestRollupsRedisTask(
         except LockError:
             return {"in_progress": True}
 
-    def run_impl_within_lock(self, *, repoid, branch) -> None:
+    def run_impl_within_lock(self, repoid, branch) -> None:
         storage_service = get_storage_client()
         redis_conn = get_redis_connection()
 
