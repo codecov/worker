@@ -75,12 +75,12 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     def run_impl(
         self,
         db_session,
-        processing_results,
+        processing_results: list[ProcessingResult],
         *args,
-        repoid,
-        commitid,
+        repoid: int,
+        commitid: str,
         commit_yaml,
-        report_code=None,
+        report_code: str | None = None,
         intermediate_reports_in_redis=False,
         **kwargs,
     ):
@@ -92,14 +92,12 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         log.info(
             "Received upload_finisher task",
-            extra=dict(
-                repoid=repoid,
-                commit=commitid,
-                processing_results=processing_results,
-                parent_task=self.request.parent_id,
-            ),
+            extra={"processing_results": processing_results},
         )
+
         repoid = int(repoid)
+        commit_yaml = UserYaml(commit_yaml)
+
         commit = (
             db_session.query(Commit)
             .filter(Commit.repoid == repoid, Commit.commitid == commitid)
@@ -110,10 +108,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         state = ProcessingState(repoid, commitid)
 
-        processing_results = get_processing_results(processing_results)
         upload_ids = [upload["upload_id"] for upload in processing_results]
         diff = load_commit_diff(commit, self.name)
-        commit_yaml = UserYaml(commit_yaml)
 
         try:
             with get_report_lock(repoid, commitid, self.hard_time_limit_task):
@@ -145,12 +141,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             retry_in = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
             log.warning(
                 "Unable to acquire report lock. Retrying",
-                extra=dict(
-                    commit=commitid,
-                    repoid=repoid,
-                    countdown=retry_in,
-                    number_retries=self.request.retries,
-                ),
+                extra=dict(countdown=retry_in, number_retries=self.request.retries),
             )
             self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
 
@@ -187,24 +178,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     db_session.commit()
 
                 self.invalidate_caches(redis_connection, commit)
-                log.info(
-                    "Finished upload_finisher task",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        parent_task=self.request.parent_id,
-                    ),
-                )
+                log.info("Finished upload_finisher task")
                 return result
         except LockError:
-            log.warning(
-                "Unable to acquire lock for key %s.",
-                lock_name,
-                extra=dict(
-                    commit=commitid,
-                    repoid=repoid,
-                ),
-            )
+            log.warning("Unable to acquire lock", extra=dict(lock_name=lock_name))
 
     def finish_reports_processing(
         self,
@@ -436,22 +413,6 @@ def perform_report_merging(
     )
 
     return master_report
-
-
-def get_processing_results(processing_results: list) -> list[ProcessingResult]:
-    results: list[ProcessingResult] = []
-    for input_result in processing_results:
-        if "processings_so_far" in input_result:
-            result = input_result["processings_so_far"][0]
-            if "upload_id" not in result:
-                result["upload_id"] = input_result["parallel_incremental_result"][
-                    "upload_pk"
-                ]
-            results.append(result)
-        else:
-            results.append(input_result)
-
-    return results
 
 
 @sentry_sdk.trace

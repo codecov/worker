@@ -12,10 +12,7 @@ from database.models.reports import DailyTestRollup, Test, TestFlagBridge, TestI
 from database.tests.factories import CommitFactory, UploadFactory
 from database.tests.factories.reports import FlakeFactory
 from services.test_results import generate_flags_hash, generate_test_id
-from tasks.test_results_processor import (
-    ParserError,
-    TestResultsProcessorTask,
-)
+from tasks.test_results_processor import ParserError, TestResultsProcessorTask
 
 here = Path(__file__)
 
@@ -116,7 +113,7 @@ class TestUploadTestProcessorTask(object):
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -199,7 +196,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch(
             "tasks.test_results_processor.parse_junit_xml",
@@ -250,7 +247,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch.object(
             TestResultsProcessorTask, "should_delete_archive", return_value=True
@@ -325,7 +322,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -378,7 +375,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.add(upload)
         dbsession.flush()
         repoid = upload.report.commit.repoid
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -471,7 +468,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload.flags = [repo_flag]
         dbsession.flush()
 
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -590,7 +587,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             dbsession.flush()
 
             repoid = upload.report.commit.repoid
-            redis_queue = [{"url": first_url, "upload_pk": upload.id_}]
+            redis_queue = [{"url": first_url, "upload_id": upload.id_}]
             mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
             result = TestResultsProcessorTask().run_impl(
@@ -650,7 +647,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
                 dbsession.add(flake)
                 dbsession.flush()
 
-            redis_queue = [{"url": second_url, "upload_pk": upload.id_}]
+            redis_queue = [{"url": second_url, "upload_id": upload.id_}]
 
             result = TestResultsProcessorTask().run_impl(
                 dbsession,
@@ -749,7 +746,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(

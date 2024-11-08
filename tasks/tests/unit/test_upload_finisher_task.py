@@ -21,7 +21,6 @@ from tasks.upload_finisher import (
     ReportService,
     ShouldCallNotifyResult,
     UploadFinisherTask,
-    get_processing_results,
     load_commit_diff,
 )
 
@@ -38,47 +37,6 @@ def _create_checkpoint_logger(mocker):
     checkpoints.log(UploadFlow.PROCESSING_BEGIN)
     checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
     return checkpoints
-
-
-def test_results_arg_old_no_id():
-    results = get_processing_results(
-        [
-            {
-                "processings_so_far": [
-                    {"arguments": {"foo": "bar"}, "successful": True}
-                ],
-                "parallel_incremental_result": {"upload_pk": 123},
-            }
-        ]
-    )
-    assert results == [
-        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
-    ]
-
-
-def test_results_arg_old_with_id():
-    results = get_processing_results(
-        [
-            {
-                "processings_so_far": [
-                    {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
-                ],
-                "parallel_incremental_result": {"upload_pk": "something else entirely"},
-            }
-        ]
-    )
-    assert results == [
-        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
-    ]
-
-
-def test_results_arg_new():
-    results = get_processing_results(
-        [{"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}]
-    )
-    assert results == [
-        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
-    ]
 
 
 def test_load_commit_diff_no_diff(mock_configuration, dbsession, mock_repo_provider):
@@ -183,17 +141,16 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        previous_results = {
-            "processings_so_far": [{"arguments": {"url": url}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [
+            {"upload_id": 0, "arguments": {"url": url}, "successful": True}
+        ]
 
         checkpoints = _create_checkpoint_logger(mocker)
         checkpoints_data = json.loads(json.dumps(checkpoints.data))
         kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
         result = UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
@@ -247,13 +204,12 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        previous_results = {
-            "processings_so_far": [{"arguments": {"url": url}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [
+            {"upload_id": 0, "arguments": {"url": url}, "successful": True}
+        ]
         result = UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
@@ -291,13 +247,12 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        previous_results = {
-            "processings_so_far": [{"arguments": {"url": url}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [
+            {"upload_id": 0, "arguments": {"url": url}, "successful": True}
+        ]
         result = UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
@@ -654,13 +609,10 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        previous_results = {
-            "processings_so_far": [{"arguments": {}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [{"upload_id": 0, "arguments": {}, "successful": True}]
         UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
@@ -690,12 +642,7 @@ class TestUploadFinisherTask(object):
         with pytest.raises(Retry):
             task.run_impl(
                 dbsession,
-                [
-                    {
-                        "processings_so_far": [{"successful": True, "arguments": {}}],
-                        "parallel_incremental_result": {"upload_pk": 1},
-                    }
-                ],
+                [{"upload_id": 0, "successful": True, "arguments": {}}],
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},

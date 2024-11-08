@@ -33,6 +33,7 @@ from database.models import (
 )
 from helpers.metrics import metrics
 from services.archive import ArchiveService
+from services.processing.types import UploadArguments
 from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -145,53 +146,39 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def run_impl(
         self,
         db_session,
-        *,
-        repoid,
-        commitid,
+        *args,
+        repoid: int,
+        commitid: str,
         commit_yaml,
-        arguments_list,
-        report_code=None,
+        arguments_list: list[UploadArguments],
         **kwargs,
     ):
+        log.info("Received upload test result processing task")
+
         commit_yaml = UserYaml(commit_yaml)
-
         repoid = int(repoid)
-        log.info(
-            "Received upload test result processing task",
-            extra=dict(repoid=repoid, commit=commitid),
-        )
 
-        testrun_dict_list = []
+        results = []
         upload_list = []
 
         repo_flakes = (
-            db_session.query(Flake)
+            db_session.query(Flake.testid)
             .filter(Flake.repoid == repoid, Flake.end_date.is_(None))
             .all()
         )
-
-        flaky_test_set = set()
-
-        for flake in repo_flakes:
-            flaky_test_set.add(flake.testid)
+        flaky_test_set = {flake.testid for flake in repo_flakes}
 
         # process each report session's test information
-        with metrics.timer("test_results.processor"):
-            for args in arguments_list:
-                upload_obj: Upload = (
-                    db_session.query(Upload)
-                    .filter_by(id_=args.get("upload_pk"))
-                    .first()
-                )
+        for arguments in arguments_list:
+            upload = (
+                db_session.query(Upload).filter_by(id_=arguments["upload_id"]).first()
+            )
+            result = self.process_individual_upload(
+                db_session, repoid, commitid, upload, flaky_test_set
+            )
 
-                res = self.process_individual_upload(
-                    db_session, repoid, commitid, upload_obj, flaky_test_set
-                )
-
-                # concat existing and new test information
-                testrun_dict_list.append(res)
-
-                upload_list.append(upload_obj)
+            results.append(result)
+            upload_list.append(upload)
 
         if self.should_delete_archive(commit_yaml):
             repository = (
@@ -203,7 +190,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 commitid, repository, commit_yaml, uploads_to_delete=upload_list
             )
 
-        return testrun_dict_list
+        return results
 
     def _bulk_write_tests_to_db(
         self,
