@@ -13,7 +13,9 @@ from tasks.base import BaseCodecovTask
 class CacheTestRollupsRedisTask(
     BaseCodecovTask, name=cache_test_rollups_redis_task_name
 ):
-    def run_impl(self, *, repoid: int, branch: str, **kwargs) -> dict[str, bool]:
+    def run_impl(
+        self, _db_session, repoid: int, branch: str, **kwargs
+    ) -> dict[str, bool]:
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(

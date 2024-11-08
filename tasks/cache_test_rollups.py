@@ -90,7 +90,7 @@ left join flags_cte using (test_id)
 
 
 class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
-    def run_impl(self, *, repoid, branch, **kwargs):
+    def run_impl(self, _db_session, repoid: int, branch: str, **kwargs):
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(
