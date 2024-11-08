@@ -9,10 +9,14 @@ from shared.celery_config import timeseries_save_commit_measurements_task_name
 from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.yaml import UserYaml
 
+from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from database.tests.factories.core import UploadFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from services.processing.merging import update_uploads
+from services.processing.types import MergeResult, ProcessingResult
 from tasks.upload_finisher import (
     ReportService,
     ShouldCallNotifyResult,
@@ -100,6 +104,48 @@ def test_load_commit_diff_no_bot(mocker, mock_configuration, dbsession):
     assert diff is None
 
 
+def test_mark_uploads_as_failed(dbsession):
+    commit = CommitFactory.create()
+    dbsession.add(commit)
+    dbsession.flush()
+    report = CommitReport(commit_id=commit.id_)
+    dbsession.add(report)
+    dbsession.flush()
+    upload_1 = UploadFactory.create(report=report, state="started", storage_path="url")
+    upload_2 = UploadFactory.create(report=report, state="started", storage_path="url2")
+    dbsession.add(upload_1)
+    dbsession.add(upload_2)
+    dbsession.flush()
+
+    results: list[ProcessingResult] = [
+        {
+            "upload_id": upload_1.id,
+            "successful": False,
+            "error": {"code": "report_empty", "params": {}},
+        },
+        {
+            "upload_id": upload_2.id,
+            "successful": False,
+            "error": {"code": "report_expired", "params": {}},
+        },
+    ]
+
+    update_uploads(dbsession, UserYaml({}), results, [], MergeResult({}, set()))
+    dbsession.expire_all()
+
+    assert upload_1.state == "error"
+    assert len(upload_1.errors) == 1
+    assert upload_1.errors[0].error_code == "report_empty"
+    assert upload_1.errors[0].error_params == {}
+    assert upload_1.errors[0].report_upload == upload_1
+
+    assert upload_2.state == "error"
+    assert len(upload_2.errors) == 1
+    assert upload_2.errors[0].error_code == "report_expired"
+    assert upload_2.errors[0].error_params == {}
+    assert upload_2.errors[0].report_upload == upload_2
+
+
 class TestUploadFinisherTask(object):
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call(
@@ -113,6 +159,7 @@ class TestUploadFinisherTask(object):
         mock_repo_provider,
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mocked_3 = mocker.patch.object(
             UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
@@ -152,8 +199,8 @@ class TestUploadFinisherTask(object):
             commit_yaml={},
             **kwargs,
         )
-        expected_result = {"notifications_called": True}
-        assert expected_result == result
+
+        assert result == {"notifications_called": True}
         dbsession.refresh(commit)
         assert commit.message == "dsidsahdsahdsa"
 
@@ -176,6 +223,7 @@ class TestUploadFinisherTask(object):
         self, mocker, mock_configuration, dbsession, mock_storage, mock_repo_provider
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mocked_3 = mocker.patch.object(
             UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
@@ -220,6 +268,7 @@ class TestUploadFinisherTask(object):
         self, mocker, mock_configuration, dbsession, mock_storage, mock_repo_provider
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mocked_3 = mocker.patch.object(
             UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
@@ -590,6 +639,7 @@ class TestUploadFinisherTask(object):
         self, mocker, dbsession, mock_storage, mock_repo_provider
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         mocked_app = mocker.patch.object(
             UploadFinisherTask,
             "app",

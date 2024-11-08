@@ -4,7 +4,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from time import time
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Sequence, TypedDict
 
 import orjson
 import sentry_sdk
@@ -56,13 +56,18 @@ from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
 
+class ProcessingErrorDict(TypedDict):
+    code: UploadErrorCode
+    params: dict[str, Any]
+
+
 @dataclass
 class ProcessingError:
     code: UploadErrorCode
     params: dict[str, Any]
     is_retryable: bool = False
 
-    def as_dict(self):
+    def as_dict(self) -> ProcessingErrorDict:
         return {"code": self.code, "params": self.params}
 
 
@@ -722,53 +727,6 @@ class ReportService(BaseReportService):
             )
             raw_report_info.error = result.error
             return result
-
-    def update_upload_with_processing_result(
-        self, upload: Upload, processing_result: ProcessingResult
-    ):
-        rounding: str = read_yaml_field(
-            self.current_yaml, ("coverage", "round"), "nearest"
-        )
-        precision: int = read_yaml_field(
-            self.current_yaml, ("coverage", "precision"), 2
-        )
-        db_session = upload.get_db_session()
-        session = processing_result.session
-
-        if processing_result.error is None:
-            upload.state_id = UploadState.PROCESSED.db_id
-            upload.state = "processed"
-            upload.order_number = session.id
-            upload_totals = upload.totals
-            if upload_totals is None:
-                upload_totals = UploadLevelTotals(
-                    upload_id=upload.id,
-                    branches=0,
-                    coverage=0,
-                    hits=0,
-                    lines=0,
-                    methods=0,
-                    misses=0,
-                    partials=0,
-                    files=0,
-                )
-                db_session.add(upload_totals)
-            if session.totals is not None:
-                upload_totals.update_from_totals(
-                    session.totals, precision=precision, rounding=rounding
-                )
-
-        else:
-            error = processing_result.error
-            upload.state = "error"
-            upload.state_id = UploadState.ERROR.db_id
-            error_obj = UploadError(
-                upload_id=upload.id,
-                error_code=error.code,
-                error_params=error.params,
-            )
-            db_session.add(error_obj)
-        db_session.flush()
 
     @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):

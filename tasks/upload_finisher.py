@@ -113,6 +113,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         processing_results = get_processing_results(processing_results)
         upload_ids = [upload["upload_id"] for upload in processing_results]
         diff = load_commit_diff(commit, self.name)
+        commit_yaml = UserYaml(commit_yaml)
 
         try:
             with get_report_lock(repoid, commitid, self.hard_time_limit_task):
@@ -123,13 +124,13 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     archive_service,
                     commit_yaml,
                     commit,
-                    upload_ids,
+                    processing_results,
                     intermediate_reports_in_redis,
                 )
 
                 log.info(
                     "Saving combined report",
-                    extra=dict(processing_results=processing_results),
+                    extra={"processing_results": processing_results},
                 )
 
                 if diff:
@@ -167,7 +168,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 result = self.finish_reports_processing(
                     db_session,
                     commit,
-                    UserYaml(commit_yaml),
+                    commit_yaml,
                     processing_results,
                     report_code,
                     checkpoints,
@@ -406,26 +407,33 @@ def get_report_lock(repoid: int, commitid: str, hard_time_limit: int) -> Lock:
 def perform_report_merging(
     report_service: ReportService,
     archive_service: ArchiveService,
-    commit_yaml: dict,
+    commit_yaml: UserYaml,
     commit: Commit,
-    upload_ids: list[int],
+    processing_results: list[ProcessingResult],
     intermediate_reports_in_redis=False,
 ) -> Report:
     master_report = report_service.get_existing_report_for_commit(commit)
     if master_report is None:
         master_report = Report()
 
+    upload_ids = [
+        upload["upload_id"] for upload in processing_results if upload["successful"]
+    ]
     intermediate_reports = load_intermediate_reports(
         archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
     )
 
-    merge_result = merge_reports(
-        UserYaml(commit_yaml), master_report, intermediate_reports
-    )
+    merge_result = merge_reports(commit_yaml, master_report, intermediate_reports)
 
     # Update the `Upload` in the database with the final session_id
     # (aka `order_number`) and other statuses
-    update_uploads(commit.get_db_session(), merge_result)
+    update_uploads(
+        commit.get_db_session(),
+        commit_yaml,
+        processing_results,
+        intermediate_reports,
+        merge_result,
+    )
 
     return master_report
 

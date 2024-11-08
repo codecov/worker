@@ -3,6 +3,8 @@ from typing import NotRequired, TypedDict
 
 from shared.reports.editable import EditableReport
 
+from services.report import ProcessingErrorDict
+
 
 class UploadArguments(TypedDict):
     upload_id: int
@@ -15,7 +17,7 @@ class ProcessingResult(TypedDict):
     upload_id: int
     arguments: UploadArguments
     successful: bool
-    error: NotRequired[dict]
+    error: NotRequired[ProcessingErrorDict]
 
 
 @dataclass

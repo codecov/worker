@@ -4,13 +4,12 @@ import celery
 import pytest
 from celery.exceptions import Retry
 from shared.config import get_config
-from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.upload.constants import UploadErrorCode
 from shared.yaml import UserYaml
 
-from database.models import CommitReport, UploadError
+from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
 from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
@@ -181,8 +180,6 @@ class TestUploadProcessorTask(object):
             "successful": True,
         }
 
-        assert upload.state == "processed"
-
         # storage is overwritten with parsed contents
         data = mock_storage.read_file("archive", url)
         parsed = LegacyReportParser().parse_raw_report_from_bytes(content)
@@ -245,17 +242,6 @@ class TestUploadProcessorTask(object):
                 "params": {"location": "url"},
             },
         }
-
-        assert upload.state_id == UploadState.ERROR.db_id
-        assert upload.state == "error"
-
-        error_obj = (
-            dbsession.query(UploadError)
-            .filter(UploadError.upload_id == upload.id)
-            .first()
-        )
-        assert error_obj is not None
-        assert error_obj.error_code == UploadErrorCode.UNKNOWN_PROCESSING
 
         mocked_post_process.assert_called_with(
             mocker.ANY,
@@ -405,7 +391,6 @@ class TestUploadProcessorTask(object):
         }
 
         assert commit.state == "complete"
-        assert upload.state == "error"
 
     def test_upload_task_process_individual_report_with_notfound_report_no_retries_yet(
         self, dbsession, mocker
@@ -518,11 +503,6 @@ class TestUploadProcessorTask(object):
         }
 
         assert commit.state == "complete"
-        assert len(upload_2.errors) == 1
-        assert upload_2.errors[0].error_code == "report_empty"
-        assert upload_2.errors[0].error_params == {}
-        assert upload_2.errors[0].report_upload == upload_2
-        assert len(upload_1.errors) == 0
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_no_successful_report(
@@ -600,15 +580,6 @@ class TestUploadProcessorTask(object):
             "successful": False,
             "error": {"code": "report_expired", "params": {}},
         }
-
-        assert len(upload_2.errors) == 1
-        assert upload_2.errors[0].error_code == "report_expired"
-        assert upload_2.errors[0].error_params == {}
-        assert upload_2.errors[0].report_upload == upload_2
-        assert len(upload_1.errors) == 1
-        assert upload_1.errors[0].error_code == "report_empty"
-        assert upload_1.errors[0].error_params == {}
-        assert upload_1.errors[0].report_upload == upload_1
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_softtimelimit(
