@@ -336,7 +336,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             test_insert = insert(Test.__table__).values(
                 sorted(
                     test_data.values(),
-                    key=lambda x: str(x["test_id"]),
+                    key=lambda x: str(x["id"]),
                 )
             )
             insert_on_conflict_do_update = test_insert.on_conflict_do_update(
