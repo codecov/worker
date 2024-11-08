@@ -71,26 +71,38 @@ def engine(request, sqlalchemy_db, sqlalchemy_connect_url, app_config):
     if not database_exists(database_url):
         raise RuntimeError(f"SQLAlchemy cannot connect to DB at {database_url}")
 
-    Base.metadata.tables["profiling_profilingcommit"].create(bind=engine)
-    Base.metadata.tables["profiling_profilingupload"].create(bind=engine)
-    Base.metadata.tables["timeseries_measurement"].create(bind=engine)
-    Base.metadata.tables["timeseries_dataset"].create(bind=engine)
+    Base.metadata.tables["profiling_profilingcommit"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["profiling_profilingupload"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["timeseries_measurement"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["timeseries_dataset"].create(bind=engine, checkfirst=True)
 
-    Base.metadata.tables["compare_commitcomparison"].create(bind=engine)
-    Base.metadata.tables["compare_flagcomparison"].create(bind=engine)
-    Base.metadata.tables["compare_componentcomparison"].create(bind=engine)
-
-    Base.metadata.tables["labelanalysis_labelanalysisrequest"].create(bind=engine)
-    Base.metadata.tables["labelanalysis_labelanalysisprocessingerror"].create(
-        bind=engine
+    Base.metadata.tables["compare_commitcomparison"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["compare_flagcomparison"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["compare_componentcomparison"].create(
+        bind=engine, checkfirst=True
     )
 
-    Base.metadata.tables["staticanalysis_staticanalysissuite"].create(bind=engine)
+    Base.metadata.tables["labelanalysis_labelanalysisrequest"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["labelanalysis_labelanalysisprocessingerror"].create(
+        bind=engine, checkfirst=True
+    )
+
+    Base.metadata.tables["staticanalysis_staticanalysissuite"].create(
+        bind=engine, checkfirst=True
+    )
     Base.metadata.tables["staticanalysis_staticanalysissinglefilesnapshot"].create(
-        bind=engine
+        bind=engine, checkfirst=True
     )
     Base.metadata.tables["staticanalysis_staticanalysissuitefilepath"].create(
-        bind=engine
+        bind=engine, checkfirst=True
     )
 
     yield engine
