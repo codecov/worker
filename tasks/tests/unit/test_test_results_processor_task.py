@@ -292,11 +292,12 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         assert len(test_instances) == 4
         assert len(failures) == 1
 
-        assert (
-            tests[0].flags_hash
-            == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        assert set([test.flags_hash for test in tests]) == {
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+        assert set([test_instance.test.id for test_instance in test_instances]) == set(
+            [test.id_ for test in tests]
         )
-        assert test_instances[0].test.id == tests[0].id
         assert "Deleting uploaded file as requested" in caplog.text
         with pytest.raises(FileNotInStorageError):
             mock_storage.read_file("archive", url)
