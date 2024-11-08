@@ -173,7 +173,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 # of recently-active repositories
                 now = datetime.now(tz=timezone.utc)
                 threshold = now - timedelta(minutes=30)
-                if repository.updatestamp < threshold:
+                if not repository.updatestamp or repository.updatestamp < threshold:
                     repository.updatestamp = now
                     db_session.commit()
 
