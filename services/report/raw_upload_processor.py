@@ -108,7 +108,17 @@ def process_raw_upload(
             r.filename = current_filename
             raise
 
-        if report_from_file:
+        if not report_from_file:
+            continue
+        if report.is_empty():
+            # if the initial report is empty, we can avoid a costly merge operation
+            report = report_from_file
+        else:
+            # merging the smaller report into the larger one is faster,
+            # so swap the two reports in that case.
+            if len(report_from_file._files) > len(report._files):
+                report_from_file, report = report, report_from_file
+
             report.merge(report_from_file, joined=True)
 
     if not report:

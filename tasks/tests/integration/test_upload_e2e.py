@@ -238,6 +238,14 @@ end_of_record
         f"UPDATE reports_upload SET id={upload_id} WHERE id={first_upload.id}"
     )
 
+    with run_tasks():
+        upload_task.apply_async(
+            kwargs={
+                "repoid": repoid,
+                "commitid": commitid,
+            }
+        )
+
     do_upload(
         b"""
 a.rs

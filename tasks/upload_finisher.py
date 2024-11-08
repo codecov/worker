@@ -423,7 +423,9 @@ def perform_report_merging(
         archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
     )
 
-    merge_result = merge_reports(commit_yaml, master_report, intermediate_reports)
+    master_report, merge_result = merge_reports(
+        commit_yaml, master_report, intermediate_reports
+    )
 
     # Update the `Upload` in the database with the final session_id
     # (aka `order_number`) and other statuses
