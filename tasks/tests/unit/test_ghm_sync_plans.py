@@ -86,7 +86,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.flush()
 
         stripe_mock = mocker.patch(
-            "tasks.github_marketplace.stripe.Subscription.delete"
+            "tasks.github_marketplace.stripe.Subscription.cancel"
         )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(
@@ -100,8 +100,8 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.plan_activated_users is None
         assert owner.plan_user_count == 5
 
-        # stripe subscription should be deleted but not customer id
-        stripe_mock.assert_called_with("sub_123")
+        # stripe subscription should be canceled but not customer id
+        stripe_mock.assert_called_with("sub_123", prorate=True)
         assert owner.stripe_subscription_id is None
         assert owner.stripe_customer_id == "cus_123"
 
@@ -122,7 +122,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.flush()
 
         stripe_mock = mocker.patch(
-            "tasks.github_marketplace.stripe.Subscription.delete"
+            "tasks.github_marketplace.stripe.Subscription.cancel"
         )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(

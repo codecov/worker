@@ -1,15 +1,21 @@
+import functools
+from decimal import Decimal
+
 import sentry_sdk
 from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.enums import UploadState
-from shared.reports.resources import Report
+from shared.reports.resources import Report, ReportTotals
 from shared.yaml import UserYaml
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session as DbSession
 
-from database.models.reports import Upload
+from database.models.reports import Upload, UploadError, UploadLevelTotals
+from helpers.number import precise_round
 from services.report import delete_uploads_by_sessionid
 from services.report.raw_upload_processor import clear_carryforward_sessions
+from services.yaml.reader import read_yaml_field
 
-from .types import IntermediateReport, MergeResult
+from .types import IntermediateReport, MergeResult, ProcessingResult
 
 
 @sentry_sdk.trace
@@ -49,7 +55,13 @@ def merge_reports(
 
 
 @sentry_sdk.trace
-def update_uploads(db_session: DbSession, merge_result: MergeResult):
+def update_uploads(
+    db_session: DbSession,
+    commit_yaml: UserYaml,
+    processing_results: list[ProcessingResult],
+    intermediate_reports: list[IntermediateReport],
+    merge_result: MergeResult,
+):
     """
     Updates all the `Upload` records with the `MergeResult`.
     In particular, this updates the `order_number` to match the new `session_id`,
@@ -69,15 +81,81 @@ def update_uploads(db_session: DbSession, merge_result: MergeResult):
             db_session, report_id, merge_result.deleted_sessions
         )
 
-    # then, update all the sessions that have been merged
-    for upload_id, session_id in merge_result.session_mapping.items():
-        update = {
-            Upload.state_id: UploadState.PROCESSED.db_id,
-            Upload.state: "processed",
-            Upload.order_number: session_id,
-        }
-        db_session.query(Upload).filter(Upload.id_ == upload_id).update(update)
+    precision: int = read_yaml_field(commit_yaml, ("coverage", "precision"), 2)
+    rounding: str = read_yaml_field(commit_yaml, ("coverage", "round"), "nearest")
+    make_totals = functools.partial(make_upload_totals, precision, rounding)
+
+    reports = {ir.upload_id: ir.report for ir in intermediate_reports}
+
+    # then, update all the `Upload`s with their state, and the final `order_number`,
+    # as well as add a `UploadLevelTotals` or `UploadError`s where appropriate.
+    all_errors: list[UploadError] = []
+    all_totals: list[dict] = []
+    all_upload_updates: list[dict] = []
+    for result in processing_results:
+        upload_id = result["upload_id"]
+
+        if result["successful"]:
+            update = {
+                "state_id": UploadState.PROCESSED.db_id,
+                "state": "processed",
+            }
+            report = reports.get(upload_id)
+            if report is not None:
+                all_totals.append(make_totals(upload_id, report.totals))
+        elif result["error"]:
+            update = {
+                "state_id": UploadState.ERROR.db_id,
+                "state": "error",
+            }
+            error = UploadError(
+                upload_id=upload_id,
+                error_code=result["error"]["code"],
+                error_params=result["error"]["params"],
+            )
+            all_errors.append(error)
+
+        update["id_"] = upload_id
+        order_number = merge_result.session_mapping.get(upload_id)
+        update["order_number"] = order_number
+        all_upload_updates.append(update)
+
+    db_session.bulk_update_mappings(Upload, all_upload_updates)
+    db_session.bulk_save_objects(all_errors)
+
+    if all_totals:
+        # the `UploadLevelTotals` have a unique constraint for the `upload`,
+        # so we have to use a manual `insert` statement:
+        stmt = (
+            insert(UploadLevelTotals.__table__)
+            .values(all_totals)
+            .on_conflict_do_nothing()
+        )
+        db_session.execute(stmt)
+
     db_session.flush()
+
+
+# TODO(swatinem): we should eventually remove `UploadLevelTotals` completely
+def make_upload_totals(
+    precision: int, rounding: str, upload_id: int, totals: ReportTotals
+) -> dict:
+    if totals.coverage is not None:
+        coverage = precise_round(Decimal(totals.coverage), precision, rounding)
+    else:
+        coverage = Decimal(0)
+
+    return dict(
+        upload_id=upload_id,
+        branches=totals.branches,
+        coverage=coverage,
+        hits=totals.hits,
+        lines=totals.lines,
+        methods=totals.methods,
+        misses=totals.misses,
+        partials=totals.partials,
+        files=totals.files,
+    )
 
 
 def change_sessionid(report: EditableReport, old_id: int, new_id: int):

@@ -29,7 +29,7 @@ def process_upload(
     commit_yaml: UserYaml,
     arguments: UploadArguments,
     intermediate_reports_in_redis=False,
-) -> dict:
+) -> ProcessingResult:
     upload_id = arguments["upload_id"]
 
     commit = (
@@ -54,10 +54,9 @@ def process_upload(
     )
 
     try:
-        report = Report()
         report_info = RawReportInfo()
         processing_result = report_service.build_report_from_raw_content(
-            report, report_info, upload
+            report_info, upload
         )
 
         if error := processing_result.error:
@@ -67,12 +66,12 @@ def process_upload(
             result["successful"] = True
         log.info("Finished processing upload", extra={"result": result})
 
-        report_service.update_upload_with_processing_result(upload, processing_result)
+        # TODO(swatinem): only save the intermediate report on success
         save_intermediate_report(
             archive_service,
             commit_sha,
             upload_id,
-            report,
+            processing_result.report or Report(),
             intermediate_reports_in_redis,
         )
         state.mark_upload_as_processed(upload_id)

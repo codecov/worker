@@ -4,34 +4,19 @@ import celery
 import pytest
 from celery.exceptions import Retry
 from shared.config import get_config
-from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
-from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.upload.constants import UploadErrorCode
 from shared.yaml import UserYaml
 
-from database.models import CommitReport, UploadError
+from database.models import CommitReport
 from database.tests.factories import CommitFactory, UploadFactory
-from helpers.exceptions import (
-    ReportEmptyError,
-    ReportExpiredException,
-    RepositoryWithoutValidBotError,
-)
-from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
+from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
 from services.processing.processing import process_upload
 from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    UploadProcessingResult,
-)
-from tasks.upload_processor import (
-    UploadProcessorTask,
-    load_commit_diff,
-    save_report_results,
-)
+from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
 
@@ -57,12 +42,6 @@ class TestUploadProcessorTask(object):
         mock_storage,
         celery_app,
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_uploaded_report_1.txt") as f:
             content = f.read()
@@ -111,12 +90,6 @@ class TestUploadProcessorTask(object):
         mock_storage,
         celery_app,
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         mock_configuration.set_params(
             {"services": {"minio": {"expire_raw_after_n_days": True}}}
         )
@@ -167,12 +140,6 @@ class TestUploadProcessorTask(object):
     def test_upload_processor_call_with_upload_obj(
         self, mocker, dbsession, mock_storage
     ):
-        mocker.patch.object(
-            USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID,
-            "check_value",
-            return_value=False,
-        )
-
         commit = CommitFactory.create(
             message="dsidsahdsahdsa",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -213,8 +180,6 @@ class TestUploadProcessorTask(object):
             "successful": True,
         }
 
-        assert upload.state == "processed"
-
         # storage is overwritten with parsed contents
         data = mock_storage.read_file("archive", url)
         parsed = LegacyReportParser().parse_raw_report_from_bytes(content)
@@ -254,8 +219,6 @@ class TestUploadProcessorTask(object):
             "parse_raw_report_from_storage",
             return_value="ParsedRawReport()",
         )
-        mocker.patch("tasks.upload_processor.load_commit_diff")
-        mocker.patch("tasks.upload_processor.save_report_results")
 
         mocked_post_process = mocker.patch(
             "services.processing.processing.rewrite_or_delete_upload"
@@ -279,17 +242,6 @@ class TestUploadProcessorTask(object):
                 "params": {"location": "url"},
             },
         }
-
-        assert upload.state_id == UploadState.ERROR.db_id
-        assert upload.state == "error"
-
-        error_obj = (
-            dbsession.query(UploadError)
-            .filter(UploadError.upload_id == upload.id)
-            .first()
-        )
-        assert error_obj is not None
-        assert error_obj.error_code == UploadErrorCode.UNKNOWN_PROCESSING
 
         mocked_post_process.assert_called_with(
             mocker.ANY,
@@ -325,9 +277,7 @@ class TestUploadProcessorTask(object):
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            UploadProcessingResult(
-                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
-            ),
+            false_report,
             ReportExpiredException(),
         ]
         # Mocking retry to also raise the exception so we can see how it is called
@@ -441,7 +391,6 @@ class TestUploadProcessorTask(object):
         }
 
         assert commit.state == "complete"
-        assert upload.state == "error"
 
     def test_upload_task_process_individual_report_with_notfound_report_no_retries_yet(
         self, dbsession, mocker
@@ -492,9 +441,7 @@ class TestUploadProcessorTask(object):
         false_report_file.append(18, ReportLine.create(1, []))
         false_report.append(false_report_file)
         mocked_2.side_effect = [
-            UploadProcessingResult(
-                report=false_report, session_adjustment=SessionAdjustmentResult([], [])
-            ),
+            false_report,
             ReportEmptyError(),
         ]
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
@@ -556,11 +503,6 @@ class TestUploadProcessorTask(object):
         }
 
         assert commit.state == "complete"
-        assert len(upload_2.errors) == 1
-        assert upload_2.errors[0].error_code == "report_empty"
-        assert upload_2.errors[0].error_params == {}
-        assert upload_2.errors[0].report_upload == upload_2
-        assert len(upload_1.errors) == 0
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_no_successful_report(
@@ -639,15 +581,6 @@ class TestUploadProcessorTask(object):
             "error": {"code": "report_expired", "params": {}},
         }
 
-        assert len(upload_2.errors) == 1
-        assert upload_2.errors[0].error_code == "report_expired"
-        assert upload_2.errors[0].error_params == {}
-        assert upload_2.errors[0].report_upload == upload_2
-        assert len(upload_1.errors) == 1
-        assert upload_1.errors[0].error_code == "report_empty"
-        assert upload_1.errors[0].error_params == {}
-        assert upload_1.errors[0].report_upload == upload_1
-
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_softtimelimit(
         self,
@@ -724,7 +657,7 @@ class TestUploadProcessorTask(object):
             )
         assert commit.state == "pending"
 
-    def test_save_report_results_apply_diff_not_there(
+    def test_save_report_apply_diff_not_there(
         self, mocker, mock_configuration, dbsession, mock_storage
     ):
         commit = CommitFactory.create(
@@ -749,37 +682,14 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        result = save_report_results(ReportService({}), commit, report, None, None)
+        result = ReportService({}).save_report(commit, report)
 
         assert result == {
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
         assert report.diff_totals is None
 
-    def test_load_commit_diff_no_diff(
-        self, mocker, mock_configuration, dbsession, mock_repo_provider
-    ):
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        mock_repo_provider.get_commit_diff.side_effect = TorngitObjectNotFoundError(
-            "response", "message"
-        )
-        diff = load_commit_diff(commit, None, None)
-        assert diff is None
-
-    def test_load_commit_diff_no_bot(self, mocker, mock_configuration, dbsession):
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        mock_get_repo_service = mocker.patch(
-            "tasks.upload_processor.get_repo_provider_service"
-        )
-        mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
-        diff = load_commit_diff(commit, None, None)
-        assert diff is None
-
-    def test_save_report_results_apply_diff_valid(
+    def test_save_report_apply_diff_valid(
         self, mocker, mock_configuration, dbsession, mock_storage
     ):
         commit = CommitFactory.create(
@@ -825,7 +735,9 @@ class TestUploadProcessorTask(object):
                 }
             }
         }
-        result = save_report_results(ReportService({}), commit, report, diff, None)
+        report.apply_diff(diff)
+        result = ReportService({}).save_report(commit, report)
+
         assert result == {
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
@@ -845,7 +757,7 @@ class TestUploadProcessorTask(object):
             diff=0,
         )
 
-    def test_save_report_results_empty_report(
+    def test_save_report_empty_report(
         self, mocker, mock_configuration, dbsession, mock_storage
     ):
         commit = CommitFactory.create(
@@ -881,7 +793,8 @@ class TestUploadProcessorTask(object):
                 }
             }
         }
-        result = save_report_results(ReportService({}), commit, report, diff, None)
+        report.apply_diff(diff)
+        result = ReportService({}).save_report(commit, report)
 
         assert result == {
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
@@ -902,32 +815,3 @@ class TestUploadProcessorTask(object):
             diff=0,
         )
         assert commit.state == "error"
-
-    @pytest.mark.parametrize(
-        "pr_value, expected_pr_result", [(1, 1), ("1", 1), ("true", None), ([], None)]
-    )
-    def test_save_report_results_pr_values(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        mock_storage,
-        pr_value,
-        expected_pr_result,
-    ):
-        commit = CommitFactory.create(pullid=None)
-        dbsession.add(commit)
-        dbsession.flush()
-        report = mocker.Mock()
-        diff = {"files": {"path/to/first.py": {}}}
-        mock_report_service = mocker.Mock(save_report=mocker.Mock(return_value="aaaa"))
-        result = save_report_results(
-            mock_report_service,
-            commit,
-            report,
-            diff,
-            pr_value,
-        )
-
-        assert result == "aaaa"
-        assert commit.pullid == expected_pr_result

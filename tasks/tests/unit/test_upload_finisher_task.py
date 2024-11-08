@@ -6,16 +6,22 @@ import pytest
 from celery.exceptions import Retry
 from redis.exceptions import LockError
 from shared.celery_config import timeseries_save_commit_measurements_task_name
+from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.yaml import UserYaml
 
+from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from database.tests.factories.core import UploadFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.exceptions import RepositoryWithoutValidBotError
+from services.processing.merging import update_uploads
+from services.processing.types import MergeResult, ProcessingResult
 from tasks.upload_finisher import (
     ReportService,
     ShouldCallNotifyResult,
     UploadFinisherTask,
-    get_processing_results,
+    load_commit_diff,
 )
 
 here = Path(__file__)
@@ -33,45 +39,69 @@ def _create_checkpoint_logger(mocker):
     return checkpoints
 
 
-def test_results_arg_old_no_id():
-    results = get_processing_results(
-        [
-            {
-                "processings_so_far": [
-                    {"arguments": {"foo": "bar"}, "successful": True}
-                ],
-                "parallel_incremental_result": {"upload_pk": 123},
-            }
-        ]
+def test_load_commit_diff_no_diff(mock_configuration, dbsession, mock_repo_provider):
+    commit = CommitFactory.create()
+    dbsession.add(commit)
+    dbsession.flush()
+    mock_repo_provider.get_commit_diff.side_effect = TorngitObjectNotFoundError(
+        "response", "message"
     )
-    assert results == [
-        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
+    diff = load_commit_diff(commit)
+    assert diff is None
+
+
+def test_load_commit_diff_no_bot(mocker, mock_configuration, dbsession):
+    commit = CommitFactory.create()
+    dbsession.add(commit)
+    dbsession.flush()
+    mock_get_repo_service = mocker.patch(
+        "tasks.upload_finisher.get_repo_provider_service"
+    )
+    mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
+    diff = load_commit_diff(commit)
+    assert diff is None
+
+
+def test_mark_uploads_as_failed(dbsession):
+    commit = CommitFactory.create()
+    dbsession.add(commit)
+    dbsession.flush()
+    report = CommitReport(commit_id=commit.id_)
+    dbsession.add(report)
+    dbsession.flush()
+    upload_1 = UploadFactory.create(report=report, state="started", storage_path="url")
+    upload_2 = UploadFactory.create(report=report, state="started", storage_path="url2")
+    dbsession.add(upload_1)
+    dbsession.add(upload_2)
+    dbsession.flush()
+
+    results: list[ProcessingResult] = [
+        {
+            "upload_id": upload_1.id,
+            "successful": False,
+            "error": {"code": "report_empty", "params": {}},
+        },
+        {
+            "upload_id": upload_2.id,
+            "successful": False,
+            "error": {"code": "report_expired", "params": {}},
+        },
     ]
 
+    update_uploads(dbsession, UserYaml({}), results, [], MergeResult({}, set()))
+    dbsession.expire_all()
 
-def test_results_arg_old_with_id():
-    results = get_processing_results(
-        [
-            {
-                "processings_so_far": [
-                    {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
-                ],
-                "parallel_incremental_result": {"upload_pk": "something else entirely"},
-            }
-        ]
-    )
-    assert results == [
-        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
-    ]
+    assert upload_1.state == "error"
+    assert len(upload_1.errors) == 1
+    assert upload_1.errors[0].error_code == "report_empty"
+    assert upload_1.errors[0].error_params == {}
+    assert upload_1.errors[0].report_upload == upload_1
 
-
-def test_results_arg_new():
-    results = get_processing_results(
-        [{"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}]
-    )
-    assert results == [
-        {"upload_id": 123, "arguments": {"foo": "bar"}, "successful": True}
-    ]
+    assert upload_2.state == "error"
+    assert len(upload_2.errors) == 1
+    assert upload_2.errors[0].error_code == "report_expired"
+    assert upload_2.errors[0].error_params == {}
+    assert upload_2.errors[0].report_upload == upload_2
 
 
 class TestUploadFinisherTask(object):
@@ -87,6 +117,7 @@ class TestUploadFinisherTask(object):
         mock_repo_provider,
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mocked_3 = mocker.patch.object(
             UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
@@ -110,25 +141,23 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        previous_results = {
-            "processings_so_far": [{"arguments": {"url": url}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [
+            {"upload_id": 0, "arguments": {"url": url}, "successful": True}
+        ]
 
         checkpoints = _create_checkpoint_logger(mocker)
         checkpoints_data = json.loads(json.dumps(checkpoints.data))
         kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
         result = UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
             **kwargs,
         )
-        assert commit.notified is False
-        expected_result = {"notifications_called": True}
-        assert expected_result == result
+
+        assert result == {"notifications_called": True}
         dbsession.refresh(commit)
         assert commit.message == "dsidsahdsahdsa"
 
@@ -151,6 +180,7 @@ class TestUploadFinisherTask(object):
         self, mocker, mock_configuration, dbsession, mock_storage, mock_repo_provider
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mocked_3 = mocker.patch.object(
             UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
@@ -174,13 +204,12 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        previous_results = {
-            "processings_so_far": [{"arguments": {"url": url}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [
+            {"upload_id": 0, "arguments": {"url": url}, "successful": True}
+        ]
         result = UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
@@ -195,6 +224,7 @@ class TestUploadFinisherTask(object):
         self, mocker, mock_configuration, dbsession, mock_storage, mock_repo_provider
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mocked_3 = mocker.patch.object(
             UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
@@ -217,13 +247,12 @@ class TestUploadFinisherTask(object):
         )
         dbsession.add(commit)
         dbsession.flush()
-        previous_results = {
-            "processings_so_far": [{"arguments": {"url": url}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [
+            {"upload_id": 0, "arguments": {"url": url}, "successful": True}
+        ]
         result = UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
@@ -511,62 +540,6 @@ class TestUploadFinisherTask(object):
             "app.tasks.upload.UploadCleanLabelsIndex"
         ].apply_async.assert_not_called()
 
-    def test_finish_reports_processing_call_clean_labels(self, dbsession, mocker):
-        commit_yaml = {
-            "flag_management": {
-                "individual_flags": [
-                    {
-                        "name": "smart-tests",
-                        "carryforward": True,
-                        "carryforward_mode": "labels",
-                    },
-                    {
-                        "name": "just-tests",
-                        "carryforward": True,
-                    },
-                ]
-            }
-        }
-        mocked_app = mocker.patch.object(UploadFinisherTask, "app")
-        commit = CommitFactory.create(
-            message="dsidsahdsahdsa",
-            commitid="abf6d4df662c47e32460020ab14abf9303581429",
-            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
-            repository__owner__username="ThiagoCodecov",
-            repository__yaml=commit_yaml,
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-
-        checkpoints = _create_checkpoint_logger(mocker)
-        res = UploadFinisherTask().finish_reports_processing(
-            dbsession,
-            commit,
-            UserYaml(commit_yaml),
-            [{"successful": True, "arguments": {"flags": "smart-tests"}}],
-            None,
-            checkpoints,
-        )
-        assert res == {"notifications_called": True}
-        mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_any_call(
-            kwargs={
-                "commitid": commit.commitid,
-                "current_yaml": commit_yaml,
-                "repoid": commit.repoid,
-                _kwargs_key(UploadFlow): ANY,
-            },
-        )
-        mocked_app.tasks[
-            "app.tasks.upload.UploadCleanLabelsIndex"
-        ].apply_async.assert_called_with(
-            kwargs={
-                "repoid": commit.repoid,
-                "commitid": commit.commitid,
-                "report_code": None,
-            },
-        )
-        assert mocked_app.send_task.call_count == 0
-
     @pytest.mark.parametrize(
         "notify_error",
         [True, False],
@@ -621,6 +594,7 @@ class TestUploadFinisherTask(object):
         self, mocker, dbsession, mock_storage, mock_repo_provider
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+        mocker.patch("tasks.upload_finisher.update_uploads")
         mocked_app = mocker.patch.object(
             UploadFinisherTask,
             "app",
@@ -635,13 +609,10 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        previous_results = {
-            "processings_so_far": [{"arguments": {}, "successful": True}],
-            "parallel_incremental_result": {"upload_pk": 0},
-        }
+        previous_results = [{"upload_id": 0, "arguments": {}, "successful": True}]
         UploadFinisherTask().run_impl(
             dbsession,
-            [previous_results],
+            previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
@@ -671,70 +642,8 @@ class TestUploadFinisherTask(object):
         with pytest.raises(Retry):
             task.run_impl(
                 dbsession,
-                [
-                    {
-                        "processings_so_far": [{"successful": True, "arguments": {}}],
-                        "parallel_incremental_result": {"upload_pk": 1},
-                    }
-                ],
+                [{"upload_id": 0, "successful": True, "arguments": {}}],
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml={},
             )
-
-
-class TestShouldCleanLabelsIndex(object):
-    @pytest.mark.parametrize(
-        "processing_results, expected",
-        [
-            (
-                [{"successful": True, "arguments": {"flags": "smart-tests"}}],
-                True,
-            ),
-            (
-                [{"successful": True, "arguments": {"flags": "just-tests"}}],
-                False,
-            ),
-            (
-                [
-                    {
-                        "successful": True,
-                        "arguments": {"flags": "just-tests,smart-tests"},
-                    }
-                ],
-                True,
-            ),
-            (
-                [{"successful": False, "arguments": {"flags": "smart-tests"}}],
-                False,
-            ),
-            (
-                [
-                    {"successful": True, "arguments": {"flags": "just-tests"}},
-                    {"successful": True, "arguments": {"flags": "smart-tests"}},
-                ],
-                True,
-            ),
-        ],
-    )
-    def test_should_clean_labels_index(self, processing_results, expected):
-        commit_yaml = UserYaml(
-            {
-                "flag_management": {
-                    "individual_flags": [
-                        {
-                            "name": "smart-tests",
-                            "carryforward": True,
-                            "carryforward_mode": "labels",
-                        },
-                        {
-                            "name": "just-tests",
-                            "carryforward": True,
-                        },
-                    ]
-                }
-            }
-        )
-        task = UploadFinisherTask()
-        result = task.should_clean_labels_index(commit_yaml, processing_results)
-        assert result == expected

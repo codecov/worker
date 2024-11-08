@@ -226,7 +226,7 @@ SF:a.rs
 DA:1,1
 end_of_record
 """,
-        {"upload_id": upload_id},
+        {"flags": [], "upload_id": upload_id},
     )
 
     first_upload = report_service.create_report_upload(first_upload_json, commit_report)

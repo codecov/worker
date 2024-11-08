@@ -181,6 +181,7 @@ class TestUploadTaskIntegration(object):
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             arguments={
                 "url": url,
+                "flags": [],
                 "build": "some_random_build",
                 "upload_id": first_session.id,
                 "upload_pk": first_session.id,
@@ -267,6 +268,7 @@ class TestUploadTaskIntegration(object):
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             params={
                 "url": storage_path,
+                "flags": [],
                 "build_code": "some_random_build",
                 "upload_id": upload.id,
                 "upload_pk": upload.id,
@@ -338,6 +340,7 @@ class TestUploadTaskIntegration(object):
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             params={
                 "url": storage_path,
+                "flags": [],
                 "build_code": "some_random_build",
                 "upload_pk": None,
             },
@@ -398,6 +401,7 @@ class TestUploadTaskIntegration(object):
             arguments_list=[
                 {
                     "url": storage_path,
+                    "flags": [],
                     "build_code": "some_random_build",
                     "upload_id": upload.id,
                     "upload_pk": upload.id,
@@ -659,6 +663,7 @@ class TestUploadTaskIntegration(object):
                 commit_yaml={"codecov": {"max_report_age": "1y ago"}},
                 arguments={
                     **arguments,
+                    "flags": [],
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
@@ -792,12 +797,14 @@ class TestUploadTaskIntegration(object):
                 {
                     "build": "part1",
                     "url": "url1",
+                    "flags": [],
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
                 {
                     "build": "part2",
                     "url": "url2",
+                    "flags": [],
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
@@ -859,12 +866,14 @@ class TestUploadTaskIntegration(object):
                 {
                     "build": "part1",
                     "url": "url1",
+                    "flags": [],
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
                 {
                     "build": "part2",
                     "url": "url2",
+                    "flags": [],
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
@@ -946,12 +955,14 @@ class TestUploadTaskIntegration(object):
                 {
                     "build": "part1",
                     "url": "url1",
+                    "flags": [],
                     "upload_id": first_session.id,
                     "upload_pk": first_session.id,
                 },
                 {
                     "build": "part2",
                     "url": "url2",
+                    "flags": [],
                     "upload_id": second_session.id,
                     "upload_pk": second_session.id,
                 },
@@ -971,7 +982,7 @@ class TestUploadTaskIntegration(object):
         mock_storage,
     ):
         mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
-        mock_possibly_update_commit_from_provider_info = mocker.patch(
+        mocker.patch(
             "tasks.upload.possibly_update_commit_from_provider_info", return_value=True
         )
         mock_create_upload = mocker.patch.object(ReportService, "create_report_upload")
@@ -1044,6 +1055,7 @@ class TestUploadTaskIntegration(object):
                 {
                     "build": "part1",
                     "url": "url1",
+                    "flags": [],
                     "upload_id": upload.id_,
                     "upload_pk": upload.id_,
                 }
@@ -1088,11 +1100,12 @@ class TestUploadTaskUnit(object):
             commit,
             arguments_with_redis_key,
         )
-        expected_result = {
+
+        assert result == {
             "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
             "random": "argument",
+            "flags": [],
         }
-        assert expected_result == result
 
     def test_normalize_upload_arguments_token_removal(
         self, dbsession, mock_redis, mock_storage
@@ -1111,8 +1124,11 @@ class TestUploadTaskUnit(object):
             commit,
             previous_arguments,
         )
-        expected_result = {"reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235"}
-        assert expected_result == result
+
+        assert result == {
+            "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
+            "flags": [],
+        }
 
     def test_normalize_upload_arguments(
         self, dbsession, mock_redis, mock_storage, mocker
@@ -1139,12 +1155,13 @@ class TestUploadTaskUnit(object):
             commit,
             arguments_with_redis_key,
         )
-        expected_result = {
+
+        assert result == {
             "url": f"v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt",
             "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
             "random": "argument",
+            "flags": [],
         }
-        assert expected_result == result
         assert "archive" in mock_storage.storage
         assert (
             f"v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt"
@@ -1166,7 +1183,6 @@ class TestUploadTaskUnit(object):
         mocked_chord = mocker.patch("tasks.upload.chord")
         commit = CommitFactory.create()
         commit_yaml = {"codecov": {"max_report_age": "100y ago"}}
-        argument_list = [{"upload_id": 1, "upload_pk": 1}]
         dbsession.add(commit)
         dbsession.flush()
         upload_args = UploadContext(
@@ -1178,7 +1194,7 @@ class TestUploadTaskUnit(object):
         result = UploadTask().schedule_task(
             commit,
             commit_yaml,
-            argument_list,
+            [{"upload_id": 1, "upload_pk": 1}],
             ReportFactory.create(),
             upload_args,
             checkpoints=mock_checkpoints,
