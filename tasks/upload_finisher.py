@@ -1,10 +1,11 @@
 import logging
 import random
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 import sentry_sdk
+from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from redis.lock import Lock
 from shared.celery_config import (
@@ -15,14 +16,21 @@ from shared.celery_config import (
     upload_finisher_task_name,
 )
 from shared.reports.resources import Report
+from shared.torngit.exceptions import TorngitError
 from shared.yaml import UserYaml
 
 from app import celery_app
 from celery_config import notify_error_task_name
+from database.enums import CommitErrorTypes
 from database.models import Commit, Pull
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
+from helpers.cache import cache
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
+from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
 from services.comparison import get_or_create_comparison
 from services.processing.intermediate import (
@@ -35,15 +43,11 @@ from services.processing.state import ProcessingState, should_trigger_postproces
 from services.processing.types import ProcessingResult
 from services.redis import get_redis_connection
 from services.report import ReportService
+from services.repository import get_repo_provider_service
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.upload_clean_labels_index import task_name as clean_labels_index_task_name
-from tasks.upload_processor import (
-    MAX_RETRIES,
-    UPLOAD_PROCESSING_LOCK_NAME,
-    load_commit_diff,
-    save_report_results,
-)
+from tasks.upload_processor import MAX_RETRIES, UPLOAD_PROCESSING_LOCK_NAME
 
 log = logging.getLogger(__name__)
 
@@ -110,8 +114,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
         processing_results = get_processing_results(processing_results)
         upload_ids = [upload["upload_id"] for upload in processing_results]
-        pr = processing_results[0]["arguments"].get("pr")
-        diff = load_commit_diff(commit, pr, self.name)
+        diff = load_commit_diff(commit, self.name)
 
         try:
             with get_report_lock(repoid, commitid, self.hard_time_limit_task):
@@ -128,17 +131,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
 
                 log.info(
                     "Saving combined report",
-                    extra=dict(
-                        repoid=repoid,
-                        commit=commitid,
-                        processing_results=processing_results,
-                        parent_task=self.request.parent_id,
-                    ),
+                    extra=dict(processing_results=processing_results),
                 )
 
-                save_report_results(
-                    report_service, commit, report, diff, pr, report_code
-                )
+                if diff:
+                    report.apply_diff(diff)
+                report_service.save_report(commit, report, report_code)
+
+                db_session.commit()
                 state.mark_uploads_as_merged(upload_ids)
 
         except LockError:
@@ -159,10 +159,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
         )
 
-        # Mark the repository as updated so it will appear earlier in the list
-        # of recently-active repositories
-        repository.updatestamp = datetime.now()
-
         if not should_trigger_postprocessing(state.get_upload_numbers()):
             return
 
@@ -170,13 +166,10 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         redis_connection = get_redis_connection()
         try:
             with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
-                commit_yaml = UserYaml(commit_yaml)
-                commit.notified = False
-                db_session.commit()
                 result = self.finish_reports_processing(
                     db_session,
                     commit,
-                    commit_yaml,
+                    UserYaml(commit_yaml),
                     processing_results,
                     report_code,
                     checkpoints,
@@ -186,6 +179,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 ].apply_async(
                     kwargs=dict(commitid=commitid, repoid=repoid, dataset_names=None)
                 )
+                # Mark the repository as updated so it will appear earlier in the list
+                # of recently-active repositories
+                now = datetime.now(tz=timezone.utc)
+                threshold = now - timedelta(minutes=30)
+                if repository.updatestamp < threshold:
+                    repository.updatestamp = now
+                    db_session.commit()
+
                 self.invalidate_caches(redis_connection, commit)
                 log.info(
                     "Finished upload_finisher task",
@@ -486,3 +487,43 @@ def get_processing_results(processing_results: list) -> list[ProcessingResult]:
             results.append(input_result)
 
     return results
+
+
+@sentry_sdk.trace
+@cache.cache_function(ttl=60 * 60)  # the commit diff is immutable
+def load_commit_diff(commit: Commit, task_name: str | None = None) -> dict | None:
+    repository = commit.repository
+    commitid = commit.commitid
+    try:
+        installation_name_to_use = (
+            get_installation_name_for_owner_for_task(task_name, repository.owner)
+            if task_name
+            else GITHUB_APP_INSTALLATION_DEFAULT_NAME
+        )
+        repository_service = get_repo_provider_service(
+            repository, installation_name_to_use=installation_name_to_use
+        )
+        return async_to_sync(repository_service.get_commit_diff)(commitid)
+
+    # TODO(swatinem): can we maybe get rid of all this logging?
+    except TorngitError:
+        # When this happens, we have that commit.totals["diff"] is not available.
+        # Since there is no way to calculate such diff without the git commit,
+        # then we assume having the rest of the report saved there is better than the
+        # alternative of refusing an otherwise "good" report because of the lack of diff
+        log.warning(
+            "Could not apply diff to report because there was an error fetching diff from provider",
+            exc_info=True,
+        )
+    except RepositoryWithoutValidBotError:
+        save_commit_error(
+            commit,
+            error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+        )
+
+        log.warning(
+            "Could not apply diff to report because there is no valid bot found for that repo",
+            exc_info=True,
+        )
+
+    return None

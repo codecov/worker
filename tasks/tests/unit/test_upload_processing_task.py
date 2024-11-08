@@ -7,26 +7,17 @@ from shared.config import get_config
 from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
-from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.upload.constants import UploadErrorCode
 from shared.yaml import UserYaml
 
 from database.models import CommitReport, UploadError
 from database.tests.factories import CommitFactory, UploadFactory
-from helpers.exceptions import (
-    ReportEmptyError,
-    ReportExpiredException,
-    RepositoryWithoutValidBotError,
-)
+from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
 from services.processing.processing import process_upload
 from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.legacy import LegacyReportParser
-from tasks.upload_processor import (
-    UploadProcessorTask,
-    load_commit_diff,
-    save_report_results,
-)
+from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
 
@@ -231,8 +222,6 @@ class TestUploadProcessorTask(object):
             "parse_raw_report_from_storage",
             return_value="ParsedRawReport()",
         )
-        mocker.patch("tasks.upload_processor.load_commit_diff")
-        mocker.patch("tasks.upload_processor.save_report_results")
 
         mocked_post_process = mocker.patch(
             "services.processing.processing.rewrite_or_delete_upload"
@@ -697,7 +686,7 @@ class TestUploadProcessorTask(object):
             )
         assert commit.state == "pending"
 
-    def test_save_report_results_apply_diff_not_there(
+    def test_save_report_apply_diff_not_there(
         self, mocker, mock_configuration, dbsession, mock_storage
     ):
         commit = CommitFactory.create(
@@ -722,37 +711,14 @@ class TestUploadProcessorTask(object):
         report.append(report_file_1)
         report.append(report_file_2)
         chunks_archive_service = ArchiveService(commit.repository)
-        result = save_report_results(ReportService({}), commit, report, None, None)
+        result = ReportService({}).save_report(commit, report)
 
         assert result == {
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
         assert report.diff_totals is None
 
-    def test_load_commit_diff_no_diff(
-        self, mocker, mock_configuration, dbsession, mock_repo_provider
-    ):
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        mock_repo_provider.get_commit_diff.side_effect = TorngitObjectNotFoundError(
-            "response", "message"
-        )
-        diff = load_commit_diff(commit, None, None)
-        assert diff is None
-
-    def test_load_commit_diff_no_bot(self, mocker, mock_configuration, dbsession):
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        mock_get_repo_service = mocker.patch(
-            "tasks.upload_processor.get_repo_provider_service"
-        )
-        mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
-        diff = load_commit_diff(commit, None, None)
-        assert diff is None
-
-    def test_save_report_results_apply_diff_valid(
+    def test_save_report_apply_diff_valid(
         self, mocker, mock_configuration, dbsession, mock_storage
     ):
         commit = CommitFactory.create(
@@ -798,7 +764,9 @@ class TestUploadProcessorTask(object):
                 }
             }
         }
-        result = save_report_results(ReportService({}), commit, report, diff, None)
+        report.apply_diff(diff)
+        result = ReportService({}).save_report(commit, report)
+
         assert result == {
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
@@ -818,7 +786,7 @@ class TestUploadProcessorTask(object):
             diff=0,
         )
 
-    def test_save_report_results_empty_report(
+    def test_save_report_empty_report(
         self, mocker, mock_configuration, dbsession, mock_storage
     ):
         commit = CommitFactory.create(
@@ -854,7 +822,8 @@ class TestUploadProcessorTask(object):
                 }
             }
         }
-        result = save_report_results(ReportService({}), commit, report, diff, None)
+        report.apply_diff(diff)
+        result = ReportService({}).save_report(commit, report)
 
         assert result == {
             "url": f"v4/repos/{chunks_archive_service.storage_hash}/commits/{commit.commitid}/chunks.txt"
@@ -875,32 +844,3 @@ class TestUploadProcessorTask(object):
             diff=0,
         )
         assert commit.state == "error"
-
-    @pytest.mark.parametrize(
-        "pr_value, expected_pr_result", [(1, 1), ("1", 1), ("true", None), ([], None)]
-    )
-    def test_save_report_results_pr_values(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        mock_storage,
-        pr_value,
-        expected_pr_result,
-    ):
-        commit = CommitFactory.create(pullid=None)
-        dbsession.add(commit)
-        dbsession.flush()
-        report = mocker.Mock()
-        diff = {"files": {"path/to/first.py": {}}}
-        mock_report_service = mocker.Mock(save_report=mocker.Mock(return_value="aaaa"))
-        result = save_report_results(
-            mock_report_service,
-            commit,
-            report,
-            diff,
-            pr_value,
-        )
-
-        assert result == "aaaa"
-        assert commit.pullid == expected_pr_result

@@ -6,16 +6,19 @@ import pytest
 from celery.exceptions import Retry
 from redis.exceptions import LockError
 from shared.celery_config import timeseries_save_commit_measurements_task_name
+from shared.torngit.exceptions import TorngitObjectNotFoundError
 from shared.yaml import UserYaml
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
+from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.upload_finisher import (
     ReportService,
     ShouldCallNotifyResult,
     UploadFinisherTask,
     get_processing_results,
+    load_commit_diff,
 )
 
 here = Path(__file__)
@@ -74,6 +77,29 @@ def test_results_arg_new():
     ]
 
 
+def test_load_commit_diff_no_diff(mock_configuration, dbsession, mock_repo_provider):
+    commit = CommitFactory.create()
+    dbsession.add(commit)
+    dbsession.flush()
+    mock_repo_provider.get_commit_diff.side_effect = TorngitObjectNotFoundError(
+        "response", "message"
+    )
+    diff = load_commit_diff(commit)
+    assert diff is None
+
+
+def test_load_commit_diff_no_bot(mocker, mock_configuration, dbsession):
+    commit = CommitFactory.create()
+    dbsession.add(commit)
+    dbsession.flush()
+    mock_get_repo_service = mocker.patch(
+        "tasks.upload_finisher.get_repo_provider_service"
+    )
+    mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
+    diff = load_commit_diff(commit)
+    assert diff is None
+
+
 class TestUploadFinisherTask(object):
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call(
@@ -126,7 +152,6 @@ class TestUploadFinisherTask(object):
             commit_yaml={},
             **kwargs,
         )
-        assert commit.notified is False
         expected_result = {"notifications_called": True}
         assert expected_result == result
         dbsession.refresh(commit)

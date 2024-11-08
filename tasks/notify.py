@@ -437,8 +437,6 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 ),
             )
             db_session.commit()
-            commit.notified = True
-            db_session.commit()
             return {"notified": True, "notifications": notifications}
         else:
             log.info(
