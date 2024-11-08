@@ -83,7 +83,7 @@ class Owner(CodecovBaseModel):
     stripe_customer_id = Column(types.Text, server_default=FetchedValue())
     stripe_subscription_id = Column(types.Text, server_default=FetchedValue())
     onboarding_completed = Column(types.Boolean, default=False)
-    upload_token_required_for_public_repos = Column(types.Boolean, default=True)
+    upload_token_required_for_public_repos = Column(types.Boolean, default=False)
 
     bot_id = Column(
         "bot",
