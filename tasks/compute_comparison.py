@@ -66,9 +66,8 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
 
         # At this point we can calculate the patch coverage
         # Because we have a HEAD report and a base commit to get the diff from
-        if comparison.patch_totals is None:
-            patch_totals = comparison_proxy.get_patch_totals()
-            comparison.patch_totals = minimal_totals(patch_totals)
+        patch_totals = comparison_proxy.get_patch_totals()
+        comparison.patch_totals = minimal_totals(patch_totals)
 
         if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
