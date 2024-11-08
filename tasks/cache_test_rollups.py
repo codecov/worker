@@ -156,6 +156,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                 )
 
                 serialized_table = df.write_ipc(None)
+                serialized_table.seek(0)  # avoids Stream must be at beginning errors
 
                 storage_service.write_file("codecov", storage_key, serialized_table)
 
