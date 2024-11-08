@@ -345,7 +345,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 },
             )
             db_session.execute(insert_on_conflict_do_update)
-            db_session.flush()
+            db_session.commit()
 
         if len(test_flag_bridge_data):
             insert_on_conflict_do_nothing_flags = (
@@ -354,7 +354,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 .on_conflict_do_nothing(index_elements=["test_id", "flag_id"])
             )
             db_session.execute(insert_on_conflict_do_nothing_flags)
-            db_session.flush()
+            db_session.commit()
 
         # Upsert Daily Test Totals
         if len(daily_totals) > 0:
@@ -389,7 +389,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             )
 
             db_session.execute(stmt)
-            db_session.flush()
+            db_session.commit()
 
         # Save TestInstances
         if len(test_instance_data) > 0:
@@ -397,7 +397,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 test_instance_data
             )
             db_session.execute(insert_test_instances)
-            db_session.flush()
+            db_session.commit()
 
     def process_individual_upload(
         self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
