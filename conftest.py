@@ -118,14 +118,22 @@ def sqlalchemy_db(request: pytest.FixtureRequest, django_db_blocker, django_db_s
     from django.db import connections
     from django.test.utils import setup_databases, teardown_databases
 
+    keepdb = request.config.getvalue("reuse_db", False) and not request.config.getvalue(
+        "create_db", False
+    )
+
     with django_db_blocker.unblock():
         # Temporarily reset the database to the SQLAlchemy DBs to run the migrations.
+        original_db_name = settings.DATABASES["default"]["NAME"]
         original_test_name = settings.DATABASES["default"]["TEST"]["NAME"]
+        settings.DATABASES["default"]["NAME"] = "sqlalchemy"
         settings.DATABASES["default"]["TEST"]["NAME"] = "test_postgres_sqlalchemy"
         db_cfg = setup_databases(
             verbosity=request.config.option.verbose,
             interactive=False,
+            keepdb=keepdb,
         )
+        settings.DATABASES["default"]["NAME"] = original_db_name
         settings.DATABASES["default"]["TEST"]["NAME"] = original_test_name
 
         # Hack to get the default connection for the test database to _actually_ be the
@@ -142,18 +150,19 @@ def sqlalchemy_db(request: pytest.FixtureRequest, django_db_blocker, django_db_s
 
     yield
 
-    # Cleanup with Django version as well
-    try:
-        with django_db_blocker.unblock():
-            settings.DATABASES["default"]["TEST"]["NAME"] = "test_postgres_sqlalchemy"
-            teardown_databases(db_cfg, verbosity=request.config.option.verbose)
-            settings.DATABASES["default"]["TEST"]["NAME"] = original_test_name
-    except Exception as exc:  # noqa: BLE001
-        request.node.warn(
-            pytest.PytestWarning(
-                f"Error when trying to teardown test databases: {exc!r}"
+    if not keepdb:
+        try:
+            with django_db_blocker.unblock():
+                # Need to set `test_postgres_sqlalchemy` as the main db name to tear down properly.
+                settings.DATABASES["default"]["NAME"] = "test_postgres_sqlalchemy"
+                teardown_databases(db_cfg, verbosity=request.config.option.verbose)
+                settings.DATABASES["default"]["NAME"] = original_db_name
+        except Exception as exc:  # noqa: BLE001
+            request.node.warn(
+                pytest.PytestWarning(
+                    f"Error when trying to teardown test databases: {exc!r}"
+                )
             )
-        )
 
 
 @pytest.fixture
