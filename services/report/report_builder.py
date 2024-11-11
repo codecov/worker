@@ -190,7 +190,7 @@ class ReportBuilderSession(object):
                 for label_ids in (labels_list_of_lists or [])
                 if label_ids
             ]
-            if self._report_builder.supports_labels()
+            if self._report_builder._supports_labels
             else None
         )
         return ReportLine.create(
@@ -224,6 +224,7 @@ class ReportBuilder(object):
         self.sessionid = sessionid
         self.ignored_lines = ignored_lines
         self.path_fixer = path_fixer
+        self._supports_labels = self.supports_labels()
 
     def create_report_builder_session(self, filepath) -> ReportBuilderSession:
         return ReportBuilderSession(self, filepath)

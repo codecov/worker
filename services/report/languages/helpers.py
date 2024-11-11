@@ -5,7 +5,7 @@ from xml.etree.ElementTree import Element
 def remove_non_ascii(string: str) -> str:
     # ASCII control characters <=31, 127
     # Extended ASCII characters: >=128
-    return "".join([c if 31 < ord(c) < 127 else "" for c in string])
+    return "".join(c if 31 < ord(c) < 127 else "" for c in string)
 
 
 def child_text(parent: Element, element: str) -> str:
