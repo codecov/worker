@@ -39,7 +39,7 @@ def test_results_mock_app(mocker):
         tasks={
             "app.tasks.notify.Notify": mocker.MagicMock(),
             "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
-            "app.tasks.test_results.CacheTestRollupsTask": mocker.MagicMock(),
+            "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
         },
     )
     return mocked_app
@@ -362,7 +362,7 @@ class TestUploadTestFinisherTask(object):
         }
 
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -499,7 +499,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         )
 
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -564,7 +564,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         )
 
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -641,7 +641,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         test_results_mock_app.tasks["app.tasks.notify.Notify"].assert_not_called()
 
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -689,7 +689,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         }
 
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -816,7 +816,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         }
 
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -898,7 +898,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         assert expected_result == result
 
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
@@ -1009,7 +1009,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
                 },
             )
         test_results_mock_app.tasks[
-            "app.tasks.test_results.CacheTestRollupsTask"
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             args=None,
             kwargs={
