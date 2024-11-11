@@ -15,7 +15,7 @@ from database.tests.factories.core import UploadFactory
 from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.processing.merging import update_uploads
+from services.processing.merging import get_joined_flag, update_uploads
 from services.processing.types import MergeResult, ProcessingResult
 from tasks.upload_finisher import (
     ReportService,
@@ -102,6 +102,23 @@ def test_mark_uploads_as_failed(dbsession):
     assert upload_2.errors[0].error_code == "report_expired"
     assert upload_2.errors[0].error_params == {}
     assert upload_2.errors[0].report_upload == upload_2
+
+
+@pytest.mark.parametrize(
+    "flag, joined",
+    [("nightly", False), ("unittests", True), ("ui", True), ("other", True)],
+)
+def test_not_joined_flag(flag, joined):
+    yaml = UserYaml(
+        {
+            "flags": {
+                "nightly": {"joined": False},
+                "unittests": {"joined": True},
+                "ui": {"paths": ["ui/"]},
+            }
+        }
+    )
+    assert get_joined_flag(yaml, [flag]) == joined
 
 
 class TestUploadFinisherTask(object):

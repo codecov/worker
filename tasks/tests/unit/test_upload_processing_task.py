@@ -517,8 +517,8 @@ class TestUploadProcessorTask(object):
         mocked_1 = mocker.patch.object(ArchiveService, "read_chunks")
         mocked_1.return_value = None
         mocked_2 = mocker.patch("services.report.process_raw_upload")
-        mocker.patch.object(ArchiveService, "read_file", return_value=b"")
         mocked_2.side_effect = [ReportEmptyError(), ReportExpiredException()]
+        mocker.patch.object(ArchiveService, "read_file", return_value=b"")
         # Mocking retry to also raise the exception so we can see how it is called
         mocker.patch.object(UploadProcessorTask, "app", celery_app)
         commit = CommitFactory.create(
