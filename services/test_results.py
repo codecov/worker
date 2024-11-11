@@ -198,7 +198,7 @@ def generate_failure_info(
 def generate_view_test_analytics_line(commit: Commit) -> str:
     repo = commit.repository
     test_analytics_url = get_test_analytics_url(repo, commit)
-    return f"\nTo view more test analytics, go to the [Test Analytics Dashboard]({test_analytics_url})\nGot feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"
+    return f"\nTo view more test analytics, go to the [Test Analytics Dashboard]({test_analytics_url})\nGot feedback? Let us know on [Github](https://github.com/codecov/feedback/issues/304)"
 
 
 def messagify_failure(
