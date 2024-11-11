@@ -141,9 +141,14 @@ def setup_mocks(
         "tasks.upload.fetch_commit_yaml_and_possibly_store",
         return_value=UserYaml(user_yaml or {}),
     )
+    mocker.patch(
+        "tasks.compute_comparison.get_current_yaml",
+        return_value=UserYaml(user_yaml or {}),
+    )
     # disable all the tasks being emitted from `UploadFinisher`.
     # ideally, we would really want to test their outcomes as well.
     mocker.patch("tasks.notify.NotifyTask.run_impl")
+    mocker.patch("tasks.sync_pull.PullSyncTask.run_impl")
     mocker.patch("tasks.save_commit_measurements.SaveCommitMeasurementsTask.run_impl")
 
     # force `report_json` to be written out to storage
@@ -237,6 +242,14 @@ end_of_record
     dbsession.execute(
         f"UPDATE reports_upload SET id={upload_id} WHERE id={first_upload.id}"
     )
+
+    with run_tasks():
+        upload_task.apply_async(
+            kwargs={
+                "repoid": repoid,
+                "commitid": commitid,
+            }
+        )
 
     do_upload(
         b"""

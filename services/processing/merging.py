@@ -23,7 +23,7 @@ def merge_reports(
     commit_yaml: UserYaml,
     master_report: Report,
     intermediate_reports: list[IntermediateReport],
-) -> MergeResult:
+) -> tuple[Report, MergeResult]:
     session_mapping: dict[int, int] = dict()
     deleted_sessions: set[int] = set()
 
@@ -34,9 +34,14 @@ def merge_reports(
 
         old_sessionid = next(iter(report.sessions))
         new_sessionid = master_report.next_session_number()
-        change_sessionid(report, old_sessionid, new_sessionid)
         session_mapping[intermediate_report.upload_id] = new_sessionid
 
+        if master_report.is_empty() and old_sessionid == new_sessionid:
+            # if the master report is empty, we can avoid a costly merge operation
+            master_report = report
+            continue
+
+        change_sessionid(report, old_sessionid, new_sessionid)
         session = report.sessions[new_sessionid]
 
         _session_id, session = master_report.add_session(
@@ -51,7 +56,7 @@ def merge_reports(
 
         master_report.merge(report)
 
-    return MergeResult(session_mapping, deleted_sessions)
+    return master_report, MergeResult(session_mapping, deleted_sessions)
 
 
 @sentry_sdk.trace
@@ -158,6 +163,7 @@ def make_upload_totals(
     )
 
 
+@sentry_sdk.trace
 def change_sessionid(report: EditableReport, old_id: int, new_id: int):
     """
     Modifies the `EditableReport`, changing the session with `old_id` to have `new_id` instead.
