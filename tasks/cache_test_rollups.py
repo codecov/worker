@@ -1,9 +1,10 @@
 import datetime as dt
 
 import polars as pl
-from django.db import connection
+from django.db import connections
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
+from shared.config import get_config
 
 from app import celery_app
 from services.redis import get_redis_connection
@@ -103,6 +104,11 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
 
     def run_impl_within_lock(self, repoid, branch):
         storage_service = get_storage_client()
+
+        if get_config("setup", "database", "read_replica_enabled", default=False):
+            connection = connections["default_read"]
+        else:
+            connection = connections["default"]
 
         with connection.cursor() as cursor:
             for interval_start, interval_end in [
