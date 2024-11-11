@@ -134,7 +134,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                     [
                         "name",
                         "testsuite",
-                        "flags",
+                        ("flags", pl.List(pl.String)),
                         "test_id",
                         "failure_rate",
                         "flake_rate",
