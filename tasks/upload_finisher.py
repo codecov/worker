@@ -31,7 +31,6 @@ from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
-from services.archive import ArchiveService
 from services.comparison import get_or_create_comparison
 from services.processing.intermediate import (
     cleanup_intermediate_reports,
@@ -81,7 +80,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         commitid: str,
         commit_yaml,
         report_code: str | None = None,
-        intermediate_reports_in_redis=False,
         **kwargs,
     ):
         try:
@@ -114,14 +112,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         try:
             with get_report_lock(repoid, commitid, self.hard_time_limit_task):
                 report_service = ReportService(commit_yaml)
-                archive_service = report_service.get_archive_service(repository)
                 report = perform_report_merging(
-                    report_service,
-                    archive_service,
-                    commit_yaml,
-                    commit,
-                    processing_results,
-                    intermediate_reports_in_redis,
+                    report_service, commit_yaml, commit, processing_results
                 )
 
                 log.info(
@@ -145,9 +137,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             )
             self.retry(max_retries=MAX_RETRIES, countdown=retry_in)
 
-        cleanup_intermediate_reports(
-            archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
-        )
+        cleanup_intermediate_reports(upload_ids)
 
         if not should_trigger_postprocessing(state.get_upload_numbers()):
             return
@@ -383,11 +373,9 @@ def get_report_lock(repoid: int, commitid: str, hard_time_limit: int) -> Lock:
 @sentry_sdk.trace
 def perform_report_merging(
     report_service: ReportService,
-    archive_service: ArchiveService,
     commit_yaml: UserYaml,
     commit: Commit,
     processing_results: list[ProcessingResult],
-    intermediate_reports_in_redis=False,
 ) -> Report:
     master_report = report_service.get_existing_report_for_commit(commit)
     if master_report is None:
@@ -396,9 +384,7 @@ def perform_report_merging(
     upload_ids = [
         upload["upload_id"] for upload in processing_results if upload["successful"]
     ]
-    intermediate_reports = load_intermediate_reports(
-        archive_service, commit.commitid, upload_ids, intermediate_reports_in_redis
-    )
+    intermediate_reports = load_intermediate_reports(upload_ids)
 
     master_report, merge_result = merge_reports(
         commit_yaml, master_report, intermediate_reports

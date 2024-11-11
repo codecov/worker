@@ -186,14 +186,12 @@ class TestUploadTaskIntegration(object):
                 "upload_id": first_session.id,
                 "upload_pk": first_session.id,
             },
-            intermediate_reports_in_redis=False,
         )
         kwargs = dict(
             repoid=commit.repoid,
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            intermediate_reports_in_redis=False,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         finisher = upload_finisher_task.signature(kwargs=kwargs)
@@ -667,7 +665,6 @@ class TestUploadTaskIntegration(object):
                     "upload_id": mocker.ANY,
                     "upload_pk": mocker.ANY,
                 },
-                intermediate_reports_in_redis=False,
             )
             for arguments in redis_queue
         ]
@@ -677,7 +674,6 @@ class TestUploadTaskIntegration(object):
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             report_code=None,
-            intermediate_reports_in_redis=False,
         )
         kwargs[_kwargs_key(UploadFlow)] = mocker.ANY
         t_final = upload_finisher_task.signature(kwargs=kwargs)
@@ -1205,7 +1201,6 @@ class TestUploadTaskUnit(object):
             commitid=commit.commitid,
             commit_yaml=commit_yaml,
             arguments={"upload_id": 1, "upload_pk": 1},
-            intermediate_reports_in_redis=False,
         )
         finisher = upload_finisher_task.signature(
             kwargs={
@@ -1213,7 +1208,6 @@ class TestUploadTaskUnit(object):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": None,
-                "intermediate_reports_in_redis": False,
                 _kwargs_key(UploadFlow): mocker.ANY,
             }
         )

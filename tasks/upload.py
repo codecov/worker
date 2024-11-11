@@ -29,7 +29,6 @@ from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
-from rollouts import INTERMEDIATE_REPORTS_IN_REDIS
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
@@ -601,17 +600,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             [int(upload["upload_id"]) for upload in argument_list]
         )
 
-        intermediate_reports_in_redis = INTERMEDIATE_REPORTS_IN_REDIS.check_value(
-            commit.repoid
-        )
-
         parallel_processing_tasks = [
             upload_processor_task.s(
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml,
                 arguments=arguments,
-                intermediate_reports_in_redis=intermediate_reports_in_redis,
             )
             for arguments in argument_list
         ]
@@ -622,7 +616,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": commit_report.code,
-                "intermediate_reports_in_redis": intermediate_reports_in_redis,
                 _kwargs_key(UploadFlow): checkpoints.data,
             },
         )

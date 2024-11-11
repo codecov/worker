@@ -56,7 +56,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
         commitid: str,
         commit_yaml: dict,
         arguments: UploadArguments,
-        intermediate_reports_in_redis=False,
         **kwargs,
     ):
         log.info(
@@ -80,7 +79,6 @@ class UploadProcessorTask(BaseCodecovTask, name=upload_processor_task_name):
             commitid,
             UserYaml(commit_yaml),
             arguments,
-            intermediate_reports_in_redis,
         )
 
 
