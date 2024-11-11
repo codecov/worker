@@ -364,7 +364,7 @@ sentry-sdk[celery]==2.13.0
     # via
     #   -r requirements.in
     #   shared
-shared @ https://github.com/codecov/shared/archive/6958f32e314e6d728c1ee6a976c1cd7f49ad6f9f.tar.gz
+shared @ https://github.com/codecov/shared/archive/4db8f12c1a4ad43cedb1a965d2fa8cd8138fc2b3.tar.gz
     # via -r requirements.in
 six==1.16.0
     # via
