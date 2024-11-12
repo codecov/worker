@@ -14,7 +14,7 @@ if "timeseries" in DATABASES:
 
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
 
-GCS_BUCKET_NAME = get_config("services", "minio", "bucket")
+GCS_BUCKET_NAME = get_config("services", "minio", "bucket", default="codecov")
 
 # Application definition
 INSTALLED_APPS = [
