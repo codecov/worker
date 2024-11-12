@@ -6,7 +6,7 @@
 </svg>
 
   <p>
-    A ${{ amount }} auto refund has been processed and will be credited to your {% if card_type %}{{ card_type | capitalize }}{% else %}card{% endif %}{% if last_four %} ending in {{ last_four }}{% endif %} shortly.
+    A {{ amount }} auto refund has been processed and will be credited to your {% if card_type %}{{ card_type | capitalize }}{% else %}card{% endif %}{% if last_four %} ending in {{ last_four }}{% endif %} shortly.
   </p>
 </div>
 <p>
@@ -18,6 +18,6 @@
   <a href="mailto:support@codecov.io">support@codecov.io</a>
 </p>
 {% endblock %} {% block aside %}
-<p>Total: USD <span class="green-money-text">${{ amount }}</span></p>
+<p>Total: USD <span class="green-money-text">{{ amount }}</span></p>
 <p>{{ date }}</p>
 {% endblock %}
