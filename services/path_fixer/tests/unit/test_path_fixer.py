@@ -124,7 +124,7 @@ class TestBasePathAwarePathFixer(object):
         assert pf("__init__.py") is None
         assert base_aware_pf("__init__.py") is None
         assert (
-            base_aware_pf("__init__.py", bases_to_try=["/home/travis/build/project"])
+            base_aware_pf("__init__.py", bases_to_try=("/home/travis/build/project",))
             == "project/__init__.py"
         )
 
@@ -136,7 +136,7 @@ def test_ambiguous_paths():
     ]
     base_path = "/home/runner/work/owner/repo/foobar/build/coverage/coverage.xml"
     #                                         ~~~~~~
-    bases_to_try = ["/app"]
+    bases_to_try = ("/app",)
     # The problem here is that the given `file_name` is ambiguous, and neither the
     # `base_path` nor the `bases_to_try` is helping us narrow this down.
     # The `base_path` does include one of the relevant parent directories,

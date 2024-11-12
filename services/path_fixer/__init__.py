@@ -1,6 +1,7 @@
 import logging
 import os.path
 from pathlib import PurePath
+from typing import Sequence
 
 import sentry_sdk
 from shared.yaml import UserYaml
@@ -119,7 +120,7 @@ class PathFixer(object):
 
 class BasePathAwarePathFixer(PathFixer):
     def __init__(self, original_path_fixer, base_path) -> None:
-        self._resolved_paths: dict[tuple[str, list[str]], str | None] = {}
+        self._resolved_paths: dict[tuple[str, Sequence[str]], str | None] = {}
         self.original_path_fixer = original_path_fixer
 
         # base_path argument is the file path after the "# path=" in the report containing report location, if provided.
@@ -127,7 +128,7 @@ class BasePathAwarePathFixer(PathFixer):
         # e.g.: "path/to/coverage.xml" --> "path/to/"
         self.base_path = [PurePath(base_path).parent] if base_path is not None else []
 
-    def _try_fix_path(self, path: str, bases_to_try: list[str]) -> str | None:
+    def _try_fix_path(self, path: str, bases_to_try: Sequence[str]) -> str | None:
         original_path_fixer_result = self.original_path_fixer(path)
         if (
             original_path_fixer_result is not None
@@ -138,7 +139,7 @@ class BasePathAwarePathFixer(PathFixer):
 
         if not os.path.isabs(path):
             all_base_paths_to_try = (
-                self.base_path + bases_to_try if bases_to_try else self.base_path
+                self.base_path + list(bases_to_try) if bases_to_try else self.base_path
             )
 
             for base_path in all_base_paths_to_try:
@@ -149,8 +150,10 @@ class BasePathAwarePathFixer(PathFixer):
 
         return original_path_fixer_result
 
-    def __call__(self, path: str, bases_to_try: list[str] | None = None) -> str | None:
-        bases_to_try = bases_to_try or []
+    def __call__(
+        self, path: str, bases_to_try: Sequence[str] | None = None
+    ) -> str | None:
+        bases_to_try = bases_to_try or tuple()
         key = (path, bases_to_try)
 
         if key not in self._resolved_paths:
