@@ -74,7 +74,6 @@ def test_generate_failure_info():
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
         "hello world",
-        "testsuite",
         "testname",
         [],
         test_id,
@@ -100,7 +99,6 @@ def test_build_message():
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
         "hello world",
-        "testsuite",
         "testname",
         [],
         test_id,
@@ -138,7 +136,8 @@ def test_build_message():
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/thing%2Fthing)"""
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/thing%2Fthing)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"""
     )
 
 
@@ -147,7 +146,6 @@ def test_build_message_with_flake():
     test_id = generate_test_id(1, "testsuite", "testname", flags_hash)
     fail = TestResultsNotificationFailure(
         "hello world",
-        "testsuite",
         "testname",
         [],
         test_id,
@@ -189,7 +187,8 @@ def test_build_message_with_flake():
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})"""
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"""
     )
 
 

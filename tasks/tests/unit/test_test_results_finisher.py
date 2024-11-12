@@ -39,6 +39,7 @@ def test_results_mock_app(mocker):
         tasks={
             "app.tasks.notify.Notify": mocker.MagicMock(),
             "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
+            "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
         },
     )
     return mocked_app
@@ -233,6 +234,7 @@ def test_results_setup_no_instances(mocker, dbsession):
         repository__owner__service="github",
         repository__name="codecov-demo",
     )
+    commit.branch = "main"
     dbsession.add(commit)
     dbsession.flush()
 
@@ -359,6 +361,16 @@ class TestUploadTestFinisherTask(object):
             QUEUE_NOTIFY_KEY: False,
         }
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
@@ -433,7 +445,8 @@ class TestUploadTestFinisherTask(object):
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )
 
     @pytest.mark.integration
@@ -482,6 +495,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
                 "commitid": commit.commitid,
                 "current_yaml": {"codecov": {"max_report_age": False}},
                 "repoid": repoid,
+            },
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
             },
         )
 
@@ -537,6 +560,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
                 "commitid": commit.commitid,
                 "current_yaml": {"codecov": {"max_report_age": False}},
                 "repoid": repoid,
+            },
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
             },
         )
 
@@ -607,6 +640,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         test_results_mock_app.tasks["app.tasks.notify.Notify"].assert_not_called()
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
     @pytest.mark.integration
     def test_upload_finisher_task_call_existing_comment(
         self,
@@ -644,6 +687,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
             "notify_succeeded": True,
             QUEUE_NOTIFY_KEY: False,
         }
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
@@ -719,7 +772,8 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )
 
         assert expected_result == result
@@ -760,6 +814,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
             "notify_succeeded": False,
             QUEUE_NOTIFY_KEY: False,
         }
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         assert expected_result == result
 
@@ -833,6 +897,16 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
         assert expected_result == result
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
             f"""### :x: 1 Tests Failed:
@@ -865,7 +939,8 @@ To view individual test run time comparison to the main branch, go to the [Test 
 
 </details>
 
-To view individual test run time comparison to the main branch, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
         )
 
     @pytest.mark.integration
@@ -933,3 +1008,131 @@ To view individual test run time comparison to the main branch, go to the [Test 
                     "branch": "main",
                 },
             )
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db(databases={"default"})
+    def test_upload_finisher_task_call_computed_name(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
+        repoid, commit, pull, test_instances = test_results_setup
+
+        for instance in test_instances:
+            instance.test.computed_name = f"hello_{instance.test.name}"
+
+        dbsession.flush()
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            [
+                [{"successful": True}],
+            ],
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            QUEUE_NOTIFY_KEY: False,
+        }
+
+        assert expected_result == result
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 3 failed tests by shortest run time</summary>
+
+> 
+> ```
+> hello_test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> hello_Other Class Name test_name2
+> ```
+> 
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+
+> 
+> ```
+> hello_Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
+        )

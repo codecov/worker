@@ -3,10 +3,9 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from datetime import datetime
-from json import loads
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
+import orjson
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery import chain, chord
@@ -14,9 +13,6 @@ from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
-from shared.django_apps.codecov_metrics.service.codecov_metrics import (
-    UserOnboardingMetricsService,
-)
 from shared.metrics import Histogram
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.yaml import UserYaml
@@ -32,11 +28,11 @@ from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.parallel import ParallelFeature
-from helpers.reports import delete_archive_setting
 from helpers.save_commit_error import save_commit_error
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
+from services.processing.state import ProcessingState
+from services.processing.types import UploadArguments
 from services.redis import download_archive_from_redis, get_redis_connection
 from services.report import (
     BaseReportService,
@@ -177,9 +173,9 @@ class UploadContext:
         log.debug("Fetching arguments from redis %s", uploads_list_key)
         while arguments := self.redis_connection.lpop(uploads_list_key, count=50):
             for arg in arguments:
-                yield loads(arg)
+                yield orjson.loads(arg)
 
-    def normalize_arguments(self, commit: Commit, arguments: dict[str, Any]):
+    def normalize_arguments(self, commit: Commit, arguments: UploadArguments):
         """
         Normalizes and validates the argument list from the user.
 
@@ -198,12 +194,18 @@ class UploadContext:
             )
             log.info(
                 "Writing report content from redis to storage",
-                extra=dict(
-                    commit=commit.commitid, repoid=commit.repoid, path=written_path
-                ),
+                extra=dict(path=written_path),
             )
             arguments["url"] = written_path
         arguments.pop("token", None)
+
+        flags: list | str | None = arguments.get("flags")
+        if not flags:
+            flags = []
+        elif isinstance(flags, str):
+            flags = [flag.strip() for flag in flags.split(",")]
+        arguments["flags"] = flags
+
         return arguments
 
 
@@ -417,7 +419,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         )
         assert commit, "Commit not found in database."
         repository = commit.repository
-        repository.updatestamp = datetime.now()
         repository_service = None
 
         was_updated, was_setup = False, False
@@ -428,7 +429,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             repository_service = get_repo_provider_service(
                 repository, installation_name_to_use=installation_name_to_use
             )
-            was_updated = async_to_sync(possibly_update_commit_from_provider_info)(
+            was_updated = possibly_update_commit_from_provider_info(
                 commit, repository_service
             )
             was_setup = self.possibly_setup_webhooks(commit, repository_service)
@@ -497,22 +498,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             self.retry(countdown=60, kwargs=upload_context.kwargs_for_retry(kwargs))
 
-        UserOnboardingMetricsService.create_user_onboarding_metric(
-            org_id=repository.ownerid, event="COMPLETED_UPLOAD", payload={}
-        )
-
-        argument_list = []
+        argument_list: list[UploadArguments] = []
         for arguments in upload_context.arguments_list():
-            normalized_arguments = upload_context.normalize_arguments(commit, arguments)
-            if "upload_id" in normalized_arguments:
-                normalized_arguments["upload_pk"] = normalized_arguments["upload_id"]
-            else:
-                upload = report_service.create_report_upload(
-                    normalized_arguments, commit_report
-                )
+            arguments = upload_context.normalize_arguments(commit, arguments)
+            if "upload_id" not in arguments:
+                upload = report_service.create_report_upload(arguments, commit_report)
+                arguments["upload_id"] = upload.id_
 
-                normalized_arguments["upload_pk"] = upload.id_
-            argument_list.append(normalized_arguments)
+            # TODO(swatinem): eventually migrate from `upload_pk` to `upload_id`:
+            arguments["upload_pk"] = arguments["upload_id"]
+            argument_list.append(arguments)
 
         if argument_list:
             db_session.commit()
@@ -521,7 +516,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 len(argument_list)
             )
             scheduled_tasks = self.schedule_task(
-                db_session,
                 commit,
                 commit_yaml.to_dict(),
                 argument_list,
@@ -551,10 +545,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def schedule_task(
         self,
-        db_session: Session,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         commit_report: CommitReport,
         upload_context: UploadContext,
         checkpoints: CheckpointLogger | None,
@@ -572,12 +565,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             assert checkpoints
             return self._schedule_coverage_processing_task(
-                db_session,
                 commit,
                 commit_yaml,
                 argument_list,
                 commit_report,
-                upload_context,
                 checkpoints,
             )
         elif upload_context.report_type == ReportType.BUNDLE_ANALYSIS:
@@ -596,99 +587,28 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def _schedule_coverage_processing_task(
         self,
-        db_session: Session,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         commit_report: CommitReport,
-        upload_context: UploadContext,
         checkpoints: CheckpointLogger,
     ):
         checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
 
-        parallel_feature = ParallelFeature.load(upload_context.repoid)
-        if parallel_feature is ParallelFeature.EXPERIMENT and delete_archive_setting(
-            commit_yaml
-        ):
-            parallel_feature = ParallelFeature.SERIAL
-
-        if parallel_feature is not ParallelFeature.SERIAL:
-            parallel_tasks = self.create_parallel_tasks(
-                commit,
-                commit_yaml,
-                argument_list,
-                commit_report,
-                checkpoints,
-                parallel_feature is ParallelFeature.PARALLEL,
-            )
-
-            if parallel_feature is ParallelFeature.PARALLEL:
-                return parallel_tasks.apply_async()
-
-        processing_tasks = [
-            upload_processor_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml,
-                arguments_list=list(chunk),
-                report_code=commit_report.code,
-                in_parallel=False,
-                is_final=False,
-            )
-            for chunk in itertools.batched(argument_list, CHUNK_SIZE)
-        ]
-        processing_tasks[0].args = ({},)  # this is the first `previous_results`
-        if parallel_feature is ParallelFeature.EXPERIMENT:
-            processing_tasks[-1].kwargs.update(is_final=True)
-
-        processing_tasks.append(
-            upload_finisher_task.signature(
-                kwargs={
-                    "repoid": commit.repoid,
-                    "commitid": commit.commitid,
-                    "commit_yaml": commit_yaml,
-                    "report_code": commit_report.code,
-                    "in_parallel": False,
-                    _kwargs_key(UploadFlow): checkpoints.data,
-                },
-            )
+        state = ProcessingState(commit.repoid, commit.commitid)
+        state.mark_uploads_as_processing(
+            [int(upload["upload_id"]) for upload in argument_list]
         )
-        serial_tasks = chain(processing_tasks)
 
-        if parallel_feature is ParallelFeature.EXPERIMENT:
-            parallel_shadow_experiment = serial_tasks | parallel_tasks
-            return parallel_shadow_experiment.apply_async()
-
-        return serial_tasks.apply_async()
-
-    @sentry_sdk.trace
-    def create_parallel_tasks(
-        self,
-        commit: Commit,
-        commit_yaml: dict,
-        argument_list: list[dict],
-        commit_report: CommitReport,
-        checkpoints: CheckpointLogger,
-        run_fully_parallel: bool,
-    ):
         parallel_processing_tasks = [
             upload_processor_task.s(
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml,
-                arguments_list=[arguments],
-                report_code=commit_report.code,
-                run_fully_parallel=run_fully_parallel,
-                in_parallel=True,
-                is_final=False,
+                arguments=arguments,
             )
             for arguments in argument_list
         ]
-        if run_fully_parallel:
-            for task in parallel_processing_tasks:
-                # this is the `previous_results`, which celery provides when running
-                # in a chain as part of the experiment, otherwise we have to provide this.
-                task.args = ({},)
 
         finish_parallel_sig = upload_finisher_task.signature(
             kwargs={
@@ -696,20 +616,18 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": commit_report.code,
-                "run_fully_parallel": run_fully_parallel,
-                "in_parallel": True,
                 _kwargs_key(UploadFlow): checkpoints.data,
             },
         )
 
         parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
-        return parallel_tasks
+        return parallel_tasks.apply_async()
 
     def _schedule_bundle_analysis_processing_task(
         self,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         do_notify: Optional[bool] = True,
     ):
         task_signatures = [
@@ -740,7 +658,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         commit: Commit,
         commit_yaml: dict,
-        argument_list: list[dict],
+        argument_list: list[UploadArguments],
         commit_report: CommitReport,
         checkpoints: CheckpointLogger,
     ):
@@ -772,7 +690,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit: Commit,
         commit_report: CommitReport,
         commit_yaml: dict,
-        argument_list: List[Dict],
+        argument_list: list[UploadArguments],
     ):
         """
         If an upload is not of bundle analysis type we will create an additional BA report and upload for it.
@@ -786,11 +704,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             commit_report.report_type != ReportType.BUNDLE_ANALYSIS.value
             and commit.repository.bundle_analysis_enabled
         ):
-            # Override upload_pk from other upload types and create the BA uploads in the
+            # Override upload_id from other upload types and create the BA uploads in the
             # BA processor task
             ba_argument_list = []
             for arg in argument_list:
                 ba_arg = deepcopy(arg)
+                del ba_arg["upload_id"]
                 ba_arg["upload_pk"] = None
                 ba_argument_list.append(ba_arg)
 

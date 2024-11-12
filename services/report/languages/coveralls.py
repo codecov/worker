@@ -1,5 +1,4 @@
-import json
-
+import orjson
 import sentry_sdk
 
 from services.report.languages.base import BaseLanguageProcessor
@@ -27,7 +26,7 @@ def from_json(report: dict, report_builder_session: ReportBuilderSession) -> Non
         # or a string with a json-encoded list.
         coverage: str | list = file["coverage"]
         if isinstance(coverage, str):
-            coverage = json.loads(coverage)
+            coverage = orjson.loads(coverage)
 
         for ln, cov in enumerate(coverage, start=1):
             if cov is not None:

@@ -4,7 +4,7 @@ from typing import Any, Mapping
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
-from shared.torngit.base import TorngitBaseAdapter
+from shared.metrics import Counter, inc_counter
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
@@ -29,10 +29,15 @@ from services.notification.notifiers.comment.conditions import (
     PullRequestInProvider,
 )
 from services.notification.notifiers.mixins.message import MessageMixin
-from services.repository import get_repo_provider_service
 from services.urls import append_tracking_params_to_urls, get_members_url, get_plan_url
 
 log = logging.getLogger(__name__)
+
+COMMENT_NOTIFIER_COUNTER = Counter(
+    "notifiers_comment_pull_closed_notifying_anyways",
+    "Number of comment notifier runs when pull is closed",
+    ["repo_using_integration"],
+)
 
 
 class CommentNotifier(MessageMixin, AbstractBaseNotifier):
@@ -43,18 +48,6 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         HasEnoughBuilds,
         HasEnoughRequiredChanges,
     ]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._repository_service = None
-
-    @property
-    def repository_service(self):
-        if not self._repository_service:
-            self._repository_service: TorngitBaseAdapter = get_repo_provider_service(
-                self.repository, installation_name_to_use=self.gh_installation_name
-            )
-        return self._repository_service
 
     def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pull = comparison.pull
@@ -83,13 +76,13 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
         if comparison.pull is not None and comparison.pull.state != "open":
-            sentry_sdk.metrics.incr(
-                "notifiers.comment.pull_closed_notifying_anyways",
-                tags={
-                    "repo_using_integration": self.repository_service.data["repo"][
-                        "using_integration"
-                    ]
-                },
+            inc_counter(
+                COMMENT_NOTIFIER_COUNTER,
+                labels=dict(
+                    repo_using_integration="true"
+                    if self.repository_service.data["repo"]["using_integration"]
+                    else "false",
+                ),
             )
 
         for condition in self.notify_conditions:

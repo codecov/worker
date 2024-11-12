@@ -289,6 +289,11 @@ class Test(CodecovBaseModel):
     # for example: the same test being run on windows vs. mac
     flags_hash = Column(types.String(256), nullable=False)
 
+    framework = Column(types.String(100), nullable=True)
+
+    computed_name = Column(types.Text, nullable=True)
+    filename = Column(types.Text, nullable=True)
+
     __table_args__ = (
         UniqueConstraint(
             "repoid",
@@ -329,9 +334,18 @@ class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     error = Column(types.String(100), nullable=True)
 
 
-class ReducedError(CodecovBaseModel, MixinBaseClass):
+class ReducedError(CodecovBaseModel):
     __tablename__ = "reports_reducederror"
+    id_ = Column("id", types.BigInteger, primary_key=True)
     message = Column(types.Text)
+    created_at = Column(types.DateTime(timezone=True), default=get_utc_now)
+    updated_at = Column(
+        types.DateTime(timezone=True), onupdate=get_utc_now, default=get_utc_now
+    )
+
+    @property
+    def id(self):
+        return self.id_
 
 
 class Flake(CodecovBaseModel, MixinBaseClassNoExternalID):

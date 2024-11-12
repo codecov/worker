@@ -43,7 +43,6 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
         )
 
         # get all upload errors for this commit
-        #
         commit_yaml = UserYaml.from_dict(current_yaml)
 
         checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)

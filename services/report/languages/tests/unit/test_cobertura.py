@@ -531,3 +531,24 @@ class TestCobertura(BaseTestCase):
         # doesnt use the source as we dont know which one
         assert "/here/source" in processed_report["report"]["files"]
         assert "/here/file" in processed_report["report"]["files"]
+
+
+def test_empty_filename():
+    xml = """
+<coverage>
+    <class filename="" name="">
+        <line number="1" hits="1" />
+    </class>
+    <class filename="non-empty" name="">
+        <line number="1" hits="1" />
+    </class>
+</coverage>
+"""
+    report_builder_session = create_report_builder_session()
+    cobertura.from_xml(
+        etree.fromstring(xml),
+        report_builder_session,
+    )
+    report = report_builder_session.output_report()
+
+    assert not report.is_empty()

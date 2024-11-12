@@ -60,7 +60,7 @@ class TestNotificationService(object):
     def test_should_use_checks_notifier_yaml_field_false(self, dbsession):
         repository = RepositoryFactory.create()
         current_yaml = {"github_checks": False}
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         assert (
             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
             == False
@@ -109,7 +109,7 @@ class TestNotificationService(object):
         repository = RepositoryFactory.create(**repo_data)
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == []
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         assert (
             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
             == outcome
@@ -127,7 +127,7 @@ class TestNotificationService(object):
         dbsession.flush()
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         assert (
             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
             == True
@@ -147,7 +147,7 @@ class TestNotificationService(object):
         dbsession.flush()
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         assert (
             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
             == False
@@ -175,7 +175,7 @@ class TestNotificationService(object):
         dbsession.flush()
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         assert (
             service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
             == False
@@ -203,7 +203,7 @@ class TestNotificationService(object):
         dbsession.flush()
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         assert (
             service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
             == True
@@ -239,13 +239,16 @@ class TestNotificationService(object):
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == [ghapp_installation]
         service = NotificationService(
-            repository, current_yaml, gh_installation_name_to_use=gh_installation_name
+            repository,
+            current_yaml,
+            None,
+            gh_installation_name_to_use=gh_installation_name,
         )
         assert (
             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
             == True
         )
-        service = NotificationService(other_repo_same_owner, current_yaml)
+        service = NotificationService(other_repo_same_owner, current_yaml, None)
         assert (
             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
             == False
@@ -268,7 +271,7 @@ class TestNotificationService(object):
         current_yaml = {
             "coverage": {"notify": {"slack": {"default": {"field": "1y ago"}}}}
         }
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         instances = list(service.get_notifiers_instances())
         assert len(instances) == 2
         instance = instances[0]
@@ -297,7 +300,7 @@ class TestNotificationService(object):
         mocker.patch.dict(
             os.environ, {"CHECKS_WHITELISTED_OWNERS": f"0,{repository.owner.ownerid}"}
         )
-        service = NotificationService(repository, current_yaml)
+        service = NotificationService(repository, current_yaml, None)
         instances = list(service.get_notifiers_instances())
         names = sorted([instance.name for instance in instances])
         assert names == [
@@ -335,7 +338,9 @@ class TestNotificationService(object):
             },
         )
         service = NotificationService(
-            repository, current_yaml, gh_installation_name_to_use=gh_installation_name
+            repository,
+            current_yaml,
+            gh_installation_name,
         )
         instances = list(service.get_notifiers_instances())
         # we don't need that for slack-app notifier
@@ -348,15 +353,13 @@ class TestNotificationService(object):
         for instance in instances:
             if isinstance(instance, ChecksWithFallback):
                 assert (
-                    instance._checks_notifier.gh_installation_name
-                    == gh_installation_name
+                    instance._checks_notifier.repository_service == gh_installation_name
                 )
                 assert (
-                    instance._status_notifier.gh_installation_name
-                    == gh_installation_name
+                    instance._status_notifier.repository_service == gh_installation_name
                 )
             else:
-                assert instance.gh_installation_name == gh_installation_name
+                assert instance.repository_service == gh_installation_name
 
     @pytest.mark.parametrize(
         "gh_installation_name",
@@ -377,11 +380,13 @@ class TestNotificationService(object):
         dbsession.flush()
         current_yaml = {"comment": {"layout": "condensed_header"}, "slack_app": False}
         service = NotificationService(
-            repository, current_yaml, gh_installation_name_to_use=gh_installation_name
+            repository,
+            current_yaml,
+            gh_installation_name,
         )
         instances = list(service.get_notifiers_instances())
         assert len(instances) == 1
-        assert instances[0].gh_installation_name == gh_installation_name
+        assert instances[0].repository_service == gh_installation_name
 
     def test_notify_general_exception(self, mocker, dbsession, sample_comparison):
         current_yaml = {}
@@ -421,7 +426,9 @@ class TestNotificationService(object):
             "get_notifiers_instances",
             return_value=[bad_notifier, good_notifier, disabled_notifier],
         )
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
         expected_result = [
             {"notifier": "bad_name", "title": "bad_notifier", "result": None},
             {
@@ -449,7 +456,9 @@ class TestNotificationService(object):
             decoration_type=Decoration.standard,
         )
         notifier.notify.side_effect = AsyncioTimeoutError
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
         res = notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )
@@ -482,8 +491,11 @@ class TestNotificationService(object):
             notifier_yaml_settings={"flags": ["flagone"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, mock_repo_provider
+        )
         res = notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )
@@ -519,7 +531,9 @@ class TestNotificationService(object):
             decoration_type=Decoration.standard,
         )
         notifier.notify.side_effect = AsyncioTimeoutError
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
         res = notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )
@@ -552,7 +566,9 @@ class TestNotificationService(object):
         )
         # first attempt not successful
         notifier.notify.side_effect = AsyncioTimeoutError
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
         res = notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )
@@ -596,7 +612,9 @@ class TestNotificationService(object):
             decoration_type=Decoration.standard,
         )
         notifier.notify.side_effect = CancelledError()
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
         with pytest.raises(CancelledError):
             notifications_service.notify_individual_notifier(
                 notifier, sample_comparison
@@ -658,7 +676,9 @@ class TestNotificationService(object):
                 no_attempt_notifier,
             ],
         )
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
         with pytest.raises(SoftTimeLimitExceeded):
             notifications_service.notify(sample_comparison)
 
@@ -683,7 +703,9 @@ class TestNotificationService(object):
         )
         current_yaml = {}
         commit = sample_comparison.head.commit
-        notifications_service = NotificationService(commit.repository, current_yaml)
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
         expected_result = []
         res = notifications_service.notify(sample_comparison)
         assert expected_result == res
@@ -706,7 +728,7 @@ class TestNotificationService(object):
         }
         commit = sample_comparison.head.commit
         notifications_service = NotificationService(
-            commit.repository, UserYaml(current_yaml)
+            commit.repository, UserYaml(current_yaml), None
         )
         expected_result = [
             ("project", "default", {}),
@@ -756,7 +778,7 @@ class TestNotificationService(object):
         }
         commit = sample_comparison.head.commit
         notifications_service = NotificationService(
-            commit.repository, UserYaml(current_yaml)
+            commit.repository, UserYaml(current_yaml), None
         )
         expected_result = [
             (

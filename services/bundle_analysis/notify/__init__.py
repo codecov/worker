@@ -1,5 +1,5 @@
 import logging
-from typing import NamedTuple
+from typing import NamedTuple, Never
 
 import sentry_sdk
 from shared.yaml import UserYaml
@@ -35,9 +35,9 @@ class NotificationFullContext(NamedTuple):
 
 
 class BundleAnalysisNotifyReturn(NamedTuple):
-    notifications_configured: tuple[NotificationType]
-    notifications_attempted: tuple[NotificationType]
-    notifications_successful: tuple[NotificationType]
+    notifications_configured: tuple[NotificationType, ...]
+    notifications_attempted: tuple[NotificationType, ...] | tuple[Never]
+    notifications_successful: tuple[NotificationType, ...] | tuple[Never]
 
     def to_NotificationSuccess(self) -> NotificationSuccess:
         notification_configured_count = len(self.notifications_configured)
@@ -102,18 +102,18 @@ class BundleAnalysisNotifyService:
             tuple[NotificationContextBuilder, MessageStrategyInterface],
         ] = {
             NotificationType.PR_COMMENT: (
-                BundleAnalysisPRCommentContextBuilder,
-                BundleAnalysisCommentMarkdownStrategy,
+                BundleAnalysisPRCommentContextBuilder(),
+                BundleAnalysisCommentMarkdownStrategy(),
             ),
             NotificationType.COMMIT_STATUS: (
-                CommitStatusNotificationContextBuilder,
-                CommitStatusMessageStrategy,
+                CommitStatusNotificationContextBuilder(),
+                CommitStatusMessageStrategy(),
             ),
             # The commit-check API is more powerful than COMMIT_STATUS
             # but we currently don't differentiate between them
             NotificationType.GITHUB_COMMIT_CHECK: (
-                CommitStatusNotificationContextBuilder,
-                CommitStatusMessageStrategy,
+                CommitStatusNotificationContextBuilder(),
+                CommitStatusMessageStrategy(),
             ),
         }
         notifier_strategy = notifier_lookup.get(notification_type)
@@ -121,14 +121,14 @@ class BundleAnalysisNotifyService:
             msg = f"No context builder for {notification_type}. Skipping"
             log.error(msg)
             return None
-        builder_class, message_strategy_class = notifier_strategy
+        builder_instance, message_strategy_instance = notifier_strategy
         try:
-            builder = builder_class().initialize_from_context(
+            builder = builder_instance.initialize_from_context(
                 self.current_yaml, base_context
             )
             return NotificationFullContext(
                 builder.build_context().get_result(),
-                message_strategy_class(),
+                message_strategy_instance,
             )
         except NotificationContextBuildError as exp:
             log.warning(
@@ -142,8 +142,8 @@ class BundleAnalysisNotifyService:
     def get_notification_contexts(
         self,
         base_context: BaseBundleAnalysisNotificationContext,
-        notification_types: list[NotificationType],
-    ) -> list[BaseBundleAnalysisNotificationContext]:
+        notification_types: tuple[NotificationType, ...],
+    ) -> list[NotificationFullContext]:
         previous_context = base_context
         specific_contexts = []
         for notification_type in notification_types:

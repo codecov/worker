@@ -37,11 +37,13 @@ def test_notification_type(mocker):
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
+            mocker.MagicMock(),
         ).notification_type
         == Notification.status_project
     )
     assert (
         ChangesStatusNotifier(
+            mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
             mocker.MagicMock(),
@@ -332,6 +334,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"only_pulls": True},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         assert not only_pulls_notifier.can_we_set_this_status(comparison)
         wrong_branch_notifier = StatusNotifier(
@@ -340,6 +343,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"only_pulls": False, "branches": ["old.*"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         assert not wrong_branch_notifier.can_we_set_this_status(comparison)
         right_branch_notifier = StatusNotifier(
@@ -348,6 +352,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"only_pulls": False, "branches": ["new.*"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         assert right_branch_notifier.can_we_set_this_status(comparison)
         no_settings_notifier = StatusNotifier(
@@ -356,6 +361,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         assert no_settings_notifier.can_we_set_this_status(comparison)
         exclude_branch_notifier = StatusNotifier(
@@ -364,6 +370,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"only_pulls": False, "branches": ["!new_branch"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         assert not exclude_branch_notifier.can_we_set_this_status(comparison)
 
@@ -391,6 +398,7 @@ class TestBaseStatusNotifier(object):
                     },
                 }
             ),
+            repository_service={},
         )
         mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
         result = no_settings_notifier.notify(comparison)
@@ -423,6 +431,7 @@ class TestBaseStatusNotifier(object):
                     },
                 }
             ),
+            repository_service={},
         )
         mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
         result = no_settings_notifier.notify(comparison)
@@ -440,6 +449,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         mocker.patch.object(
             StatusNotifier, "can_we_set_this_status", return_value=False
@@ -461,6 +471,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         no_settings_notifier.context = "fake"
         mocker.patch.object(StatusNotifier, "can_we_set_this_status", return_value=True)
@@ -516,6 +527,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         notifier.context = "fake"
 
@@ -551,22 +563,20 @@ class TestBaseStatusNotifier(object):
             ) -> bool:
                 return False
 
+        fake_repo_service = MagicMock(
+            name="fake_repo_provider",
+            set_commit_status=AsyncMock(side_effect=set_status_side_effect),
+        )
         notifier = TestNotifier(
             repository=comparison.head.commit.repository,
             title="title",
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=fake_repo_service,
         )
         notifier.context = "fake"
 
-        fake_repo_service = MagicMock(
-            name="fake_repo_provider",
-            set_commit_status=AsyncMock(side_effect=set_status_side_effect),
-        )
-        mocker.patch.object(
-            TestNotifier, "repository_service", return_value=fake_repo_service
-        )
         result = notifier.notify(comparison)
         assert result == NotificationResult(
             notification_attempted=True,
@@ -605,6 +615,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         notifier.context = "fake"
 
@@ -633,6 +644,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         no_settings_notifier.context = "fake"
         mocked_status_already_exists = mocker.patch.object(
@@ -664,6 +676,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         no_settings_notifier.context = "fake"
         mocked_status_already_exists = mocker.patch.object(
@@ -687,6 +700,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         no_settings_notifier.context = "fake"
         mocked_status_already_exists = mocker.patch.object(
@@ -721,6 +735,7 @@ class TestBaseStatusNotifier(object):
                     }
                 }
             },
+            repository_service={},
         )
         notifier.context = "fake"
         assert (
@@ -746,6 +761,7 @@ class TestBaseStatusNotifier(object):
                     }
                 }
             },
+            repository_service={},
         )
         notifier.context = "fake"
         assert (
@@ -762,6 +778,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={"coverage": {"status": {"default_rules": {}, "project": {}}}},
+            repository_service={},
         )
         notifier.context = "fake"
         assert (
@@ -781,6 +798,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"flags": ["missing"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         notifier.context = "fake"
         assert notifier.flag_coverage_was_uploaded(comparison) is False
@@ -795,6 +813,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"flags": ["unit"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         notifier.context = "fake"
         assert notifier.flag_coverage_was_uploaded(comparison) is True
@@ -809,6 +828,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"flags": ["unit", "enterprise", "missing"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         notifier.context = "fake"
         assert notifier.flag_coverage_was_uploaded(comparison) is True
@@ -823,6 +843,7 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"flags": None},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         notifier.context = "fake"
         assert notifier.flag_coverage_was_uploaded(comparison) is True
@@ -854,9 +875,9 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"flags": None},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=fake_torngit,
         )
         notifier.context = "fake"
-        notifier._repository_service = fake_torngit
         assert notifier.get_github_app_used() == expected
 
     def test_get_github_app_used_no_repository_service(
@@ -869,9 +890,9 @@ class TestBaseStatusNotifier(object):
             notifier_yaml_settings={"flags": None},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=None,
         )
         notifier.context = "fake"
-        notifier._repository_service = None
         assert notifier.get_github_app_used() is None
 
 
@@ -886,6 +907,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
@@ -905,6 +927,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
             decoration_type=Decoration.passing_empty_upload,
         )
         expected_result = {
@@ -924,6 +947,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
             decoration_type=Decoration.failing_empty_upload,
         )
         expected_result = {
@@ -943,6 +967,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
             decoration_type=Decoration.upgrade,
         )
         base_commit = sample_comparison.project_coverage_base.commit
@@ -966,6 +991,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
         result = notifier.build_payload(sample_comparison)
@@ -981,6 +1007,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={"target": 57.0},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
         result = notifier.build_payload(sample_comparison)
@@ -1000,9 +1027,8 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
-        base_commit = comparison.project_coverage_base.commit
-        head_commit = comparison.head.commit
         expected_result = {
             "message": "No report found to compare against",
             "state": "success",
@@ -1022,6 +1048,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = sample_comparison.project_coverage_base.commit
         expected_result = NotificationResult(
@@ -1053,9 +1080,9 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         base_commit = sample_comparison.project_coverage_base.commit
-        head_commit = sample_comparison.head.commit
         repo = sample_comparison.head.commit.repository
         expected_result = NotificationResult(
             notification_attempted=True,
@@ -1086,9 +1113,9 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         base_commit = sample_comparison.project_coverage_base.commit
-        head_commit = sample_comparison.head.commit
         repo = sample_comparison.head.commit.repository
         expected_result = NotificationResult(
             notification_attempted=True,
@@ -1119,6 +1146,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = (
             sample_comparison_coverage_carriedforward.project_coverage_base.commit
@@ -1151,6 +1179,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = (
             sample_comparison_coverage_carriedforward.project_coverage_base.commit
@@ -1183,6 +1212,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = (
             sample_comparison_coverage_carriedforward.project_coverage_base.commit
@@ -1214,6 +1244,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = NotificationResult(
             notification_attempted=False,
@@ -1239,6 +1270,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = (
             sample_comparison_coverage_carriedforward.project_coverage_base.commit
@@ -1275,6 +1307,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = (
             sample_comparison_coverage_carriedforward.project_coverage_base.commit
@@ -1307,6 +1340,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = (
             sample_comparison_coverage_carriedforward.project_coverage_base.commit
@@ -1339,6 +1373,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={"paths": ["file_1.go"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
@@ -1363,8 +1398,8 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={"paths": ["file_1.go"], "flags": ["unit"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
-        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             # base report does not have unit flag, so there is no coverage there
             "message": "No coverage information found on base report",
@@ -1392,6 +1427,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={"paths": ["file_1.go"], "flags": ["unit"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = sample_comparison_matching_flags.project_coverage_base.commit
         expected_result = {
@@ -1442,6 +1478,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         expected_result = {
             "message": "60.00% (target 80.00%), passed because this change only removed code",
@@ -1555,6 +1592,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings=settings,
             notifier_site_settings={},
             current_yaml=settings,
+            repository_service={},
         )
         result = status_mixin._apply_adjust_base_behavior(comparison)
         assert result == expected
@@ -1593,6 +1631,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={"removed_code_behavior": "adjust_base"},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         expected_result = {
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by 0% when compared to adjusted base (50.00%)",
@@ -1627,6 +1666,7 @@ class TestProjectStatusNotifier(object):
                     },
                 ],
             },
+            repository_service=None,
         )
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = ProjectStatusNotifier(
@@ -1638,6 +1678,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=None,
         )
         expected_result = {
             "message": "60.00% (target 80.00%)",
@@ -1681,6 +1722,7 @@ class TestProjectStatusNotifier(object):
             notifier_yaml_settings={"removed_code_behavior": "adjust_base"},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         expected_result = {
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}",
@@ -1707,6 +1749,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         expected_result = {
             "message": "50.00% (target 80.00%)",
@@ -1729,6 +1772,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         expected_result = {
             "message": "60.00% (target 80.00%)",
@@ -1780,6 +1824,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "50.00% (target 70.00%)",
@@ -1832,6 +1877,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "28.57% (target 70.00%), passed because patch was fully covered by tests, and no indirect coverage changes",
@@ -1992,6 +2038,7 @@ class TestProjectStatusNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service={},
         )
         expected_result = {
             "message": "60.00% (target 70.00%), passed because coverage was not affected by patch",
@@ -2013,6 +2060,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "66.67% of diff hit (target 50.00%)",
@@ -2031,6 +2079,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
             decoration_type=Decoration.upgrade,
         )
         expected_result = {
@@ -2050,6 +2099,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={"target": "70%"},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "66.67% of diff hit (target 70.00%)",
@@ -2068,6 +2118,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={"target": 57.0},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "66.67% of diff hit (target 57.00%)",
@@ -2092,6 +2143,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={"threshold": "5"},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
@@ -2116,6 +2168,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={"threshold": None},  # invalid value for threshold
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "66.67% of diff hit (target 70.00%)",
@@ -2142,6 +2195,7 @@ class TestPatchStatusNotifier(object):
             },  # invalid value for threshold, caught and fixed
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
@@ -2189,6 +2243,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         base_commit = sample_comparison.project_coverage_base.commit
         head_commit = sample_comparison.head.commit
@@ -2242,6 +2297,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {"message": "Coverage not affected", "state": "success"}
         result = notifier.build_payload(comparison)
@@ -2261,6 +2317,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "No report found to compare against",
@@ -2286,6 +2343,7 @@ class TestPatchStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "50.00% of diff hit (target 76.92%)",
@@ -2306,6 +2364,7 @@ class TestChangesStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "No indirect coverage changes found",
@@ -2324,6 +2383,7 @@ class TestChangesStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
             decoration_type=Decoration.upgrade,
         )
         expected_result = {
@@ -2350,6 +2410,7 @@ class TestChangesStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "3 files have indirect coverage changes not visible in diff",
@@ -2372,6 +2433,7 @@ class TestChangesStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
         expected_result = {
             "message": "Unable to determine changes, no report found at pull request base",
@@ -2393,8 +2455,8 @@ class TestChangesStatusNotifier(object):
             notifier_yaml_settings={"paths": ["file_1.go"]},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
         )
-        base_commit = sample_comparison.project_coverage_base.commit
         expected_result = {
             "message": "No indirect coverage changes found",
             "state": "success",
@@ -2414,6 +2476,7 @@ class TestChangesStatusNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
             decoration_type=Decoration.passing_empty_upload,
         )
         expected_result = {"state": "success", "message": "Non-testable files changed."}

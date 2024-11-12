@@ -5,7 +5,6 @@ import logging
 import httpx
 from shared.celery_config import brolly_stats_rollup_task_name
 from shared.config import get_config
-from shared.metrics import metrics
 
 from app import celery_app
 from database.models import Commit, Constants, Repository, Upload, User
@@ -115,10 +114,8 @@ class BrollyStatsRollupTask(CodecovCronTask, name=brolly_stats_rollup_task_name)
                 log.info(
                     "Successfully uploaded stats to brolly", extra=dict(response=res)
                 )
-                metrics.incr(f"{self.metrics_prefix}.upload_success")
             case _:
                 log.error("Failed to upload stats to brolly", extra=dict(response=res))
-                metrics.incr(f"{self.metrics_prefix}.upload_failure")
                 return dict(uploaded=False, payload=payload)
 
         return dict(uploaded=True, payload=payload)

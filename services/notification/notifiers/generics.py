@@ -16,7 +16,6 @@ from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import get_paths_from_flags, round_number
 
@@ -33,18 +32,6 @@ class StandardNotifier(AbstractBaseNotifier):
     - Filters the reports according to the given paths and flags
     - Check that the threshold of the webhook is satisfied on this comparison
     """
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._repository_service = None
-
-    @property
-    def repository_service(self):
-        if not self._repository_service:
-            self._repository_service = get_repo_provider_service(
-                self.repository, installation_name_to_use=self.gh_installation_name
-            )
-        return self._repository_service
 
     def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass

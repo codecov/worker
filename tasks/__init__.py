@@ -2,7 +2,6 @@
 from app import celery_app
 from tasks.activate_account_user import activate_account_user_task
 from tasks.ai_pr_review import ai_pr_view_task
-from tasks.backfill_commit_data_to_storage import backfill_commit_data_to_storage_task
 from tasks.backfill_existing_gh_app_installations import (
     backfill_existing_gh_app_installations_name,
     backfill_existing_individual_gh_app_installation_name,
@@ -17,6 +16,8 @@ from tasks.bundle_analysis_processor import bundle_analysis_processor_task
 from tasks.bundle_analysis_save_measurements import (
     bundle_analysis_save_measurements_task,
 )
+from tasks.cache_test_rollups import cache_test_rollups_task
+from tasks.cache_test_rollups_redis import cache_test_rollups_redis_task
 from tasks.commit_update import commit_update_task
 from tasks.compute_comparison import compute_comparison_task
 from tasks.delete_owner import delete_owner_task
@@ -58,6 +59,5 @@ from tasks.trial_expiration import trial_expiration_task
 from tasks.trial_expiration_cron import trial_expiration_cron_task
 from tasks.update_branches import update_branches_task_name
 from tasks.upload import upload_task
-from tasks.upload_clean_labels_index import clean_labels_index_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task

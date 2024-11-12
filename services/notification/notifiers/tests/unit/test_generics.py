@@ -32,6 +32,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=False,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -47,6 +48,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.is_enabled()
 
@@ -62,6 +64,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"field_1": "something"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -77,6 +80,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=["example.com"],
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.is_enabled()
 
@@ -92,6 +96,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=["badexample.com"],
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -102,6 +107,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
@@ -115,6 +121,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(sample_comparison)
 
@@ -128,6 +135,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
@@ -141,6 +149,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(sample_comparison)
 
@@ -156,6 +165,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(
             sample_comparison_without_base_report
@@ -171,6 +181,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
@@ -189,6 +200,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(actual_comparison)
 
@@ -202,6 +214,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         res = notifier.notify(sample_comparison)
         assert res.notification_attempted
@@ -220,6 +233,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         mocker.patch.object(
             SampleNotifierForTest, "should_notify_comparison", return_value=False
@@ -245,6 +259,7 @@ class TestRequestsYamlBasedNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         data = {}
         res = notifier.send_actual_notification(data)

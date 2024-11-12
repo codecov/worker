@@ -1,4 +1,5 @@
 from helpers.environment import Environment
+from helpers.log_context import LogContext, set_log_context
 from helpers.logging_config import (
     CustomLocalJsonFormatter,
     config_dict,
@@ -28,26 +29,29 @@ class TestLoggingConfig(object):
         get_current_env.return_value = Environment.production
         assert get_logging_config_dict() == config_dict
 
-    def test_add_fields_no_task(self, mocker):
+    def test_add_fields_empty_log_context(self, mocker):
+        set_log_context(LogContext())
         log_record, record, message_dict = {}, mocker.MagicMock(), {"message": "aaa"}
         log_formatter = CustomLocalJsonFormatter()
         log_formatter.add_fields(log_record, record, message_dict)
         assert log_record == {
             "message": "aaa",
             "method_calls": [],
-            "task_id": "???",
-            "task_name": "???",
+            "context": LogContext().as_dict(),
         }
 
-    def test_add_fields_with_task(self, mocker):
-        _ = mocker.patch("helpers.logging_config.task_name", "lkjhg")
-        _ = mocker.patch("helpers.logging_config.task_id", "abcdef")
+    def test_add_fields_populated_log_context(self, mocker):
+        log_context = LogContext(
+            task_name="lkjhg", task_id="abcdef", repo_id=5, owner_id=3
+        )
+        set_log_context(log_context)
+
         log_record, record, message_dict = {}, mocker.MagicMock(), {"message": "aaa"}
         log_formatter = CustomLocalJsonFormatter()
         log_formatter.add_fields(log_record, record, message_dict)
+
         assert log_record == {
             "message": "aaa",
             "method_calls": [],
-            "task_id": "abcdef",
-            "task_name": "lkjhg",
+            "context": log_context.as_dict(),
         }

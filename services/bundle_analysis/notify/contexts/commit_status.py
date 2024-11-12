@@ -39,16 +39,12 @@ from services.urls import get_bundle_analysis_pull_url, get_commit_url
 class CommitStatusNotificationContext(BaseBundleAnalysisNotificationContext):
     notification_type = NotificationType.COMMIT_STATUS
 
-    pull: EnrichedPull | None = NotificationContextField[EnrichedPull | None]()
-    bundle_analysis_comparison: BundleAnalysisComparison = NotificationContextField[
-        BundleAnalysisComparison
-    ]()
-    commit_status_level: CommitStatusLevel = NotificationContextField[
-        CommitStatusLevel
-    ]()
-    commit_status_url: str = NotificationContextField[str]()
-    cache_ttl: int = NotificationContextField[int]()
-    should_use_upgrade_comment: bool = NotificationContextField[bool]()
+    pull = NotificationContextField[EnrichedPull | None]()
+    bundle_analysis_comparison = NotificationContextField[BundleAnalysisComparison]()
+    commit_status_level = NotificationContextField[CommitStatusLevel]()
+    commit_status_url = NotificationContextField[str]()
+    cache_ttl = NotificationContextField[int]()
+    should_use_upgrade_comment = NotificationContextField[bool]()
 
     @property
     def base_commit(self) -> Commit:
@@ -58,7 +54,7 @@ class CommitStatusNotificationContext(BaseBundleAnalysisNotificationContext):
 
 
 class CommitStatusNotificationContextBuilder(NotificationContextBuilder):
-    fields_of_interest: tuple[str] = (
+    fields_of_interest: tuple[str, ...] = (
         "commit_report",
         "bundle_analysis_report",
         "user_config",

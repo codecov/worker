@@ -12,6 +12,7 @@ from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.django_apps.bundle_analysis.service.bundle_analysis import (
     BundleAnalysisCacheConfigService,
 )
+from shared.metrics import Counter
 from shared.reports.enums import UploadState, UploadType
 from shared.storage.exceptions import FileNotInStorageError, PutRequestRateLimitError
 from shared.utils.sessions import SessionType
@@ -28,6 +29,16 @@ from services.storage import get_storage_client
 from services.timeseries import repository_datasets_query
 
 log = logging.getLogger(__name__)
+
+
+BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER = Counter(
+    "bundle_analysis_report_processor_runs",
+    "Number of times a BA report processor was run and with what result",
+    [
+        "result",
+        "plugin_name",
+    ],
+)
 
 
 @dataclass
@@ -87,13 +98,10 @@ class ProcessingResult:
             self.upload.upload_type = SessionType.carriedforward.value
             self.upload_type_id = UploadType.CARRIEDFORWARD.db_id
 
-        sentry_sdk.metrics.incr(
-            "bundle_analysis_upload",
-            tags={
-                "result": "upload_error" if self.error else "processed",
-            },
-        )
-
+        BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+            result="upload_error" if self.error else "processed",
+            plugin_name="n/a",
+        ).inc()
         db_session.flush()
 
 
@@ -147,12 +155,13 @@ class BundleAnalysisReportService(BaseReportService):
             .first()
         )
 
+    @sentry_sdk.trace
     def _previous_bundle_analysis_report(
         self,
         bundle_loader: BundleAnalysisReportLoader,
         commit: Commit,
-        head_bundle_report: BundleAnalysisReport,
-    ) -> Optional[BundleAnalysisReport]:
+        head_bundle_report: BundleAnalysisReport | None,
+    ) -> BundleAnalysisReport | None:
         """
         Helper function to fetch the parent commit's BAR for the purpose of matching previous bundle's
         Assets to the current one being parsed.
@@ -181,8 +190,43 @@ class BundleAnalysisReportService(BaseReportService):
         return bundle_loader.load(parent_commit_report.external_id)
 
     @sentry_sdk.trace
+    def _attempt_init_from_previous_report(
+        self,
+        commit: Commit,
+        bundle_loader: BundleAnalysisReportLoader,
+    ) -> BundleAnalysisReport:
+        """Attempts to carry over parent bundle analysis report if current commit doesn't have a report.
+        Fallback to creating a fresh bundle analysis report if there is no previous report to carry over.
+        """
+        # load a new copy of the previous bundle report into temp file
+        bundle_report = self._previous_bundle_analysis_report(
+            bundle_loader, commit, head_bundle_report=None
+        )
+        if bundle_report:
+            # query which bundle names has caching turned on
+            bundles_to_be_cached = CacheConfig.objects.filter(
+                is_caching=True,
+                repo_id=commit.repoid,
+            ).values_list("bundle_name", flat=True)
+
+            # For each bundle:
+            # if caching is on then update bundle.is_cached property to true
+            # if caching is off then delete that bundle from the report
+            update_fields = {}
+            for bundle in bundle_report.bundle_reports():
+                if bundle.name in bundles_to_be_cached:
+                    update_fields[bundle.name] = True
+                else:
+                    bundle_report.delete_bundle_by_name(bundle.name)
+            if update_fields:
+                bundle_report.update_is_cached(update_fields)
+            return bundle_report
+        # fallback to create a fresh bundle analysis report if there is no previous report to carry over
+        return BundleAnalysisReport()
+
+    @sentry_sdk.trace
     def process_upload(
-        self, commit: Commit, upload: Upload, compare_sha: Optional[str] = None
+        self, commit: Commit, upload: Upload, compare_sha: str | None = None
     ) -> ProcessingResult:
         """
         Download and parse the data associated with the given upload and
@@ -195,37 +239,10 @@ class BundleAnalysisReportService(BaseReportService):
 
         # fetch existing bundle report from storage
         bundle_report = bundle_loader.load(commit_report.external_id)
-
-        # attempt to carry over parent bundle analysis report if commit doesn't have a report
         if bundle_report is None:
-            # load a new copy of the previous bundle report into temp file
-            bundle_report = self._previous_bundle_analysis_report(
-                bundle_loader, commit, head_bundle_report=bundle_report
+            bundle_report = self._attempt_init_from_previous_report(
+                commit, bundle_loader
             )
-            if bundle_report:
-                # query which bundle names has caching turned on
-                qs = CacheConfig.objects.filter(
-                    is_caching=True,
-                    repo_id=commit.repoid,
-                )
-                bundles_to_be_cached = [item.bundle_name for item in qs]
-
-                # For each bundle,
-                # if caching is on then update bundle.is_cached property to true
-                # if caching is off then delete that bundle from the report
-                update_fields = {}
-                for bundle in bundle_report.bundle_reports():
-                    if bundle.name in bundles_to_be_cached:
-                        update_fields[bundle.name] = True
-                    else:
-                        bundle_report.delete_bundle_by_name(bundle.name)
-                if update_fields:
-                    bundle_report.update_is_cached(update_fields)
-
-        # fallback to create a fresh bundle analysis report if there is no previous
-        # report to carry over from
-        if bundle_report is None:
-            bundle_report = BundleAnalysisReport()
 
         # download raw upload data to local tempfile
         _, local_path = tempfile.mkstemp()
@@ -257,6 +274,10 @@ class BundleAnalysisReportService(BaseReportService):
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
         except FileNotInStorageError:
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="file_not_in_storage",
+                plugin_name="n/a",
+            ).inc()
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
@@ -268,13 +289,10 @@ class BundleAnalysisReportService(BaseReportService):
             )
         except PutRequestRateLimitError as e:
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "rate_limit_error",
-                    "plugin_name": plugin_name,
-                },
-            )
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="rate_limit_error",
+                plugin_name=plugin_name,
+            ).inc()
             return ProcessingResult(
                 upload=upload,
                 commit=commit,
@@ -287,13 +305,10 @@ class BundleAnalysisReportService(BaseReportService):
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "parser_error",
-                    "plugin_name": plugin_name,
-                },
-            )
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="parser_error",
+                plugin_name=plugin_name,
+            ).inc()
             log.error(
                 "Unable to parse upload for bundle analysis",
                 exc_info=True,
@@ -429,13 +444,10 @@ class BundleAnalysisReportService(BaseReportService):
                 commit=commit,
             )
         except Exception:
-            sentry_sdk.metrics.incr(
-                "bundle_analysis_upload",
-                tags={
-                    "result": "parser_error",
-                    "repository": commit.repository.repoid,
-                },
-            )
+            BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
+                result="parser_error",
+                plugin_name="n/a",
+            ).inc()
             return ProcessingResult(
                 upload=upload,
                 commit=commit,

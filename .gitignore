@@ -51,6 +51,8 @@ nosetests.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+*.junit.xml
+junit.xml
 
 # Translations
 *.mo

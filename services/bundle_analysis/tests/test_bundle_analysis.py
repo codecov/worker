@@ -5,6 +5,7 @@ import pytest
 from shared.bundle_analysis.comparison import BundleChange
 from shared.bundle_analysis.models import AssetType
 from shared.bundle_analysis.storage import get_bucket_name
+from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
 from shared.yaml import UserYaml
 
 from database.enums import ReportType
@@ -82,10 +83,11 @@ def hook_mock_pull(mocker, mock_pull):
             ],
             5.56,
             {
+                **PATCH_CENTRIC_DEFAULT_CONFIG,
                 "bundle_analysis": {
                     "status": "informational",
                     "warning_threshold": ["percentage", 5.0],
-                }
+                },
             },
             dedent("""\
             ## [Bundle](URL) Report
@@ -122,10 +124,11 @@ def hook_mock_pull(mocker, mock_pull):
             ],
             5.56,
             {
+                **PATCH_CENTRIC_DEFAULT_CONFIG,
                 "bundle_analysis": {
                     "status": True,
                     "warning_threshold": ["absolute", 10000],
-                }
+                },
             },
             dedent("""\
             ## [Bundle](URL) Report
@@ -162,10 +165,11 @@ def hook_mock_pull(mocker, mock_pull):
             ],
             3.46,
             {
+                **PATCH_CENTRIC_DEFAULT_CONFIG,
                 "bundle_analysis": {
                     "status": "informational",
                     "warning_threshold": ["percentage", 5.0],
-                }
+                },
             },
             dedent("""\
             ## [Bundle](URL) Report
@@ -197,10 +201,11 @@ def hook_mock_pull(mocker, mock_pull):
             ],
             -0.52,
             {
+                **PATCH_CENTRIC_DEFAULT_CONFIG,
                 "bundle_analysis": {
                     "status": "informational",
                     "warning_threshold": ["percentage", 5.0],
-                }
+                },
             },
             dedent("""\
             ## [Bundle](URL) Report
@@ -227,10 +232,11 @@ def hook_mock_pull(mocker, mock_pull):
             ],
             0,
             {
+                **PATCH_CENTRIC_DEFAULT_CONFIG,
                 "bundle_analysis": {
                     "status": "informational",
                     "warning_threshold": ["percentage", 5.0],
-                }
+                },
             },
             dedent("""\
             ## [Bundle](URL) Report

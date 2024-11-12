@@ -3,6 +3,7 @@ import datetime
 import uuid
 
 import httpx
+import pytest
 import respx
 from mock import Mock, patch
 
@@ -10,11 +11,32 @@ from database.models import Constants
 from database.tests.factories import (
     CommitFactory,
     ConstantsFactory,
+    ReportFactory,
     RepositoryFactory,
     UploadFactory,
     UserFactory,
 )
 from tasks.brolly_stats_rollup import DEFAULT_BROLLY_ENDPOINT, BrollyStatsRollupTask
+
+
+@pytest.fixture
+def version(dbsession) -> str:
+    version = dbsession.query(Constants).filter_by(key="version").scalar()
+    if version is None:
+        version = ConstantsFactory.create(key="version", value="hello")
+        dbsession.add(version)
+        dbsession.flush()
+    return version
+
+
+@pytest.fixture
+def install_id(dbsession) -> int:
+    install_id = dbsession.query(Constants).filter_by(key="install_id").scalar()
+    if install_id is None:
+        install_id = ConstantsFactory.create(key="install_id", value=str(uuid.uuid4()))
+        dbsession.add(install_id)
+        dbsession.flush()
+    return install_id
 
 
 def _get_n_hours_ago(n):
@@ -38,9 +60,7 @@ class TestBrollyStatsRollupTask(object):
         )
 
     @patch("tasks.brolly_stats_rollup.get_config", return_value=False)
-    def test_run_cron_task_while_disabled(self, mocker, dbsession):
-        task = BrollyStatsRollupTask()
-
+    def test_run_cron_task_while_disabled(self, dbsession):
         result = BrollyStatsRollupTask().run_cron_task(dbsession)
         assert result == {
             "uploaded": False,
@@ -48,7 +68,7 @@ class TestBrollyStatsRollupTask(object):
         }
 
     @respx.mock
-    def test_run_cron_task_http_ok(self, mocker, dbsession):
+    def test_run_cron_task_http_ok(self, dbsession, install_id, version):
         users = [UserFactory.create(name=name) for name in ("foo", "bar", "baz")]
         for user in users:
             dbsession.add(user)
@@ -73,8 +93,9 @@ class TestBrollyStatsRollupTask(object):
         for commit in commits:
             dbsession.add(commit)
 
+        report = ReportFactory.create(commit=commits[0])
         uploads = [
-            UploadFactory.create(created_at=created_at, report=None)
+            UploadFactory.create(created_at=created_at, report=report)
             for created_at in (
                 _get_n_hours_ago(5),
                 _get_n_hours_ago(16),
@@ -84,16 +105,11 @@ class TestBrollyStatsRollupTask(object):
         for upload in uploads:
             dbsession.add(upload)
 
-        install_id = ConstantsFactory.create(key="install_id", value=str(uuid.uuid4()))
-        version = ConstantsFactory.create(key="version", value="hello")
-        dbsession.add(install_id)
-        dbsession.add(version)
+        dbsession.flush()
 
         install_id_val = dbsession.query(Constants).get("install_id").value
         version_val = dbsession.query(Constants).get("version").value
         print("mattmatt", install_id_val, version_val)
-
-        dbsession.flush()
 
         mock_request = respx.post(DEFAULT_BROLLY_ENDPOINT).mock(
             return_value=httpx.Response(200)
@@ -117,18 +133,10 @@ class TestBrollyStatsRollupTask(object):
         }
 
     @respx.mock
-    def test_run_cron_task_not_ok(self, mocker, dbsession):
+    def test_run_cron_task_not_ok(self, dbsession, install_id, version):
         mock_request = respx.post(DEFAULT_BROLLY_ENDPOINT).mock(
             return_value=httpx.Response(500)
         )
-
-        install_id = ConstantsFactory.create(key="install_id", value=str(uuid.uuid4()))
-        version = ConstantsFactory.create(key="version", value="hello")
-        dbsession.add(install_id)
-        dbsession.add(version)
-
-        dbsession.flush()
-
         task = BrollyStatsRollupTask()
         result = task.run_cron_task(dbsession)
         assert mock_request.called
@@ -146,7 +154,9 @@ class TestBrollyStatsRollupTask(object):
         }
 
     @respx.mock
-    def test_run_cron_task_include_admin_email_if_populated(self, mocker, dbsession):
+    def test_run_cron_task_include_admin_email_if_populated(
+        self, mocker, dbsession, install_id, version
+    ):
         mock_request = respx.post(DEFAULT_BROLLY_ENDPOINT).mock(
             return_value=httpx.Response(200)
         )
@@ -154,13 +164,6 @@ class TestBrollyStatsRollupTask(object):
         mocker.patch.object(
             BrollyStatsRollupTask, "_get_admin_email", return_value="hello"
         )
-
-        install_id = ConstantsFactory.create(key="install_id", value=str(uuid.uuid4()))
-        version = ConstantsFactory.create(key="version", value="hello")
-        dbsession.add(install_id)
-        dbsession.add(version)
-
-        dbsession.flush()
 
         task = BrollyStatsRollupTask()
         result = task.run_cron_task(dbsession)

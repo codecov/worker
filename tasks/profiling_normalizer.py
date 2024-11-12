@@ -2,7 +2,6 @@ import dataclasses
 import json
 import logging
 from base64 import b64decode
-from io import BytesIO
 from typing import Dict
 
 from shared.celery_config import profiling_normalization_task_name
@@ -109,7 +108,7 @@ class ProfilingNormalizerTask(BaseCodecovTask, name=profiling_normalization_task
                 number_spans += 1
                 report_file_upload = ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(b64decode(element["codecov"]["coverage"])),
+                    file_contents=b64decode(element["codecov"]["coverage"]),
                 )
                 path_fixer = PathFixer.init_from_user_yaml(
                     current_yaml,

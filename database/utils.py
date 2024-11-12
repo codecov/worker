@@ -1,8 +1,8 @@
-import json
 import logging
 import time
 from typing import Any, Callable, Optional
 
+import orjson
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
 
@@ -102,7 +102,7 @@ class ArchiveField:
                 # we're within the timeout window
                 try:
                     file_str = archive_service.read_file(archive_field)
-                    result = self.rehydrate_fn(obj, json.loads(file_str))
+                    result = self.rehydrate_fn(obj, orjson.loads(file_str))
                     if error:
                         # we previously errored and now it succeeded
                         log.info(

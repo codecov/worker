@@ -12,6 +12,7 @@ from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
 from shared.helpers.yaml import default_if_true
 from shared.plan.constants import TEAM_PLAN_REPRESENTATIONS
+from shared.torngit.base import TorngitBaseAdapter
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner, Repository
@@ -52,12 +53,14 @@ class NotificationService(object):
         self,
         repository: Repository,
         current_yaml: UserYaml,
+        repository_service: TorngitBaseAdapter,
         decoration_type=Decoration.standard,
         gh_installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     ) -> None:
         self.repository = repository
         self.current_yaml = current_yaml
         self.decoration_type = decoration_type
+        self.repository_service = repository_service
         self.gh_installation_name_to_use = gh_installation_name_to_use
 
     def _should_use_status_notifier(self, status_type: StatusType) -> bool:
@@ -115,8 +118,8 @@ class NotificationService(object):
                     notifier_yaml_settings=status_config,
                     notifier_site_settings={},
                     current_yaml=self.current_yaml,
+                    repository_service=self.repository_service,
                     decoration_type=self.decoration_type,
-                    gh_installation_name_to_use=self.gh_installation_name_to_use,
                 ),
                 status_notifier=status_notifier_class(
                     repository=self.repository,
@@ -124,8 +127,8 @@ class NotificationService(object):
                     notifier_yaml_settings=status_config,
                     notifier_site_settings={},
                     current_yaml=self.current_yaml,
+                    repository_service=self.repository_service,
                     decoration_type=self.decoration_type,
-                    gh_installation_name_to_use=self.gh_installation_name_to_use,
                 ),
             )
         else:
@@ -135,8 +138,8 @@ class NotificationService(object):
                 notifier_yaml_settings=status_config,
                 notifier_site_settings={},
                 current_yaml=self.current_yaml,
+                repository_service=self.repository_service,
                 decoration_type=self.decoration_type,
-                gh_installation_name_to_use=self.gh_installation_name_to_use,
             )
 
     def get_notifiers_instances(self) -> Iterator[AbstractBaseNotifier]:
@@ -154,6 +157,7 @@ class NotificationService(object):
                             "services", "notifications", instance_type, default=True
                         ),
                         current_yaml=self.current_yaml,
+                        repository_service=self.repository_service,
                         decoration_type=self.decoration_type,
                     )
 
@@ -175,8 +179,8 @@ class NotificationService(object):
                 notifier_yaml_settings=slack_app_yaml_field,
                 notifier_site_settings={},
                 current_yaml=self.current_yaml,
+                repository_service=self.repository_service,
                 decoration_type=self.decoration_type,
-                gh_installation_name_to_use=self.gh_installation_name_to_use,
             )
 
         comment_yaml_field = read_yaml_field(self.current_yaml, ("comment",))
@@ -188,8 +192,8 @@ class NotificationService(object):
                     notifier_yaml_settings=comment_yaml_field,
                     notifier_site_settings={},
                     current_yaml=self.current_yaml,
+                    repository_service=self.repository_service,
                     decoration_type=self.decoration_type,
-                    gh_installation_name_to_use=self.gh_installation_name_to_use,
                 )
 
     def _get_component_statuses(self, current_flags: List[str]):

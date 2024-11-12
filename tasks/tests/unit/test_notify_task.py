@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, call
 
@@ -43,7 +44,11 @@ from services.notification.notifiers.base import (
 )
 from services.report import ReportService
 from services.repository import EnrichedPull
-from tasks.notify import NotifyTask
+from tasks.notify import (
+    NotifyTask,
+    _possibly_pin_commit_to_github_app,
+    _possibly_refresh_previous_selection,
+)
 
 
 def _create_checkpoint_logger(mocker):
@@ -268,8 +273,12 @@ class TestNotifyTaskHelpers(object):
         self, cached_id, app_to_save, mocker, dbsession
     ):
         commit = CommitFactory(repository__owner__service="github")
-        app = GithubAppInstallation(id_=12, owner=commit.repository.owner)
-        other_app = GithubAppInstallation(id_=24, owner=commit.repository.owner)
+        app = GithubAppInstallation(
+            id_=12, owner=commit.repository.owner, installation_id=123
+        )
+        other_app = GithubAppInstallation(
+            id_=24, owner=commit.repository.owner, installation_id=123
+        )
         commit_notifications = [
             CommitNotification(
                 commit=commit,
@@ -295,8 +304,7 @@ class TestNotifyTaskHelpers(object):
             "tasks.notify.set_github_app_for_commit"
         )
         mocker.patch("tasks.notify.get_github_app_for_commit", return_value=cached_id)
-        task = NotifyTask()
-        assert task._possibly_refresh_previous_selection(commit) == True
+        assert _possibly_refresh_previous_selection(commit) == True
         mock_set_gh_app_for_commit.assert_called_with(app_to_save, commit)
 
     def test__possibly_refresh_previous_selection_false(self, mocker, dbsession):
@@ -307,8 +315,7 @@ class TestNotifyTaskHelpers(object):
         mock_set_gh_app_for_commit = mocker.patch(
             "tasks.notify.set_github_app_for_commit"
         )
-        task = NotifyTask()
-        assert task._possibly_refresh_previous_selection(commit) == False
+        assert _possibly_refresh_previous_selection(commit) == False
         mock_set_gh_app_for_commit.assert_not_called()
 
     def test_possibly_pin_commit_to_github_app_not_github_or_no_installation(
@@ -318,28 +325,27 @@ class TestNotifyTaskHelpers(object):
         commit_from_gh = CommitFactory(repository__owner__service="github")
         dbsession.add_all([commit, commit_from_gh])
         dbsession.flush()
-        mock_refresh_selection = mocker.patch.object(
-            NotifyTask, "_possibly_refresh_previous_selection", return_value=None
+        mock_refresh_selection = mocker.patch(
+            "tasks.notify._possibly_refresh_previous_selection", return_value=None
         )
         torngit = MagicMock(data=TorngitInstanceData())
         torngit_with_installation = MagicMock(
             data=TorngitInstanceData(installation=GithubInstallationInfo(id=12))
         )
-        task = NotifyTask()
         assert (
-            task._possibly_pin_commit_to_github_app(commit, torngit_with_installation)
+            _possibly_pin_commit_to_github_app(commit, torngit_with_installation)
             is None
         )
         mock_refresh_selection.assert_not_called()
-        assert task._possibly_pin_commit_to_github_app(commit_from_gh, torngit) is None
+        assert _possibly_pin_commit_to_github_app(commit_from_gh, torngit) is None
         mock_refresh_selection.assert_called_with(commit_from_gh)
 
     def test_possibly_pin_commit_to_github_app_new_selection(self, mocker, dbsession):
         commit = CommitFactory(repository__owner__service="github")
         dbsession.add(commit)
         dbsession.flush()
-        mock_refresh_selection = mocker.patch.object(
-            NotifyTask, "_possibly_refresh_previous_selection", return_value=None
+        mock_refresh_selection = mocker.patch(
+            "tasks.notify._possibly_refresh_previous_selection", return_value=None
         )
         mock_set_gh_app_for_commit = mocker.patch(
             "tasks.notify.set_github_app_for_commit"
@@ -347,8 +353,7 @@ class TestNotifyTaskHelpers(object):
         torngit = MagicMock(
             data=TorngitInstanceData(installation=GithubInstallationInfo(id=12))
         )
-        task = NotifyTask()
-        assert task._possibly_pin_commit_to_github_app(commit, torngit) == 12
+        assert _possibly_pin_commit_to_github_app(commit, torngit) == 12
         mock_refresh_selection.assert_called_with(commit)
         mock_set_gh_app_for_commit.assert_called_with(12, commit)
 
@@ -453,6 +458,8 @@ class TestNotifyTask(object):
             pullid=None,
             branch="test-branch-1",
             commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         mocked_fetch_yaml = mocker.patch(
             "services.yaml.fetch_commit_yaml_from_provider"
@@ -609,9 +616,6 @@ class TestNotifyTask(object):
         assert result["notifications"][0] == expected_result["notifications"][0]
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
-        dbsession.flush()
-        dbsession.refresh(commit)
-        assert commit.notified is True
 
         calls = [
             call(
@@ -660,9 +664,6 @@ class TestNotifyTask(object):
             "notified": True,
             "notifications": mocked_submit_third_party_notifications.return_value,
         }
-        dbsession.flush()
-        dbsession.refresh(commit)
-        assert commit.notified is True
 
     def test_simple_call_should_delay(
         self, dbsession, mocker, mock_storage, mock_configuration
@@ -1013,6 +1014,7 @@ class TestNotifyTask(object):
             base_report,
             head_report,
             enrichedPull,
+            mocker.MagicMock(),
         )
         assert expected_result == res
 
@@ -1160,6 +1162,7 @@ class TestNotifyTask(object):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = (
             "https://codecov.io"
         )
+        mocker.patch("tasks.notify.get_repo_provider_service_for_specific_commit")
         mocker.patch.object(NotifyTask, "app")
         mocker.patch.object(NotifyTask, "save_patch_totals")
         mocker.patch.object(NotifyTask, "should_send_notifications", return_value=True)

@@ -22,3 +22,5 @@ TEMPLATES = [
         },
     }
 ]
+
+DATABASES["default"]["TEST"] = {"NAME": "test_postgres_django"}

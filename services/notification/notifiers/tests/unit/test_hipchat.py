@@ -14,6 +14,7 @@ class TestHipchatkNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
@@ -43,6 +44,7 @@ class TestHipchatkNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.build_payload(comparison)
         commit = comparison.head.commit
@@ -68,6 +70,7 @@ class TestHipchatkNotifier(object):
             notifier_yaml_settings={"card": True},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.build_payload(sample_comparison)
         commit = sample_comparison.head.commit

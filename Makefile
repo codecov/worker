@@ -199,6 +199,9 @@ push.self-hosted-rolling:
 	docker push ${DOCKERHUB_REPO}:rolling_no_dependencies
 	docker push ${DOCKERHUB_REPO}:rolling
 
+shell:
+	docker-compose exec worker bash
+
 test_env.up:
 	env | grep GITHUB > .testenv; true
 	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose up -d
@@ -213,6 +216,7 @@ test_env.install_cli:
 	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
+	apt-get update
 	apt-get install -y git build-essential netcat-traditional
 	make test_env.install_cli
 	git config --global --add safe.directory /worker
@@ -232,8 +236,8 @@ test_env.upload:
 	docker-compose exec worker make test_env.container_upload_test_results CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
-	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml
-	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
+	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml --disable-search
+	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml --disable-search
 
 test_env.container_upload_test_results:
 	codecovcli -v -u ${CODECOV_URL} do-upload --report-type test_results || true

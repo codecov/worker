@@ -1,13 +1,12 @@
 import copy
 import itertools
 import logging
-import sys
 import uuid
 from dataclasses import dataclass
-from json import loads
 from time import time
-from typing import Any, Mapping, Sequence
+from typing import Any
 
+import orjson
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
@@ -17,17 +16,16 @@ from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
-from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitError
 from shared.upload.constants import UploadErrorCode
 from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
+from sqlalchemy.orm import Session as DbSession
 
 from database.models import Commit, Repository, Upload, UploadError
 from database.models.reports import (
     CommitReport,
-    ReportDetails,
     ReportLevelTotals,
     RepositoryFlag,
     UploadLevelTotals,
@@ -39,10 +37,14 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from helpers.parallel import ParallelFeature
-from helpers.telemetry import MetricContext
+from helpers.telemetry import log_simple_metric
 from rollouts import CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER
 from services.archive import ArchiveService
+from services.processing.metrics import (
+    PYREPORT_CHUNKS_FILE_SIZE,
+    PYREPORT_REPORT_JSON_SIZE,
+)
+from services.processing.types import ProcessingErrorDict, UploadArguments
 from services.report.parser import get_proper_parser
 from services.report.parser.types import ParsedRawReport
 from services.report.parser.version_one import VersionOneReportParser
@@ -50,10 +52,7 @@ from services.report.prometheus_metrics import (
     RAW_UPLOAD_RAW_REPORT_COUNT,
     RAW_UPLOAD_SIZE,
 )
-from services.report.raw_upload_processor import (
-    SessionAdjustmentResult,
-    process_raw_upload,
-)
+from services.report.raw_upload_processor import process_raw_upload
 from services.repository import get_repo_provider_service
 from services.yaml.reader import get_paths_from_flags, read_yaml_field
 
@@ -64,7 +63,7 @@ class ProcessingError:
     params: dict[str, Any]
     is_retryable: bool = False
 
-    def as_dict(self):
+    def as_dict(self) -> ProcessingErrorDict:
         return {"code": self.code, "params": self.params}
 
 
@@ -73,7 +72,6 @@ class ProcessingResult:
     session: Session
     report: Report | None = None
     error: ProcessingError | None = None
-    session_adjustment: SessionAdjustmentResult | None = None
 
 
 @dataclass
@@ -111,34 +109,27 @@ class BaseReportService:
         raise NotImplementedError()
 
     def create_report_upload(
-        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+        self, arguments: UploadArguments, commit_report: CommitReport
     ) -> Upload:
         """
         Creates an `Upload` from the user-given arguments to a job
 
         The end goal here is that the `Upload` should have all the information needed to
-            hypothetically redo the job later
-
-        Args:
-            normalized_arguments (Mapping[str, str]): The arguments as given by the user
-            commit_report (CommitReport): The commit_report we will attach this `Uplaod` to
-
-        Returns:
-            Upload
+        hypothetically redo the job later.
         """
         db_session = commit_report.get_db_session()
-        name = normalized_arguments.get("name")
+        name = arguments.get("name")
         upload = Upload(
-            external_id=normalized_arguments.get("reportid"),
-            build_code=normalized_arguments.get("build"),
-            build_url=normalized_arguments.get("build_url"),
-            env=None,
             report_id=commit_report.id_,
-            job_code=normalized_arguments.get("job"),
+            external_id=arguments.get("reportid"),
+            build_code=arguments.get("build"),
+            build_url=arguments.get("build_url"),
+            env=None,
+            job_code=arguments.get("job"),
             name=(name[:100] if name else None),
-            provider=normalized_arguments.get("service"),
+            provider=arguments.get("service"),
             state="started",
-            storage_path=normalized_arguments.get("url"),
+            storage_path=arguments.get("url"),
             order_number=None,
             upload_extras={},
             upload_type=SessionType.uploaded.value,
@@ -151,8 +142,6 @@ class BaseReportService:
 
 
 class ReportService(BaseReportService):
-    metrics_prefix = "services.report"
-
     def __init__(
         self, current_yaml: UserYaml | dict, gh_app_installation_name: str | None = None
     ):
@@ -178,8 +167,7 @@ class ReportService(BaseReportService):
 
 
             This is one of the main entrypoint of this class. It takes care of:
-                - Creating the most basic models relating to that commit
-                    report (CommitReport and ReportDetails), if needed
+                - Creating the `CommitReport`, if needed
                 - If that commit is old-style (was created before the report models were installed),
                     it takes care of backfilling all the information from the report into the new
                     report models
@@ -212,19 +200,6 @@ class ReportService(BaseReportService):
             )
             db_session.add(current_report_row)
             db_session.flush()
-            report_details = (
-                db_session.query(ReportDetails)
-                .filter_by(report_id=current_report_row.id_)
-                .first()
-            )
-            if report_details is None:
-                report_details = ReportDetails(
-                    report_id=current_report_row.id_,
-                    _files_array=[],
-                    report=current_report_row,
-                )
-                db_session.add(report_details)
-                db_session.flush()
 
             actual_report = self.get_existing_report_for_commit(
                 commit, report_code=report_code
@@ -238,36 +213,19 @@ class ReportService(BaseReportService):
                 #   yet into the new models therefore it needs backfilling
                 self.save_full_report(commit, actual_report)
 
-        elif current_report_row.details is None:
-            report_details = ReportDetails(
-                report_id=current_report_row.id_,
-                _files_array=[],
-                report=current_report_row,
-            )
-            db_session.add(report_details)
-            db_session.flush()
-
         if not self.has_initialized_report(commit):
             report = self.create_new_report_for_commit(commit)
             if not report.is_empty():
                 # This means there is a report to carryforward
                 self.save_full_report(commit, report, report_code)
 
-                parallel_processing = ParallelFeature.load(commit.repository.repoid)
-                # Behind parallel processing flag, save the CFF report to GCS so the parallel variant of
-                # finisher can build off of it later.
-                if parallel_processing is ParallelFeature.EXPERIMENT:
-                    self.save_parallel_report_to_archive(commit, report, report_code)
-
         return current_report_row
 
     def create_report_upload(
-        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+        self, arguments: UploadArguments, commit_report: CommitReport
     ) -> Upload:
-        upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags_str = normalized_arguments.get("flags")
-        flags = flags_str.split(",") if flags_str else []
-        self._attach_flags_to_upload(upload, flags)
+        upload = super().create_report_upload(arguments, commit_report)
+        self._attach_flags_to_upload(upload, arguments["flags"])
 
         # Insert entry in user measurements table only
         # for reports with coverage type
@@ -288,16 +246,12 @@ class ReportService(BaseReportService):
 
         return upload
 
-    def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):
-        """Internal function that manages creating the proper `RepositoryFlag`s and attach the sessions to them
-
-        Args:
-            upload (Upload): Description
-            flag_names (Sequence[str]): Description
-
-        Returns:
-            TYPE: Description
+    def _attach_flags_to_upload(self, upload: Upload, flag_names: list[str]):
         """
+        Internal function that manages creating the proper `RepositoryFlag`s,
+        and attach them to the `Upload`
+        """
+
         all_flags = []
         db_session = upload.get_db_session()
         repoid = upload.report.commit.repoid
@@ -497,13 +451,6 @@ class ReportService(BaseReportService):
             return Report()
 
         repo = commit.repository
-        metric_context = MetricContext(
-            commit_sha=commit.commitid,
-            commit_id=commit.id,
-            repo_id=commit.repoid,
-            owner_id=repo.ownerid,
-        )
-
         # This experiment is inactive because the data went back and forth
         # on whether it was impactful or not. The `Feature` is left here as
         # a knob to turn for support requests about carryforward flags, and
@@ -520,9 +467,7 @@ class ReportService(BaseReportService):
                 "Could not find parent for possible carryforward",
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
-            metric_context.log_simple_metric(
-                "worker_service_report_carryforward_base_not_found", 1
-            )
+            log_simple_metric("worker_service_report_carryforward_base_not_found", 1)
             return Report()
 
         parent_report = self.get_existing_report_for_commit(parent_commit)
@@ -579,9 +524,7 @@ class ReportService(BaseReportService):
         self._possibly_shift_carryforward_report(
             carryforward_report, parent_commit, commit
         )
-        metric_context.log_simple_metric(
-            "worker_service_report_carryforward_success", 1
-        )
+        log_simple_metric("worker_service_report_carryforward_success", 1)
         return carryforward_report
 
     @sentry_sdk.trace
@@ -637,7 +580,6 @@ class ReportService(BaseReportService):
     @sentry_sdk.trace
     def build_report_from_raw_content(
         self,
-        report: Report,
         raw_report_info: RawReportInfo,
         upload: Upload,
     ) -> ProcessingResult:
@@ -675,8 +617,6 @@ class ReportService(BaseReportService):
             log.info(
                 "Raw report file was not found",
                 extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     archive_url=archive_url,
@@ -692,11 +632,7 @@ class ReportService(BaseReportService):
         except Exception as e:
             log.exception(
                 "Unknown error when fetching raw report from storage",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    archive_path=archive_url,
-                ),
+                extra=dict(archive_path=archive_url),
             )
             result.error = ProcessingError(
                 code=UploadErrorCode.UNKNOWN_STORAGE,
@@ -708,24 +644,13 @@ class ReportService(BaseReportService):
 
         log.debug("Retrieved report for processing from url %s", archive_url)
         try:
-            process_result = process_raw_upload(
-                self.current_yaml,
-                report,
-                raw_report,
-                flags,
-                session,
-                upload=upload,
-            )
-            result.report = process_result.report
-            result.session_adjustment = process_result.session_adjustment
+            result.report = process_raw_upload(self.current_yaml, raw_report, session)
 
             log.info(
                 "Successfully processed report",
                 extra=dict(
                     session=session.id,
                     ci=f"{session.provider}:{session.build}:{session.job}",
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
                     reportid=reportid,
                     commit_yaml=self.current_yaml.to_dict(),
                     content_len=raw_report.size,
@@ -734,13 +659,9 @@ class ReportService(BaseReportService):
             return result
         except ReportExpiredException as r:
             log.info(
-                "Report %s is expired",
-                reportid,
+                "Report is expired",
                 extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    archive_path=archive_url,
-                    file_name=r.filename,
+                    reportid=reportid, archive_path=archive_url, file_name=r.filename
                 ),
             )
             result.error = ProcessingError(
@@ -749,22 +670,14 @@ class ReportService(BaseReportService):
             raw_report_info.error = result.error
             return result
         except ReportEmptyError:
-            log.warning(
-                "Report %s is empty",
-                reportid,
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-            )
+            log.warning("Report is empty", extra=dict(reportid=reportid))
             result.error = ProcessingError(code=UploadErrorCode.REPORT_EMPTY, params={})
             raw_report_info.error = result.error
             return result
         except Exception as e:
             log.exception(
                 "Unknown error when processing raw upload",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    archive_path=archive_url,
-                ),
+                extra=dict(archive_path=archive_url),
             )
             result.error = ProcessingError(
                 code=UploadErrorCode.UNKNOWN_PROCESSING,
@@ -774,62 +687,6 @@ class ReportService(BaseReportService):
             raw_report_info.error = result.error
             return result
 
-    def update_upload_with_processing_result(
-        self, upload: Upload, processing_result: ProcessingResult
-    ):
-        rounding: str = read_yaml_field(
-            self.current_yaml, ("coverage", "round"), "nearest"
-        )
-        precision: int = read_yaml_field(
-            self.current_yaml, ("coverage", "precision"), 2
-        )
-        db_session = upload.get_db_session()
-        session = processing_result.session
-
-        if processing_result.error is None:
-            upload.state_id = UploadState.PROCESSED.db_id
-            upload.state = "processed"
-            upload.order_number = session.id
-            upload_totals = upload.totals
-            if upload_totals is None:
-                upload_totals = UploadLevelTotals(
-                    upload_id=upload.id,
-                    branches=0,
-                    coverage=0,
-                    hits=0,
-                    lines=0,
-                    methods=0,
-                    misses=0,
-                    partials=0,
-                    files=0,
-                )
-                db_session.add(upload_totals)
-            if session.totals is not None:
-                upload_totals.update_from_totals(
-                    session.totals, precision=precision, rounding=rounding
-                )
-
-            # delete all the carryforwarded `Upload` records corresponding to `Session`s
-            # which have been removed from the report.
-            # we always have a `session_adjustment` in the non-error case.
-            assert processing_result.session_adjustment
-            deleted_sessions = (
-                processing_result.session_adjustment.fully_deleted_sessions
-            )
-            delete_uploads_by_sessionid(upload, deleted_sessions)
-
-        else:
-            error = processing_result.error
-            upload.state = "error"
-            upload.state_id = UploadState.ERROR.db_id
-            error_obj = UploadError(
-                upload_id=upload.id,
-                error_code=error.code,
-                error_params=error.params,
-            )
-            db_session.add(error_obj)
-        db_session.flush()
-
     @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):
         if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
@@ -837,11 +694,12 @@ class ReportService(BaseReportService):
         archive_service = self.get_archive_service(commit.repository)
 
         totals, report_json = report.to_database()
+        chunks = report.to_archive().encode()
 
-        archive_data = report.to_archive().encode()
-        chunks_url = archive_service.write_chunks(
-            commit.commitid, archive_data, report_code
-        )
+        PYREPORT_REPORT_JSON_SIZE.observe(len(report_json))
+        PYREPORT_CHUNKS_FILE_SIZE.observe(len(chunks))
+
+        chunks_url = archive_service.write_chunks(commit.commitid, chunks, report_code)
 
         commit.state = "complete" if report else "error"
         commit.totals = totals
@@ -865,32 +723,12 @@ class ReportService(BaseReportService):
         # `report_json` is an `ArchiveField`, so this will trigger an upload
         # FIXME: we do an unnecessary `loads` roundtrip because of this abstraction,
         # and we should just save the `report_json` to archive storage directly instead.
-        commit.report_json = loads(report_json)
+        commit.report_json = orjson.loads(report_json)
 
         # `report` is an accessor which implicitly queries `CommitReport`
         if commit_report := commit.report:
-            files_array = [
-                {
-                    "filename": k,
-                    "file_index": v.file_index,
-                    "file_totals": v.file_totals,
-                    "diff_totals": v.diff_totals,
-                }
-                for k, v in report._files.items()
-            ]
-            log.info(
-                "Calling update to reports_reportdetails.files_array",
-                extra=dict(
-                    size=sys.getsizeof(files_array),
-                    ownerid=commit.repository.ownerid,
-                    repoid=commit.repoid,
-                    commitid=commit.commitid,
-                ),
-            )
             db_session = commit.get_db_session()
 
-            # `files_array` is an `ArchiveField`, so this will trigger an upload
-            commit_report.details.files_array = files_array
             report_totals = commit_report.totals
             if report_totals is None:
                 report_totals = ReportLevelTotals(report_id=commit_report.id)
@@ -967,68 +805,22 @@ class ReportService(BaseReportService):
 
         return res
 
-    @sentry_sdk.trace
-    def save_parallel_report_to_archive(
-        self, commit: Commit, report: Report, report_code=None
-    ):
-        commitid = commit.commitid
-        repository = commit.repository
-        archive_service = self.get_archive_service(commit.repository)
-
-        # Attempt to calculate diff of report (which uses commit info from the git provider), but it it fails to do so, it just moves on without such diff
-        try:
-            repository_service: TorngitBaseAdapter = get_repo_provider_service(
-                repository,
-                installation_name_to_use=self.gh_app_installation_name,
-            )
-            diff = async_to_sync(repository_service.get_commit_diff)(commitid)
-            report.apply_diff(diff)
-        except TorngitError:
-            # When this happens, we have that commit.totals["diff"] is not available.
-            # Since there is no way to calculate such diff without the git commit,
-            # then we assume having the rest of the report saved there is better than the
-            # alternative of refusing an otherwise "good" report because of the lack of diff
-            log.warning(
-                "Could not apply diff to report because there was an error fetching diff from provider",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    parent_task=self.request.parent_id,
-                ),
-                exc_info=True,
-            )
-
-        # save incremental results to archive storage,
-        # upload_finisher will combine
-        chunks = report.to_archive().encode()
-        _, files_and_sessions = report.to_database()
-
-        chunks_url = archive_service.write_parallel_experiment_file(
-            commitid, chunks, report_code, "chunks"
-        )
-
-        files_and_sessions_url = archive_service.write_parallel_experiment_file(
-            commitid, files_and_sessions, report_code, "files_and_sessions"
-        )
-
-        return {
-            "chunks_path": chunks_url,
-            "files_and_sessions_path": files_and_sessions_url,
-        }
-
 
 @sentry_sdk.trace
-def delete_uploads_by_sessionid(upload: Upload, session_ids: list[int]):
+def delete_uploads_by_sessionid(
+    db_session: DbSession, report_id: int, session_ids: set[int]
+):
     """
-    This deletes all the `Upload` records corresponding to the given `session_ids`.
+    This deletes all the `Upload` records belonging to the `CommitReport` with `report_id`,
+    and having an `order_number` corresponding to the given `session_ids`.
     """
-    if not session_ids:
-        return
-
-    db_session = upload.get_db_session()
     uploads = (
         db_session.query(Upload.id_)
-        .filter(Upload.report == upload.report, Upload.order_number.in_(session_ids))
+        .filter(
+            Upload.report_id == report_id,
+            Upload.upload_type == SessionType.carriedforward.value,
+            Upload.order_number.in_(session_ids),
+        )
         .all()
     )
     upload_ids = [upload[0] for upload in uploads]

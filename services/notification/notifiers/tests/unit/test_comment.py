@@ -442,6 +442,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings=False,
             notifier_site_settings=None,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -455,6 +456,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings=None,
             notifier_site_settings=None,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -468,6 +470,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings=True,
             notifier_site_settings=None,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -481,6 +484,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=None,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.is_enabled()
 
@@ -616,6 +620,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "files"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
@@ -772,6 +777,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
@@ -815,6 +821,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         res = notifier.build_message(comparison)
         assert (
@@ -834,6 +841,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = sample_comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -911,6 +919,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "flags"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -961,6 +970,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": ",".join(all_sections)},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = sample_comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1042,6 +1052,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.upgrade,
         )
         result = notifier.build_message(comparison)
@@ -1080,6 +1091,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.upload_limit,
         )
         result = notifier.build_message(comparison)
@@ -1111,7 +1123,6 @@ class TestCommentNotifier(object):
             "codecov_dashboard_url": "test.example.br",
         }
         comparison = sample_comparison
-        pull = comparison.enriched_pull.database_pull
         repository = sample_comparison.head.commit.repository
         notifier = CommentNotifier(
             repository=repository,
@@ -1119,6 +1130,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.passing_empty_upload,
         )
         result = notifier.build_message(comparison)
@@ -1144,7 +1156,6 @@ class TestCommentNotifier(object):
             "codecov_dashboard_url": "test.example.br",
         }
         comparison = sample_comparison
-        pull = comparison.enriched_pull.database_pull
         repository = sample_comparison.head.commit.repository
         notifier = CommentNotifier(
             repository=repository,
@@ -1152,6 +1163,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.failing_empty_upload,
         )
         result = notifier.build_message(comparison)
@@ -1178,7 +1190,6 @@ class TestCommentNotifier(object):
             "codecov_dashboard_url": "test.example.br",
         }
         comparison = sample_comparison
-        pull = comparison.enriched_pull.database_pull
         repository = sample_comparison.head.commit.repository
         notifier = CommentNotifier(
             repository=repository,
@@ -1186,6 +1197,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.processing_upload,
         )
         result = notifier.build_message(comparison)
@@ -1222,6 +1234,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
             decoration_type=Decoration.upgrade,
         )
         result = notifier.build_message(comparison)
@@ -1250,6 +1263,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={"codecov": {"ui": {"hide_complexity": True}}},
+            repository_service=mock_repo_provider,
         )
         repository = sample_comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1327,6 +1341,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1401,6 +1416,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1476,6 +1492,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1553,6 +1570,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1628,6 +1646,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "diff"},
             notifier_site_settings=True,
             current_yaml={"coverage": {"precision": 2, "round": "down"}},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         # Change the reports
@@ -1694,6 +1713,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "newheader"},
             notifier_site_settings=True,
             current_yaml={"coverage": {"precision": 2, "round": "down"}},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         # Change the reports
@@ -1744,6 +1764,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1823,6 +1844,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1878,6 +1900,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -1950,6 +1973,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -2022,6 +2046,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -2085,6 +2110,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2114,6 +2140,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         sample_comparison.head.report = ReadOnlyReport.create_from_report(
             sample_report_without_flags
@@ -2190,6 +2217,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2218,6 +2246,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2244,6 +2273,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": None, "pullid": 98}
         mock_repo_provider.post_comment.side_effect = TorngitClientError(
@@ -2274,6 +2304,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2302,6 +2333,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2330,6 +2362,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": None, "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2358,6 +2391,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2384,6 +2418,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2412,6 +2447,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2438,6 +2474,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2466,6 +2503,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.side_effect = TorngitClientError(
@@ -2496,6 +2534,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         data = {"message": ["message"], "commentid": "12345", "pullid": 98}
         mock_repo_provider.post_comment.return_value = {"id": 9865}
@@ -2522,6 +2561,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison_without_pull)
         assert not result.notification_attempted
@@ -2542,6 +2582,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
@@ -2562,6 +2603,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison_database_pull_without_provider)
         assert not result.notification_attempted
@@ -2588,6 +2630,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison)
         assert result.notification_attempted
@@ -2610,6 +2653,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = NotificationResult(
             notification_attempted=True,
@@ -2637,6 +2681,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = NotificationResult(
             notification_attempted=True,
@@ -2662,6 +2707,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = NotificationResult(
             notification_attempted=True,
@@ -2692,6 +2738,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
@@ -2711,6 +2758,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         result = notifier.notify(sample_comparison)
         assert not result.notification_attempted
@@ -2724,9 +2772,6 @@ class TestCommentNotifier(object):
     async def test_notify_with_enough_builds(
         self, dbsession, sample_comparison, mocker, pull_state
     ):
-        mocker.patch(
-            "services.notification.notifiers.comment.get_repo_provider_service",
-        )
         build_message_mocker = mocker.patch.object(
             CommentNotifier,
             "build_message",
@@ -2752,6 +2797,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mocker.MagicMock(),
         )
         sample_comparison.pull.state = pull_state
         dbsession.flush()
@@ -2819,6 +2865,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         res = notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is False
@@ -2881,6 +2928,7 @@ class TestCommentNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         res = notifier.notify(sample_comparison_no_change)
         assert res.notification_attempted is True
@@ -2900,6 +2948,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach", "hide_comment_details": True},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = sample_comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -2933,6 +2982,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "announcements"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = sample_comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -2969,6 +3019,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach", "hide_comment_details": True},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = sample_comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4093,6 +4144,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         pull = comparison.pull
         repository = sample_comparison.head.commit.repository
@@ -4137,6 +4189,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4206,6 +4259,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4278,6 +4332,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4318,6 +4373,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4364,6 +4420,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4404,6 +4461,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4480,6 +4538,7 @@ class TestCommentNotifierInNewLayout(object):
                     ]
                 }
             },
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -4564,6 +4623,7 @@ class TestCommentNotifierInNewLayout(object):
                     ]
                 }
             },
+            repository_service=mock_repo_provider,
         )
 
         pull = comparison.pull
@@ -4605,6 +4665,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         pull = comparison.pull
         repository = sample_comparison_coverage_carriedforward.head.commit.repository
@@ -4646,6 +4707,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         pull = comparison.pull
         repository = sample_comparison_coverage_carriedforward.head.commit.repository
@@ -4687,6 +4749,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         pull = comparison.pull
         repository = sample_comparison_coverage_carriedforward.head.commit.repository
@@ -4718,6 +4781,7 @@ class TestCommentNotifierInNewLayout(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = comparison.head.commit.repository
         result = notifier.build_message(comparison)
@@ -5075,6 +5139,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(sample_comparison)
         expected_result = [
@@ -5095,6 +5160,8 @@ class TestCommentNotifierWelcome:
 
         owner = OwnerFactory.create(
             service="github",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
         )
         repository = RepositoryFactory.create(owner=owner)
         branch = "new_branch"
@@ -5177,6 +5244,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(comparison)
 
@@ -5222,6 +5290,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA not in result
@@ -5242,6 +5311,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
@@ -5274,6 +5344,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA not in result
@@ -5294,6 +5365,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result
@@ -5330,6 +5402,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA not in result
@@ -5347,6 +5420,7 @@ class TestCommentNotifierWelcome:
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA in result

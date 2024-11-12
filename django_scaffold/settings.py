@@ -14,6 +14,8 @@ if "timeseries" in DATABASES:
 
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
 
+GCS_BUCKET_NAME = get_config("services", "minio", "bucket", default="codecov")
+
 # Application definition
 INSTALLED_APPS = [
     "shared.django_apps.legacy_migrations",
@@ -23,7 +25,6 @@ INSTALLED_APPS = [
     "shared.django_apps.pg_telemetry",
     "shared.django_apps.rollouts",
     "shared.django_apps.user_measurements",
-    "shared.django_apps.codecov_metrics",
     "shared.django_apps.bundle_analysis",
     "psqlextra",
     # Needed to install legacy migrations

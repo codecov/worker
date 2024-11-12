@@ -70,7 +70,7 @@ class TestSyncReposTaskUnit(object):
         )
         assert new_entry is not None
         assert new_entry.username == username
-        assert new_entry.createstamp.isoformat() == "2024-03-28T00:00:00"
+        assert new_entry.createstamp.isoformat() == "2024-03-28T00:00:00+00:00"
 
     def test_upsert_owner_update_existing(self, dbsession):
         ownerid = 1

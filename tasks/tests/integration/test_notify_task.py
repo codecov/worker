@@ -2,7 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from mock import PropertyMock
+from mock import AsyncMock, PropertyMock
 from shared.validation.types import CoverageCommentRequiredChanges
 
 from database.models import Pull
@@ -11,6 +11,7 @@ from database.tests.factories import CommitFactory, PullFactory, RepositoryFacto
 from services.archive import ArchiveService
 from services.comparison import get_or_create_comparison
 from services.notification.notifiers.base import NotificationResult
+from services.repository import EnrichedPull
 from tasks.notify import NotifyTask
 
 sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
@@ -109,7 +110,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "christina84",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -251,7 +252,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -289,7 +290,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -489,7 +490,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -527,7 +528,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -716,7 +717,7 @@ class TestNotifyTask(object):
                                     "branch": "thiago/base-no-base",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -754,7 +755,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -798,6 +799,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
+    @pytest.mark.django_db
     def test_simple_call_status_and_notifiers(
         self,
         mock_post_request,
@@ -822,6 +824,9 @@ class TestNotifyTask(object):
             name="codecov-demo",
             image_token="abcdefghij",
         )
+        dbsession.add(repository)
+        dbsession.flush()
+        repository.owner.plan_activated_users = [repository.owner.ownerid]
         dbsession.add(repository)
         dbsession.flush()
         head_commitid = "5601846871b8142ab0df1e0b8774756c658bcc7d"
@@ -916,7 +921,7 @@ class TestNotifyTask(object):
                             "head": {
                                 "author": expected_author_dict,
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
-                                "timestamp": "2019-02-01T17:59:47",
+                                "timestamp": "2019-02-01T17:59:47+00:00",
                                 "totals": {
                                     "files": 3,
                                     "lines": 20,
@@ -954,7 +959,7 @@ class TestNotifyTask(object):
                             "base": {
                                 "author": expected_author_dict,
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b",
-                                "timestamp": "2019-02-01T17:59:47",
+                                "timestamp": "2019-02-01T17:59:47+00:00",
                                 "totals": {
                                     "files": 3,
                                     "lines": 20,
@@ -1099,7 +1104,7 @@ class TestNotifyTask(object):
                                     "branch": "test",
                                     "message": "",
                                     "author": "joseph-sentry",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -1137,7 +1142,7 @@ class TestNotifyTask(object):
                                     "branch": "main",
                                     "message": "",
                                     "author": "joseph-sentry",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -1314,3 +1319,81 @@ class TestNotifyTask(object):
             "reason": "no_head_report",
         }
         assert result == expected_result
+
+    @patch("requests.post")
+    def test_notifier_call_no_head_commit_report_empty_upload(
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
+        mock_repo_provider,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
+        mocked_app = mocker.patch.object(NotifyTask, "app")
+        repository = RepositoryFactory.create(
+            owner__unencrypted_oauth_token=sample_token,
+            owner__username="ThiagoCodecov",
+            owner__service="github",
+            owner__service_id="44376991",
+            name="example-python",
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        master_commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="master",
+            commitid="17a71a9a2f5335ed4d00496c7bbc6405f547a527",
+            repository=repository,
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=1234,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            repository=repository,
+            _report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.add(master_commit)
+        dbsession.flush()
+        pull = dbsession.query(Pull).filter_by(pullid=1234).first()
+        pull.repository = repository
+        pull.head = commit.commitid
+        pull.base = master_commit.commitid
+        dbsession.add(pull)
+        dbsession.flush()
+
+        task = NotifyTask()
+        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            master_chunks_url = (
+                f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
+            )
+            mock_storage.write_file("archive", master_chunks_url, content)
+
+        mocker.patch("tasks.notify.NotifyTask.fetch_and_update_whether_ci_passed")
+        mocker.patch(
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit",
+            return_value=EnrichedPull(database_pull=pull, provider_pull=None),
+        )
+        mock_repo_provider.get_commit_statuses = AsyncMock(return_value=None)
+
+        result = task.run_impl_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"coverage": {"status": {"project": True}}},
+            empty_upload="pass",
+        )
+
+        assert result["notified"]
+        assert len(result["notifications"]) == 2
+        assert result["notifications"][0]["result"] is not None
+        assert result["notifications"][1]["result"] is not None

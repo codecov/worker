@@ -16,7 +16,7 @@ from database.utils import ArchiveField
 from helpers.config import should_write_data_to_storage_config_check
 
 
-class User(CodecovBaseModel):
+class User(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "users"
     id_ = Column("id", types.BigInteger, primary_key=True)
 
@@ -136,7 +136,7 @@ class Repository(CodecovBaseModel):
     updatestamp = Column(types.DateTime)
     yaml = Column(postgresql.JSON)
     deleted = Column(types.Boolean, nullable=False, default=False)
-    branch = Column(types.Text)
+    branch = Column(types.Text, default="main")
     image_token = Column(
         types.Text,
         default=lambda: "".join(
@@ -185,7 +185,7 @@ class GithubAppInstallation(CodecovBaseModel, MixinBaseClass):
     # replacement for owner.integration_id
     # installation id GitHub sends us in the installation-related webhook events
     installation_id = Column(types.Integer, server_default=FetchedValue())
-    name = Column(types.Text, server_default=FetchedValue())
+    name = Column(types.Text, default=GITHUB_APP_INSTALLATION_DEFAULT_NAME)
     # if null, all repos are covered by this installation
     # otherwise, it's a list of repo.id values
     repository_service_ids = Column(
@@ -200,7 +200,7 @@ class GithubAppInstallation(CodecovBaseModel, MixinBaseClass):
         Owner, foreign_keys=[ownerid], back_populates="github_app_installations"
     )
 
-    is_suspended = Column(types.Boolean, server_default=FetchedValue())
+    is_suspended = Column(types.Boolean, default=False)
 
     def repository_queryset(self, dbsession: Session):
         """Returns a query set of repositories covered by this installation"""
@@ -365,7 +365,7 @@ class Branch(CodecovBaseModel):
     __tablename__ = "branches"
 
     repoid = Column(types.Integer, ForeignKey("repos.repoid"), primary_key=True)
-    updatestamp = Column(types.DateTime)
+    updatestamp = Column(types.DateTime, default=datetime.now)
     branch = Column(types.Text, nullable=False, primary_key=True)
     base = Column(types.Text)
     head = Column(types.Text, nullable=False)

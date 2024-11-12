@@ -27,7 +27,7 @@ def from_txt(reports: bytes, report_builder_session: ReportBuilderSession) -> No
     # http://ltp.sourceforge.net/coverage/lcov/geninfo.1.php
     # merge same files
     for string in reports.split(b"\nend_of_record"):
-        if _file := _process_file(string, report_builder_session):
+        if (_file := _process_file(string, report_builder_session)) is not None:
             report_builder_session.append(_file)
 
 

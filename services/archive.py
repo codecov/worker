@@ -27,9 +27,6 @@ class MinioEndpoints(Enum):
     profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
     computed_comparison = "{version}/repos/{repo_hash}/comparisons/{comparison_id}.json"
     profiling_normalization = "{version}/repos/{repo_hash}/profilingnormalizations/{profiling_commit_id}/{location}"
-    parallel_upload_experiment = (
-        "{version}/repos/{repo_hash}/commits/{commitid}/parallel/{file_name}.txt"
-    )
 
     def get_path(self, **kwaargs) -> str:
         return self.value.format(**kwaargs)
@@ -208,26 +205,6 @@ class ArchiveService(object):
             repo_hash=self.storage_hash,
             commitid=commit_sha,
             chunks_file_name=chunks_file_name,
-        )
-
-        self.write_file(path, data)
-        return path
-
-    def write_parallel_experiment_file(
-        self, commit_sha, data, report_code, file_name
-    ) -> str:
-        """
-        Convenience method to write files to parallel folder for parallel upload
-        processing experiment
-        """
-        file_name = (
-            report_code if report_code and file_name.endswith("chunks") else file_name
-        )
-        path = MinioEndpoints.parallel_upload_experiment.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            commitid=commit_sha,
-            file_name=file_name,
         )
 
         self.write_file(path, data)

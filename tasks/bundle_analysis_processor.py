@@ -1,6 +1,5 @@
 import logging
-from copy import deepcopy
-from typing import Any, Dict
+from typing import Any
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.reports.enums import UploadState
@@ -15,6 +14,7 @@ from services.bundle_analysis.report import (
     ProcessingResult,
 )
 from services.lock_manager import LockManager, LockRetry, LockType
+from services.processing.types import UploadArguments
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_save_measurements import (
     bundle_analysis_save_measurements_task_name,
@@ -35,16 +35,15 @@ class BundleAnalysisProcessorTask(
         db_session,
         # Celery `chain` injects this argument - it's the returned result
         # from the prior task in the chain
-        previous_result: Dict[str, Any],
-        *,
+        previous_result: dict[str, Any],
+        *args,
         repoid: int,
         commitid: str,
         commit_yaml: dict,
-        params: Dict[str, Any],
+        params: UploadArguments,
         **kwargs,
     ):
         repoid = int(repoid)
-        commit_yaml = UserYaml.from_dict(commit_yaml)
 
         log.info(
             "Starting bundle analysis processor",
@@ -68,33 +67,28 @@ class BundleAnalysisProcessorTask(
                 retry_num=self.request.retries,
             ):
                 return self.process_impl_within_lock(
-                    db_session=db_session,
-                    repoid=repoid,
-                    commitid=commitid,
-                    commit_yaml=commit_yaml,
-                    params=deepcopy(params),
-                    previous_result=previous_result,
-                    **kwargs,
+                    db_session,
+                    repoid,
+                    commitid,
+                    UserYaml.from_dict(commit_yaml),
+                    params,
+                    previous_result,
                 )
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
     def process_impl_within_lock(
         self,
-        *,
         db_session,
         repoid: int,
         commitid: str,
         commit_yaml: UserYaml,
-        params: Dict[str, Any],
-        previous_result: Dict[str, Any],
-        **kwargs,
+        params: UploadArguments,
+        previous_result: dict[str, Any],
     ):
         log.info(
             "Running bundle analysis processor",
             extra=dict(
-                repoid=repoid,
-                commit=commitid,
                 commit_yaml=commit_yaml,
                 params=params,
                 parent_task=self.request.parent_id,
@@ -114,15 +108,14 @@ class BundleAnalysisProcessorTask(
 
         # these are populated in the upload task
         # unless when this task is called on a non-BA upload then we have to create an empty upload
-        upload_pk, carriedforward = params["upload_pk"], False
-        if upload_pk is None:
+        upload_id, carriedforward = params.get("upload_id"), False
+        if upload_id is not None:
+            upload = db_session.query(Upload).filter_by(id_=upload_id).first()
+        else:
             commit_report = report_service.initialize_and_save_report(commit)
-            upload_pk = report_service.create_report_upload(
-                {"url": ""}, commit_report
-            ).id_
+            upload = report_service.create_report_upload({"url": ""}, commit_report)
             carriedforward = True
 
-        upload = db_session.query(Upload).filter_by(id_=upload_pk).first()
         assert upload is not None
 
         # Override base commit of comparisons with a custom commit SHA if applicable
