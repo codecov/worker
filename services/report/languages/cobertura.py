@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List
+from typing import Sequence
 from xml.etree.ElementTree import Element
 
 import sentry_sdk
@@ -31,9 +31,9 @@ def Int(value):
         return int(float(value))
 
 
-def get_sources_to_attempt(xml) -> List[str]:
-    sources = [source.text for source in xml.iter("source")]
-    return [s for s in sources if isinstance(s, str) and s.startswith("/")]
+def get_sources_to_attempt(xml) -> Sequence[str]:
+    sources = (source.text for source in xml.iter("source"))
+    return tuple(s for s in sources if isinstance(s, str) and s.startswith("/"))
 
 
 def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
