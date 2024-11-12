@@ -5,6 +5,7 @@ from shared.celery_config import cache_test_rollups_redis_task_name
 from shared.storage.exceptions import FileNotInStorageError
 
 from app import celery_app
+from django_scaffold import settings
 from services.redis import get_redis_connection
 from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
@@ -44,7 +45,9 @@ class CacheTestRollupsRedisTask(
                 else f"test_results/rollups/{repoid}/{branch}/{interval_start}_{interval_end}"
             )
             try:
-                file: bytes = storage_service.read_file("codecov", storage_key)
+                file: bytes = storage_service.read_file(
+                    settings.GCS_BUCKET_NAME, storage_key
+                )
             except FileNotInStorageError:
                 pass
 
