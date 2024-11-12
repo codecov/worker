@@ -363,6 +363,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
     ):
         upload_id = upload_obj.id
+        log.info(
+            "Processing individual upload",
+            extra=dict(upload_id=upload_id, repoid=repoid, commitid=commitid),
+        )
         with metrics.timer("test_results.processor.process_individual_arg"):
             arg_processing_result: TestResultsProcessingResult = (
                 self.process_individual_arg(
@@ -455,6 +459,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         readable_report = self.rewrite_readable(network, report_contents)
         archive_service.write_file(upload.storage_path, readable_report.getvalue())
+        log.info(
+            "Wrote readable report to archive",
+            extra=dict(
+                upload_id=upload.id,
+                repoid=upload.report.commit.repoid,
+                commitid=upload.report.commit_id,
+            ),
+        )
 
         return TestResultsProcessingResult(
             network_files=network, parsing_results=parsing_results
