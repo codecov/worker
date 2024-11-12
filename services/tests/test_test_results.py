@@ -86,7 +86,7 @@ def test_generate_failure_info():
     assert (
         res
         == """
-```
+```python
 hello world
 ```
 
@@ -119,14 +119,14 @@ def test_build_message():
 <details><summary>View the top 1 failed tests by shortest run time</summary>
 
 > 
-> ```
+> ```python
 > testname
 > ```
 > 
 > <details><summary>Stack Traces | 1s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > hello world
 > > ```
 > > 
@@ -169,7 +169,7 @@ def test_build_message_with_flake():
 <details><summary>View the full list of 1 :snowflake: flaky tests</summary>
 
 > 
-> ```
+> ```python
 > testname
 > ```
 > 
@@ -177,7 +177,7 @@ def test_build_message_with_flake():
 > <details><summary>Stack Traces | 1s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > hello world
 > > ```
 > > 
