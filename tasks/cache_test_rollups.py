@@ -7,6 +7,7 @@ from shared.celery_config import cache_test_rollups_task_name
 from shared.config import get_config
 
 from app import celery_app
+from django_scaffold import settings
 from services.redis import get_redis_connection
 from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
@@ -164,7 +165,9 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                 serialized_table = df.write_ipc(None)
                 serialized_table.seek(0)  # avoids Stream must be at beginning errors
 
-                storage_service.write_file("codecov", storage_key, serialized_table)
+                storage_service.write_file(
+                    settings.GCS_BUCKET_NAME, storage_key, serialized_table
+                )
 
         return
 
