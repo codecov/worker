@@ -162,14 +162,14 @@ def properly_backtick(content: str) -> str:
             max_backtick_count = curr_backtick_count
 
     backticks = "`" * (max_backtick_count + 1)
-    return f"{backticks}\n{content}\n{backticks}"
+    return f"{backticks}python\n{content}\n{backticks}"
 
 
 def wrap_in_code(content: str) -> str:
     if "```" in content:
         return properly_backtick(content)
     else:
-        return f"\n```\n{content}\n```\n"
+        return f"\n```python\n{content}\n```\n"
 
 
 def display_duration(f: float) -> str:
