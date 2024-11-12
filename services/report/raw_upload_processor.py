@@ -14,7 +14,6 @@ from services.processing.metrics import LABELS_USAGE
 from services.report.parser.types import ParsedRawReport
 from services.report.report_builder import ReportBuilder
 from services.report.report_processor import process_report
-from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
 
@@ -29,36 +28,29 @@ class SessionAdjustmentResult:
 def process_raw_upload(
     commit_yaml,
     raw_reports: ParsedRawReport,
-    flags: list[str],
     session: Session,
 ) -> Report:
-    toc, env = None, None
-
     # ----------------------
     # Extract `git ls-files`
     # ----------------------
+    toc = []
     if raw_reports.has_toc():
         toc = raw_reports.get_toc()
+
     if raw_reports.has_env():
         env = raw_reports.get_env()
+        session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
 
     path_fixer = PathFixer.init_from_user_yaml(
-        commit_yaml=commit_yaml, toc=toc, flags=flags
+        commit_yaml=commit_yaml, toc=toc, flags=session.flags
     )
 
     # ------------------
     # Extract bash fixes
     # ------------------
+    ignored_lines = {}
     if raw_reports.has_report_fixes():
-        ignored_file_lines = raw_reports.get_report_fixes(path_fixer)
-    else:
-        ignored_file_lines = None
-
-    if env:
-        session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
-
-    if flags:
-        session.flags = flags
+        ignored_lines = raw_reports.get_report_fixes(path_fixer)
 
     # [javascript] check for both coverage.json and coverage/coverage.lcov
     skip_files = set()
@@ -69,19 +61,9 @@ def process_raw_upload(
     report = Report()
     sessionid = session.id = report.next_session_number()
 
-    # TODO(swatinem): make this work in parallel mode:
-    joined = True
-    for flag in flags or []:
-        if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
-            log.info(
-                "Customer is using joined=False feature", extra=dict(flag_used=flag)
-            )
-            joined = False  # TODO: ensure this works for parallel
-
     # ---------------
     # Process reports
     # ---------------
-    ignored_lines = ignored_file_lines or {}
     for report_file in raw_reports.get_uploaded_files():
         current_filename = report_file.filename
         if current_filename in skip_files or not report_file.contents:
@@ -91,15 +73,13 @@ def process_raw_upload(
             current_filename
         )
         report_builder_to_use = ReportBuilder(
-            commit_yaml,
-            sessionid,
-            ignored_lines,
-            path_fixer_to_use,
+            commit_yaml, sessionid, ignored_lines, path_fixer_to_use
         )
         if report_builder_to_use.supports_labels():
             # NOTE: this here is very conservative, as it checks for *any* `carryforward_mode=labels`,
             # not taking the `flags` into account at all.
             LABELS_USAGE.labels(codepath="report_builder").inc()
+
         try:
             report_from_file = process_report(
                 report=report_file, report_builder=report_builder_to_use
@@ -119,7 +99,7 @@ def process_raw_upload(
             if len(report_from_file._files) > len(report._files):
                 report_from_file, report = report, report_from_file
 
-            report.merge(report_from_file, joined=True)
+            report.merge(report_from_file)
 
     if not report:
         raise ReportEmptyError("No files found in report.")

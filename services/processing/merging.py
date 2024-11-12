@@ -1,4 +1,5 @@
 import functools
+import logging
 from decimal import Decimal
 
 import sentry_sdk
@@ -16,6 +17,8 @@ from services.report.raw_upload_processor import clear_carryforward_sessions
 from services.yaml.reader import read_yaml_field
 
 from .types import IntermediateReport, MergeResult, ProcessingResult
+
+log = logging.getLogger(__name__)
 
 
 @sentry_sdk.trace
@@ -48,13 +51,15 @@ def merge_reports(
             session, use_id_from_session=True
         )
 
+        joined = True
         if flags := session.flags:
             session_adjustment = clear_carryforward_sessions(
                 master_report, report, flags, commit_yaml
             )
             deleted_sessions.update(session_adjustment.fully_deleted_sessions)
+            joined = get_joined_flag(commit_yaml, flags)
 
-        master_report.merge(report)
+        master_report.merge(report, joined)
 
     return master_report, MergeResult(session_mapping, deleted_sessions)
 
@@ -200,3 +205,17 @@ def change_sessionid(report: EditableReport, old_id: int, new_id: int):
                         point.sessionid = new_id
 
         report_file._details["present_sessions"] = all_sessions
+
+
+def get_joined_flag(commit_yaml: UserYaml, flags: list[str]) -> bool:
+    for flag in flags:
+        if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
+            log.info(
+                "Customer is using joined=False feature", extra={"flag_used": flag}
+            )
+            sentry_sdk.capture_message(
+                "Customer is using joined=False feature", tags={"flag_used": flag}
+            )
+            return False
+
+    return True
