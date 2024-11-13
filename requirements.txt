@@ -339,7 +339,7 @@ setuptools==75.4.0
     # via
     #   cerberus
     #   nodeenv
-shared @ https://github.com/codecov/shared/archive/4db8f12c1a4ad43cedb1a965d2fa8cd8138fc2b3.tar.gz#egg=shared
+shared @ https://github.com/codecov/shared/archive/9a2692a412a3be2553db066e0fcb5cec89860fb7.tar.gz#egg=shared
     # via -r requirements.in
 six==1.16.0
     # via
