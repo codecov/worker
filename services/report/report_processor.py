@@ -1,6 +1,5 @@
 import logging
 from typing import Literal
-from xml.etree.ElementTree import Element
 
 import orjson
 import sentry_sdk
@@ -87,7 +86,7 @@ def report_type_matching(
 ) -> (
     tuple[bytes, Literal["txt"] | Literal["plist"]]
     | tuple[dict | list, Literal["json"]]
-    | tuple[Element, Literal["xml"]]
+    | tuple[etree.Element, Literal["xml"]]
 ):
     name = report.filename or ""
     raw_report = report.contents

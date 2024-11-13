@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from xml.etree.ElementTree import Element
+
+from lxml.etree import Element
 
 
 def remove_non_ascii(string: str) -> str:

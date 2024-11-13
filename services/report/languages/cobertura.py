@@ -1,9 +1,9 @@
 import logging
 import re
 from typing import Sequence
-from xml.etree.ElementTree import Element
 
 import sentry_sdk
+from lxml.etree import Element
 from timestring import Date, TimestringInvalid
 
 from helpers.exceptions import ReportExpiredException
