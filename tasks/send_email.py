@@ -20,7 +20,10 @@ class SendEmailTask(BaseCodecovTask, name=send_email_task_name):
         with metrics.timer("worker.tasks.send_email"):
             if from_addr is None:
                 from_addr = get_config(
-                    "services", "smtp", "from_address", default="noreply@codecov.io"
+                    "services",
+                    "smtp",
+                    "from_address",
+                    default="Codecov <noreply@codecov.io>",
                 )
 
             log_extra_dict = {

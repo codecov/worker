@@ -39,6 +39,7 @@ def test_results_mock_app(mocker):
         tasks={
             "app.tasks.notify.Notify": mocker.MagicMock(),
             "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
+            "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
         },
     )
     return mocked_app
@@ -233,6 +234,7 @@ def test_results_setup_no_instances(mocker, dbsession):
         repository__owner__service="github",
         repository__name="codecov-demo",
     )
+    commit.branch = "main"
     dbsession.add(commit)
     dbsession.flush()
 
@@ -359,6 +361,16 @@ class TestUploadTestFinisherTask(object):
             QUEUE_NOTIFY_KEY: False,
         }
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         assert expected_result == result
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
@@ -369,13 +381,13 @@ class TestUploadTestFinisherTask(object):
 <details><summary>View the top 3 failed tests by shortest run time</summary>
 
 > 
-> ```
+> ```python
 > test_name1
 > ```
 > 
 > <details><summary>Stack Traces | 2s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -391,13 +403,13 @@ class TestUploadTestFinisherTask(object):
 
 
 > 
-> ```
+> ```python
 > Other Class Name test_name2
 > ```
 > 
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -414,14 +426,14 @@ class TestUploadTestFinisherTask(object):
 
 
 > 
-> ```
+> ```python
 > Class Name test_name0
 > ```
 > 
 > <details><summary>Stack Traces | 4s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > <pre>Fourth 
 > > 
 > > </pre> | test  | instance |
@@ -486,6 +498,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             },
         )
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         assert expected_result == result
 
     @pytest.mark.integration
@@ -538,6 +560,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
                 "commitid": commit.commitid,
                 "current_yaml": {"codecov": {"max_report_age": False}},
                 "repoid": repoid,
+            },
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
             },
         )
 
@@ -608,6 +640,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
         test_results_mock_app.tasks["app.tasks.notify.Notify"].assert_not_called()
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
     @pytest.mark.integration
     def test_upload_finisher_task_call_existing_comment(
         self,
@@ -646,6 +688,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             QUEUE_NOTIFY_KEY: False,
         }
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         mock_repo_provider_comments.edit_comment.assert_called_with(
             pull.pullid,
             1,
@@ -656,13 +708,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 <details><summary>View the top 3 failed tests by shortest run time</summary>
 
 > 
-> ```
+> ```python
 > test_name1
 > ```
 > 
 > <details><summary>Stack Traces | 2s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -678,13 +730,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > Other Class Name test_name2
 > ```
 > 
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -701,14 +753,14 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > Class Name test_name0
 > ```
 > 
 > <details><summary>Stack Traces | 4s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > <pre>Fourth 
 > > 
 > > </pre> | test  | instance |
@@ -762,6 +814,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             "notify_succeeded": False,
             QUEUE_NOTIFY_KEY: False,
         }
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
         assert expected_result == result
 
@@ -835,6 +897,16 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
         assert expected_result == result
 
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
             f"""### :x: 1 Tests Failed:
@@ -844,13 +916,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 <details><summary>{"View the top 1 failed tests by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
 
 > 
-> ```
+> ```python
 > Other Class Name test_name2
 > ```
 > {f"\n> **Flake rate in main:** 33.33% (Passed {count - fail_count} times, Failed {fail_count} times)" if (count - fail_count) != recent_passes_count else ""}
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -936,6 +1008,15 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
                     "branch": "main",
                 },
             )
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
 
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
@@ -988,13 +1069,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 <details><summary>View the top 3 failed tests by shortest run time</summary>
 
 > 
-> ```
+> ```python
 > hello_test_name1
 > ```
 > 
 > <details><summary>Stack Traces | 2s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -1010,13 +1091,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > hello_Other Class Name test_name2
 > ```
 > 
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -1033,14 +1114,14 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > hello_Class Name test_name0
 > ```
 > 
 > <details><summary>Stack Traces | 4s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > <pre>Fourth 
 > > 
 > > </pre> | test  | instance |

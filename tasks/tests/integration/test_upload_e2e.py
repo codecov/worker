@@ -16,7 +16,6 @@ from database.models.core import Commit, CompareCommit, Repository
 from database.models.reports import Upload
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.core import PullFactory
-from rollouts import INTERMEDIATE_REPORTS_IN_REDIS
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import ReportService
@@ -141,9 +140,14 @@ def setup_mocks(
         "tasks.upload.fetch_commit_yaml_and_possibly_store",
         return_value=UserYaml(user_yaml or {}),
     )
+    mocker.patch(
+        "tasks.compute_comparison.get_current_yaml",
+        return_value=UserYaml(user_yaml or {}),
+    )
     # disable all the tasks being emitted from `UploadFinisher`.
     # ideally, we would really want to test their outcomes as well.
     mocker.patch("tasks.notify.NotifyTask.run_impl")
+    mocker.patch("tasks.sync_pull.PullSyncTask.run_impl")
     mocker.patch("tasks.save_commit_measurements.SaveCommitMeasurementsTask.run_impl")
 
     # force `report_json` to be written out to storage
@@ -160,22 +164,14 @@ def setup_mocks(
 
 @pytest.mark.integration
 @pytest.mark.django_db
-@pytest.mark.parametrize("redis_storage", [True, False])
 def test_full_upload(
     dbsession: DbSession,
-    redis_storage: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
     mock_configuration,
 ):
     setup_mocks(mocker, dbsession, mock_configuration, mock_repo_provider)
-
-    mocker.patch.object(
-        INTERMEDIATE_REPORTS_IN_REDIS,
-        "check_value",
-        return_value=redis_storage,
-    )
 
     repository = RepositoryFactory.create()
     dbsession.add(repository)
@@ -226,7 +222,7 @@ SF:a.rs
 DA:1,1
 end_of_record
 """,
-        {"upload_id": upload_id},
+        {"flags": [], "upload_id": upload_id},
     )
 
     first_upload = report_service.create_report_upload(first_upload_json, commit_report)
@@ -237,6 +233,14 @@ end_of_record
     dbsession.execute(
         f"UPDATE reports_upload SET id={upload_id} WHERE id={first_upload.id}"
     )
+
+    with run_tasks():
+        upload_task.apply_async(
+            kwargs={
+                "repoid": repoid,
+                "commitid": commitid,
+            }
+        )
 
     do_upload(
         b"""
@@ -366,10 +370,8 @@ end_of_record
 
 @pytest.mark.integration
 @pytest.mark.django_db()
-@pytest.mark.parametrize("redis_storage", [True, False])
 def test_full_carryforward(
     dbsession: DbSession,
-    redis_storage: bool,
     mocker,
     mock_repo_provider,
     mock_storage,
@@ -380,12 +382,6 @@ def test_full_carryforward(
         mocker, dbsession, mock_configuration, mock_repo_provider, user_yaml=user_yaml
     )
     mocker.patch("tasks.compute_comparison.ComputeComparisonTask.run_impl")
-
-    mocker.patch.object(
-        INTERMEDIATE_REPORTS_IN_REDIS,
-        "check_value",
-        return_value=redis_storage,
-    )
 
     repository = RepositoryFactory.create()
     dbsession.add(repository)

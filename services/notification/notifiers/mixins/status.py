@@ -185,14 +185,18 @@ class StatusProjectMixin(object):
         base_adjusted_hits = base_totals.hits - hits_removed
         base_adjusted_misses = base_totals.misses - misses_removed
         base_adjusted_partials = base_totals.partials - partials_removed
+        base_adjusted_totals = (
+            base_adjusted_hits + base_adjusted_misses + base_adjusted_partials
+        )
+
+        if not base_adjusted_totals:
+            return None
+
         # The coverage info is in percentage, so multiply by 100
         base_adjusted_coverage = (
-            Decimal(
-                base_adjusted_hits
-                / (base_adjusted_hits + base_adjusted_misses + base_adjusted_partials)
-            )
-            * 100
+            Decimal(base_adjusted_hits / base_adjusted_totals) * 100
         )
+
         head_coverage = Decimal(comparison.head.report.totals.coverage)
         log.info(
             "Adjust base applied to project status",

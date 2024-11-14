@@ -13,7 +13,6 @@ from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from test_results_parser import (
-    Framework,
     Outcome,
     ParserError,
     ParsingInfo,
@@ -33,6 +32,7 @@ from database.models import (
 )
 from helpers.metrics import metrics
 from services.archive import ArchiveService
+from services.processing.types import UploadArguments
 from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -57,9 +57,16 @@ class ParserFailureError(Exception):
 class ParserNotSupportedError(Exception): ...
 
 
-def get_existing_tests(db_session: Session, repoid: int) -> dict[str, Test]:
-    existing_tests = db_session.query(Test).filter(Test.repoid == repoid).all()
-    return {test.id_: test for test in existing_tests}
+def get_existing_flag_bridges(
+    db_session: Session, repoid: int, flags: list[str]
+) -> dict[str, TestFlagBridge]:
+    existing_flag_bridges = (
+        db_session.query(TestFlagBridge)
+        .join(RepositoryFlag, TestFlagBridge.flag_id == RepositoryFlag.id_)
+        .filter(RepositoryFlag.repository_id == repoid)
+        .all()
+    )
+    return {flag_bridge.test_id: flag_bridge for flag_bridge in existing_flag_bridges}
 
 
 def get_repo_flags(
@@ -97,94 +104,42 @@ class TestResultsProcessingResult:
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
     __test__ = False
 
-    def compute_name(
-        self,
-        framework: Framework | None,
-        raw_classname: str,
-        raw_name: str,
-        filename: str | None,
-        network: list[str] | None,
-    ) -> str:
-        match framework:
-            case Framework.Jest:
-                return raw_name
-            case Framework.Pytest:
-                split_name = raw_classname.split(".")
-                name_candidates: list[PytestName] = []
-                for i in range(len(split_name)):
-                    test_file_path = "/".join(split_name[: len(split_name) - i]) + ".py"
-                    actual_class_name = "::".join(split_name[len(split_name) - i :])
-
-                    name_candidates.append(
-                        PytestName(actual_class_name, test_file_path)
-                    )
-
-                for candidate in name_candidates:
-                    if candidate.test_file_path == filename or (
-                        network is not None and candidate.test_file_path in network
-                    ):
-                        possible_class_name = (
-                            f"{candidate.actual_class_name}::"
-                            if candidate.actual_class_name
-                            else ""
-                        )
-                        return f"{candidate.test_file_path}::{possible_class_name}{raw_name}"
-            case Framework.Vitest:
-                return f"{raw_classname} > {raw_name}"
-            case Framework.PHPUnit:
-                return f"{raw_classname}::{raw_name}"
-        return f"{raw_classname}\x1f{raw_name}"
-
     def run_impl(
         self,
         db_session,
-        *,
-        repoid,
-        commitid,
+        *args,
+        repoid: int,
+        commitid: str,
         commit_yaml,
-        arguments_list,
-        report_code=None,
+        arguments_list: list[UploadArguments],
         **kwargs,
     ):
+        log.info("Received upload test result processing task")
+
         commit_yaml = UserYaml(commit_yaml)
-
         repoid = int(repoid)
-        log.info(
-            "Received upload test result processing task",
-            extra=dict(repoid=repoid, commit=commitid),
-        )
 
-        testrun_dict_list = []
+        results = []
         upload_list = []
 
         repo_flakes = (
-            db_session.query(Flake)
+            db_session.query(Flake.testid)
             .filter(Flake.repoid == repoid, Flake.end_date.is_(None))
             .all()
         )
-
-        flaky_test_set = set()
-
-        for flake in repo_flakes:
-            flaky_test_set.add(flake.testid)
+        flaky_test_set = {flake.testid for flake in repo_flakes}
 
         # process each report session's test information
-        with metrics.timer("test_results.processor"):
-            for args in arguments_list:
-                upload_obj: Upload = (
-                    db_session.query(Upload)
-                    .filter_by(id_=args.get("upload_pk"))
-                    .first()
-                )
+        for arguments in arguments_list:
+            upload = (
+                db_session.query(Upload).filter_by(id_=arguments["upload_id"]).first()
+            )
+            result = self.process_individual_upload(
+                db_session, repoid, commitid, upload, flaky_test_set
+            )
 
-                res = self.process_individual_upload(
-                    db_session, repoid, commitid, upload_obj, flaky_test_set
-                )
-
-                # concat existing and new test information
-                testrun_dict_list.append(res)
-
-                upload_list.append(upload_obj)
+            results.append(result)
+            upload_list.append(upload)
 
         if self.should_delete_archive(commit_yaml):
             repository = (
@@ -196,7 +151,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 commitid, repository, commit_yaml, uploads_to_delete=upload_list
             )
 
-        return testrun_dict_list
+        return results
 
     def _bulk_write_tests_to_db(
         self,
@@ -218,7 +173,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         repo_flags: dict[str, int] = get_repo_flags(db_session, repoid, flags)
 
-        existing_tests: dict[str, Test] = get_existing_tests(db_session, repoid)
+        existing_flag_bridges: dict[str, TestFlagBridge] = get_existing_flag_bridges(
+            db_session, repoid, flags
+        )
 
         for p in parsing_results:
             framework = str(p.framework) if p.framework else None
@@ -234,10 +191,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
                 filename: str | None = testrun.filename
 
-                computed_name: str = self.compute_name(
-                    p.framework, testrun.classname, testrun.name, filename, network
-                )
-
                 test_data[(repoid, name, testsuite, flags_hash)] = dict(
                     id=test_id,
                     repoid=repoid,
@@ -246,10 +199,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     flags_hash=flags_hash,
                     framework=framework,
                     filename=filename,
-                    computed_name=computed_name,
+                    computed_name=testrun.computed_name,
                 )
 
-                if test_id not in existing_tests:
+                if test_id not in existing_flag_bridges and flags:
                     test_flag_bridge_data += [
                         {"test_id": test_id, "flag_id": repo_flags[flag]}
                         for flag in flags
@@ -338,7 +291,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         # Upsert Tests
         if len(test_data) > 0:
             test_insert = insert(Test.__table__).values(
-                sorted(test_data.values(), key=lambda x: str(x["flags_hash"]))
+                sorted(
+                    test_data.values(),
+                    key=lambda x: str(x["id"]),
+                )
             )
             insert_on_conflict_do_update = test_insert.on_conflict_do_update(
                 index_elements=["repoid", "name", "testsuite", "flags_hash"],
@@ -349,16 +305,16 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 },
             )
             db_session.execute(insert_on_conflict_do_update)
-            db_session.flush()
+            db_session.commit()
 
         if len(test_flag_bridge_data):
             insert_on_conflict_do_nothing_flags = (
                 insert(TestFlagBridge.__table__)
                 .values(test_flag_bridge_data)
-                .on_conflict_do_nothing()
+                .on_conflict_do_nothing(index_elements=["test_id", "flag_id"])
             )
             db_session.execute(insert_on_conflict_do_nothing_flags)
-            db_session.flush()
+            db_session.commit()
 
         # Upsert Daily Test Totals
         if len(daily_totals) > 0:
@@ -393,7 +349,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             )
 
             db_session.execute(stmt)
-            db_session.flush()
+            db_session.commit()
 
         # Save TestInstances
         if len(test_instance_data) > 0:
@@ -401,12 +357,16 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 test_instance_data
             )
             db_session.execute(insert_test_instances)
-            db_session.flush()
+            db_session.commit()
 
     def process_individual_upload(
         self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
     ):
         upload_id = upload_obj.id
+        log.info(
+            "Processing individual upload",
+            extra=dict(upload_id=upload_id, repoid=repoid, commitid=commitid),
+        )
         with metrics.timer("test_results.processor.process_individual_arg"):
             arg_processing_result: TestResultsProcessingResult = (
                 self.process_individual_arg(
@@ -499,6 +459,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         readable_report = self.rewrite_readable(network, report_contents)
         archive_service.write_file(upload.storage_path, readable_report.getvalue())
+        log.info(
+            "Wrote readable report to archive",
+            extra=dict(
+                upload_id=upload.id,
+                repoid=upload.report.commit.repoid,
+                commitid=upload.report.commit_id,
+            ),
+        )
 
         return TestResultsProcessingResult(
             network_files=network, parsing_results=parsing_results

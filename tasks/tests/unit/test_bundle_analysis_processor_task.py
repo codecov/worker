@@ -93,7 +93,7 @@ def test_bundle_analysis_processor_task_success(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -155,7 +155,7 @@ def test_bundle_analysis_processor_task_error(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -229,7 +229,7 @@ def test_bundle_analysis_processor_task_general_error(
             commitid=commit.commitid,
             commit_yaml={},
             params={
-                "upload_pk": upload.id_,
+                "upload_id": upload.id_,
                 "commit": commit.commitid,
             },
         )
@@ -281,7 +281,7 @@ def test_bundle_analysis_process_upload_general_error(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -355,7 +355,7 @@ def test_bundle_analysis_processor_task_locked(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -408,7 +408,7 @@ def test_bundle_analysis_process_upload_rate_limit_error(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -478,7 +478,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_id(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -531,7 +531,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_object(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -588,7 +588,7 @@ def test_bundle_analysis_process_associate_no_parent_commit_report_object(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -651,7 +651,7 @@ def test_bundle_analysis_process_associate_called(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -725,7 +725,7 @@ def test_bundle_analysis_process_associate_called_two(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -795,7 +795,7 @@ def test_bundle_analysis_processor_associate_custom_compare_sha(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -870,7 +870,7 @@ def test_bundle_analysis_processor_task_cache_config_not_saved(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -949,7 +949,7 @@ def test_bundle_analysis_processor_task_cache_config_saved(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -1037,7 +1037,7 @@ def test_bundle_analysis_processor_not_caching_previous_report(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -1127,7 +1127,7 @@ def test_bundle_analysis_processor_not_caching_previous_report_two(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -1217,7 +1217,7 @@ def test_bundle_analysis_processor_caching_previous_report(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": upload.id_,
+            "upload_id": upload.id_,
             "commit": commit.commitid,
         },
     )
@@ -1267,7 +1267,7 @@ def test_bundle_analysis_processor_task_no_upload(
         commitid=commit.commitid,
         commit_yaml={},
         params={
-            "upload_pk": None,
+            "upload_id": None,
             "commit": commit.commitid,
         },
     )

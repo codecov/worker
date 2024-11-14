@@ -1,5 +1,4 @@
 import logging
-import typing
 from dataclasses import dataclass
 
 import sentry_sdk
@@ -10,19 +9,13 @@ from shared.yaml import UserYaml
 from database.models.reports import Upload
 from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from helpers.labels import get_all_report_labels, get_labels_per_session
-from rollouts import USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID
 from services.path_fixer import PathFixer
 from services.processing.metrics import LABELS_USAGE
 from services.report.parser.types import ParsedRawReport
-from services.report.report_builder import ReportBuilder, SpecialLabelsEnum
+from services.report.report_builder import ReportBuilder
 from services.report.report_processor import process_report
-from services.yaml import read_yaml_field
 
 log = logging.getLogger(__name__)
-
-DEFAULT_LABEL_INDEX = {
-    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
-}
 
 
 @dataclass
@@ -31,51 +24,33 @@ class SessionAdjustmentResult:
     partially_deleted_sessions: list[int]
 
 
-@dataclass
-class UploadProcessingResult:
-    report: Report  # NOTE: this is just returning the input argument, and primarily used in tests
-    session_adjustment: SessionAdjustmentResult
-
-
 @sentry_sdk.trace
 def process_raw_upload(
     commit_yaml,
-    report: Report,
     raw_reports: ParsedRawReport,
-    flags,
     session: Session,
-    upload: Upload | None = None,
-) -> UploadProcessingResult:
-    toc, env = None, None
-
+) -> Report:
     # ----------------------
     # Extract `git ls-files`
     # ----------------------
+    toc = []
     if raw_reports.has_toc():
         toc = raw_reports.get_toc()
+
     if raw_reports.has_env():
         env = raw_reports.get_env()
+        session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
 
     path_fixer = PathFixer.init_from_user_yaml(
-        commit_yaml=commit_yaml, toc=toc, flags=flags
+        commit_yaml=commit_yaml, toc=toc, flags=session.flags
     )
 
     # ------------------
     # Extract bash fixes
     # ------------------
+    ignored_lines = {}
     if raw_reports.has_report_fixes():
-        ignored_file_lines = raw_reports.get_report_fixes(path_fixer)
-    else:
-        ignored_file_lines = None
-
-    if env:
-        session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
-
-    if flags:
-        session.flags = flags
-
-    sessionid = report.next_session_number()
-    session.id = sessionid
+        ignored_lines = raw_reports.get_report_fixes(path_fixer)
 
     # [javascript] check for both coverage.json and coverage/coverage.lcov
     skip_files = set()
@@ -83,31 +58,12 @@ def process_raw_upload(
         if report_file.filename == "coverage/coverage.json":
             skip_files.add("coverage/coverage.lcov")
 
-    temporary_report = Report()
-
-    should_use_encoded_labels = (
-        upload
-        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            identifier=upload.report.commit.repository.repoid, default=False
-        )
-    )
-    if should_use_encoded_labels:
-        # We initialize the labels_index (which defaults to {}) to force the special label
-        # to always be index 0
-        temporary_report.labels_index = dict(DEFAULT_LABEL_INDEX)
-
-    joined = True
-    for flag in flags or []:
-        if read_yaml_field(commit_yaml, ("flags", flag, "joined")) is False:
-            log.info(
-                "Customer is using joined=False feature", extra=dict(flag_used=flag)
-            )
-            joined = False  # TODO: ensure this works for parallel
+    report = Report()
+    sessionid = session.id = report.next_session_number()
 
     # ---------------
     # Process reports
     # ---------------
-    ignored_lines = ignored_file_lines or {}
     for report_file in raw_reports.get_uploaded_files():
         current_filename = report_file.filename
         if current_filename in skip_files or not report_file.contents:
@@ -117,16 +73,13 @@ def process_raw_upload(
             current_filename
         )
         report_builder_to_use = ReportBuilder(
-            commit_yaml,
-            sessionid,
-            ignored_lines,
-            path_fixer_to_use,
-            should_use_encoded_labels,
+            commit_yaml, sessionid, ignored_lines, path_fixer_to_use
         )
         if report_builder_to_use.supports_labels():
             # NOTE: this here is very conservative, as it checks for *any* `carryforward_mode=labels`,
             # not taking the `flags` into account at all.
             LABELS_USAGE.labels(codepath="report_builder").inc()
+
         try:
             report_from_file = process_report(
                 report=report_file, report_builder=report_builder_to_use
@@ -135,144 +88,26 @@ def process_raw_upload(
             r.filename = current_filename
             raise
 
-        if report_from_file:
-            if should_use_encoded_labels:
-                # Copies the labels from report into temporary_report
-                # If needed
-                make_sure_label_indexes_match(temporary_report, report_from_file)
-            temporary_report.merge(report_from_file, joined=True)
+        if not report_from_file:
+            continue
+        if report.is_empty():
+            # if the initial report is empty, we can avoid a costly merge operation
+            report = report_from_file
+        else:
+            # merging the smaller report into the larger one is faster,
+            # so swap the two reports in that case.
+            if len(report_from_file._files) > len(report._files):
+                report_from_file, report = report, report_from_file
 
-    if not temporary_report:
+            report.merge(report_from_file)
+
+    if not report:
         raise ReportEmptyError("No files found in report.")
 
-    if (
-        should_use_encoded_labels
-        and temporary_report.labels_index == DEFAULT_LABEL_INDEX
-    ):
-        # This means that, even though this report _could_ use encoded labels,
-        # none of the reports processed contributed any new labels to it.
-        # So we assume there are no labels and just reset the _labels_index of temporary_report
-        temporary_report.labels_index = None
-
-    # Now we actually add the session to the original_report
-    # Because we know that the processing was successful
     _sessionid, session = report.add_session(session, use_id_from_session=True)
-    # Adjust sessions removed carryforward sessions that are being replaced
-    if session.flags:
-        session_adjustment = clear_carryforward_sessions(
-            report, temporary_report, session.flags, commit_yaml, upload
-        )
-    else:
-        session_adjustment = SessionAdjustmentResult([], [])
+    session.totals = report.totals
 
-    report.merge(temporary_report, joined=joined)
-    session.totals = temporary_report.totals
-
-    return UploadProcessingResult(report=report, session_adjustment=session_adjustment)
-
-
-@sentry_sdk.trace
-def make_sure_orginal_report_is_using_label_ids(original_report: Report):
-    """Makes sure that the original_report (that was pulled from DB)
-    has CoverageDatapoints that encode label_ids and not actual labels.
-    """
-    # Always point the special label to index 0
-    reverse_index_cache = {
-        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label: SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
-    }
-    if original_report.labels_index is None:
-        original_report.labels_index = {}
-    labels_index = original_report.labels_index
-
-    if (
-        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
-        not in labels_index
-    ):
-        labels_index[
-            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
-        ] = SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label
-
-    def possibly_translate_label(label_or_id: typing.Union[str, int]) -> int:
-        if isinstance(label_or_id, int):
-            return label_or_id
-        if label_or_id in reverse_index_cache:
-            return reverse_index_cache[label_or_id]
-        # Search for label in the report index
-        for idx, label in labels_index.items():
-            if label == label_or_id:
-                reverse_index_cache[label] = idx
-                return idx
-        # Label is not present. Add to index.
-        # Notice that this never picks index 0, that is reserved for the special label
-        new_index = max(labels_index.keys()) + 1
-        reverse_index_cache[label_or_id] = new_index
-        # It's OK to update this here because it's inside the
-        # UploadProcessing lock, so it's exclusive access
-        labels_index[new_index] = label_or_id
-        return new_index
-
-    for report_file in original_report:
-        for _, report_line in report_file.lines:
-            if report_line.datapoints:
-                for datapoint in report_line.datapoints:
-                    datapoint.label_ids = [
-                        possibly_translate_label(label_or_id)
-                        for label_or_id in datapoint.label_ids
-                    ]
-                report_line.datapoints.sort(key=lambda x: x.key_sorting_tuple())
-
-
-@sentry_sdk.trace
-def make_sure_label_indexes_match(
-    original_report: Report, to_merge_report: Report
-) -> None:
-    """Makes sure that the indexes of both reports point to the same labels.
-    Uses the original_report as reference, and fixes the to_merge_report as needed
-    it also extendes the original_report.labels_index with new labels as needed.
-    """
-    if to_merge_report.labels_index is None or original_report.labels_index is None:
-        # The new report doesn't have labels to fix
-        return
-
-    # Map label --> index_in_original_report
-    reverse_index: typing.Dict[str, int] = {
-        t[1]: t[0] for t in original_report.labels_index.items()
-    }
-    # Map index_in_to_merge_report --> index_in_original_report
-    indexes_to_fix: typing.Dict[int, int] = {}
-    next_idx = max(original_report.labels_index.keys()) + 1
-    for idx, label in to_merge_report.labels_index.items():
-        # Special case for the special label, which is SpecialLabelsEnum in to_merge_report
-        # But in the original_report it points to a string
-        if label == SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER:
-            if (
-                idx
-                != SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
-            ):
-                indexes_to_fix[idx] = (
-                    SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index
-                )
-        if label not in reverse_index:
-            # It's a new label that doesn't exist in the original_report
-            original_report.labels_index[next_idx] = label
-            indexes_to_fix[idx] = next_idx
-            next_idx += 1
-        elif reverse_index[label] == idx:
-            # This label matches the index on the original report
-            continue
-        else:
-            # Here the label doesn't match the index in the original report
-            indexes_to_fix[idx] = reverse_index[label]
-
-    # Fix indexes in to_merge_report.
-    for report_file in to_merge_report:
-        for _, report_line in report_file.lines:
-            if report_line.datapoints:
-                for datapoint in report_line.datapoints:
-                    datapoint.label_ids = [
-                        indexes_to_fix.get(label_id, label_id)
-                        for label_id in datapoint.label_ids
-                    ]
+    return report
 
 
 @sentry_sdk.trace
@@ -302,17 +137,6 @@ def clear_carryforward_sessions(
 
     if upload is None and to_partially_overwrite_flags:
         log.warning("Upload is None, but there are partial_overwrite_flags present")
-
-    if (
-        upload
-        and USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_ID.check_value(
-            identifier=upload.report.commit.repository.repoid, default=False
-        )
-        and to_partially_overwrite_flags
-    ):
-        # Make sure that the labels in the reports are in a good state to merge them
-        make_sure_orginal_report_is_using_label_ids(original_report)
-        make_sure_label_indexes_match(original_report, to_merge_report)
 
     session_ids_to_fully_delete = []
     session_ids_to_partially_delete = []

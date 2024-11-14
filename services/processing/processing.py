@@ -10,7 +10,7 @@ from database.models.core import Commit
 from database.models.reports import Upload
 from helpers.reports import delete_archive_setting
 from services.archive import ArchiveService
-from services.report import ProcessingError, RawReportInfo, Report, ReportService
+from services.report import ProcessingError, RawReportInfo, ReportService
 from services.report.parser.types import VersionOneParsedRawReport
 
 from .intermediate import save_intermediate_report
@@ -28,8 +28,7 @@ def process_upload(
     commit_sha: str,
     commit_yaml: UserYaml,
     arguments: UploadArguments,
-    intermediate_reports_in_redis=False,
-) -> dict:
+) -> ProcessingResult:
     upload_id = arguments["upload_id"]
 
     commit = (
@@ -54,10 +53,9 @@ def process_upload(
     )
 
     try:
-        report = Report()
         report_info = RawReportInfo()
         processing_result = report_service.build_report_from_raw_content(
-            report, report_info, upload
+            report_info, upload
         )
 
         if error := processing_result.error:
@@ -67,14 +65,8 @@ def process_upload(
             result["successful"] = True
         log.info("Finished processing upload", extra={"result": result})
 
-        report_service.update_upload_with_processing_result(upload, processing_result)
-        save_intermediate_report(
-            archive_service,
-            commit_sha,
-            upload_id,
-            report,
-            intermediate_reports_in_redis,
-        )
+        if processing_result.report:
+            save_intermediate_report(upload_id, processing_result.report)
         state.mark_upload_as_processed(upload_id)
 
         rewrite_or_delete_upload(archive_service, commit_yaml, report_info)
