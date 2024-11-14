@@ -3059,6 +3059,7 @@ class TestCommentNotifier(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=mock_repo_provider,
         )
         repository = sample_comparison.head.commit.repository
         if bundle_analysis_enabled:
