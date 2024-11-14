@@ -341,6 +341,7 @@ class StatusNotifier(AbstractBaseNotifier):
 
         try:
             _set_commit_status = async_to_sync(repository_service.set_commit_status)
+            head_coverage = head_report and head_report.totals.coverage
             all_results = [
                 _set_commit_status(
                     commitid,
@@ -348,7 +349,7 @@ class StatusNotifier(AbstractBaseNotifier):
                     title,
                     description=message,
                     url=url,
-                    coverage=(float(head_report.totals.coverage) if head_report else 0),
+                    coverage=(float(head_coverage) if head_coverage else 0),
                 )
                 for commitid in all_shas_to_notify
             ]
