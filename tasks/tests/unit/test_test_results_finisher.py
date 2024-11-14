@@ -381,13 +381,13 @@ class TestUploadTestFinisherTask(object):
 <details><summary>View the top 3 failed tests by shortest run time</summary>
 
 > 
-> ```
+> ```python
 > test_name1
 > ```
 > 
 > <details><summary>Stack Traces | 2s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -403,13 +403,13 @@ class TestUploadTestFinisherTask(object):
 
 
 > 
-> ```
+> ```python
 > Other Class Name test_name2
 > ```
 > 
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -426,14 +426,14 @@ class TestUploadTestFinisherTask(object):
 
 
 > 
-> ```
+> ```python
 > Class Name test_name0
 > ```
 > 
 > <details><summary>Stack Traces | 4s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > <pre>Fourth 
 > > 
 > > </pre> | test  | instance |
@@ -708,13 +708,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 <details><summary>View the top 3 failed tests by shortest run time</summary>
 
 > 
-> ```
+> ```python
 > test_name1
 > ```
 > 
 > <details><summary>Stack Traces | 2s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -730,13 +730,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > Other Class Name test_name2
 > ```
 > 
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -753,14 +753,14 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > Class Name test_name0
 > ```
 > 
 > <details><summary>Stack Traces | 4s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > <pre>Fourth 
 > > 
 > > </pre> | test  | instance |
@@ -916,13 +916,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 <details><summary>{"View the top 1 failed tests by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
 
 > 
-> ```
+> ```python
 > Other Class Name test_name2
 > ```
 > {f"\n> **Flake rate in main:** 33.33% (Passed {count - fail_count} times, Failed {fail_count} times)" if (count - fail_count) != recent_passes_count else ""}
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -1069,13 +1069,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 <details><summary>View the top 3 failed tests by shortest run time</summary>
 
 > 
-> ```
+> ```python
 > hello_test_name1
 > ```
 > 
 > <details><summary>Stack Traces | 2s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -1091,13 +1091,13 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > hello_Other Class Name test_name2
 > ```
 > 
 > <details><summary>Stack Traces | 3s run time</summary>
 > 
-> > `````````
+> > `````````python
 > > Shared 
 > > 
 > > 
@@ -1114,14 +1114,14 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 
 
 > 
-> ```
+> ```python
 > hello_Class Name test_name0
 > ```
 > 
 > <details><summary>Stack Traces | 4s run time</summary>
 > 
 > > 
-> > ```
+> > ```python
 > > <pre>Fourth 
 > > 
 > > </pre> | test  | instance |

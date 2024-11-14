@@ -1,6 +1,5 @@
-https://github.com/codecov/opentelem-python/archive/refs/tags/v0.0.4a1.tar.gz#egg=codecovopentelem
 https://github.com/codecov/test-results-parser/archive/94ff26cb083a02ff726dd2497c2129e4aaf5f7cd.tar.gz#egg=test-results-parser
-https://github.com/codecov/shared/archive/4db8f12c1a4ad43cedb1a965d2fa8cd8138fc2b3.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/9a2692a412a3be2553db066e0fcb5cec89860fb7.tar.gz#egg=shared
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 asgiref>=3.7.2
 analytics-python==1.3.0b1
@@ -19,8 +18,6 @@ jinja2>=3.1.3
 lxml>=4.9.1
 mock
 openai
-opentelemetry-instrumentation-celery>=0.45b0
-opentelemetry-sdk>=1.24.0
 orjson
 pre-commit
 polars==1.12.0

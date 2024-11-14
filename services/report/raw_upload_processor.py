@@ -129,6 +129,10 @@ def clear_carryforward_sessions(
     if to_partially_overwrite_flags:
         # NOTE: this here might be the most accurate counter, as it takes into account the
         # actual `to_merge_flags` that were used for this particular upload.
+        sentry_sdk.capture_message(
+            "Customer is using `carryforward_mode=labels` feature",
+            extras={"flags": to_partially_overwrite_flags},
+        )
         LABELS_USAGE.labels(codepath="carryforward_cleanup").inc()
 
     to_fully_overwrite_flags = flags_under_carryforward_rules.difference(

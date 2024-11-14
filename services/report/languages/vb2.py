@@ -1,6 +1,5 @@
-from xml.etree.ElementTree import Element
-
 import sentry_sdk
+from lxml.etree import Element
 from shared.reports.resources import ReportFile
 
 from services.report.report_builder import ReportBuilderSession

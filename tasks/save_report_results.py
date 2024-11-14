@@ -69,11 +69,11 @@ class SaveReportResultsTask(
         comparison = ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
-                enriched_pull=enriched_pull,
                 project_coverage_base=FullCommit(
                     commit=base_commit, report=base_report
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
+                enriched_pull=enriched_pull,
             ),
             ComparisonContext(repository_service=repository_service),
         )
