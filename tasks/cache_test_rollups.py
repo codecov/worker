@@ -12,83 +12,93 @@ from services.redis import get_redis_connection
 from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
-
-def get_query(with_end: bool) -> str:
-    base_query = f"""
-with
-base_cte as (
-	select rd.*
-	from reports_dailytestrollups rd
-	where
-        rd.repoid = %(repoid)s
-		and rd.date >= current_date - interval %(interval)s
-        {"and rd.date < current_date - interval %(interval_end)s" if with_end else ""}
-        and rd.branch = %(branch)s
-),
-failure_rate_cte as (
-	select
-		test_id,
-		CASE
-			WHEN SUM(pass_count) + SUM(fail_count) = 0 THEN 0
-			ELSE SUM(fail_count)::float / (SUM(pass_count) + SUM(fail_count))
-		END as failure_rate,
-		CASE
-			WHEN SUM(pass_count) + SUM(fail_count) = 0 THEN 0
-			ELSE SUM(flaky_fail_count)::float / (SUM(pass_count) + SUM(fail_count))
-		END as flake_rate,
-		MAX(latest_run) as updated_at,
-		AVG(avg_duration_seconds) AS avg_duration,
-        SUM(fail_count) as total_fail_count,
-        SUM(flaky_fail_count) as total_flaky_fail_count,
-        SUM(pass_count) as total_pass_count,
-        SUM(skip_count) as total_skip_count
-	from base_cte
-	group by test_id
-),
-commits_where_fail_cte as (
-	select test_id, array_length((array_agg(distinct unnested_cwf)), 1) as failed_commits_count from (
-		select test_id, commits_where_fail as cwf
-		from base_cte
-		where array_length(commits_where_fail,1) > 0
-	) as tests_with_commits_that_failed, unnest(cwf) as unnested_cwf group by test_id
-),
-last_duration_cte as (
-	select base_cte.test_id, last_duration_seconds from base_cte
-	join (
-		select
-			test_id,
-			max(created_at) as created_at
-		from base_cte
-		group by test_id
-	) as latest_rollups
-    on base_cte.created_at = latest_rollups.created_at and base_cte.test_id = latest_rollups.test_id
-),
-flags_cte as (
-    select test_id, array_agg(distinct flag_name) as flags from reports_test_results_flag_bridge tfb
-    join reports_test rt on rt.id = tfb.test_id
-    join reports_repositoryflag rr on tfb.flag_id = rr.id
-    where rt.repoid = %(repoid)s
-    group by test_id
-)
-
-
-select
-COALESCE(rt.computed_name, rt.name) as name,
-rt.testsuite,
-flags_cte.flags,
-results.*
-from
-(
-    select failure_rate_cte.*, coalesce(commits_where_fail_cte.failed_commits_count, 0) as commits_where_fail, last_duration_cte.last_duration_seconds as last_duration
-    from failure_rate_cte
-    full outer join commits_where_fail_cte using (test_id)
-    full outer join last_duration_cte using (test_id)
-) as results
-join reports_test rt on results.test_id = rt.id
-left join flags_cte using (test_id)
+TEST_AGGREGATION_SUBQUERY = """
+SELECT test_id,
+       CASE
+           WHEN SUM(pass_count) + SUM(fail_count) = 0 THEN 0
+           ELSE SUM(fail_count)::float / (SUM(pass_count) + SUM(fail_count))
+       END AS failure_rate,
+       CASE
+           WHEN SUM(pass_count) + SUM(fail_count) = 0 THEN 0
+           ELSE SUM(flaky_fail_count)::float / (SUM(pass_count) + SUM(fail_count))
+       END AS flake_rate,
+       MAX(latest_run) AS updated_at,
+       AVG(avg_duration_seconds) AS avg_duration,
+       SUM(fail_count) AS total_fail_count,
+       SUM(flaky_fail_count) AS total_flaky_fail_count,
+       SUM(pass_count) AS total_pass_count,
+       SUM(skip_count) AS total_skip_count
+FROM base_cte
+GROUP BY test_id
 """
 
-    return base_query
+COMMITS_FAILED_SUBQUERY = """
+SELECT test_id,
+       array_length((array_agg(DISTINCT unnested_cwf)), 1) AS failed_commits_count
+FROM
+  (SELECT test_id,
+          commits_where_fail AS cwf
+   FROM base_cte
+   WHERE array_length(commits_where_fail, 1) > 0) AS tests_with_commits_that_failed,
+     unnest(cwf) AS unnested_cwf
+GROUP BY test_id
+"""
+
+LAST_DURATION_SUBQUERY = """
+SELECT base_cte.test_id,
+       last_duration_seconds
+FROM base_cte
+JOIN
+  (SELECT test_id,
+          max(created_at) AS created_at
+   FROM base_cte
+   GROUP BY test_id) AS latest_rollups ON base_cte.created_at = latest_rollups.created_at
+AND base_cte.test_id = latest_rollups.test_id
+"""
+
+TEST_FLAGS_SUBQUERY = """
+SELECT test_id,
+       array_agg(DISTINCT flag_name) AS flags
+FROM reports_test_results_flag_bridge tfb
+JOIN reports_test rt ON rt.id = tfb.test_id
+JOIN reports_repositoryflag rr ON tfb.flag_id = rr.id
+WHERE rt.repoid = %(repoid)s
+GROUP BY test_id
+"""
+
+
+def get_query(with_end: bool) -> str:
+    rollups_subquery = f"""
+SELECT *
+FROM reports_dailytestrollups
+WHERE repoid = %(repoid)s
+  AND branch = %(branch)s
+  AND date >= CURRENT_DATE - interval %(interval)s
+  {"AND date < current_date - interval %(interval_end)s" if with_end else ""}
+"""
+
+    return f"""
+WITH
+  base_cte AS ({rollups_subquery}),
+  failure_rate_cte AS ({TEST_AGGREGATION_SUBQUERY}),
+  commits_where_fail_cte AS ({COMMITS_FAILED_SUBQUERY}),
+  last_duration_cte AS ({LAST_DURATION_SUBQUERY}),
+  flags_cte AS ({TEST_FLAGS_SUBQUERY})
+
+SELECT COALESCE(rt.computed_name, rt.name) AS name,
+       rt.testsuite,
+       flags_cte.flags,
+       results.*
+FROM
+  (SELECT failure_rate_cte.*,
+          coalesce(commits_where_fail_cte.failed_commits_count, 0) AS commits_where_fail,
+          last_duration_cte.last_duration_seconds AS last_duration
+   FROM failure_rate_cte
+   FULL OUTER JOIN commits_where_fail_cte USING (test_id)
+   FULL OUTER JOIN last_duration_cte USING (test_id)) AS results
+JOIN reports_test rt ON results.test_id = rt.id
+LEFT JOIN flags_cte USING (test_id)
+"""
 
 
 class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
