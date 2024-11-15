@@ -48,7 +48,7 @@ from services.github import get_github_app_for_commit, set_github_app_for_commit
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.notification import NotificationService
 from services.redis import Redis, get_redis_connection
-from services.report import Report, ReportService
+from services.report import ReportService
 from services.repository import (
     EnrichedPull,
     _get_repo_provider_service_instance,
@@ -607,15 +607,12 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             )
             patch_coverage_base_commitid = None
 
-        # FIXME: The input types can be `None`, though the types of `Comparison`,
-        # and all its users assume that a report exists, so just create an empty
-        # one here.
-        head_report = head_report or ReadOnlyReport.create_from_report(Report())
-        base_report = base_report or ReadOnlyReport.create_from_report(Report())
-
-        # FIXME: A similar problem is that `base_commit` can be `None`, which is
-        # also being flagged by `mypy`, even though the downstream code expects
-        # it to exist.
+        # FIXME: Both the `commit` as well as the `report` on `FullCommit`
+        # (both `head` and `project_coverage_base`) are declared to be non-`None`.
+        # Though you will see type errors below because they indeed can be `None`.
+        # Downstream code seems to be very fragile in this regard.
+        # Some code wrongly assumes things are non-`None` and will error.
+        # Other code checks `report` and then errors on `commit`.
 
         comparison = ComparisonProxy(
             Comparison(

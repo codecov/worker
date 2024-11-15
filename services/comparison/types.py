@@ -39,8 +39,9 @@ class Comparison(object):
     enriched_pull: EnrichedPull
     current_yaml: Optional[UserYaml] = None
 
-    # FIXME: The functions down below do not make sense given that we assume
+    # FIXME: The functions down below would not make sense given that we assume
     # a `FullCommit` and its `report` to always exist.
+    # Which they don't, so these checks do make sense, contrary to declared types.
     # Similarly, we also expect an `EnrichedPull` to exist, which does not match
     # the reality.
 
