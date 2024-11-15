@@ -1,9 +1,8 @@
-version: "3"
-
 services:
   worker:
     image: ${WORKER_DOCKER_REPO}:${WORKER_DOCKER_VERSION}
     depends_on:
+      - mailhog
       - postgres
       - redis
       - timescale
@@ -21,7 +20,7 @@ services:
       - sleep
       - infinity
   postgres:
-    image: postgres:14.7-alpine
+    image: postgres:14-alpine
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -43,7 +42,6 @@ services:
         tmpfs:
           size: 2048M
   redis:
-    image: redis:6-alpine
+    image: redis:7-alpine
   mailhog:
     image: mailhog/mailhog:latest
-
