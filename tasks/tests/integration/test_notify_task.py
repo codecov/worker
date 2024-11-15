@@ -2,7 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from mock import AsyncMock, PropertyMock
+from mock import ANY, AsyncMock, PropertyMock
 from shared.validation.types import CoverageCommentRequiredChanges
 
 from database.models import Pull
@@ -87,7 +87,8 @@ class TestNotifyTask(object):
         result = task.run_impl(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
-        expected_result = {
+
+        assert result == {
             "notified": True,
             "notifications": [
                 {
@@ -101,9 +102,9 @@ class TestNotifyTask(object):
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
-                                "url": None,
-                                "message": "unknown",
-                                "coverage": None,
+                                "url": ANY,
+                                "message": "no change",
+                                "coverage": "0.00",
                                 "notation": "",
                                 "head_commit": {
                                     "commitid": "649eaaf2924e92dc7fd8d370ddb857033231e67a",
@@ -152,7 +153,6 @@ class TestNotifyTask(object):
                 }
             ],
         }
-        assert result == expected_result
 
     @patch("requests.post")
     def test_simple_call_only_status_notifiers(

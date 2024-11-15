@@ -134,6 +134,54 @@ class TestPullModel(object):
         assert factoried_pull.updatestamp > val
 
 
+class TestOwnerModel(object):
+    def test_upload_token_required_for_public_repos(self, dbsession):
+        # Create an owner with upload_token_required_for_public_repos specified
+        tokens_required_owner = Owner(
+            name="Token Owner",
+            email="token_owner@example.com",
+            username="tokenuser",
+            upload_token_required_for_public_repos=True,
+            service="github",
+            service_id="abc",
+        )
+        dbsession.add(tokens_required_owner)
+        dbsession.commit()
+
+        # Refresh from the database to verify persistence
+        dbsession.refresh(tokens_required_owner)
+        assert tokens_required_owner.upload_token_required_for_public_repos is True
+
+        # Update other field, upload_token_required_for_public_repos is unchanged
+        assert tokens_required_owner.onboarding_completed is False
+        tokens_required_owner.onboarding_completed = True
+        dbsession.commit()
+        dbsession.refresh(tokens_required_owner)
+        assert tokens_required_owner.onboarding_completed is True
+        assert tokens_required_owner.upload_token_required_for_public_repos is True
+
+        # Create an owner without upload_token_required_for_public_repos specified
+        tokens_not_required_owner = Owner(
+            name="Tokenless Owner",
+            email="tokenless_owner@example.com",
+            username="tokenlessuser",
+            service="github",
+            service_id="defg",
+        )
+        dbsession.add(tokens_not_required_owner)
+        dbsession.commit()
+        dbsession.refresh(tokens_not_required_owner)
+        assert tokens_not_required_owner.upload_token_required_for_public_repos is False
+
+        # Update other field, upload_token_required_for_public_repos is unchanged
+        assert tokens_not_required_owner.onboarding_completed is False
+        tokens_not_required_owner.onboarding_completed = True
+        dbsession.commit()
+        dbsession.refresh(tokens_not_required_owner)
+        assert tokens_not_required_owner.onboarding_completed is True
+        assert tokens_not_required_owner.upload_token_required_for_public_repos is False
+
+
 class TestReportDetailsModel(object):
     sample_files_array = [
         {

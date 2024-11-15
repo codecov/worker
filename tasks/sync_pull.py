@@ -30,7 +30,7 @@ from services.repository import (
     fetch_and_update_pull_request_information,
     get_repo_provider_service,
 )
-from services.test_results import should_write_flaky_detection
+from services.test_results import should_do_flaky_detection
 from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
 from tasks.process_flakes import process_flakes_task_name
@@ -227,6 +227,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 commits,
                 base_ancestors_tree,
                 current_yaml,
+                repository,
             )
             db_session.commit()
         except TorngitClientError:
@@ -336,6 +337,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         commits_on_pr: Sequence,
         ancestors_tree_on_base: Dict[str, Any],
         current_yaml,
+        repository: Repository,
     ) -> dict:
         """Updates commits considering what the new PR situation is.
 
@@ -403,7 +405,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
 
                 if db_session.query(Test).filter(Test.repoid == repoid).count() > 0:
                     self.trigger_process_flakes(
-                        repoid, pull.head, pull_dict["head"]["branch"], current_yaml
+                        repository, pull.head, pull_dict["head"]["branch"], current_yaml
                     )
 
             # set the rest of the commits to deleted (do not show in the UI)
@@ -525,12 +527,18 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         return regular_was_squash
 
     def trigger_process_flakes(
-        self, repoid: int, pull_head: str, branch: str, current_yaml: UserYaml
+        self,
+        repository: Repository,
+        pull_head: str,
+        branch: str,
+        current_yaml: UserYaml,
     ):
         # but only if flake processing is enabled for this repo
-        if should_write_flaky_detection(repoid, current_yaml):
+        if should_do_flaky_detection(repository, current_yaml):
             self.app.tasks[process_flakes_task_name].apply_async(
-                kwargs=dict(repo_id=repoid, commit_id_list=[pull_head], branch=branch)
+                kwargs=dict(
+                    repo_id=repository.repoid, commit_id_list=[pull_head], branch=branch
+                )
             )
 
     def trigger_ai_pr_review(self, enriched_pull: EnrichedPull, current_yaml: UserYaml):

@@ -78,8 +78,8 @@ class UploadContext:
         repoid: int,
         commitid: str,
         report_type: ReportType = ReportType.COVERAGE,
-        report_code: Optional[str] = None,
-        redis_connection: Optional[Redis] = None,
+        report_code: str | None = None,
+        redis_connection: Redis | None = None,
     ):
         self.repoid = repoid
         self.commitid = commitid
@@ -89,8 +89,6 @@ class UploadContext:
 
     def log_extra(self, **kwargs) -> dict:
         return dict(
-            repoid=self.repoid,
-            commit=self.commitid,
             report_type=self.report_type.value,
             report_code=self.report_code,
             **kwargs,
@@ -286,8 +284,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         db_session: Session,
         repoid: int,
         commitid: str,
-        report_type="coverage",
-        report_code=None,
+        report_type: str = "coverage",
+        report_code: str | None = None,
         *args,
         **kwargs,
     ):
@@ -297,6 +295,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             report_type=ReportType(report_type),
             report_code=report_code,
         )
+        if report_code:
+            sentry_sdk.capture_message(
+                "Customer is using non-default `report_code`",
+                tags={"report_type": report_type, "report_code": report_code},
+            )
         checkpoints = upload_context.get_checkpoints(kwargs)
         log.info("Received upload task", extra=upload_context.log_extra())
 
