@@ -28,11 +28,18 @@ dependencies = [
     "shared",
     "sqlalchemy<2",
     "statsd>=4.0.1",
-    "stripe>=11.2.0",
+    "stripe>=9.6.0",
     "test-results-parser",
     "timestring",
     "zstandard>=0.23.0",
 ]
+
+[tool.setuptools]
+py-modules = []
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
 [tool.uv]
 dev-dependencies = [

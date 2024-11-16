@@ -7,11 +7,16 @@ FROM us-docker.pkg.dev/berglas/berglas/berglas:$BERGLAS_VERSION as berglas
 
 
 FROM $REQUIREMENTS_IMAGE as app
-WORKDIR /worker
-ADD . /worker
+WORKDIR /app-dir
+ADD . /app-dir
 RUN chmod +x worker.sh
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=$RELEASE_VERSION
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON=python \
+    UV_PROJECT_ENVIRONMENT=/worker
 ENTRYPOINT ["./worker.sh"]
 
 

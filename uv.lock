@@ -2163,7 +2163,7 @@ wheels = [
 [[package]]
 name = "worker"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "asgiref" },
     { name = "celery" },
@@ -2239,7 +2239,7 @@ requires-dist = [
     { name = "shared", git = "https://github.com/codecov/shared?rev=9c31870de026a8a3f026f0753b1991e8c832fadb" },
     { name = "sqlalchemy", specifier = "<2" },
     { name = "statsd", specifier = ">=4.0.1" },
-    { name = "stripe", specifier = ">=11.2.0" },
+    { name = "stripe", specifier = ">=9.6.0" },
     { name = "test-results-parser", git = "https://github.com/codecov/test-results-parser?rev=94ff26cb083a02ff726dd2497c2129e4aaf5f7cd" },
     { name = "timestring", git = "https://github.com/codecov/timestring?rev=d37ceacc5954dff3b5bd2f887936a98a668dda42" },
     { name = "zstandard", specifier = ">=0.23.0" },
