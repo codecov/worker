@@ -208,7 +208,6 @@ def mock_configuration(mocker):
                 "access_key_id": "codecov-default-key",
                 "bucket": "archive",
                 "hash_key": "88f572f4726e4971827415efa8867978",
-                "periodic_callback_ms": False,
                 "secret_access_key": "codecov-default-secret",
                 "verify_ssl": False,
             },
