@@ -371,7 +371,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         with metrics.timer("test_results.processor.process_individual_arg"):
             arg_processing_result: TestResultsProcessingResult = (
                 self.process_individual_arg(
-                    upload_obj, upload_obj.report.commit.repository
+                    db_session, upload_obj, upload_obj.report.commit.repository
                 )
             )
         if all(
@@ -425,7 +425,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         return buffer
 
     def process_individual_arg(
-        self, upload: Upload, repository
+        self, db_session: Session, upload: Upload, repository
     ) -> TestResultsProcessingResult:
         archive_service = ArchiveService(repository)
 
@@ -472,7 +472,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         if upload.state != "has_failed":
             upload.state = "processed"
 
-        upload.save()
+        db_session.flush()
 
         readable_report = self.rewrite_readable(network, report_contents)
         archive_service.write_file(upload.storage_path, readable_report.getvalue())
