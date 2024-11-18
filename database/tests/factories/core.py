@@ -78,6 +78,7 @@ class RepositoryFactory(Factory):
         lambda o: datetime.now(tz=timezone.utc)
     )
     bundle_analysis_enabled = False
+    test_analytics_enabled = True
 
 
 class BranchFactory(Factory):
