@@ -7,6 +7,7 @@ from datetime import date, datetime
 from io import BytesIO
 from typing import List
 
+import sentry_sdk
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
@@ -429,7 +430,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         archive_service = ArchiveService(repository)
 
         payload_bytes = archive_service.read_file(upload.storage_path)
-        data = json.loads(payload_bytes)
+        try:
+            data = json.loads(payload_bytes)
+        except json.JSONDecodeError as e:
+            with sentry_sdk.new_scope() as scope:
+                scope.set_extra("upload_state", upload.state)
+                scope.set_extra("contents", payload_bytes[:10])
+                sentry_sdk.capture_message("Upload payload is not valid JSON")
 
         parsing_results: list[ParsingInfo] = []
 
@@ -456,6 +463,16 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         parser_err_msg=exc.parser_err_msg,
                     ),
                 )
+                with sentry_sdk.new_scope() as scope:
+                    scope.set_extra("upload_state", upload.state)
+                    scope.set_extra("parser_error", exc.parser_err_msg)
+                    sentry_sdk.capture_message("Test results parser error")
+                    upload.state = "has_failed"
+
+        if upload.state != "has_failed":
+            upload.state = "processed"
+
+        upload.save()
 
         readable_report = self.rewrite_readable(network, report_contents)
         archive_service.write_file(upload.storage_path, readable_report.getvalue())
