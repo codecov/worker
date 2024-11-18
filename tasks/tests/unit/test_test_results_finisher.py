@@ -625,13 +625,11 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {
-            "notify_attempted": False,
-            "notify_succeeded": False,
+        assert result == {
+            "notify_attempted": True,
+            "notify_succeeded": True,
             "queue_notify": False,
         }
-
-        assert expected_result == result
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
