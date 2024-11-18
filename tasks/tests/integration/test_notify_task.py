@@ -87,7 +87,8 @@ class TestNotifyTask(object):
         result = task.run_impl(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
-        expected_result = {
+
+        assert result == {
             "notified": True,
             "notifications": [
                 {
@@ -152,7 +153,6 @@ class TestNotifyTask(object):
                 }
             ],
         }
-        assert result == expected_result
 
     @patch("requests.post")
     def test_simple_call_only_status_notifiers(

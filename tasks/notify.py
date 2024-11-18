@@ -437,8 +437,6 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 ),
             )
             db_session.commit()
-            commit.notified = True
-            db_session.commit()
             return {"notified": True, "notifications": notifications}
         else:
             log.info(
@@ -609,14 +607,21 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             )
             patch_coverage_base_commitid = None
 
+        # FIXME: Both the `commit` as well as the `report` on `FullCommit`
+        # (both `head` and `project_coverage_base`) are declared to be non-`None`.
+        # Though you will see type errors below because they indeed can be `None`.
+        # Downstream code seems to be very fragile in this regard.
+        # Some code wrongly assumes things are non-`None` and will error.
+        # Other code checks `report` and then errors on `commit`.
+
         comparison = ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
-                enriched_pull=enriched_pull,
                 project_coverage_base=FullCommit(
                     commit=base_commit, report=base_report
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
+                enriched_pull=enriched_pull,
                 current_yaml=current_yaml,
             ),
             context=ComparisonContext(

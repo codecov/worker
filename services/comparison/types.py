@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, TypedDict
 
-from shared.reports.resources import Report
+from shared.reports.readonly import ReadOnlyReport
 from shared.yaml import UserYaml
 
 from database.models import Commit
@@ -11,7 +11,7 @@ from services.repository import EnrichedPull
 @dataclass
 class FullCommit(object):
     commit: Commit
-    report: Report
+    report: ReadOnlyReport
 
 
 class ReportUploadedCount(TypedDict):
@@ -38,6 +38,12 @@ class Comparison(object):
 
     enriched_pull: EnrichedPull
     current_yaml: Optional[UserYaml] = None
+
+    # FIXME: The functions down below would not make sense given that we assume
+    # a `FullCommit` and its `report` to always exist.
+    # Which they don't, so these checks do make sense, contrary to declared types.
+    # Similarly, we also expect an `EnrichedPull` to exist, which does not match
+    # the reality.
 
     def has_project_coverage_base_report(self):
         return bool(

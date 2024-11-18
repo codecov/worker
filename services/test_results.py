@@ -1,16 +1,25 @@
 import logging
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import List, Mapping, Sequence
+from typing import List, Sequence
 
+from shared.plan.constants import FREE_PLAN_REPRESENTATIONS, TEAM_PLAN_REPRESENTATIONS
 from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
-from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from database.models import (
+    Commit,
+    CommitReport,
+    Repository,
+    RepositoryFlag,
+    TestInstance,
+    Upload,
+)
 from helpers.notifier import BaseNotifier
-from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
+from rollouts import FLAKY_TEST_DETECTION
 from services.license import requires_license
+from services.processing.types import UploadArguments
 from services.report import BaseReportService
 from services.repository import get_repo_provider_service
 from services.urls import get_members_url, get_test_analytics_url
@@ -52,11 +61,10 @@ class TestResultsReportService(BaseReportService):
 
     # support flags in test results
     def create_report_upload(
-        self, normalized_arguments: Mapping[str, str], commit_report: CommitReport
+        self, arguments: UploadArguments, commit_report: CommitReport
     ) -> Upload:
-        upload = super().create_report_upload(normalized_arguments, commit_report)
-        flags = normalized_arguments.get("flags") or []
-        self._attach_flags_to_upload(upload, flags)
+        upload = super().create_report_upload(arguments, commit_report)
+        self._attach_flags_to_upload(upload, arguments["flags"])
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: Sequence[str]):
@@ -162,14 +170,14 @@ def properly_backtick(content: str) -> str:
             max_backtick_count = curr_backtick_count
 
     backticks = "`" * (max_backtick_count + 1)
-    return f"{backticks}\n{content}\n{backticks}"
+    return f"{backticks}python\n{content}\n{backticks}"
 
 
 def wrap_in_code(content: str) -> str:
     if "```" in content:
         return properly_backtick(content)
     else:
-        return f"\n```\n{content}\n```\n"
+        return f"\n```python\n{content}\n```\n"
 
 
 def display_duration(f: float) -> str:
@@ -389,14 +397,20 @@ def latest_test_instances_for_a_given_commit(db_session, commit_id):
     )
 
 
-def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
-    return (
-        FLAKY_TEST_DETECTION.check_value(identifier=repoid, default=False)
-        or FLAKY_SHADOW_MODE.check_value(identifier=repoid, default=False)
-    ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True)
+def not_private_and_free_or_team(repo: Repository):
+    return not (
+        repo.private
+        and repo.owner.plan
+        in {**FREE_PLAN_REPRESENTATIONS, **TEAM_PLAN_REPRESENTATIONS}
+    )
 
 
-def should_read_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
-    return FLAKY_TEST_DETECTION.check_value(
-        identifier=repoid, default=False
-    ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True)
+def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
+    has_flaky_configured = read_yaml_field(
+        commit_yaml, ("test_analytics", "flake_detection"), True
+    )
+    feature_enabled = FLAKY_TEST_DETECTION.check_value(
+        identifier=repo.repoid, default=True
+    )
+    has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
+    return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)

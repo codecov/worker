@@ -1,11 +1,15 @@
 import datetime as dt
 
 import polars as pl
-from django.db import connection
+from django.db import connections
+from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
+from shared.config import get_config
 from shared.django_apps.reports.models import LastCacheRollupDate
 
 from app import celery_app
+from django_scaffold import settings
+from services.redis import get_redis_connection
 from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
@@ -89,8 +93,26 @@ left join flags_cte using (test_id)
 
 
 class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
-    def run_impl(self, *, repoid: int, branch: str, update_date: bool = True, **kwargs):
+    def run_impl(
+        self, _db_session, repoid: int, branch: str, update_date: bool = True, **kwargs
+    ):
+        redis_conn = get_redis_connection()
+        try:
+            with redis_conn.lock(
+                f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
+            ):
+                self.run_impl_within_lock(repoid, branch, update_date)
+                return {"success": True}
+        except LockError:
+            return {"in_progress": True}
+
+    def run_impl_within_lock(self, repoid: int, branch: str, update_date: bool = True):
         storage_service = get_storage_client()
+
+        if get_config("setup", "database", "read_replica_enabled", default=False):
+            connection = connections["default_read"]
+        else:
+            connection = connections["default"]
 
         with connection.cursor() as cursor:
             for interval_start, interval_end in [
@@ -122,11 +144,11 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                     [
                         "name",
                         "testsuite",
-                        "flags",
+                        ("flags", pl.List(pl.String)),
                         "test_id",
                         "failure_rate",
                         "flake_rate",
-                        "updated_at",
+                        ("updated_at", pl.Datetime(time_zone=dt.UTC)),
                         "avg_duration",
                         "total_fail_count",
                         "total_flaky_fail_count",
@@ -147,14 +169,20 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
 
                 storage_service.write_file("codecov", storage_key, serialized_table)
 
-        if update_date:
-            LastCacheRollupDate.objects.update_or_create(
-                repository_id=repoid,
-                branch=branch,
-                defaults=dict(last_rollup_date=dt.date.today()),
-            )
+                if update_date:
+                    LastCacheRollupDate.objects.update_or_create(
+                        repository_id=repoid,
+                        branch=branch,
+                        defaults=dict(last_rollup_date=dt.date.today()),
+                    )
 
-        return {"success": True}
+                serialized_table.seek(0)  # avoids Stream must be at beginning errors
+
+                storage_service.write_file(
+                    settings.GCS_BUCKET_NAME, storage_key, serialized_table
+                )
+
+        return
 
 
 RegisteredCacheTestRollupTask = celery_app.register_task(CacheTestRollupsTask())

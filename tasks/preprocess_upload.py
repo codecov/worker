@@ -1,7 +1,6 @@
 import logging
 from typing import Optional
 
-from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.torngit.base import TorngitBaseAdapter
 
@@ -106,7 +105,7 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
             }
         # Makes sure that we can properly carry forward reports
         # By populating the commit info (if needed)
-        updated_commit = async_to_sync(possibly_update_commit_from_provider_info)(
+        updated_commit = possibly_update_commit_from_provider_info(
             commit=commit, repository_service=repository_service
         )
         commit_yaml = fetch_commit_yaml_and_possibly_store(commit, repository_service)

@@ -1572,6 +1572,13 @@ class TestProjectStatusNotifier(object):
                 None,
                 id="not_enough_hits_removed_for_status_to_pass",
             ),
+            pytest.param(
+                ReportTotals(hits=0, misses=0, partials=0),
+                ReportTotals(hits=0, misses=0, partials=0, coverage="100"),
+                [],
+                None,
+                id="zero_coverage",
+            ),
         ],
     )
     def test_adjust_base_behavior(

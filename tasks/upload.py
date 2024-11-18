@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Optional
 
 import orjson
 import sentry_sdk
@@ -29,7 +29,6 @@ from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
-from rollouts import INTERMEDIATE_REPORTS_IN_REDIS
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
@@ -79,8 +78,8 @@ class UploadContext:
         repoid: int,
         commitid: str,
         report_type: ReportType = ReportType.COVERAGE,
-        report_code: Optional[str] = None,
-        redis_connection: Optional[Redis] = None,
+        report_code: str | None = None,
+        redis_connection: Redis | None = None,
     ):
         self.repoid = repoid
         self.commitid = commitid
@@ -90,8 +89,6 @@ class UploadContext:
 
     def log_extra(self, **kwargs) -> dict:
         return dict(
-            repoid=self.repoid,
-            commit=self.commitid,
             report_type=self.report_type.value,
             report_code=self.report_code,
             **kwargs,
@@ -176,7 +173,7 @@ class UploadContext:
             for arg in arguments:
                 yield orjson.loads(arg)
 
-    def normalize_arguments(self, commit: Commit, arguments: dict[str, Any]):
+    def normalize_arguments(self, commit: Commit, arguments: UploadArguments):
         """
         Normalizes and validates the argument list from the user.
 
@@ -195,12 +192,18 @@ class UploadContext:
             )
             log.info(
                 "Writing report content from redis to storage",
-                extra=dict(
-                    commit=commit.commitid, repoid=commit.repoid, path=written_path
-                ),
+                extra=dict(path=written_path),
             )
             arguments["url"] = written_path
         arguments.pop("token", None)
+
+        flags: list | str | None = arguments.get("flags")
+        if not flags:
+            flags = []
+        elif isinstance(flags, str):
+            flags = [flag.strip() for flag in flags.split(",")]
+        arguments["flags"] = flags
+
         return arguments
 
 
@@ -281,8 +284,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         db_session: Session,
         repoid: int,
         commitid: str,
-        report_type="coverage",
-        report_code=None,
+        report_type: str = "coverage",
+        report_code: str | None = None,
         *args,
         **kwargs,
     ):
@@ -292,6 +295,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             report_type=ReportType(report_type),
             report_code=report_code,
         )
+        if report_code:
+            sentry_sdk.capture_message(
+                "Customer is using non-default `report_code`",
+                tags={"report_type": report_type, "report_code": report_code},
+            )
         checkpoints = upload_context.get_checkpoints(kwargs)
         log.info("Received upload task", extra=upload_context.log_extra())
 
@@ -424,7 +432,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             repository_service = get_repo_provider_service(
                 repository, installation_name_to_use=installation_name_to_use
             )
-            was_updated = async_to_sync(possibly_update_commit_from_provider_info)(
+            was_updated = possibly_update_commit_from_provider_info(
                 commit, repository_service
             )
             was_setup = self.possibly_setup_webhooks(commit, repository_service)
@@ -495,16 +503,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         argument_list: list[UploadArguments] = []
         for arguments in upload_context.arguments_list():
-            normalized_arguments = upload_context.normalize_arguments(commit, arguments)
-            if "upload_id" not in normalized_arguments:
-                upload = report_service.create_report_upload(
-                    normalized_arguments, commit_report
-                )
-                normalized_arguments["upload_id"] = upload.id_
+            arguments = upload_context.normalize_arguments(commit, arguments)
+            if "upload_id" not in arguments:
+                upload = report_service.create_report_upload(arguments, commit_report)
+                arguments["upload_id"] = upload.id_
 
             # TODO(swatinem): eventually migrate from `upload_pk` to `upload_id`:
-            normalized_arguments["upload_pk"] = normalized_arguments["upload_id"]
-            argument_list.append(normalized_arguments)
+            arguments["upload_pk"] = arguments["upload_id"]
+            argument_list.append(arguments)
 
         if argument_list:
             db_session.commit()
@@ -597,17 +603,12 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             [int(upload["upload_id"]) for upload in argument_list]
         )
 
-        intermediate_reports_in_redis = INTERMEDIATE_REPORTS_IN_REDIS.check_value(
-            commit.repoid
-        )
-
         parallel_processing_tasks = [
             upload_processor_task.s(
                 repoid=commit.repoid,
                 commitid=commit.commitid,
                 commit_yaml=commit_yaml,
                 arguments=arguments,
-                intermediate_reports_in_redis=intermediate_reports_in_redis,
             )
             for arguments in argument_list
         ]
@@ -618,7 +619,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
                 "report_code": commit_report.code,
-                "intermediate_reports_in_redis": intermediate_reports_in_redis,
                 _kwargs_key(UploadFlow): checkpoints.data,
             },
         )
@@ -707,7 +707,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             commit_report.report_type != ReportType.BUNDLE_ANALYSIS.value
             and commit.repository.bundle_analysis_enabled
         ):
-            # Override upload_pk from other upload types and create the BA uploads in the
+            # Override upload_id from other upload types and create the BA uploads in the
             # BA processor task
             ba_argument_list = []
             for arg in argument_list:

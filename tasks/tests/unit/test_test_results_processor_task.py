@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from shared.storage.exceptions import FileNotInStorageError
-from test_results_parser import Framework, Outcome
+from test_results_parser import Outcome
 from time_machine import travel
 
 from database.models import CommitReport, RepositoryFlag
@@ -21,78 +21,6 @@ here = Path(__file__)
 
 
 class TestUploadTestProcessorTask(object):
-    def test_compute_name(self):
-        assert (
-            TestResultsProcessorTask().compute_name(
-                Framework.Pytest,
-                "api.temp.calculator.test_calculator",
-                "test_divide",
-                "api/temp/calculator/test_calculator.py",
-                None,
-            )
-            == "api/temp/calculator/test_calculator.py::test_divide"
-        )
-
-    def test_compute_name_with_class(self):
-        assert (
-            TestResultsProcessorTask().compute_name(
-                Framework.Pytest,
-                "api.temp.calculator.test_calculator.TestCalculator",
-                "test_divide",
-                "api/temp/calculator/test_calculator.py",
-                None,
-            )
-            == "api/temp/calculator/test_calculator.py::TestCalculator::test_divide"
-        )
-
-    def test_compute_name_with_network(self):
-        assert (
-            TestResultsProcessorTask().compute_name(
-                Framework.Pytest,
-                "api.temp.calculator.test_calculator.TestCalculator",
-                "test_divide",
-                "api/temp/calculator/test_calculator.py",
-                ["api/temp/calculator/test_calculator.py"],
-            )
-            == "api/temp/calculator/test_calculator.py::TestCalculator::test_divide"
-        )
-
-    def test_compute_name_jest(self):
-        assert (
-            TestResultsProcessorTask().compute_name(
-                Framework.Jest,
-                "test_calculator.test_divide",
-                "test_divide",
-                None,
-                None,
-            )
-            == "test_divide"
-        )
-
-    def test_compute_name_vitest(self):
-        assert (
-            TestResultsProcessorTask().compute_name(
-                Framework.Vitest, "thing.ts", "test_divide", None, None
-            )
-            == "thing.ts > test_divide"
-        )
-
-    def test_compute_name_phpunit(self):
-        assert (
-            TestResultsProcessorTask().compute_name(
-                Framework.PHPUnit, "thing::test_divide", "test_divide", None, None
-            )
-            == "thing::test_divide::test_divide"
-        )
-
-    def test_compute_name_unknown(self):
-        assert (
-            TestResultsProcessorTask().compute_name(
-                None, "thing::test_divide", "test_divide", None, None
-            )
-            == "thing::test_divide\x1ftest_divide"
-        )
-
     @pytest.mark.integration
     def test_upload_processor_task_call(
         self,
@@ -116,7 +44,7 @@ class TestUploadTestProcessorTask(object):
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -156,7 +84,7 @@ class TestUploadTestProcessorTask(object):
 
         assert (
             failures[0].failure_message
-            == """def test_divide():\n&gt;       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)\nE        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
+            == """def test_divide():\n>       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = <function Calculator.divide at 0x104c9eb90>(1, 2)\nE        +    where <function Calculator.divide at 0x104c9eb90> = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
         )
         assert (
             failures[0].test.name
@@ -199,7 +127,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch(
             "tasks.test_results_processor.parse_junit_xml",
@@ -250,7 +178,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch.object(
             TestResultsProcessorTask, "should_delete_archive", return_value=True
@@ -295,11 +223,12 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         assert len(test_instances) == 4
         assert len(failures) == 1
 
-        assert (
-            tests[0].flags_hash
-            == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        assert set([test.flags_hash for test in tests]) == {
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+        assert set([test_instance.test.id for test_instance in test_instances]) == set(
+            [test.id_ for test in tests]
         )
-        assert test_instances[0].test.id == tests[0].id
         assert "Deleting uploaded file as requested" in caplog.text
         with pytest.raises(FileNotInStorageError):
             mock_storage.read_file("archive", url)
@@ -325,7 +254,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -378,7 +307,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.add(upload)
         dbsession.flush()
         repoid = upload.report.commit.repoid
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -435,7 +364,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         assert (
             failures[0].failure_message
-            == """def test_divide():\n&gt;       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)\nE        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
+            == """def test_divide():\n>       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = <function Calculator.divide at 0x104c9eb90>(1, 2)\nE        +    where <function Calculator.divide at 0x104c9eb90> = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
         )
         assert (
             failures[0].test.name
@@ -471,7 +400,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload.flags = [repo_flag]
         dbsession.flush()
 
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -539,7 +468,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         assert (
             failures[0].failure_message
-            == """def test_divide():\n&gt;       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = &lt;function Calculator.divide at 0x104c9eb90&gt;(1, 2)\nE        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
+            == """def test_divide():\n>       assert Calculator.divide(1, 2) == 0.5\nE       assert 1.0 == 0.5\nE        +  where 1.0 = <function Calculator.divide at 0x104c9eb90>(1, 2)\nE        +    where <function Calculator.divide at 0x104c9eb90> = Calculator.divide\n\napi/temp/calculator/test_calculator.py:30: AssertionError"""
         )
         assert (
             failures[0].test.name
@@ -590,7 +519,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             dbsession.flush()
 
             repoid = upload.report.commit.repoid
-            redis_queue = [{"url": first_url, "upload_pk": upload.id_}]
+            redis_queue = [{"url": first_url, "upload_id": upload.id_}]
             mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
             result = TestResultsProcessorTask().run_impl(
@@ -650,7 +579,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
                 dbsession.add(flake)
                 dbsession.flush()
 
-            redis_queue = [{"url": second_url, "upload_pk": upload.id_}]
+            redis_queue = [{"url": second_url, "upload_id": upload.id_}]
 
             result = TestResultsProcessorTask().run_impl(
                 dbsession,
@@ -722,10 +651,6 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             }
 
     @pytest.mark.integration
-    @pytest.mark.parametrize(
-        "source_file_name",
-        ["sample_test_network.json", "sample_test_missing_network.json"],
-    )
     def test_upload_processor_task_call_network(
         self,
         mocker,
@@ -735,7 +660,6 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         mock_storage,
         mock_redis,
         celery_app,
-        source_file_name,
     ):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
@@ -743,13 +667,15 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         assert len(test_instances) == 0
 
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / source_file_name) as f:
+        with open(
+            here.parent.parent / "samples" / "sample_test_missing_network.json"
+        ) as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_pk": upload.id_}]
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -795,7 +721,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         assert (
             failures[0].failure_message.replace(" ", "").replace("\n", "")
-            == """deftest_divide():&gt;assertCalculator.divide(1,2)==0.5Eassert1.0==0.5E+where1.0=&lt;functionCalculator.divideat0x104c9eb90&gt;(1,2)E+where&lt;functionCalculator.divideat0x104c9eb90&gt;=Calculator.divideapi/temp/calculator/test_calculator.py:30:AssertionError"""
+            == """deftest_divide():>assertCalculator.divide(1,2)==0.5Eassert1.0==0.5E+where1.0=<functionCalculator.divideat0x104c9eb90>(1,2)E+where<functionCalculator.divideat0x104c9eb90>=Calculator.divideapi/temp/calculator/test_calculator.py:30:AssertionError"""
         )
         assert (
             failures[0].test.name
@@ -804,15 +730,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         assert expected_result == result
         assert commit.message == "hello world"
 
-        if "missing" not in source_file_name:
-            assert mock_storage.read_file("archive", url).startswith(
-                b"""# path=api/temp/calculator/test_calculator.py
-<<<<<< network
-
+        assert mock_storage.read_file("archive", url).startswith(
+            b"""# path=codecov-demo/temp.junit.xml
 """
-            )
-        else:
-            assert mock_storage.read_file("archive", url).startswith(
-                b"""# path=codecov-demo/temp.junit.xml
-"""
-            )
+        )

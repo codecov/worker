@@ -66,9 +66,8 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
 
         # At this point we can calculate the patch coverage
         # Because we have a HEAD report and a base commit to get the diff from
-        if comparison.patch_totals is None:
-            patch_totals = comparison_proxy.get_patch_totals()
-            comparison.patch_totals = minimal_totals(patch_totals)
+        patch_totals = comparison_proxy.get_patch_totals()
+        comparison.patch_totals = minimal_totals(patch_totals)
 
         if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
@@ -308,11 +307,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         return ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=compare_commit, report=compare_report),
-                enriched_pull=None,
                 project_coverage_base=FullCommit(
                     commit=base_commit, report=base_report
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
+                enriched_pull=None,
             ),
             context=ComparisonContext(
                 gh_app_installation_name=installation_name_to_use

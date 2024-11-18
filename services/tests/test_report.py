@@ -3,22 +3,16 @@ from decimal import Decimal
 import mock
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
-from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, Session, SessionType
 from shared.reports.types import ReportLine, ReportTotals
 from shared.torngit.exceptions import TorngitRateLimitError
 from shared.yaml import UserYaml
 
 from database.models import CommitReport, RepositoryFlag, Upload
-from database.tests.factories import CommitFactory, UploadFactory
+from database.tests.factories import CommitFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from services.archive import ArchiveService
-from services.report import (
-    NotReadyToBuildReportYetError,
-    ProcessingError,
-    ProcessingResult,
-    ReportService,
-)
+from services.report import NotReadyToBuildReportYetError, ReportService
 from services.report import log as report_log
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
@@ -3689,7 +3683,7 @@ class TestReportService(BaseTestCase):
             "cmd_args": "n,F,Q,C",
             "commit": "1280bf4b8d596f41b101ac425758226c021876da",
             "job": "thisjob",
-            "flags": "unittest",
+            "flags": ["unittest"],
             "name": "this name contains more than 100 chars 1111111111111111111111111111111111111111111111111111111111111this is more than 100",
             "owner": "greenlantern",
             "package": "github-action-20210309-2b87ace",
@@ -3698,7 +3692,6 @@ class TestReportService(BaseTestCase):
             "reportid": "6e2b6449-4e60-43f8-80ae-2c03a5c03d92",
             "service": "github-actions",
             "slug": "greenlantern/reponame",
-            "upload_pk": "42593902",
             "url": "v4/raw/2021-03-12/C00AE6C87E34AF41A6D38D154C609782/1280bf4b8d596f41b101ac425758226c021876da/6e2b6449-4e60-43f8-80ae-2c03a5c03d92.txt",
             "using_global_token": "false",
             "version": "v4",
@@ -3738,43 +3731,6 @@ class TestReportService(BaseTestCase):
         first_flag = res.flags[0]
         assert first_flag.flag_name == "unittest"
         assert first_flag.repository_id == commit.repoid
-
-    def test_update_upload_with_processing_result_error(self, mocker, dbsession):
-        upload_obj = UploadFactory.create(state="started", storage_path="url")
-        dbsession.add(upload_obj)
-        dbsession.flush()
-        assert len(upload_obj.errors) == 0
-        processing_result = ProcessingResult(
-            session=mocker.MagicMock(),
-            error=ProcessingError(code="abclkj", params={"banana": "value"}),
-        )
-        ReportService({}).update_upload_with_processing_result(
-            upload_obj, processing_result
-        )
-        dbsession.refresh(upload_obj)
-        assert upload_obj.state == "error"
-        assert upload_obj.state_id == UploadState.ERROR.db_id
-        assert len(upload_obj.errors) == 1
-        assert upload_obj.errors[0].error_code == "abclkj"
-        assert upload_obj.errors[0].error_params == {"banana": "value"}
-        assert upload_obj.errors[0].report_upload == upload_obj
-
-    def test_update_upload_with_processing_result_success(self, mocker, dbsession):
-        upload_obj = UploadFactory.create(state="started", storage_path="url")
-        dbsession.add(upload_obj)
-        dbsession.flush()
-        assert len(upload_obj.errors) == 0
-        processing_result = ProcessingResult(
-            session=Session(),
-            session_adjustment=SessionAdjustmentResult([], []),
-        )
-        ReportService({}).update_upload_with_processing_result(
-            upload_obj, processing_result
-        )
-        dbsession.refresh(upload_obj)
-        assert upload_obj.state == "processed"
-        assert upload_obj.state_id == UploadState.PROCESSED.db_id
-        assert len(upload_obj.errors) == 0
 
     def test_shift_carryforward_report(
         self, dbsession, sample_report, mocker, mock_repo_provider

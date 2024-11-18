@@ -1,8 +1,8 @@
 from collections import defaultdict
 from itertools import repeat
-from xml.etree.ElementTree import Element
 
 import sentry_sdk
+from lxml.etree import Element
 from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor

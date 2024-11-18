@@ -59,13 +59,12 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         head_full_commit = comparison.head
         base_full_commit = comparison.project_coverage_base
         if comparison.has_project_coverage_base_report():
-            difference = None
-            head_report_coverage = head_full_commit.report.totals.coverage
-            base_report_coverage = base_full_commit.report.totals.coverage
-            if head_report_coverage is not None and base_report_coverage is not None:
-                difference = Decimal(head_full_commit.report.totals.coverage) - Decimal(
-                    base_full_commit.report.totals.coverage
-                )
+            difference = Decimal(0)
+            head_coverage = head_full_commit.report.totals.coverage
+            base_coverage = base_full_commit.report.totals.coverage
+            if head_coverage is not None and base_coverage is not None:
+                difference = Decimal(head_coverage) - Decimal(base_coverage)
+
             message = (
                 "no change"
                 if difference == 0
