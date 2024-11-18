@@ -190,6 +190,7 @@ class TestCacheTestRollupsTask:
 
     def test_cache_test_rollups_no_update_date(self, mock_storage, transactional_db):
         with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
+            self.repo = RepositoryFactory()
             rollup_date = LastCacheRollupDateFactory(
                 repository=self.repo,
                 last_rollup_date=dt.date.today() - dt.timedelta(days=30),
@@ -210,6 +211,8 @@ class TestCacheTestRollupsTask:
 
     def test_cache_test_rollups_update_date(self, mock_storage, transactional_db):
         with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
+            self.repo = RepositoryFactory()
+
             rollup_date = LastCacheRollupDateFactory(
                 repository=self.repo,
                 last_rollup_date=dt.date.today() - dt.timedelta(days=1),
@@ -218,7 +221,7 @@ class TestCacheTestRollupsTask:
             task = CacheTestRollupsTask()
             _ = task.run_impl(
                 _db_session=None,
-                repoid=self.repo.repoid,
+                repoid=rollup_date.repository_id,
                 branch="main",
                 update_date=True,
             )
@@ -231,6 +234,7 @@ class TestCacheTestRollupsTask:
     def test_cache_test_rollups_update_date_does_not_exist(
         self, mock_storage, transactional_db
     ):
+        self.repo = RepositoryFactory()
         with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
             task = CacheTestRollupsTask()
             _ = task.run_impl(
