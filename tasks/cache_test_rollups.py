@@ -167,8 +167,6 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
 
                 serialized_table = df.write_ipc(None)
 
-                storage_service.write_file("codecov", storage_key, serialized_table)
-
                 if update_date:
                     LastCacheRollupDate.objects.update_or_create(
                         repository_id=repoid,

@@ -24,9 +24,10 @@ class CacheRollupTask(CodecovCronTask, name=cache_rollup_cron_task_name):
             if repo_branch.last_rollup_date < (dt.date.today() - dt.timedelta(days=30)):
                 repo_branch.delete()
             else:
-                self.app.tasks[cache_test_rollups_task_name].create_signature(
-                    args=None,
-                    kwargs=dict(repoid=repo.repoid, branch=branch, update_date=False),
+                self.app.tasks[cache_test_rollups_task_name].s(
+                    repoid=repo.repoid,
+                    branch=branch,
+                    update_date=False,
                 ).apply_async()
 
 
