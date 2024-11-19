@@ -380,18 +380,14 @@ def mock_checkpoint_submit(mocker, request):
     if request.node.get_closest_marker("real_checkpoint_logger"):
         return
 
-    def mock_submit_fn(metric, start, end):
+    def mock_submit_fn(metric, start, end, data={}):
         pass
 
     mock_submit = mocker.Mock()
     mock_submit.side_effect = mock_submit_fn
 
-    from helpers.checkpoint_logger import CheckpointLogger
-
-    return mocker.patch.object(
-        CheckpointLogger,
-        "submit_subflow",
-        mock_submit,
+    return mocker.patch(
+        "helpers.checkpoint_logger.BaseFlow.submit_subflow", mock_submit
     )
 
 

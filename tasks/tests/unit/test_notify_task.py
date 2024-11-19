@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, call
@@ -32,7 +31,7 @@ from database.tests.factories import (
     RepositoryFactory,
 )
 from database.tests.factories.core import ReportFactory, UploadFactory
-from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from services.decoration import DecorationDetails
@@ -51,18 +50,16 @@ from tasks.notify import (
 )
 
 
-def _create_checkpoint_logger(mocker):
+def _start_upload_flow(mocker):
     mocker.patch(
         "helpers.checkpoint_logger._get_milli_timestamp",
         side_effect=[1337, 9001, 10000, 15000, 20000, 25000],
     )
-    checkpoints = CheckpointLogger(UploadFlow)
-    checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
-    checkpoints.log(UploadFlow.PROCESSING_BEGIN)
-    checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-    checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
-    checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
-    return checkpoints
+    UploadFlow.log(UploadFlow.UPLOAD_TASK_BEGIN)
+    UploadFlow.log(UploadFlow.PROCESSING_BEGIN)
+    UploadFlow.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+    UploadFlow.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
+    UploadFlow.log(UploadFlow.PROCESSING_COMPLETE)
 
 
 @pytest.fixture
@@ -585,8 +582,8 @@ class TestNotifyTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        checkpoints = _create_checkpoint_logger(mocker)
-        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
+        _start_upload_flow(mocker)
+        kwargs = UploadFlow.save_to_kwargs({})
 
         task = NotifyTask()
         result = task.run_impl_within_lock(
@@ -617,14 +614,13 @@ class TestNotifyTask(object):
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
 
-        calls = [
-            call(
-                "notification_latency",
-                UploadFlow.UPLOAD_TASK_BEGIN,
-                UploadFlow.NOTIFIED,
-            ),
-        ]
-        mock_checkpoint_submit.assert_has_calls(calls)
+        checkpoints_data = UploadFlow._data_from_log_context()
+        mock_checkpoint_submit.assert_any_call(
+            "notification_latency",
+            UploadFlow.UPLOAD_TASK_BEGIN,
+            UploadFlow.NOTIFIED,
+            data=checkpoints_data,
+        )
 
     def test_simple_call_no_pullrequest_found(
         self, dbsession, mocker, mock_storage, mock_configuration
@@ -1118,9 +1114,8 @@ class TestNotifyTask(object):
         current_yaml = {"codecov": {"require_ci_to_pass": True}}
         task = NotifyTask()
         mock_redis.get.return_value = False
-        checkpoints = _create_checkpoint_logger(mocker)
-        checkpoints_data = json.loads(json.dumps(checkpoints.data))
-        kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
+        _start_upload_flow(mocker)
+        kwargs = UploadFlow.save_to_kwargs({})
         res = task.run_impl(
             dbsession,
             repoid=commit.repoid,

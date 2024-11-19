@@ -34,11 +34,13 @@ class TestLoggingConfig(object):
         log_record, record, message_dict = {}, mocker.MagicMock(), {"message": "aaa"}
         log_formatter = CustomLocalJsonFormatter()
         log_formatter.add_fields(log_record, record, message_dict)
-        assert log_record == {
+
+        expected_log_record = {
             "message": "aaa",
             "method_calls": [],
-            "context": LogContext().as_dict(),
         }
+        LogContext().add_to_log_record(expected_log_record)
+        assert log_record == expected_log_record
 
     def test_add_fields_populated_log_context(self, mocker):
         log_context = LogContext(
@@ -50,8 +52,9 @@ class TestLoggingConfig(object):
         log_formatter = CustomLocalJsonFormatter()
         log_formatter.add_fields(log_record, record, message_dict)
 
-        assert log_record == {
+        expected_log_record = {
             "message": "aaa",
             "method_calls": [],
-            "context": log_context.as_dict(),
         }
+        log_context.add_to_log_record(expected_log_record)
+        assert log_record == expected_log_record

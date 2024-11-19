@@ -25,8 +25,6 @@ from database.enums import CommitErrorTypes
 from database.models import Commit, Pull
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.cache import cache
-from helpers.checkpoint_logger import _kwargs_key
-from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
@@ -83,8 +81,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         **kwargs,
     ):
         try:
-            checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
-            checkpoints.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
+            UploadFlow.log(UploadFlow.BATCH_PROCESSING_COMPLETE)
         except ValueError as e:
             log.warning("CheckpointLogger failed to log/submit", extra=dict(error=e))
 
@@ -140,6 +137,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         cleanup_intermediate_reports(upload_ids)
 
         if not should_trigger_postprocessing(state.get_upload_numbers()):
+            UploadFlow.log(UploadFlow.PROCESSING_COMPLETE)
+            UploadFlow.log(UploadFlow.SKIPPING_NOTIFICATION)
             return
 
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
@@ -152,7 +151,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     commit_yaml,
                     processing_results,
                     report_code,
-                    checkpoints,
                 )
                 self.app.tasks[
                     timeseries_save_commit_measurements_task_name
@@ -172,6 +170,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 return result
         except LockError:
             log.warning("Unable to acquire lock", extra=dict(lock_name=lock_name))
+            UploadFlow.log(UploadFlow.FINISHER_LOCK_ERROR)
 
     def finish_reports_processing(
         self,
@@ -180,7 +179,6 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         commit_yaml: UserYaml,
         processing_results: list[ProcessingResult],
         report_code,
-        checkpoints,
     ):
         log.debug("In finish_reports_processing for commit: %s" % commit)
         commitid = commit.commitid
@@ -194,13 +192,14 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             ):
                 case ShouldCallNotifyResult.NOTIFY:
                     notifications_called = True
+                    notify_kwargs = {
+                        "repoid": repoid,
+                        "commitid": commitid,
+                        "current_yaml": commit_yaml.to_dict(),
+                    }
+                    notify_kwargs = UploadFlow.save_to_kwargs(notify_kwargs)
                     task = self.app.tasks[notify_task_name].apply_async(
-                        kwargs={
-                            "repoid": repoid,
-                            "commitid": commitid,
-                            "current_yaml": commit_yaml.to_dict(),
-                            _kwargs_key(UploadFlow): checkpoints.data,
-                        },
+                        kwargs=notify_kwargs
                     )
                     log.info(
                         "Scheduling notify task",
@@ -257,21 +256,21 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     )
                 case ShouldCallNotifyResult.NOTIFY_ERROR:
                     notifications_called = False
+                    notify_error_kwargs = {
+                        "repoid": repoid,
+                        "commitid": commitid,
+                        "current_yaml": commit_yaml.to_dict(),
+                    }
+                    notify_error_kwargs = UploadFlow.save_to_kwargs(notify_error_kwargs)
                     task = self.app.tasks[notify_error_task_name].apply_async(
-                        kwargs={
-                            "repoid": repoid,
-                            "commitid": commitid,
-                            "current_yaml": commit_yaml.to_dict(),
-                            _kwargs_key(UploadFlow): checkpoints.data,
-                        },
+                        kwargs=notify_error_kwargs
                     )
         else:
             commit.state = "skipped"
 
-        if checkpoints:
-            checkpoints.log(UploadFlow.PROCESSING_COMPLETE)
-            if not notifications_called:
-                checkpoints.log(UploadFlow.SKIPPING_NOTIFICATION)
+        UploadFlow.log(UploadFlow.PROCESSING_COMPLETE)
+        if not notifications_called:
+            UploadFlow.log(UploadFlow.SKIPPING_NOTIFICATION)
 
         return {"notifications_called": notifications_called}
 

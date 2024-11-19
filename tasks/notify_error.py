@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from celery_config import notify_error_task_name
 from database.enums import ReportType
 from database.models import Commit, CommitReport, Upload
-from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.notifier import BaseNotifier, NotifierResult
 from services.yaml import UserYaml
@@ -44,8 +43,6 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
 
         # get all upload errors for this commit
         commit_yaml = UserYaml.from_dict(current_yaml)
-
-        checkpoints = checkpoints_from_kwargs(UploadFlow, kwargs)
 
         commits_query = db_session.query(Commit).filter(  # type:ignore
             Commit.repoid == repoid,
@@ -98,10 +95,10 @@ class NotifyErrorTask(BaseCodecovTask, name=notify_error_task_name):
                         num_total_upload=num_total_upload,
                     ),
                 )
-                checkpoints.log(UploadFlow.NOTIFIED_ERROR)
+                UploadFlow.log(UploadFlow.NOTIFIED_ERROR)
                 return {"success": True}
             case NotifierResult.NO_PULL | NotifierResult.TORNGIT_ERROR:
-                checkpoints.log(UploadFlow.ERROR_NOTIFYING_ERROR)
+                UploadFlow.log(UploadFlow.ERROR_NOTIFYING_ERROR)
                 log.info(
                     "Failed to comment in notify error task",
                     extra=dict(
