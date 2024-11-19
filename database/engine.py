@@ -54,7 +54,7 @@ class SessionFactory:
             timeseries_engine = self.timeseries_engine
 
             class RoutingSession(Session):
-                def get_bind(self, mapper=None, clause=None):
+                def get_bind(self, mapper=None, clause=None, **kw):
                     if mapper is not None and issubclass(
                         mapper.class_, TimeseriesBaseModel
                     ):

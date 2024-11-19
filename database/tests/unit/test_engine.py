@@ -39,6 +39,7 @@ class TestDatabaseEngine:
             database_url=sqlalchemy_connect_url,
             timeseries_database_url=sqlalchemy_connect_url,
         )
+
         session = session_factory.create_session()
         assert session_factory.main_engine is not None
         assert session_factory.timeseries_engine is not None

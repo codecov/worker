@@ -67,7 +67,7 @@ class DeleteOwnerTask(BaseCodecovTask, name=delete_owner_task_name):
         )
         db_session.commit()
         log.info("Deleting repos from DB", extra=dict(ownerid=ownerid))
-        involved_repos.delete()
+        db_session.query(Repository).filter(Repository.ownerid == ownerid).delete()
         db_session.commit()
         log.info("Setting other owner bots to NULL", extra=dict(ownerid=ownerid))
         db_session.query(Owner).filter(Owner.bot_id == ownerid).update(
@@ -77,7 +77,7 @@ class DeleteOwnerTask(BaseCodecovTask, name=delete_owner_task_name):
         log.info(
             "Cleaning repos that have this owner as bot", extra=dict(ownerid=ownerid)
         )
-        db_session.query(Repository.repoid).filter(Repository.bot_id == ownerid).update(
+        db_session.query(Repository).filter(Repository.bot_id == ownerid).update(
             {Repository.bot_id: None}, synchronize_session=False
         )
         db_session.commit()
