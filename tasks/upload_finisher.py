@@ -137,6 +137,8 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
         cleanup_intermediate_reports(upload_ids)
 
         if not should_trigger_postprocessing(state.get_upload_numbers()):
+            UploadFlow.log(UploadFlow.PROCESSING_COMPLETE)
+            UploadFlow.log(UploadFlow.SKIPPING_NOTIFICATION)
             return
 
         lock_name = f"upload_finisher_lock_{repoid}_{commitid}"
@@ -168,6 +170,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                 return result
         except LockError:
             log.warning("Unable to acquire lock", extra=dict(lock_name=lock_name))
+            UploadFlow.log(UploadFlow.FINISHER_LOCK_ERROR)
 
     def finish_reports_processing(
         self,

@@ -82,7 +82,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Not notifying because there are seemingly other jobs being processed yet",
                 extra=dict(repoid=repoid, commitid=commitid),
             )
-            # Should we log an UploadFlow checkpoint here?
+            self.log_checkpoint(UploadFlow.SKIPPING_NOTIFICATION)
             return {
                 "notified": False,
                 "notifications": None,
@@ -253,6 +253,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     apps_suspended=exp.suspended_count,
                 ),
             )
+            self.log_checkpoint(UploadFlow.NOTIF_NO_APP_INSTALLATION)
             return {
                 "notified": False,
                 "notifications": None,
@@ -441,6 +442,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Not sending notifications at all",
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
+            self.log_checkpoint(UploadFlow.SKIPPING_NOTIFICATION)
             return {"notified": False, "notifications": None}
 
     def is_using_codecov_commenter(

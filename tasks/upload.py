@@ -300,6 +300,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         if not upload_context.has_pending_jobs():
             log.info("No pending jobs. Upload task is done.")
+            self.maybe_log_upload_checkpoint(UploadFlow.NO_PENDING_JOBS)
             return {
                 "was_setup": False,
                 "was_updated": False,
@@ -335,6 +336,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 # Check whether a different `Upload` task has "stolen" our uploads
                 if not upload_context.has_pending_jobs():
                     log.info("No pending jobs. Upload task is done.")
+                    self.maybe_log_upload_checkpoint(UploadFlow.NO_PENDING_JOBS)
                     return {
                         "was_setup": False,
                         "was_updated": False,
@@ -357,7 +359,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=upload_context.log_extra(),
                 )
-                UploadFlow.log(UploadFlow.NO_PENDING_JOBS)
+                self.maybe_log_upload_checkpoint(UploadFlow.NO_PENDING_JOBS)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -368,7 +370,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since we already had too many retries",
                     extra=upload_context.log_extra(),
                 )
-                UploadFlow.log(UploadFlow.TOO_MANY_RETRIES)
+                self.maybe_log_upload_checkpoint(UploadFlow.TOO_MANY_RETRIES)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -526,9 +528,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
 
         else:
-            UploadFlow.log(UploadFlow.INITIAL_PROCESSING_COMPLETE).log(
-                UploadFlow.NO_REPORTS_FOUND
-            )
+            self.maybe_log_upload_checkpoint(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+            self.maybe_log_upload_checkpoint(UploadFlow.NO_REPORTS_FOUND)
             log.info(
                 "Not scheduling task because there were no arguments found on redis",
                 extra=upload_context.log_extra(),
@@ -580,7 +581,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
     ):
-        UploadFlow.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+        self.maybe_log_upload_checkpoint(UploadFlow.INITIAL_PROCESSING_COMPLETE)
 
         state = ProcessingState(commit.repoid, commit.commitid)
         state.mark_uploads_as_processing(
@@ -801,6 +802,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     exc_info=True,
                 )
         return False
+
+    def maybe_log_upload_checkpoint(self, checkpoint):
+        if UploadFlow.has_begun():
+            UploadFlow.log(checkpoint)
 
 
 RegisteredUploadTask = celery_app.register_task(UploadTask())

@@ -3,7 +3,7 @@ from datetime import datetime
 
 import sentry_sdk
 from celery._state import get_current_task
-from celery.exceptions import SoftTimeLimitExceeded
+from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from celery.worker.request import Request
 from django.db import transaction as django_transaction
 from shared.celery_router import route_tasks_based_on_user_plan
@@ -209,6 +209,16 @@ class BaseCodecovTask(celery_app.Task):
                     extra=dict(e=e),
                 )
 
+    # Called when attempting to retry the task on db error
+    def _retry(self):
+        try:
+            self.retry()
+        except MaxRetriesExceededError:
+            if UploadFlow.has_begun():
+                UploadFlow.log(UploadFlow.UNCAUGHT_RETRY_EXCEPTION)
+            if TestResultsFlow.has_begun():
+                TestResultsFlow.log(TestResultsFlow.UNCAUGHT_RETRY_EXCEPTION)
+
     def _analyse_error(self, exception: SQLAlchemyError, *args, **kwargs):
         try:
             import psycopg2
@@ -285,12 +295,17 @@ class BaseCodecovTask(celery_app.Task):
                 )
                 db_session.rollback()
                 self._rollback_django()
-                self.retry()
+                self._retry()
             except SQLAlchemyError as ex:
                 self._analyse_error(ex, args, kwargs)
                 db_session.rollback()
                 self._rollback_django()
-                self.retry()
+                self._retry()
+            except MaxRetriesExceededError as ex:
+                if UploadFlow.has_begun():
+                    UploadFlow.log(UploadFlow.UNCAUGHT_RETRY_EXCEPTION)
+                if TestResultsFlow.has_begun():
+                    TestResultsFlow.log(TestResultsFlow.UNCAUGHT_RETRY_EXCEPTION)
             finally:
                 self.wrap_up_dbsession(db_session)
                 self._commit_django()
