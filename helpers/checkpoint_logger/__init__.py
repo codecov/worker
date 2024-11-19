@@ -137,6 +137,26 @@ class BaseFlow(str, Enum):
         return hash(self.name)
 
     @classmethod
+    def beginning(cls: type[T]) -> T:
+        return next(iter(cls.__members__.values()))
+
+    @classmethod
+    def has_begun(cls: type[T]) -> bool:
+        return cls.beginning() in cls._data_from_log_context()
+
+    @classmethod
+    def has_ended(cls: type[T]) -> bool:
+        return cls.final() in cls._data_from_log_context()
+
+    @classmethod
+    def final(cls: type[T]) -> T:
+        *_, final = iter(cls.__members__.values())
+        return final
+
+    def is_beginning(self):
+        return self == self.beginning()
+
+    @classmethod
     def _validate_checkpoint(cls: type[T], checkpoint: T) -> None:
         if checkpoint.__class__ != cls:
             # This error is not ignored when `strict==False` because it's definitely
@@ -170,17 +190,38 @@ class BaseFlow(str, Enum):
         kwargs: Optional[MutableMapping[str, Any]] = None,
         strict: bool = False,
     ) -> type[T]:
-        data = cls._data_from_log_context()
+        cls._validate_checkpoint(checkpoint)
 
-        if checkpoint not in data:
-            cls._validate_checkpoint(checkpoint)
-            data[checkpoint] = _get_milli_timestamp()
-            cls._save_to_log_context(data)
-        elif not ignore_repeat:
-            _error(f"Already recorded checkpoint {checkpoint}", cls, strict=strict)
+        if not cls.has_begun() and not checkpoint.is_beginning():
+            _error(
+                f"Tried to log checkpoint {checkpoint} before the flow began",
+                cls,
+                strict=strict,
+            )
             return cls
-        else:
+
+        is_failure = hasattr(checkpoint, "is_failure") and checkpoint.is_failure()
+        is_success = hasattr(checkpoint, "is_success") and checkpoint.is_success()
+        is_terminal = is_failure or is_success
+        if is_terminal and cls.has_ended():
+            _error(
+                f"Tried to log terminal checkpoint {checkpoint} after the flow ended",
+                cls,
+                strict=strict,
+            )
             return cls
+
+        data = cls._data_from_log_context()
+        if checkpoint in data:
+            if not ignore_repeat:
+                _error(f"Already recorded checkpoint {checkpoint}", cls, strict=strict)
+            return cls
+
+        timestamp = _get_milli_timestamp()
+        data[checkpoint] = timestamp
+        if is_terminal:
+            data[cls.final()] = timestamp
+        cls._save_to_log_context(data)
 
         if kwargs is not None:
             cls.save_to_kwargs(kwargs)

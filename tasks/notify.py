@@ -139,7 +139,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         of upload processing, attempting to log `UploadFlow` checkpoints for it
         will pollute our metrics.
         """
-        if UploadFlow._data_from_log_context():
+        if UploadFlow.has_begun():
             UploadFlow.log(checkpoint)
 
     def _attempt_retry(

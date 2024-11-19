@@ -116,6 +116,11 @@ def mock_redis(mocker):
     yield redis_server
 
 
+@pytest.fixture(scope="function", autouse=True)
+def clear_log_context(mocker):
+    set_log_context(LogContext())
+
+
 @pytest.mark.integration
 class TestUploadTaskIntegration(object):
     @pytest.mark.django_db(databases={"default"})
@@ -420,6 +425,7 @@ class TestUploadTaskIntegration(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            checkpoints_TestResultsFlow=None,
         )
 
         kwargs[_kwargs_key(TestResultsFlow)] = mocker.ANY
@@ -1168,6 +1174,7 @@ class TestUploadTaskUnit(object):
 
     @pytest.mark.django_db
     def test_schedule_task_with_one_task(self, dbsession, mocker, mock_repo_provider):
+        _start_upload_flow(mocker)
         mocker.patch(
             "tasks.upload.get_repo_provider_service", return_value=mock_repo_provider
         )

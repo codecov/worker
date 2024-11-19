@@ -61,6 +61,9 @@ class UploadFlow(BaseFlow):
     NOTIF_STALE_HEAD = auto()
     NOTIF_ERROR_NO_REPORT = auto()
 
+    # Sentinel checkpoint - not directly used
+    FINAL = auto()
+
 
 @failure_events("TEST_RESULTS_ERROR")
 @success_events("TEST_RESULTS_NOTIFY")
@@ -80,3 +83,6 @@ class TestResultsFlow(BaseFlow):
     FLAKE_DETECTION_NOTIFY = auto()
     TEST_RESULTS_ERROR = auto()
     TEST_RESULTS_FINISHER_BEGIN = auto()
+
+    # Sentinel checkpoint - not directly used
+    FINAL = auto()

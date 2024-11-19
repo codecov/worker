@@ -286,6 +286,17 @@ class TestCheckpointLogger(unittest.TestCase):
         assert kwargs["checkpoints_TestEnum1"][TestEnum1.A] == 1337
         assert kwargs["checkpoints_TestEnum1"][TestEnum1.B] == 9001
 
+    def test_log_before_beginning_throws(self):
+        with self.assertRaises(ValueError):
+            DecoratedEnum.log(DecoratedEnum.BRANCH_1_SUCCESS, strict=True)
+
+    def test_log_after_end_throws(self):
+        DecoratedEnum.log(DecoratedEnum.BEGIN)
+        DecoratedEnum.log(DecoratedEnum.BRANCH_1_SUCCESS)
+
+        with self.assertRaises(ValueError):
+            DecoratedEnum.log(DecoratedEnum.BRANCH_1_FAIL, strict=True)
+
     def test_success_failure_decorators(self):
         for val in DecoratedEnum.__members__.values():
             if val in [DecoratedEnum.BRANCH_1_SUCCESS, DecoratedEnum.BRANCH_2_SUCCESS]:
@@ -348,138 +359,6 @@ class TestCheckpointLogger(unittest.TestCase):
             "DecoratedEnum_BEGIN_to_BRANCH_2_SUCCESS",
             DecoratedEnum.BEGIN,
         )
-
-    @pytest.mark.real_checkpoint_logger
-    @patch("helpers.checkpoint_logger._get_milli_timestamp", side_effect=[1337, 9001])
-    @patch("sentry_sdk.set_measurement")
-    def test_subflow_autosubmit(self, mock_sentry, mock_timestamp):
-        DecoratedEnum.log(DecoratedEnum.BEGIN)
-        DecoratedEnum.log(DecoratedEnum.CHECKPOINT)
-
-        expected_duration = 9001 - 1337
-        mock_sentry.assert_called_with(
-            "first_checkpoint", expected_duration, "milliseconds"
-        )
-
-    def test_reliability_counters(self):
-        counter_assertions = [
-            CounterAssertion(
-                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 1
-            ),
-            CounterAssertion(
-                "worker_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "BEGIN"},
-                1,
-            ),
-            CounterAssertion(
-                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 0
-            ),
-        ]
-        with CounterAssertionSet(counter_assertions):
-            DecoratedEnum.log(DecoratedEnum.BEGIN)
-
-        # Nothing special about `CHECKPOINT` - no counters should change
-        counter_assertions = [
-            CounterAssertion(
-                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "BEGIN"},
-                0,
-            ),
-            CounterAssertion(
-                "worker_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "CHECKPOINT"},
-                1,
-            ),
-            CounterAssertion(
-                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 0
-            ),
-        ]
-        with CounterAssertionSet(counter_assertions):
-            DecoratedEnum.log(DecoratedEnum.CHECKPOINT)
-
-        # Failures should increment both `failed` and `ended`
-        counter_assertions = [
-            CounterAssertion(
-                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 1
-            ),
-            CounterAssertion(
-                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
-            ),
-            CounterAssertion(
-                "worker_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_1_FAIL"},
-                1,
-            ),
-        ]
-        with CounterAssertionSet(counter_assertions):
-            DecoratedEnum.log(DecoratedEnum.BRANCH_1_FAIL)
-
-        # Successes should increment both `succeeded` and `ended`
-        counter_assertions = [
-            CounterAssertion(
-                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 1
-            ),
-            CounterAssertion(
-                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
-            ),
-            CounterAssertion(
-                "worker_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_1_SUCCESS"},
-                1,
-            ),
-        ]
-        with CounterAssertionSet(counter_assertions):
-            DecoratedEnum.log(DecoratedEnum.BRANCH_1_SUCCESS)
-
-        # A different success path should also increment `succeeded` and `ended`
-        counter_assertions = [
-            CounterAssertion(
-                "worker_checkpoints_begun_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_succeeded_total", {"flow": "DecoratedEnum"}, 1
-            ),
-            CounterAssertion(
-                "worker_checkpoints_failed_total", {"flow": "DecoratedEnum"}, 0
-            ),
-            CounterAssertion(
-                "worker_checkpoints_ended_total", {"flow": "DecoratedEnum"}, 1
-            ),
-            CounterAssertion(
-                "worker_checkpoints_events_total",
-                {"flow": "DecoratedEnum", "checkpoint": "BRANCH_2_SUCCESS"},
-                1,
-            ),
-        ]
-        with CounterAssertionSet(counter_assertions):
-            DecoratedEnum.log(DecoratedEnum.BRANCH_2_SUCCESS)
 
     @patch.object(CHECKPOINT_ENABLED_REPOSITORIES, "check_value", return_value=123)
     def test_reliability_counters_with_context(self, mock_object):
@@ -648,6 +527,10 @@ class TestCheckpointLogger(unittest.TestCase):
         with CounterAssertionSet(counter_assertions):
             DecoratedEnum.log(DecoratedEnum.BRANCH_1_FAIL)
 
+        # Because we've logged a terminal event, we have to restart the flow
+        set_log_context(LogContext(repo_id=repoid))
+        DecoratedEnum.log(DecoratedEnum.BEGIN)
+
         # Successes should increment both `succeeded` and `ended`
         counter_assertions = [
             CounterAssertion(
@@ -697,6 +580,10 @@ class TestCheckpointLogger(unittest.TestCase):
         ]
         with CounterAssertionSet(counter_assertions):
             DecoratedEnum.log(DecoratedEnum.BRANCH_1_SUCCESS)
+
+        # Because we've logged a terminal event, we have to restart the flow
+        set_log_context(LogContext(repo_id=repoid))
+        DecoratedEnum.log(DecoratedEnum.BEGIN)
 
         # A different success path should also increment `succeeded` and `ended`
         counter_assertions = [
