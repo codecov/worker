@@ -34,6 +34,13 @@ dependencies = [
     "zstandard>=0.23.0",
 ]
 
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []
+
 [tool.uv]
 dev-dependencies = [
     "factory-boy>=3.3.1",

@@ -25,14 +25,28 @@ ENV UV_LINK_MODE=copy \
     UV_PYTHON=python \
     UV_PROJECT_ENVIRONMENT=/worker
 
-# Change the working directory to the `worker` directory
-WORKDIR /worker
-
-# Install dependencies
+# Then, add the rest of the project source code and install it
+# Installing separately from its dependencies allows optimal layer caching
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project
+    uv sync --frozen
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv export --no-hashes --frozen --format requirements-txt > requirements.txt
+
+RUN grep -v '^-e ' requirements.txt > requirements.remote.txt
+
+# build all remote wheels
+RUN pip wheel -w wheels --find-links wheels -r requirements.remote.txt
+
+# build all local packages to wheels
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv build --all-packages --wheel -o wheels
 
 
 # RUNTIME STAGE - Copy packages from build stage and install runtime dependencies
@@ -45,8 +59,12 @@ RUN apt-get install -y \
     libxslt-dev \
     make
 
-WORKDIR /worker
-COPY --from=build /worker /worker
+COPY --from=build /wheels/ /wheels/
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv pip install --no-deps --no-index --find-links=wheels wheels/* --system
 
 RUN addgroup --system application \
     && adduser --system codecov --ingroup application --home /home/codecov
