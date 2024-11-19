@@ -48,6 +48,12 @@ class BaseCodecovRequest(Request):
         if not soft:
             REQUEST_HARD_TIMEOUT_COUNTER.labels(task=self.name).inc()
         REQUEST_TIMEOUT_COUNTER.labels(task=self.name).inc()
+
+        if UploadFlow.has_begun():
+            UploadFlow.log(UploadFlow.CELERY_TIMEOUT)
+        if TestResultsFlow.has_begun():
+            TestResultsFlow.log(TestResultsFlow.CELERY_TIMEOUT)
+
         return res
 
 
@@ -347,4 +353,10 @@ class BaseCodecovTask(celery_app.Task):
         res = super().on_failure(exc, task_id, args, kwargs, einfo)
         self.task_failure_counter.inc()
         log_simple_metric(f"{self.metrics_prefix}.failure", 1.0)
+
+        if UploadFlow.has_begun():
+            UploadFlow.log(UploadFlow.CELERY_FAILURE)
+        if TestResultsFlow.has_begun():
+            TestResultsFlow.log(TestResultsFlow.CELERY_FAILURE)
+
         return res
