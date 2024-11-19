@@ -24,15 +24,10 @@ def test_cache_rollup_cron_task(mock_storage, transactional_db, mocker):
         _db_session=None,
     )
 
-    mocked_app.tasks[
-        cache_test_rollups_task_name
-    ].create_signature.assert_called_once_with(
-        args=None,
-        kwargs=dict(
-            repoid=rollup_date.repository_id,
-            branch=rollup_date.branch,
-            update_date=False,
-        ),
+    mocked_app.tasks[cache_test_rollups_task_name].s.assert_called_once_with(
+        repoid=rollup_date.repository_id,
+        branch=rollup_date.branch,
+        update_date=False,
     )
 
 
@@ -52,6 +47,6 @@ def test_cache_rollup_cron_task_delete(mock_storage, transactional_db, mocker):
         _db_session=None,
     )
 
-    mocked_app.tasks[cache_test_rollups_task_name].create_signature.assert_not_called()
+    mocked_app.tasks[cache_test_rollups_task_name].s.assert_not_called()
 
     assert LastCacheRollupDate.objects.filter(id=rollup_date.id).first() is None
