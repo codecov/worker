@@ -436,7 +436,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             with sentry_sdk.new_scope() as scope:
                 scope.set_extra("upload_state", upload.state)
                 scope.set_extra("contents", payload_bytes[:10])
-                sentry_sdk.capture_message("Upload payload is not valid JSON")
+                sentry_sdk.capture_exception(e, scope)
+
+                upload.state = "not parsed"
+                db_session.flush()
+
+                return TestResultsProcessingResult(
+                    network_files=None, parsing_results=[]
+                )
 
         parsing_results: list[ParsingInfo] = []
 
@@ -466,7 +473,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 with sentry_sdk.new_scope() as scope:
                     scope.set_extra("upload_state", upload.state)
                     scope.set_extra("parser_error", exc.parser_err_msg)
-                    sentry_sdk.capture_message("Test results parser error")
+                    sentry_sdk.capture_exception(exc, scope)
                     upload.state = "has_failed"
 
         if upload.state != "has_failed":
