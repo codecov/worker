@@ -18,6 +18,8 @@ from sqlalchemy.exc import (
 from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
+from helpers.checkpoint_logger import from_kwargs as load_checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.log_context import LogContext, set_log_context
 from helpers.telemetry import TimeseriesTimer, log_simple_metric
 from helpers.timeseries import timeseries_enabled
@@ -261,6 +263,7 @@ class BaseCodecovTask(celery_app.Task):
 
             log_context.populate_from_sqlalchemy(db_session)
             set_log_context(log_context)
+            load_checkpoints_from_kwargs([UploadFlow, TestResultsFlow], kwargs)
 
             self.task_run_counter.inc()
             self._emit_queue_metrics()

@@ -23,8 +23,6 @@ from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
-from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
@@ -93,20 +91,6 @@ class UploadContext:
             report_code=self.report_code,
             **kwargs,
         )
-
-    def get_checkpoints(self, kwargs: dict) -> CheckpointLogger | None:
-        # TODO: setup checkpoint flows for other coverage types
-        if self.report_type == ReportType.COVERAGE:
-            # If we're a retry, kwargs will already have our first checkpoint.
-            # If not, log it directly into kwargs so we can pass it onto other tasks
-            return checkpoints_from_kwargs(UploadFlow, kwargs).log(
-                UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
-            )
-        elif self.report_type == ReportType.TEST_RESULTS:
-            return checkpoints_from_kwargs(TestResultsFlow, kwargs).log(
-                TestResultsFlow.TEST_RESULTS_BEGIN, kwargs=kwargs, ignore_repeat=True
-            )
-        return None
 
     def lock_name(self, lock_type: str):
         if self.report_type == ReportType.COVERAGE:
@@ -300,7 +284,18 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "Customer is using non-default `report_code`",
                 tags={"report_type": report_type, "report_code": report_code},
             )
-        checkpoints = upload_context.get_checkpoints(kwargs)
+
+        # If we're a retry, kwargs will already have our first checkpoint.
+        # If not, log it directly into kwargs so we can pass it onto other tasks
+        if upload_context.report_type == ReportType.COVERAGE:
+            UploadFlow.log(
+                UploadFlow.UPLOAD_TASK_BEGIN, kwargs=kwargs, ignore_repeat=True
+            )
+        elif upload_context.report_type == ReportType.TEST_RESULTS:
+            TestResultsFlow.log(
+                TestResultsFlow.TEST_RESULTS_BEGIN, kwargs=kwargs, ignore_repeat=True
+            )
+
         log.info("Received upload task", extra=upload_context.log_extra())
 
         if not upload_context.has_pending_jobs():
@@ -349,7 +344,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 return self.run_impl_within_lock(
                     db_session,
                     upload_context,
-                    checkpoints,
                     kwargs,
                 )
         except LockError:
@@ -363,8 +357,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since there are likely no jobs that need scheduling",
                     extra=upload_context.log_extra(),
                 )
-                if checkpoints:
-                    checkpoints.log(UploadFlow.NO_PENDING_JOBS)
+                UploadFlow.log(UploadFlow.NO_PENDING_JOBS)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -375,8 +368,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                     "Not retrying since we already had too many retries",
                     extra=upload_context.log_extra(),
                 )
-                if checkpoints:
-                    checkpoints.log(UploadFlow.TOO_MANY_RETRIES)
+                UploadFlow.log(UploadFlow.TOO_MANY_RETRIES)
                 return {
                     "was_setup": False,
                     "was_updated": False,
@@ -399,7 +391,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         db_session: Session,
         upload_context: UploadContext,
-        checkpoints: CheckpointLogger | None,
         kwargs: dict,
     ):
         log.info("Starting processing of report", extra=upload_context.log_extra())
@@ -408,8 +399,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         if report_type == ReportType.COVERAGE:
             try:
-                assert checkpoints
-                checkpoints.log(UploadFlow.PROCESSING_BEGIN)
+                UploadFlow.log(UploadFlow.PROCESSING_BEGIN)
             except ValueError as e:
                 log.warning(
                     "CheckpointLogger failed to log/submit", extra=dict(error=e)
@@ -524,7 +514,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 argument_list,
                 commit_report,
                 upload_context,
-                checkpoints,
             )
 
             log.info(
@@ -537,9 +526,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
 
         else:
-            if checkpoints:
-                checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-                checkpoints.log(UploadFlow.NO_REPORTS_FOUND)
+            UploadFlow.log(UploadFlow.INITIAL_PROCESSING_COMPLETE).log(
+                UploadFlow.NO_REPORTS_FOUND
+            )
             log.info(
                 "Not scheduling task because there were no arguments found on redis",
                 extra=upload_context.log_extra(),
@@ -553,7 +542,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
         upload_context: UploadContext,
-        checkpoints: CheckpointLogger | None,
     ):
         # Carryforward the parent BA report for the current commit's BA report when handling uploads
         # that's not bundle analysis type.
@@ -566,13 +554,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_report.report_type is None
                 or commit_report.report_type == ReportType.COVERAGE.value
             )
-            assert checkpoints
             return self._schedule_coverage_processing_task(
                 commit,
                 commit_yaml,
                 argument_list,
                 commit_report,
-                checkpoints,
             )
         elif upload_context.report_type == ReportType.BUNDLE_ANALYSIS:
             assert commit_report.report_type == ReportType.BUNDLE_ANALYSIS.value
@@ -583,9 +569,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
         elif upload_context.report_type == ReportType.TEST_RESULTS:
             assert commit_report.report_type == ReportType.TEST_RESULTS.value
-            assert checkpoints
             return self._schedule_test_results_processing_task(
-                commit, commit_yaml, argument_list, commit_report, checkpoints
+                commit, commit_yaml, argument_list, commit_report
             )
 
     def _schedule_coverage_processing_task(
@@ -594,9 +579,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit_yaml: dict,
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
-        checkpoints: CheckpointLogger,
     ):
-        checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+        UploadFlow.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
 
         state = ProcessingState(commit.repoid, commit.commitid)
         state.mark_uploads_as_processing(
@@ -613,15 +597,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             for arguments in argument_list
         ]
 
-        finish_parallel_sig = upload_finisher_task.signature(
-            kwargs={
-                "repoid": commit.repoid,
-                "commitid": commit.commitid,
-                "commit_yaml": commit_yaml,
-                "report_code": commit_report.code,
-                _kwargs_key(UploadFlow): checkpoints.data,
-            },
-        )
+        finisher_kwargs = {
+            "repoid": commit.repoid,
+            "commitid": commit.commitid,
+            "commit_yaml": commit_yaml,
+            "report_code": commit_report.code,
+        }
+        finisher_kwargs = UploadFlow.save_to_kwargs(finisher_kwargs)
+        finish_parallel_sig = upload_finisher_task.signature(kwargs=finisher_kwargs)
 
         parallel_tasks = chord(parallel_processing_tasks, finish_parallel_sig)
         return parallel_tasks.apply_async()
@@ -663,7 +646,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit_yaml: dict,
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
-        checkpoints: CheckpointLogger,
     ):
         processor_task_group = [
             test_results_processor_task.s(
@@ -676,16 +658,15 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             for chunk in itertools.batched(argument_list, CHUNK_SIZE)
         ]
 
+        finisher_kwargs = {
+            "repoid": commit.repoid,
+            "commitid": commit.commitid,
+            "commit_yaml": commit_yaml,
+        }
+        finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
         return chord(
             processor_task_group,
-            test_results_finisher_task.signature(
-                kwargs={
-                    "repoid": commit.repoid,
-                    "commitid": commit.commitid,
-                    "commit_yaml": commit_yaml,
-                    _kwargs_key(TestResultsFlow): checkpoints.data,
-                }
-            ),
+            test_results_finisher_task.signature(kwargs=finisher_kwargs),
         ).apply_async()
 
     def possibly_carryforward_bundle_report(

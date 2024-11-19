@@ -10,7 +10,6 @@ from test_results_parser import Outcome
 from app import celery_app
 from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
 from database.models import Commit, Flake, Repository, TestResultReportTotals
-from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.metrics import metrics
 from helpers.notifier import NotifierResult
@@ -129,9 +128,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             extra=self.extra_dict,
         )
 
-        checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
-
-        checkpoints.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
+        TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
 
         commit: Commit = (
             db_session.query(Commit).filter_by(repoid=repoid, commitid=commitid).first()
@@ -345,11 +342,12 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         notifier = TestResultsNotifier(commit, commit_yaml, payload=payload)
 
         with metrics.timer("test_results.finisher.notification"):
-            checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
+            TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
 
-            if begin_to_notify := checkpoints._subflow_duration(
+            if begin_to_notify := TestResultsFlow._subflow_duration(
                 TestResultsFlow.TEST_RESULTS_BEGIN,
                 TestResultsFlow.TEST_RESULTS_NOTIFY,
+                data=TestResultsFlow._data_from_log_context(),
             ):
                 metrics.timing(
                     f"test_results_notif_latency.{"flaky" if should_do_flaky_detection(repo, commit_yaml) else "non_flaky"}",
