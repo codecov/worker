@@ -310,6 +310,35 @@ class TestNotificationService(object):
             "codecov-slack-app",
         ]
 
+    def test_get_notifiers_instances_slack_app_false(
+        self, dbsession, mock_configuration, mocker
+    ):
+        mocker.patch("services.notification.get_config", return_value=False)
+        repository = RepositoryFactory.create(
+            owner__integration_id=123,
+            owner__service="github",
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+            using_integration=True,
+        )
+
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}}
+        }
+        mocker.patch.dict(
+            os.environ, {"CHECKS_WHITELISTED_OWNERS": f"0,{repository.owner.ownerid}"}
+        )
+        service = NotificationService(repository, current_yaml, None)
+        instances = list(service.get_notifiers_instances())
+        names = sorted([instance.name for instance in instances])
+        assert names == [
+            "checks-changes-with-fallback",
+            "checks-patch-with-fallback",
+            "checks-project-with-fallback",
+        ]
+
     @pytest.mark.parametrize(
         "gh_installation_name",
         [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
