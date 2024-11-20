@@ -446,7 +446,7 @@ class TestUploadTestFinisherTask(object):
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
+:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
         )
 
     @pytest.mark.integration
@@ -771,7 +771,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
+:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
         )
 
         assert expected_result == result
@@ -938,7 +938,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
+:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
         )
 
     @pytest.mark.integration
@@ -1117,7 +1117,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)""",
+:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
         )
 
     @pytest.mark.integration
