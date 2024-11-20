@@ -48,13 +48,13 @@ lint:
 	make lint.run
 
 test:
-	COVERAGE_CORE=sysmon python -m pytest --cov=./ --junitxml=junit.xml
+	COVERAGE_CORE=sysmon python -m pytest --cov=./ --junitxml=junit.xml -o junit_family=legacy
 
 test.unit:
-	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml
+	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml -o junit_family=legacy
 
 test.integration:
-	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml
+	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml -o junit_family=legacy
 
 
 update-requirements:
