@@ -11,7 +11,7 @@ epoch := $(shell date +"%s")
 
 AR_REPO ?= codecov/worker
 DOCKERHUB_REPO ?= codecov/self-hosted-worker
-REQUIREMENTS_TAG := requirements-v1-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)-$(shell sha1sum docker/Dockerfile.requirements | cut -d ' ' -f 1)
+REQUIREMENTS_TAG := requirements-v1-$(shell sha1sum uv.lock | cut -d ' ' -f 1)-$(shell sha1sum docker/Dockerfile.requirements | cut -d ' ' -f 1)
 VERSION := release-${sha}
 CODECOV_UPLOAD_TOKEN ?= "notset"
 CODECOV_STATIC_TOKEN ?= "notset"
@@ -22,7 +22,7 @@ export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 # Codecov CLI version to use
-CODECOV_CLI_VERSION := 0.5.1
+CODECOV_CLI_VERSION := 9.0.4
 
 build:
 	$(MAKE) build.requirements
@@ -48,13 +48,13 @@ lint:
 	make lint.run
 
 test:
-	COVERAGE_CORE=sysmon python -m pytest --cov=./ --junitxml=junit.xml
+	COVERAGE_CORE=sysmon pytest --cov=./ --junitxml=junit.xml
 
 test.unit:
-	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml
+	COVERAGE_CORE=sysmon pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml
 
 test.integration:
-	COVERAGE_CORE=sysmon python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml
+	COVERAGE_CORE=sysmon pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml
 
 
 update-requirements:
@@ -200,17 +200,17 @@ push.self-hosted-rolling:
 	docker push ${DOCKERHUB_REPO}:rolling
 
 shell:
-	docker-compose exec worker bash
+	docker compose exec worker bash
 
 test_env.up:
 	env | grep GITHUB > .testenv; true
-	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose up -d
+	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker compose up -d
 
 test_env.prepare:
-	docker-compose exec worker make test_env.container_prepare
+	docker compose exec worker make test_env.container_prepare
 
 test_env.check_db:
-	docker-compose exec worker make test_env.container_check_db
+	docker compose exec worker make test_env.container_check_db
 
 test_env.install_cli:
 	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
@@ -226,14 +226,14 @@ test_env.container_check_db:
 	while ! nc -vz timescale 5432; do sleep 1; echo "waiting for timescale"; done
 
 test_env.run_unit:
-	docker-compose exec worker make test.unit
+	docker compose exec worker make test.unit
 
 test_env.run_integration:
-	docker-compose exec worker make test.integration
+	docker compose exec worker make test.integration
 
 test_env.upload:
-	docker-compose exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
-	docker-compose exec worker make test_env.container_upload_test_results CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
+	docker compose exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
+	docker compose exec worker make test_env.container_upload_test_results CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
 
 test_env.container_upload:
 	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml --disable-search
