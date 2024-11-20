@@ -243,7 +243,7 @@ test_env.container_upload_test_results:
 	codecovcli -v -u ${CODECOV_URL} do-upload --report-type test_results || true
 
 test_env:
-	make test_env.up
+	TIMESERIES_ENABLED=true make test_env.up
 	make test_env.prepare
 	make test_env.check_db
 	make test_env.run_unit
