@@ -1,6 +1,6 @@
 import contextvars
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field, replace
 
 import sentry_sdk
 from sentry_sdk import get_current_span
@@ -27,6 +27,8 @@ class LogContext:
     repo_id: int | None = None
     commit_sha: str | None = None
     commit_id: int | None = None
+
+    checkpoints_data: dict = field(default_factory=lambda: {})
 
     @property
     def sentry_trace_id(self):
@@ -126,11 +128,14 @@ class LogContext:
         self._populated_from_db = True
 
     def add_to_log_record(self, log_record: dict):
-        log_record["context"] = self.as_dict()
+        d = self.as_dict()
+        d.pop("checkpoints_data", None)
+        log_record["context"] = d
 
     def add_to_sentry(self):
         d = self.as_dict()
         d.pop("sentry_trace_id", None)
+        d.pop("checkpoints_data", None)
         sentry_sdk.set_tags(d)
 
 
@@ -144,6 +149,15 @@ def set_log_context(context: LogContext):
     """
     _log_context.set(context)
     context.add_to_sentry()
+
+
+def update_log_context(context: dict):
+    """
+    Add new fields to the log context without removing old ones.
+    """
+    current_context: LogContext = _log_context.get()
+    new_context = replace(current_context, **context)
+    set_log_context(new_context)
 
 
 def get_log_context() -> LogContext:

@@ -208,7 +208,6 @@ def mock_configuration(mocker):
                 "access_key_id": "codecov-default-key",
                 "bucket": "archive",
                 "hash_key": "88f572f4726e4971827415efa8867978",
-                "periodic_callback_ms": False,
                 "secret_access_key": "codecov-default-secret",
                 "verify_ssl": False,
             },
@@ -380,18 +379,14 @@ def mock_checkpoint_submit(mocker, request):
     if request.node.get_closest_marker("real_checkpoint_logger"):
         return
 
-    def mock_submit_fn(metric, start, end):
+    def mock_submit_fn(metric, start, end, data={}):
         pass
 
     mock_submit = mocker.Mock()
     mock_submit.side_effect = mock_submit_fn
 
-    from helpers.checkpoint_logger import CheckpointLogger
-
-    return mocker.patch.object(
-        CheckpointLogger,
-        "submit_subflow",
-        mock_submit,
+    return mocker.patch(
+        "helpers.checkpoint_logger.BaseFlow.submit_subflow", mock_submit
     )
 
 

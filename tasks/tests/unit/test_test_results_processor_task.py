@@ -12,7 +12,10 @@ from database.models.reports import DailyTestRollup, Test, TestFlagBridge, TestI
 from database.tests.factories import CommitFactory, UploadFactory
 from database.tests.factories.reports import FlakeFactory
 from services.test_results import generate_flags_hash, generate_test_id
-from tasks.test_results_processor import ParserError, TestResultsProcessorTask
+from tasks.test_results_processor import (
+    ParserError,
+    TestResultsProcessorTask,
+)
 
 here = Path(__file__)
 

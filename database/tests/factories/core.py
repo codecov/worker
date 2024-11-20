@@ -48,6 +48,7 @@ class OwnerFactory(Factory):
     trial_end_date = datetime.now()
     trial_status = enums.TrialStatus.NOT_STARTED.value
     trial_fired_by = None
+    upload_token_required_for_public_repos = False
 
     oauth_token = factory.LazyAttribute(
         lambda o: encrypt_oauth_token(o.unencrypted_oauth_token)
@@ -77,6 +78,7 @@ class RepositoryFactory(Factory):
         lambda o: datetime.now(tz=timezone.utc)
     )
     bundle_analysis_enabled = False
+    test_analytics_enabled = True
 
 
 class BranchFactory(Factory):

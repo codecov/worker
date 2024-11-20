@@ -307,11 +307,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         return ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=compare_commit, report=compare_report),
-                enriched_pull=None,
                 project_coverage_base=FullCommit(
                     commit=base_commit, report=base_report
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
+                enriched_pull=None,
             ),
             context=ComparisonContext(
                 gh_app_installation_name=installation_name_to_use

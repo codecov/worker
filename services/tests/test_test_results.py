@@ -1,7 +1,12 @@
 import mock
+import pytest
 from shared.torngit.exceptions import TorngitClientError
 
-from database.tests.factories import CommitFactory
+from database.tests.factories import (
+    CommitFactory,
+    OwnerFactory,
+    RepositoryFactory,
+)
 from helpers.notifier import NotifierResult
 from services.test_results import (
     FlakeInfo,
@@ -11,8 +16,10 @@ from services.test_results import (
     generate_failure_info,
     generate_flags_hash,
     generate_test_id,
+    should_do_flaky_detection,
 )
 from services.urls import services_short_dict
+from services.yaml import UserYaml
 
 
 def mock_repo_service():
@@ -137,7 +144,7 @@ def test_build_message():
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/thing%2Fthing)
-Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"""
+:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"""
     )
 
 
@@ -188,7 +195,7 @@ def test_build_message_with_flake():
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})
-Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"""
+:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"""
     )
 
 
@@ -238,3 +245,32 @@ def test_notify_fail_no_pull(
 
     notification_result = tn.notify()
     assert notification_result == NotifierResult.NO_PULL
+
+
+@pytest.mark.parametrize(
+    "config,feature_flag,private,plan,ex_result",
+    [
+        (False, True, False, "users-inappm", False),
+        (True, True, True, "users-basic", True),
+        (True, False, False, "users-basic", True),
+        (True, False, True, "users-basic", False),
+        (True, False, False, "users-inappm", True),
+        (True, False, True, "users-inappm", True),
+    ],
+)
+def test_should_do_flake_detection(
+    dbsession, mocker, config, feature_flag, private, plan, ex_result
+):
+    owner = OwnerFactory(plan=plan)
+    repo = RepositoryFactory(private=private, owner=owner)
+    dbsession.add(repo)
+    dbsession.flush()
+
+    mocked_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+    mocked_feature.check_value.return_value = feature_flag
+
+    yaml = {"test_analytics": {"flake_detection": config}}
+
+    result = should_do_flaky_detection(repo, UserYaml.from_dict(yaml))
+
+    assert result == ex_result

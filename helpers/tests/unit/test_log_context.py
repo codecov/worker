@@ -148,6 +148,7 @@ def test_as_dict(dbsession, mocker):
         "owner_username": owner.username,
         "owner_service": owner.service,
         "sentry_trace_id": 123,
+        "checkpoints_data": {},
     }
 
 
@@ -158,7 +159,10 @@ def test_add_to_log_record(dbsession):
 
     log_record = {}
     log_context.add_to_log_record(log_record)
-    assert log_record["context"] == log_context.as_dict()
+
+    expected_dict = log_context.as_dict()
+    expected_dict.pop("checkpoints_data", None)
+    assert log_record["context"] == expected_dict
 
 
 def test_add_to_sentry(dbsession, mocker):
@@ -173,4 +177,5 @@ def test_add_to_sentry(dbsession, mocker):
 
     expected_sentry_fields = log_context.as_dict()
     expected_sentry_fields.pop("sentry_trace_id")
+    expected_sentry_fields.pop("checkpoints_data")
     mock_set_tags.assert_called_with(expected_sentry_fields)

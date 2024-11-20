@@ -83,7 +83,9 @@ class Owner(CodecovBaseModel):
     stripe_customer_id = Column(types.Text, server_default=FetchedValue())
     stripe_subscription_id = Column(types.Text, server_default=FetchedValue())
     onboarding_completed = Column(types.Boolean, default=False)
-    upload_token_required_for_public_repos = Column(types.Boolean, default=True)
+    upload_token_required_for_public_repos = Column(
+        types.Boolean, default=False, nullable=False
+    )
 
     bot_id = Column(
         "bot",
@@ -150,6 +152,7 @@ class Repository(CodecovBaseModel):
     webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
     bundle_analysis_enabled = Column(types.Boolean, default=False)
+    test_analytics_enabled = Column(types.Boolean, default=False)
     upload_token = Column(postgresql.UUID, server_default=FetchedValue())
 
     # DEPRECATED - prefer GithubAppInstallation.is_repo_covered_by_integration

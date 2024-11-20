@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from asgiref.sync import async_to_sync
 from shared.yaml import UserYaml
@@ -10,7 +10,6 @@ from test_results_parser import Outcome
 from app import celery_app
 from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
 from database.models import Commit, Flake, Repository, TestResultReportTotals
-from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.metrics import metrics
 from helpers.notifier import NotifierResult
@@ -28,8 +27,7 @@ from services.test_results import (
     TestResultsNotificationPayload,
     TestResultsNotifier,
     latest_test_instances_for_a_given_commit,
-    should_read_flaky_detection,
-    should_write_flaky_detection,
+    should_do_flaky_detection,
 )
 from tasks.base import BaseCodecovTask
 from tasks.cache_test_rollups import cache_test_rollups_task_name
@@ -43,7 +41,6 @@ test_results_finisher_task_name = "app.tasks.test_results.TestResultsFinisherTas
 ESCAPE_FAILURE_MESSAGE_DEFN = [
     Replacement(["\r"], "", EscapeEnum.REPLACE),
 ]
-QUEUE_NOTIFY_KEY = "queue_notify"
 
 
 @dataclass
@@ -57,7 +54,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
     def run_impl(
         self,
         db_session: Session,
-        chord_result: Dict[str, Any],
+        chord_result: dict[str, Any],
         *,
         repoid: int,
         commitid: str,
@@ -100,7 +97,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     previous_result=chord_result,
                     **kwargs,
                 )
-            if finisher_result[QUEUE_NOTIFY_KEY]:
+            if finisher_result["queue_notify"]:
                 self.app.tasks[notify_task_name].apply_async(
                     args=None,
                     kwargs=dict(
@@ -122,7 +119,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid: int,
         commitid: str,
         commit_yaml: UserYaml,
-        previous_result: Dict[str, Any],
+        previous_result: dict[str, Any],
         **kwargs,
     ):
         log.info(
@@ -130,9 +127,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             extra=self.extra_dict,
         )
 
-        checkpoints = checkpoints_from_kwargs(TestResultsFlow, kwargs)
-
-        checkpoints.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
+        TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
 
         commit: Commit = (
             db_session.query(Commit).filter_by(repoid=repoid, commitid=commitid).first()
@@ -141,7 +136,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
 
         repo = db_session.query(Repository).filter_by(repoid=repoid).first()
-        if should_write_flaky_detection(repoid, commit_yaml):
+        if should_do_flaky_detection(repo, commit_yaml):
             if commit.merged is True or commit.branch == repo.branch:
                 self.app.tasks[process_flakes_task_name].apply_async(
                     kwargs=dict(
@@ -177,9 +172,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
-            metrics.incr(
-                "test_results.finisher.failure.no_successful_processing",
-            )
+            metrics.incr("test_results.finisher.failure.no_successful_processing")
 
             queue_notify = False
 
@@ -200,7 +193,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             return {
                 "notify_attempted": False,
                 "notify_succeeded": False,
-                QUEUE_NOTIFY_KEY: queue_notify,
+                "queue_notify": queue_notify,
             }
 
         # if we succeed once, error should be None for this commit forever
@@ -259,24 +252,14 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         db_session.flush()
 
         if failed_tests == 0:
-            metrics.incr(
-                "test_results.finisher.normal_notify_called.all_tests_passed",
-            )
-            self.app.tasks[notify_task_name].apply_async(
-                args=None,
-                kwargs=dict(
-                    repoid=repoid, commitid=commitid, current_yaml=commit_yaml.to_dict()
-                ),
-            )
+            metrics.incr("test_results.finisher.normal_notify_called.all_tests_passed")
             return {
                 "notify_attempted": False,
                 "notify_succeeded": False,
-                QUEUE_NOTIFY_KEY: True,
+                "queue_notify": True,
             }
 
-        metrics.incr(
-            "test_results.finisher.success.tests_failed",
-        )
+        metrics.incr("test_results.finisher.success.tests_failed")
         repo_service = get_repo_provider_service(repo)
         pull = async_to_sync(fetch_and_update_pull_request_information_from_commit)(
             repo_service, commit, commit_yaml
@@ -321,12 +304,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 log.info("Made upgrade comment", extra=self.extra_dict)
 
                 return {
-                    "notify_attempted": False,
-                    "notify_succeeded": False,
-                    QUEUE_NOTIFY_KEY: False,
+                    "notify_attempted": True,
+                    "notify_succeeded": success,
+                    "queue_notify": False,
                 }
 
-        flaky_tests = self.get_flaky_tests(db_session, commit_yaml, repoid, failures)
+        flaky_tests = dict()
+
+        if should_do_flaky_detection(repo, commit_yaml):
+            flaky_tests = self.get_flaky_tests(db_session, repoid, failures)
 
         failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
 
@@ -341,14 +327,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         notifier = TestResultsNotifier(commit, commit_yaml, payload=payload)
 
         with metrics.timer("test_results.finisher.notification"):
-            checkpoints.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
+            TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
 
-            if begin_to_notify := checkpoints._subflow_duration(
+            if begin_to_notify := TestResultsFlow._subflow_duration(
                 TestResultsFlow.TEST_RESULTS_BEGIN,
                 TestResultsFlow.TEST_RESULTS_NOTIFY,
+                data=TestResultsFlow._data_from_log_context(),
             ):
                 metrics.timing(
-                    f"test_results_notif_latency.{"flaky" if should_read_flaky_detection(repoid, commit_yaml) else "non_flaky"}",
+                    f"test_results_notif_latency.{"flaky" if should_do_flaky_detection(repo, commit_yaml) else "non_flaky"}",
                     begin_to_notify,
                 )
             notifier_result: NotifierResult = notifier.notify()
@@ -365,8 +352,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 extra=dict(
                     success=success,
                     notifier_result=notifier_result.value,
-                    repoid=repoid,
-                    commitid=commit.commitid,
                     test_ids=list(flaky_tests.keys()),
                 ),
             )
@@ -374,10 +359,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
 
         self.extra_dict["success"] = success
         self.extra_dict["notifier_result"] = notifier_result.value
-        log.info(
-            "Finished test results notify",
-            extra=self.extra_dict,
-        )
+        log.info("Finished test results notify", extra=self.extra_dict)
 
         # using a var as a tag here will be fine as it's a boolean
         metrics.incr(
@@ -387,38 +369,35 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         return {
             "notify_attempted": True,
             "notify_succeeded": success,
-            QUEUE_NOTIFY_KEY: False,
+            "queue_notify": False,
         }
 
     def get_flaky_tests(
         self,
         db_session: Session,
-        commit_yaml: UserYaml,
         repoid: int,
         failures: list[TestResultsNotificationFailure],
     ) -> dict[str, FlakeInfo]:
-        if should_read_flaky_detection(repoid, commit_yaml):
-            flaky_test_ids = dict()
-            failure_test_ids = [failure.test_id for failure in failures]
+        failure_test_ids = [failure.test_id for failure in failures]
 
-            matching_flakes = list(
-                db_session.query(Flake)
-                .filter(  # type:ignore
-                    Flake.repoid == repoid,
-                    Flake.testid.in_(failure_test_ids),
-                    Flake.end_date.is_(None),
-                    Flake.count != (Flake.recent_passes_count + Flake.fail_count),
-                )
-                .limit(100)
-                .all()
+        matching_flakes = list(
+            db_session.query(Flake)
+            .filter(
+                Flake.repoid == repoid,
+                Flake.testid.in_(failure_test_ids),
+                Flake.end_date.is_(None),
+                Flake.count != (Flake.recent_passes_count + Flake.fail_count),
             )
+            .limit(100)
+            .all()
+        )
 
-            for flake in matching_flakes:
-                flaky_test_ids[flake.testid] = FlakeInfo(flake.fail_count, flake.count)
+        flaky_test_ids = {
+            flake.testid: FlakeInfo(flake.fail_count, flake.count)
+            for flake in matching_flakes
+        }
 
-            return flaky_test_ids
-
-        return dict()
+        return flaky_test_ids
 
     def check_if_no_success(self, previous_result):
         return all(

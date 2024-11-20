@@ -3,13 +3,21 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import List, Sequence
 
+from shared.plan.constants import FREE_PLAN_REPRESENTATIONS, TEAM_PLAN_REPRESENTATIONS
 from shared.yaml import UserYaml
 from sqlalchemy import desc
 
 from database.enums import ReportType
-from database.models import Commit, CommitReport, RepositoryFlag, TestInstance, Upload
+from database.models import (
+    Commit,
+    CommitReport,
+    Repository,
+    RepositoryFlag,
+    TestInstance,
+    Upload,
+)
 from helpers.notifier import BaseNotifier
-from rollouts import FLAKY_SHADOW_MODE, FLAKY_TEST_DETECTION
+from rollouts import FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.processing.types import UploadArguments
 from services.report import BaseReportService
@@ -198,7 +206,7 @@ def generate_failure_info(
 def generate_view_test_analytics_line(commit: Commit) -> str:
     repo = commit.repository
     test_analytics_url = get_test_analytics_url(repo, commit)
-    return f"\nTo view more test analytics, go to the [Test Analytics Dashboard]({test_analytics_url})\nGot feedback? Let us know on [Github](https://github.com/codecov/feedback/issues)"
+    return f"\nTo view more test analytics, go to the [Test Analytics Dashboard]({test_analytics_url})\n:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"
 
 
 def messagify_failure(
@@ -389,14 +397,20 @@ def latest_test_instances_for_a_given_commit(db_session, commit_id):
     )
 
 
-def should_write_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
-    return (
-        FLAKY_TEST_DETECTION.check_value(identifier=repoid, default=False)
-        or FLAKY_SHADOW_MODE.check_value(identifier=repoid, default=False)
-    ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True)
+def not_private_and_free_or_team(repo: Repository):
+    return not (
+        repo.private
+        and repo.owner.plan
+        in {**FREE_PLAN_REPRESENTATIONS, **TEAM_PLAN_REPRESENTATIONS}
+    )
 
 
-def should_read_flaky_detection(repoid: int, commit_yaml: UserYaml) -> bool:
-    return FLAKY_TEST_DETECTION.check_value(
-        identifier=repoid, default=False
-    ) and read_yaml_field(commit_yaml, ("test_analytics", "flake_detection"), True)
+def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
+    has_flaky_configured = read_yaml_field(
+        commit_yaml, ("test_analytics", "flake_detection"), True
+    )
+    feature_enabled = FLAKY_TEST_DETECTION.check_value(
+        identifier=repo.repoid, default=True
+    )
+    has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
+    return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)
