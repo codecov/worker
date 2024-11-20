@@ -26,7 +26,7 @@ from services.billing import BillingPlan
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
 from services.urls import get_members_url
-from tasks.test_results_finisher import QUEUE_NOTIFY_KEY, TestResultsFinisherTask
+from tasks.test_results_finisher import TestResultsFinisherTask
 
 here = Path(__file__)
 
@@ -358,7 +358,7 @@ class TestUploadTestFinisherTask(object):
         expected_result = {
             "notify_attempted": True,
             "notify_succeeded": True,
-            QUEUE_NOTIFY_KEY: False,
+            "queue_notify": False,
         }
 
         test_results_mock_app.tasks[
@@ -485,7 +485,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         expected_result = {
             "notify_attempted": False,
             "notify_succeeded": False,
-            QUEUE_NOTIFY_KEY: True,
+            "queue_notify": True,
         }
         test_results_mock_app.tasks[
             "app.tasks.notify.Notify"
@@ -542,7 +542,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         expected_result = {
             "notify_attempted": False,
             "notify_succeeded": False,
-            QUEUE_NOTIFY_KEY: True,
+            "queue_notify": True,
         }
 
         assert expected_result == result
@@ -625,13 +625,11 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
             commit_yaml={"codecov": {"max_report_age": False}},
         )
 
-        expected_result = {
-            "notify_attempted": False,
-            "notify_succeeded": False,
-            QUEUE_NOTIFY_KEY: False,
+        assert result == {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
         }
-
-        assert expected_result == result
 
         mock_repo_provider_comments.post_comment.assert_called_with(
             pull.pullid,
@@ -685,7 +683,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         expected_result = {
             "notify_attempted": True,
             "notify_succeeded": True,
-            QUEUE_NOTIFY_KEY: False,
+            "queue_notify": False,
         }
 
         test_results_mock_app.tasks[
@@ -812,7 +810,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         expected_result = {
             "notify_attempted": True,
             "notify_succeeded": False,
-            QUEUE_NOTIFY_KEY: False,
+            "queue_notify": False,
         }
 
         test_results_mock_app.tasks[
@@ -1041,7 +1039,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         expected_result = {
             "notify_attempted": True,
             "notify_succeeded": True,
-            QUEUE_NOTIFY_KEY: False,
+            "queue_notify": False,
         }
 
         assert expected_result == result
@@ -1138,9 +1136,7 @@ Got feedback? Let us know on [Github](https://github.com/codecov/feedback/issues
         test_results_setup,
         plan,
     ):
-        mocked_get_flaky_tests = mocker.patch.object(
-            TestResultsFinisherTask, "get_flaky_tests"
-        )
+        mocker.patch.object(TestResultsFinisherTask, "get_flaky_tests")
         mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = True
         commit_yaml = {
