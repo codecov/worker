@@ -171,7 +171,9 @@ class NotificationService(object):
                 )
 
         # yield notifier if slack_app field is True, nonexistent, or a non-empty dict
-        slack_app_yaml_field = read_yaml_field(self.current_yaml, ("slack_app",), True)
+        slack_app_yaml_field = get_config(
+            "setup", "slack_app", default=True
+        ) and read_yaml_field(self.current_yaml, ("slack_app",), True)
         if slack_app_yaml_field:
             yield CodecovSlackAppNotifier(
                 repository=self.repository,
