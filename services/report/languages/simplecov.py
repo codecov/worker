@@ -37,6 +37,12 @@ def from_json(json: dict, report_builder_session: ReportBuilderSession) -> None:
         )
 
         for ln, cov in enumerate(coverage_to_check, start=1):
+            if cov == "ignored":
+                # Lines that simplecov skipped are recorded as "ignored" by
+                # https://github.com/codeclimate-community/simplecov_json_formatter
+                # and we in turn record that as -1 which indicates a skipped line
+                # in our report
+                cov = -1
             _file.append(
                 ln,
                 report_builder_session.create_coverage_line(
