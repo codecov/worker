@@ -28,7 +28,6 @@ from app import celery_app
 from database.enums import CommitErrorTypes, Decoration, NotificationState, ReportType
 from database.models import Commit, Pull
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, CompareCommit
-from helpers.checkpoint_logger import from_kwargs as checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.clock import get_seconds_to_next_hour
 from helpers.comparison import minimal_totals
@@ -48,7 +47,7 @@ from services.github import get_github_app_for_commit, set_github_app_for_commit
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.notification import NotificationService
 from services.redis import Redis, get_redis_connection
-from services.report import Report, ReportService
+from services.report import ReportService
 from services.repository import (
     EnrichedPull,
     _get_repo_provider_service_instance,
@@ -83,7 +82,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Not notifying because there are seemingly other jobs being processed yet",
                 extra=dict(repoid=repoid, commitid=commitid),
             )
-            # Should we log an UploadFlow checkpoint here?
+            self.log_checkpoint(UploadFlow.SKIPPING_NOTIFICATION)
             return {
                 "notified": False,
                 "notifications": None,
@@ -123,14 +122,14 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     ),
                 ),
             )
-            self.log_checkpoint(kwargs, UploadFlow.NOTIF_LOCK_ERROR)
+            self.log_checkpoint(UploadFlow.NOTIF_LOCK_ERROR)
             return {
                 "notified": False,
                 "notifications": None,
                 "reason": "unobtainable_lock",
             }
 
-    def log_checkpoint(self, kwargs, checkpoint):
+    def log_checkpoint(self, checkpoint):
         """
         Only log a checkpoint if whoever scheduled us sent checkpoints data from
         the same flow.
@@ -140,9 +139,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         of upload processing, attempting to log `UploadFlow` checkpoints for it
         will pollute our metrics.
         """
-        checkpoints = checkpoints_from_kwargs(checkpoint.__class__, kwargs)
-        if checkpoints.data:
-            checkpoints.log(checkpoint)
+        if UploadFlow.has_begun():
+            UploadFlow.log(checkpoint)
 
     def _attempt_retry(
         self,
@@ -166,7 +164,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     current_yaml=current_yaml.to_dict(),
                 ),
             )
-            self.log_checkpoint(kwargs, UploadFlow.NOTIF_TOO_MANY_RETRIES)
+            self.log_checkpoint(UploadFlow.NOTIF_TOO_MANY_RETRIES)
             return {
                 "notified": False,
                 "notifications": None,
@@ -219,7 +217,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Unable to start notifications because repo doesn't have a valid bot",
                 extra=dict(repoid=repoid, commit=commitid),
             )
-            self.log_checkpoint(kwargs, UploadFlow.NOTIF_NO_VALID_INTEGRATION)
+            self.log_checkpoint(UploadFlow.NOTIF_NO_VALID_INTEGRATION)
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
         except NoConfiguredAppsAvailable as exp:
             if exp.rate_limited_count > 0:
@@ -255,6 +253,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     apps_suspended=exp.suspended_count,
                 ),
             )
+            self.log_checkpoint(UploadFlow.NOTIF_NO_APP_INSTALLATION)
             return {
                 "notified": False,
                 "notifications": None,
@@ -275,7 +274,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Unable to fetch CI results due to a client problem. Not notifying user",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid, code=ex.code),
             )
-            self.log_checkpoint(kwargs, UploadFlow.NOTIF_GIT_CLIENT_ERROR)
+            self.log_checkpoint(UploadFlow.NOTIF_GIT_CLIENT_ERROR)
             return {
                 "notified": False,
                 "notifications": None,
@@ -286,7 +285,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Unable to fetch CI results due to server issues. Not notifying user",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-            self.log_checkpoint(kwargs, UploadFlow.NOTIF_GIT_SERVICE_ERROR)
+            self.log_checkpoint(UploadFlow.NOTIF_GIT_SERVICE_ERROR)
             return {
                 "notified": False,
                 "notifications": None,
@@ -363,7 +362,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                         pull_head=enriched_pull.provider_pull["head"]["commitid"],
                     ),
                 )
-                self.log_checkpoint(kwargs, UploadFlow.NOTIF_STALE_HEAD)
+                self.log_checkpoint(UploadFlow.NOTIF_STALE_HEAD)
                 return {
                     "notified": False,
                     "notifications": None,
@@ -377,7 +376,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             else:
                 base_report = None
             if head_report is None and empty_upload is None:
-                self.log_checkpoint(kwargs, UploadFlow.NOTIF_ERROR_NO_REPORT)
+                self.log_checkpoint(UploadFlow.NOTIF_ERROR_NO_REPORT)
                 return {
                     "notified": False,
                     "notifications": None,
@@ -425,7 +424,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 ),
                 gitlab_extra_shas_to_notify=gitlab_extra_shas_to_notify,
             )
-            self.log_checkpoint(kwargs, UploadFlow.NOTIFIED)
+            self.log_checkpoint(UploadFlow.NOTIFIED)
             log.info(
                 "Notifications done",
                 extra=dict(
@@ -443,6 +442,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 "Not sending notifications at all",
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
+            self.log_checkpoint(UploadFlow.SKIPPING_NOTIFICATION)
             return {"notified": False, "notifications": None}
 
     def is_using_codecov_commenter(
@@ -607,15 +607,12 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             )
             patch_coverage_base_commitid = None
 
-        # FIXME: The input types can be `None`, though the types of `Comparison`,
-        # and all its users assume that a report exists, so just create an empty
-        # one here.
-        head_report = head_report or ReadOnlyReport.create_from_report(Report())
-        base_report = base_report or ReadOnlyReport.create_from_report(Report())
-
-        # FIXME: A similar problem is that `base_commit` can be `None`, which is
-        # also being flagged by `mypy`, even though the downstream code expects
-        # it to exist.
+        # FIXME: Both the `commit` as well as the `report` on `FullCommit`
+        # (both `head` and `project_coverage_base`) are declared to be non-`None`.
+        # Though you will see type errors below because they indeed can be `None`.
+        # Downstream code seems to be very fragile in this regard.
+        # Some code wrongly assumes things are non-`None` and will error.
+        # Other code checks `report` and then errors on `commit`.
 
         comparison = ComparisonProxy(
             Comparison(

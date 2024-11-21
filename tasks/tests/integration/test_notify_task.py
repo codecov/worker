@@ -2,7 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from mock import ANY, AsyncMock, PropertyMock
+from mock import AsyncMock, PropertyMock
 from shared.validation.types import CoverageCommentRequiredChanges
 
 from database.models import Pull
@@ -102,9 +102,9 @@ class TestNotifyTask(object):
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
-                                "url": ANY,
-                                "message": "no change",
-                                "coverage": "0.00",
+                                "url": None,
+                                "message": "unknown",
+                                "coverage": None,
                                 "notation": "",
                                 "head_commit": {
                                     "commitid": "649eaaf2924e92dc7fd8d370ddb857033231e67a",

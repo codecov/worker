@@ -2,7 +2,6 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import mock
 import pytest
@@ -23,9 +22,10 @@ from database.models.core import (
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFactory
 from database.tests.factories.core import ReportFactory
-from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.log_context import LogContext, set_log_context
 from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -40,14 +40,13 @@ from tasks.upload_processor import upload_processor_task
 here = Path(__file__)
 
 
-def _create_checkpoint_logger(mocker):
+def _start_upload_flow(mocker):
     mocker.patch(
         "helpers.checkpoint_logger._get_milli_timestamp",
         side_effect=[1337, 9001, 10000, 15000, 20000, 25000],
     )
-    checkpoints = CheckpointLogger(UploadFlow)
-    checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
-    return checkpoints
+    set_log_context(LogContext())
+    UploadFlow.log(UploadFlow.UPLOAD_TASK_BEGIN)
 
 
 class FakeRedis(object):
@@ -117,6 +116,11 @@ def mock_redis(mocker):
     yield redis_server
 
 
+@pytest.fixture(scope="function", autouse=True)
+def clear_log_context(mocker):
+    set_log_context(LogContext())
+
+
 @pytest.mark.integration
 class TestUploadTaskIntegration(object):
     @pytest.mark.django_db(databases={"default"})
@@ -130,6 +134,7 @@ class TestUploadTaskIntegration(object):
         celery_app,
         mock_checkpoint_submit,
     ):
+        _start_upload_flow(mocker)
         mocked_chord = mocker.patch("tasks.upload.chord")
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mocker.patch.object(UploadTask, "app", celery_app)
@@ -155,8 +160,7 @@ class TestUploadTaskIntegration(object):
             f"uploads/{commit.repoid}/{commit.commitid}",
             json.dumps({"url": url, "build": "some_random_build"}),
         )
-        checkpoints = _create_checkpoint_logger(mocker)
-        kwargs = {_kwargs_key(UploadFlow): checkpoints.data}
+        kwargs = UploadFlow.save_to_kwargs({})
         result = UploadTask().run_impl(
             dbsession,
             commit.repoid,
@@ -201,11 +205,21 @@ class TestUploadTaskIntegration(object):
                 "time_before_processing",
                 UploadFlow.UPLOAD_TASK_BEGIN,
                 UploadFlow.PROCESSING_BEGIN,
+                data={
+                    UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+                    UploadFlow.PROCESSING_BEGIN: 9001,
+                    UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+                },
             ),
             mock.call(
                 "initial_processing_duration",
                 UploadFlow.PROCESSING_BEGIN,
                 UploadFlow.INITIAL_PROCESSING_COMPLETE,
+                data={
+                    UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+                    UploadFlow.PROCESSING_BEGIN: 9001,
+                    UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+                },
             ),
         ]
         mock_checkpoint_submit.assert_has_calls(calls)
@@ -807,7 +821,6 @@ class TestUploadTaskIntegration(object):
             ],
             commit.report,
             mocker.ANY,
-            mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
 
@@ -876,7 +889,6 @@ class TestUploadTaskIntegration(object):
             ],
             commit.report,
             mocker.ANY,
-            mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
 
@@ -924,10 +936,7 @@ class TestUploadTaskIntegration(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
-        mock_checkpoints = MagicMock(name="checkpoints")
-        result = UploadTask().run_impl_within_lock(
-            dbsession, upload_args, checkpoints=mock_checkpoints, kwargs={}
-        )
+        result = UploadTask().run_impl_within_lock(dbsession, upload_args, kwargs={})
         assert {"was_setup": False, "was_updated": False} == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
@@ -964,7 +973,6 @@ class TestUploadTaskIntegration(object):
                 },
             ],
             commit.report,
-            mocker.ANY,
             mocker.ANY,
         )
 
@@ -1036,10 +1044,7 @@ class TestUploadTaskIntegration(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
-        mock_checkpoints = MagicMock(name="checkpoints")
-        result = UploadTask().run_impl_within_lock(
-            dbsession, upload_args, checkpoints=mock_checkpoints, kwargs={}
-        )
+        result = UploadTask().run_impl_within_lock(dbsession, upload_args, kwargs={})
         assert {"was_setup": True, "was_updated": True} == result
         assert commit.message == ""
         assert commit.parent_commit_id is None
@@ -1057,7 +1062,6 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report,
-            mocker.ANY,
             mocker.ANY,
         )
 
@@ -1170,6 +1174,7 @@ class TestUploadTaskUnit(object):
 
     @pytest.mark.django_db
     def test_schedule_task_with_one_task(self, dbsession, mocker, mock_repo_provider):
+        _start_upload_flow(mocker)
         mocker.patch(
             "tasks.upload.get_repo_provider_service", return_value=mock_repo_provider
         )
@@ -1186,14 +1191,12 @@ class TestUploadTaskUnit(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
-        mock_checkpoints = MagicMock(name="checkpoints")
         result = UploadTask().schedule_task(
             commit,
             commit_yaml,
             [{"upload_id": 1, "upload_pk": 1}],
             ReportFactory.create(),
             upload_args,
-            checkpoints=mock_checkpoints,
         )
         assert result == mocked_chord.return_value.apply_async.return_value
         processor = upload_processor_task.s(
@@ -1584,8 +1587,5 @@ class TestUploadTaskUnit(object):
             commitid=commit.commitid,
             redis_connection=mock_redis,
         )
-        mock_checkpoints = MagicMock(name="checkpoints")
         with pytest.raises(Retry):
-            task.run_impl_within_lock(
-                dbsession, upload_args, checkpoints=mock_checkpoints, kwargs={}
-            )
+            task.run_impl_within_lock(dbsession, upload_args, kwargs={})

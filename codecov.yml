@@ -3,9 +3,6 @@ codecov:
   notify:
     wait_for_ci: false
 
-comment:
-  layout: "reach,diff,flags,components,tree"
-
 component_management:
   default_rules:
     statuses:

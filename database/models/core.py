@@ -152,6 +152,7 @@ class Repository(CodecovBaseModel):
     webhook_secret = Column(types.Text)
     activated = Column(types.Boolean, default=False)
     bundle_analysis_enabled = Column(types.Boolean, default=False)
+    test_analytics_enabled = Column(types.Boolean, default=False)
     upload_token = Column(postgresql.UUID, server_default=FetchedValue())
 
     # DEPRECATED - prefer GithubAppInstallation.is_repo_covered_by_integration

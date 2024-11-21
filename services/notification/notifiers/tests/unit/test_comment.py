@@ -3037,6 +3037,61 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.parametrize(
+        "test_analytics_enabled,bundle_analysis_enabled",
+        [(False, False), (False, True), (True, False), (True, True)],
+    )
+    def test_build_message_new_feature_message(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+        test_analytics_enabled,
+        bundle_analysis_enabled,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            repository_service=mock_repo_provider,
+        )
+        repository = sample_comparison.head.commit.repository
+        if bundle_analysis_enabled:
+            repository.languages = ["javascript"]
+        if test_analytics_enabled:
+            repository.test_analytics_enabled = False
+        dbsession.flush()
+        result = notifier.build_message(comparison)
+
+        promotional_message = "🚨 Try these New Features:"
+        flake_message = "- [Flaky Tests Detection](https://docs.codecov.com/docs/test-result-ingestion-beta) - Detect and resolve failed and flaky tests"
+        bundle_message = "- [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis) - Avoid shipping oversized bundles"
+
+        end_of_message = []
+
+        if test_analytics_enabled or bundle_analysis_enabled:
+            end_of_message += [promotional_message, ""]
+            assert promotional_message in result
+
+        if test_analytics_enabled:
+            end_of_message.append(flake_message)
+            assert flake_message in result
+
+        if bundle_analysis_enabled:
+            end_of_message.append(bundle_message)
+            assert bundle_message in result
+
+        if len(end_of_message):
+            assert result[-len(end_of_message) :] == end_of_message
+        else:
+            assert result[-1] == ""
+
 
 class TestFileSectionWriter(object):
     def test_filesection_no_extra_settings(self, sample_comparison, mocker):

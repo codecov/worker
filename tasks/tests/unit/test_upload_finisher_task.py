@@ -1,6 +1,5 @@
-import json
 from pathlib import Path
-from unittest.mock import ANY, call
+from unittest.mock import ANY
 
 import pytest
 from celery.exceptions import Retry
@@ -12,9 +11,10 @@ from shared.yaml import UserYaml
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from database.tests.factories.core import UploadFactory
-from helpers.checkpoint_logger import CheckpointLogger, _kwargs_key
+from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.log_context import LogContext, set_log_context
 from services.processing.merging import get_joined_flag, update_uploads
 from services.processing.types import MergeResult, ProcessingResult
 from tasks.upload_finisher import (
@@ -27,16 +27,15 @@ from tasks.upload_finisher import (
 here = Path(__file__)
 
 
-def _create_checkpoint_logger(mocker):
+def _start_upload_flow(mocker):
     mocker.patch(
         "helpers.checkpoint_logger._get_milli_timestamp",
         side_effect=[1337, 9001, 10000, 15000, 20000, 25000],
     )
-    checkpoints = CheckpointLogger(UploadFlow)
-    checkpoints.log(UploadFlow.UPLOAD_TASK_BEGIN)
-    checkpoints.log(UploadFlow.PROCESSING_BEGIN)
-    checkpoints.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-    return checkpoints
+    set_log_context(LogContext())
+    UploadFlow.log(UploadFlow.UPLOAD_TASK_BEGIN)
+    UploadFlow.log(UploadFlow.PROCESSING_BEGIN)
+    UploadFlow.log(UploadFlow.INITIAL_PROCESSING_COMPLETE)
 
 
 def test_load_commit_diff_no_diff(mock_configuration, dbsession, mock_repo_provider):
@@ -162,35 +161,43 @@ class TestUploadFinisherTask(object):
             {"upload_id": 0, "arguments": {"url": url}, "successful": True}
         ]
 
-        checkpoints = _create_checkpoint_logger(mocker)
-        checkpoints_data = json.loads(json.dumps(checkpoints.data))
-        kwargs = {_kwargs_key(UploadFlow): checkpoints_data}
+        _start_upload_flow(mocker)
         result = UploadFinisherTask().run_impl(
             dbsession,
             previous_results,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={},
-            **kwargs,
         )
 
         assert result == {"notifications_called": True}
         dbsession.refresh(commit)
         assert commit.message == "dsidsahdsahdsa"
 
-        calls = [
-            call(
-                "batch_processing_duration",
-                UploadFlow.INITIAL_PROCESSING_COMPLETE,
-                UploadFlow.BATCH_PROCESSING_COMPLETE,
-            ),
-            call(
-                "total_processing_duration",
-                UploadFlow.PROCESSING_BEGIN,
-                UploadFlow.PROCESSING_COMPLETE,
-            ),
-        ]
-        mock_checkpoint_submit.assert_has_calls(calls)
+        mock_checkpoint_submit.assert_any_call(
+            "batch_processing_duration",
+            UploadFlow.INITIAL_PROCESSING_COMPLETE,
+            UploadFlow.BATCH_PROCESSING_COMPLETE,
+            data={
+                UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+                UploadFlow.PROCESSING_BEGIN: 9001,
+                UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+                UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
+                UploadFlow.PROCESSING_COMPLETE: 20000,
+            },
+        )
+        mock_checkpoint_submit.assert_any_call(
+            "total_processing_duration",
+            UploadFlow.PROCESSING_BEGIN,
+            UploadFlow.PROCESSING_COMPLETE,
+            data={
+                UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+                UploadFlow.PROCESSING_BEGIN: 9001,
+                UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+                UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
+                UploadFlow.PROCESSING_COMPLETE: 20000,
+            },
+        )
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call_no_author(
@@ -468,14 +475,13 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        checkpoints = _create_checkpoint_logger(mocker)
+        _start_upload_flow(mocker)
         res = UploadFinisherTask().finish_reports_processing(
             dbsession,
             commit,
             UserYaml(commit_yaml),
             [{"successful": True}],
             None,
-            checkpoints,
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
@@ -523,14 +529,13 @@ class TestUploadFinisherTask(object):
         dbsession.add(compared_to)
         dbsession.flush()
 
-        checkpoints = _create_checkpoint_logger(mocker)
+        _start_upload_flow(mocker)
         res = UploadFinisherTask().finish_reports_processing(
             dbsession,
             commit,
             UserYaml(commit_yaml),
             [{"successful": True}],
             None,
-            checkpoints,
         )
         assert res == {"notifications_called": True}
         mocked_app.tasks["app.tasks.notify.Notify"].apply_async.assert_called_with(
@@ -583,14 +588,13 @@ class TestUploadFinisherTask(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        checkpoints = _create_checkpoint_logger(mocker)
+        _start_upload_flow(mocker)
         res = UploadFinisherTask().finish_reports_processing(
             dbsession,
             commit,
             UserYaml(commit_yaml),
             [{"successful": False}],
             None,
-            checkpoints,
         )
         assert res == {"notifications_called": False}
         if notify_error:
