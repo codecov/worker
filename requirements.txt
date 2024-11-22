@@ -35,7 +35,7 @@ celery==5.3.6
     #   -r requirements.in
     #   pytest-celery
     #   sentry-sdk
-cerberus==1.3.4
+cerberus==1.3.5
     # via shared
 certifi==2024.7.4
     # via
@@ -44,7 +44,6 @@ certifi==2024.7.4
     #   minio
     #   requests
     #   sentry-sdk
-    #   shared
 cffi==1.14.5
     # via
     #   cryptography
@@ -90,7 +89,7 @@ django==4.2.16
     #   shared
 django-better-admin-arrayfield==1.4.2
     # via shared
-django-model-utils==4.3.1
+django-model-utils==5.0.0
     # via shared
 django-postgres-extra==2.0.8
     # via
@@ -98,8 +97,6 @@ django-postgres-extra==2.0.8
     #   shared
 django-prometheus==2.3.1
     # via shared
-ecdsa==0.18.0
-    # via tlslite-ng
 factory-boy==3.2.0
     # via -r requirements.in
 faker==8.8.2
@@ -108,12 +105,12 @@ filelock==3.12.4
     # via virtualenv
 freezegun==1.5.0
     # via pytest-freezegun
-google-api-core==2.11.1
+google-api-core==2.23.0
     # via
     #   google-cloud-core
     #   google-cloud-pubsub
     #   google-cloud-storage
-google-auth==2.21.0
+google-auth==2.36.0
     # via
     #   google-api-core
     #   google-cloud-core
@@ -125,13 +122,15 @@ google-cloud-pubsub==2.18.4
     # via
     #   -r requirements.in
     #   shared
-google-cloud-storage==2.10.0
+google-cloud-storage==2.18.2
     # via
     #   -r requirements.in
     #   shared
 google-crc32c==1.1.2
-    # via google-resumable-media
-google-resumable-media==2.5.0
+    # via
+    #   google-cloud-storage
+    #   google-resumable-media
+google-resumable-media==2.7.2
     # via google-cloud-storage
 googleapis-common-protos==1.59.1
     # via
@@ -155,8 +154,6 @@ h11==0.14.0
     # via httpcore
 httpcore==0.16.3
     # via httpx
-httplib2==0.19.0
-    # via oauth2
 httpx==0.23.1
     # via
     #   -r requirements.in
@@ -199,13 +196,11 @@ multidict==5.1.0
     # via yarl
 nodeenv==1.8.0
     # via pre-commit
-oauth2==1.9.0.post1
-    # via shared
 oauthlib==3.1.0
     # via shared
 openai==1.2.4
     # via -r requirements.in
-orjson==3.10.7
+orjson==3.10.11
     # via
     #   -r requirements.in
     #   shared
@@ -226,7 +221,9 @@ prometheus-client==0.17.1
 prompt-toolkit==3.0.28
     # via click-repl
 proto-plus==1.22.3
-    # via google-cloud-pubsub
+    # via
+    #   google-api-core
+    #   google-cloud-pubsub
 protobuf==4.24.3
     # via
     #   google-api-core
@@ -235,7 +232,6 @@ protobuf==4.24.3
     #   grpc-google-iam-v1
     #   grpcio-status
     #   proto-plus
-    #   shared
 psycopg2==2.9.3
     # via -r requirements.in
 pyasn1==0.4.8
@@ -250,14 +246,12 @@ pydantic==2.5.0
     # via openai
 pydantic-core==2.14.1
     # via pydantic
-pyjwt==2.4.0
+pyjwt==2.10.0
     # via
     #   -r requirements.in
     #   shared
 pyparsing==2.4.7
-    # via
-    #   httplib2
-    #   shared
+    # via shared
 pytest==8.1.1
     # via
     #   -r requirements.in
@@ -303,6 +297,7 @@ pyyaml==6.0.1
     # via
     #   -r requirements.in
     #   pre-commit
+    #   shared
     #   vcrpy
 redis==4.5.4
     # via
@@ -331,18 +326,14 @@ sentry-sdk==2.13.0
     # via
     #   -r requirements.in
     #   shared
-setuptools==75.5.0
-    # via
-    #   cerberus
-    #   nodeenv
-shared @ https://github.com/codecov/shared/archive/9c31870de026a8a3f026f0753b1991e8c832fadb.tar.gz#egg=shared
+setuptools==75.6.0
+    # via nodeenv
+shared @ https://github.com/codecov/shared/archive/f96b72f47583a083e0c78ec7c7ff4da5d3ad6a19.tar.gz#egg=shared
     # via -r requirements.in
 six==1.16.0
     # via
     #   analytics-python
     #   click-repl
-    #   ecdsa
-    #   google-auth
     #   python-dateutil
     #   sqlalchemy-utils
     #   vcrpy
@@ -375,8 +366,6 @@ time-machine==2.14.1
     # via -r requirements.in
 timestring @ https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
     # via -r requirements.in
-tlslite-ng==0.8.0b1
-    # via shared
 tqdm==4.66.1
     # via openai
 typing-extensions==4.6.3
@@ -391,11 +380,9 @@ urllib3==1.26.19
     # via
     #   -r requirements.in
     #   botocore
-    #   google-auth
     #   minio
     #   requests
     #   sentry-sdk
-    #   shared
 vcrpy==4.1.1
     # via -r requirements.in
 vine==5.1.0
