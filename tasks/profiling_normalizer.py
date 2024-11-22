@@ -129,10 +129,15 @@ class ProfilingNormalizerTask(BaseCodecovTask, name=profiling_normalization_task
                         files_dict,
                     )
                 )
-        for name in files_dict:
-            files_dict[name]["executable_lines"] = sorted(
-                files_dict[name]["executable_lines"]
-            )
+        files_dict.update(
+            {
+                name: {
+                    **files_dict[name],
+                    "executable_lines": sorted(files_dict[name]["executable_lines"]),
+                }
+                for name in files_dict
+            }
+        )
         return {"runs": runs, "files": files_dict}
 
     def _extract_report_into_dict(self, current_yaml, report, element, files_dict):
