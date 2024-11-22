@@ -361,7 +361,16 @@ class LabelAnalysisRequestProcessingTask(
                 label_analysis_request.base_commit.commitid,
                 label_analysis_request.head_commit.commitid,
             )
-            return list(parse_git_diff_json(git_diff))
+            try:
+                git_pr = async_to_sync(repo_service.find_pull_request)(
+                    label_analysis_request.head_commit.commitid,
+                )
+                pr_files = async_to_sync(repo_service.get_pull_request_files)(
+                    git_pr["id"]
+                )
+            except Exception:
+                pr_files = []
+            return list(parse_git_diff_json(git_diff, pr_files))
         except Exception:
             # temporary general catch while we find possible problems on this
             log.exception(

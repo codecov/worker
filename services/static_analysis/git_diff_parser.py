@@ -64,10 +64,22 @@ class DiffChange(object):
 
 # NOTE: Computationally intensive.
 @sentry_sdk.trace
-def parse_git_diff_json(diff_json) -> typing.List[DiffChange]:
+def parse_git_diff_json(diff_json, pr_files=None) -> typing.List[DiffChange]:
     for key, value in diff_json["diff"]["files"].items():
         change_type = DiffChangeType.get_from_string(value["type"])
         after = None if change_type == DiffChangeType.deleted else key
+
+        if (
+            after is None
+            or (
+                pr_files
+                and not any(
+                    pr_file["filename"] == after for pr_file in pr_files
+                )
+            )
+        ):
+            continue
+
         before = (
             None if change_type == DiffChangeType.new else (value.get("before") or key)
         )
