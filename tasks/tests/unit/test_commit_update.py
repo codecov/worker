@@ -5,6 +5,7 @@ from shared.torngit.exceptions import (
     TorngitRepoNotFoundError,
 )
 
+from database.models import Branch, Pull
 from database.tests.factories import CommitFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.commit_update import CommitUpdateTask
@@ -184,6 +185,8 @@ class TestCommitUpdate(object):
             repository__owner__username="test-acc9",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
             repository__name="test_example",
+            branch="main",
+            pullid=1,
         )
         dbsession.add(commit)
         dbsession.flush()
@@ -193,3 +196,19 @@ class TestCommitUpdate(object):
         assert expected_result == result
         assert commit.message == "commit_msg"
         assert commit.parent_commit_id is None
+
+        branch = (
+            dbsession.query(Branch)
+            .filter(Branch.repoid == commit.repoid, Branch.branch == commit.branch)
+            .first()
+        )
+        assert branch.head == commit.commitid
+        assert branch.authors == [commit.author_id]
+
+        pull = (
+            dbsession.query(Pull)
+            .filter(Pull.repoid == commit.repoid, Pull.pullid == commit.pullid)
+            .first()
+        )
+        assert pull.head == commit.commitid
+        assert pull.author_id == commit.author_id
