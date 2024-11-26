@@ -1,5 +1,5 @@
-import datetime as dt
 import logging
+from datetime import datetime, timezone
 
 from shared.celery_config import commit_update_task_name
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
@@ -15,6 +15,13 @@ from services.repository import (
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
+
+
+def standardize_datetime(dt):
+    """Ensure a datetime is offset-aware and in UTC."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
@@ -50,7 +57,7 @@ class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
                     "Commit Update Task: commit.timestamp is a str",
                     extra=dict(commitid=commitid, repoid=repoid),
                 )
-                commit.timestamp = dt.datetime.fromisoformat(commit.timestamp)
+                commit.timestamp = datetime.fromisoformat(commit.timestamp)
 
             if commit.pullid is not None:
                 # upsert pull
@@ -77,7 +84,8 @@ class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
                     if (
                         previous_pull_head is None
                         or previous_pull_head.deleted == True
-                        or previous_pull_head.timestamp < commit.timestamp
+                        or standardize_datetime(previous_pull_head.timestamp)
+                        < standardize_datetime(commit.timestamp)
                     ):
                         pull.head = commit.commitid
 
