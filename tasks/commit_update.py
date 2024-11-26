@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 
 from shared.celery_config import commit_update_task_name
@@ -44,67 +45,79 @@ class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
                 commit, repository_service
             )
 
-            # upsert pull
-            pull = (
-                db_session.query(Pull)
-                .filter(Pull.repoid == repoid, Pull.pullid == commit.pullid)
-                .first()
-            )
-
-            if pull is None:
-                pull = Pull(
-                    repoid=repoid,
-                    pullid=commit.pullid,
-                    author_id=commit.author_id,
-                    head=commit.commitid,
+            if isinstance(commit.timestamp, str):
+                log.warning(
+                    "Commit Update Task: commit.timestamp is a str",
+                    extra=dict(commitid=commitid, repoid=repoid),
                 )
-                db_session.add(pull)
-            else:
-                previous_pull_head = (
-                    db_session.query(Commit)
-                    .filter(Commit.repoid == repoid, Commit.commitid == pull.head)
-                    .first()
-                )
-                if (
-                    previous_pull_head is None
-                    or previous_pull_head.deleted == True
-                    or previous_pull_head.timestamp < commit.timestamp
-                ):
-                    pull.head = commit.commitid
+                commit.timestamp = dt.datetime.fromisoformat(commit.timestamp)
 
-            # upsert branch
-            branch = (
-                db_session.query(Branch)
-                .filter(Branch.repoid == repoid, Branch.branch == commit.branch)
-                .first()
-            )
-
-            if branch is None:
-                branch = Branch(
-                    repoid=repoid,
-                    branch=commit.branch,
-                    head=commit.commitid,
-                    authors=[commit.author_id],
-                )
-                db_session.add(branch)
-            else:
-                if commit.author_id not in branch.authors:
-                    branch.authors.append(commit.author_id)
-
-                previous_branch_head = (
-                    db_session.query(Commit)
-                    .filter(Commit.repoid == repoid, Commit.commitid == branch.head)
+            if commit.pullid is not None:
+                # upsert pull
+                pull = (
+                    db_session.query(Pull)
+                    .filter(Pull.repoid == repoid, Pull.pullid == commit.pullid)
                     .first()
                 )
 
-                if (
-                    previous_branch_head is None
-                    or previous_branch_head.deleted == True
-                    or previous_branch_head.timestamp < commit.timestamp
-                ):
-                    branch.head = commit.commitid
+                if pull is None:
+                    pull = Pull(
+                        repoid=repoid,
+                        pullid=commit.pullid,
+                        author_id=commit.author_id,
+                        head=commit.commitid,
+                    )
+                    db_session.add(pull)
+                else:
+                    previous_pull_head = (
+                        db_session.query(Commit)
+                        .filter(Commit.repoid == repoid, Commit.commitid == pull.head)
+                        .first()
+                    )
+                    if (
+                        previous_pull_head is None
+                        or previous_pull_head.deleted == True
+                        or previous_pull_head.timestamp < commit.timestamp
+                    ):
+                        pull.head = commit.commitid
 
-            db_session.flush()
+            if commit.branch is not None:
+                # upsert branch
+                branch = (
+                    db_session.query(Branch)
+                    .filter(Branch.repoid == repoid, Branch.branch == commit.branch)
+                    .first()
+                )
+
+                if branch is None:
+                    branch = Branch(
+                        repoid=repoid,
+                        branch=commit.branch,
+                        head=commit.commitid,
+                        authors=[commit.author_id],
+                    )
+                    db_session.add(branch)
+                else:
+                    if commit.author_id is not None:
+                        if branch.authors is None:
+                            branch.authors = [commit.author_id]
+                        elif commit.author_id not in branch.authors:
+                            branch.authors.append(commit.author_id)
+
+                    previous_branch_head = (
+                        db_session.query(Commit)
+                        .filter(Commit.repoid == repoid, Commit.commitid == branch.head)
+                        .first()
+                    )
+
+                    if (
+                        previous_branch_head is None
+                        or previous_branch_head.deleted == True
+                        or previous_branch_head.timestamp < commit.timestamp
+                    ):
+                        branch.head = commit.commitid
+
+                db_session.flush()
 
         except RepositoryWithoutValidBotError:
             log.warning(

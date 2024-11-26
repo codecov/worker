@@ -212,3 +212,73 @@ class TestCommitUpdate(object):
         )
         assert pull.head == commit.commitid
         assert pull.author_id == commit.author_id
+
+    def test_update_commit_already_populated_no_pull(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_repo_provider,
+        mock_storage,
+    ):
+        commit = CommitFactory.create(
+            message="commit_msg",
+            parent_commit_id=None,
+            repository__owner__unencrypted_oauth_token="ghp_test3c8iyfspq6h4s9ugpmq19qp7826rv20o",
+            repository__owner__username="test-acc9",
+            repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            repository__name="test_example",
+            branch="main",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
+        expected_result = {"was_updated": False}
+        assert expected_result == result
+        assert commit.message == "commit_msg"
+        assert commit.parent_commit_id is None
+
+        branch = (
+            dbsession.query(Branch)
+            .filter(Branch.repoid == commit.repoid, Branch.branch == commit.branch)
+            .first()
+        )
+        assert branch.head == commit.commitid
+        assert branch.authors == [commit.author_id]
+
+    def test_update_commit_already_populated_no_branch(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_repo_provider,
+        mock_storage,
+    ):
+        commit = CommitFactory.create(
+            message="commit_msg",
+            parent_commit_id=None,
+            repository__owner__unencrypted_oauth_token="ghp_test3c8iyfspq6h4s9ugpmq19qp7826rv20o",
+            repository__owner__username="test-acc9",
+            repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            repository__name="test_example",
+            pullid=1,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+
+        result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
+        expected_result = {"was_updated": False}
+        assert expected_result == result
+        assert commit.message == "commit_msg"
+        assert commit.parent_commit_id is None
+
+        pull = (
+            dbsession.query(Pull)
+            .filter(Pull.repoid == commit.repoid, Pull.pullid == commit.pullid)
+            .first()
+        )
+        assert pull.head == commit.commitid
+        assert pull.author_id == commit.author_id
