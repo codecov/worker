@@ -117,7 +117,7 @@ class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
                     ):
                         branch.head = commit.commitid
 
-                db_session.flush()
+            db_session.flush()
 
         except RepositoryWithoutValidBotError:
             log.warning(
