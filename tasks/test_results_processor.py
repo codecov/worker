@@ -427,6 +427,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def process_individual_arg(
         self, db_session: Session, upload: Upload, repository
     ) -> TestResultsProcessingResult:
+        if upload.state == "processed" or upload.state == "has_failed":
+            return TestResultsProcessingResult(network_files=None, parsing_results=[])
+
         archive_service = ArchiveService(repository)
 
         payload_bytes = archive_service.read_file(upload.storage_path)
@@ -434,8 +437,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             data = json.loads(payload_bytes)
         except json.JSONDecodeError as e:
             with sentry_sdk.new_scope() as scope:
-                scope.set_extra("upload_state", upload.state)
-                scope.set_extra("contents", payload_bytes[:10])
+                scope.set_tag("upload_state", upload.state)
                 sentry_sdk.capture_exception(e, scope)
 
                 upload.state = "not parsed"
@@ -471,8 +473,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     ),
                 )
                 with sentry_sdk.new_scope() as scope:
-                    scope.set_extra("upload_state", upload.state)
-                    scope.set_extra("parser_error", exc.parser_err_msg)
+                    scope.set_tag("upload_state", upload.state)
                     sentry_sdk.capture_exception(exc, scope)
                     upload.state = "has_failed"
 
@@ -480,6 +481,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             upload.state = "processed"
 
         db_session.flush()
+        db_session.commit()
 
         readable_report = self.rewrite_readable(network, report_contents)
         archive_service.write_file(upload.storage_path, readable_report.getvalue())
