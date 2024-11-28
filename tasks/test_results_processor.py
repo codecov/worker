@@ -168,7 +168,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     ):
         log.info(
             "Writing tests to database",
-            extra=dict(repoid=repoid, commitid=commitid, upload_id=upload_id),
+            extra=dict(upload_id=upload_id),
         )
         test_data = {}
         test_instance_data = []
@@ -314,7 +314,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         log.info(
             "Upserted tests to database",
-            extra=dict(repoid=repoid, commitid=commitid, upload_id=upload_id),
+            extra=dict(upload_id=upload_id),
         )
 
         if len(test_flag_bridge_data):
@@ -328,7 +328,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         log.info(
             "Inserted new test flag bridges to database",
-            extra=dict(repoid=repoid, commitid=commitid, upload_id=upload_id),
+            extra=dict(upload_id=upload_id),
         )
 
         # Upsert Daily Test Totals
@@ -368,7 +368,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         log.info(
             "Upserted daily test rollups to database",
-            extra=dict(repoid=repoid, commitid=commitid, upload_id=upload_id),
+            extra=dict(upload_id=upload_id),
         )
 
         # Save TestInstances
@@ -381,7 +381,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         log.info(
             "Inserted test instances to database",
-            extra=dict(repoid=repoid, commitid=commitid, upload_id=upload_id),
+            extra=dict(upload_id=upload_id),
         )
 
     def process_individual_upload(
@@ -390,7 +390,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_id = upload_obj.id
         log.info(
             "Processing individual upload",
-            extra=dict(upload_id=upload_id, repoid=repoid, commitid=commitid),
+            extra=dict(upload_id=upload_id),
         )
         with metrics.timer("test_results.processor.process_individual_arg"):
             arg_processing_result: TestResultsProcessingResult = (
@@ -431,7 +431,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         log.info(
             "Finished processing individual upload",
-            extra=dict(repoid=repoid, commitid=commitid, upload_id=upload_id),
+            extra=dict(upload_id=upload_id),
         )
 
         return {
@@ -515,8 +515,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "Marked upload as processed",
             extra=dict(
                 upload_id=upload.id,
-                repoid=upload.report.commit.repoid,
-                commitid=upload.report.commit_id,
             ),
         )
 
@@ -526,8 +524,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "Wrote readable report to archive",
             extra=dict(
                 upload_id=upload.id,
-                repoid=upload.report.commit.repoid,
-                commitid=upload.report.commit_id,
             ),
         )
 
