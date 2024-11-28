@@ -48,9 +48,8 @@ class ReadableFile:
 
 
 class ParserFailureError(Exception):
-    def __init__(self, err_msg, file_content, parser="", parser_err_msg=""):
+    def __init__(self, err_msg, parser="", parser_err_msg=""):
         self.err_msg = err_msg
-        self.file_content = file_content
         self.parser = parser
         self.parser_err_msg = parser_err_msg
 
@@ -166,6 +165,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         flaky_test_set: set[str],
         flags: list[str],
     ):
+        log.info(
+            "Writing tests to database",
+            extra=dict(upload_id=upload_id),
+        )
         test_data = {}
         test_instance_data = []
         test_flag_bridge_data = []
@@ -308,6 +311,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.execute(insert_on_conflict_do_update)
             db_session.commit()
 
+        log.info(
+            "Upserted tests to database",
+            extra=dict(upload_id=upload_id),
+        )
+
         if len(test_flag_bridge_data):
             insert_on_conflict_do_nothing_flags = (
                 insert(TestFlagBridge.__table__)
@@ -316,6 +324,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             )
             db_session.execute(insert_on_conflict_do_nothing_flags)
             db_session.commit()
+
+        log.info(
+            "Inserted new test flag bridges to database",
+            extra=dict(upload_id=upload_id),
+        )
 
         # Upsert Daily Test Totals
         if len(daily_totals) > 0:
@@ -352,6 +365,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.execute(stmt)
             db_session.commit()
 
+        log.info(
+            "Upserted daily test rollups to database",
+            extra=dict(upload_id=upload_id),
+        )
+
         # Save TestInstances
         if len(test_instance_data) > 0:
             insert_test_instances = insert(TestInstance.__table__).values(
@@ -360,13 +378,18 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.execute(insert_test_instances)
             db_session.commit()
 
+        log.info(
+            "Inserted test instances to database",
+            extra=dict(upload_id=upload_id),
+        )
+
     def process_individual_upload(
         self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
     ):
         upload_id = upload_obj.id
         log.info(
             "Processing individual upload",
-            extra=dict(upload_id=upload_id, repoid=repoid, commitid=commitid),
+            extra=dict(upload_id=upload_id),
         )
         with metrics.timer("test_results.processor.process_individual_arg"):
             arg_processing_result: TestResultsProcessingResult = (
@@ -405,6 +428,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             upload_obj.flag_names,
         )
 
+        log.info(
+            "Finished processing individual upload",
+            extra=dict(upload_id=upload_id),
+        )
+
         return {
             "successful": True,
         }
@@ -427,6 +455,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def process_individual_arg(
         self, db_session: Session, upload: Upload, repository
     ) -> TestResultsProcessingResult:
+        if upload.state == "processed" or upload.state == "has_failed":
+            return TestResultsProcessingResult(network_files=None, parsing_results=[])
+
         archive_service = ArchiveService(repository)
 
         payload_bytes = archive_service.read_file(upload.storage_path)
@@ -434,8 +465,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             data = json.loads(payload_bytes)
         except json.JSONDecodeError as e:
             with sentry_sdk.new_scope() as scope:
-                scope.set_extra("upload_state", upload.state)
-                scope.set_extra("contents", payload_bytes[:10])
+                scope.set_tag("upload_state", upload.state)
                 sentry_sdk.capture_exception(e, scope)
 
                 upload.state = "not parsed"
@@ -466,13 +496,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         repoid=upload.report.commit.repoid,
                         commitid=upload.report.commit_id,
                         uploadid=upload.id,
-                        file_content=exc.file_content,
                         parser_err_msg=exc.parser_err_msg,
                     ),
                 )
                 with sentry_sdk.new_scope() as scope:
-                    scope.set_extra("upload_state", upload.state)
-                    scope.set_extra("parser_error", exc.parser_err_msg)
+                    scope.set_tag("upload_state", upload.state)
                     sentry_sdk.capture_exception(exc, scope)
                     upload.state = "has_failed"
 
@@ -480,6 +508,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             upload.state = "processed"
 
         db_session.flush()
+        db_session.commit()
+        log.info(
+            "Marked upload as processed",
+            extra=dict(
+                upload_id=upload.id,
+            ),
+        )
 
         readable_report = self.rewrite_readable(network, report_contents)
         archive_service.write_file(upload.storage_path, readable_report.getvalue())
@@ -487,8 +522,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "Wrote readable report to archive",
             extra=dict(
                 upload_id=upload.id,
-                repoid=upload.report.commit.repoid,
-                commitid=upload.report.commit_id,
             ),
         )
 
@@ -510,7 +543,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             )
             raise ParserFailureError(
                 err_msg="Error parsing file",
-                file_content=file_content.decode()[:300],
                 parser_err_msg=str(e),
             ) from e
         metrics.incr(
