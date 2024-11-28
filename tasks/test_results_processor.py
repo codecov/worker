@@ -99,6 +99,7 @@ class PytestName:
 class TestResultsProcessingResult:
     network_files: list[str] | None
     parsing_results: list[ParsingInfo]
+    report_contents: list[ReadableFile]
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
@@ -128,6 +129,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             .all()
         )
         flaky_test_set = {flake.testid for flake in repo_flakes}
+        repository = (
+            db_session.query(Repository)
+            .filter(Repository.repoid == int(repoid))
+            .first()
+        )
+        archive_service = ArchiveService(repository)
 
         # process each report session's test information
         for arguments in arguments_list:
@@ -135,18 +142,18 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 db_session.query(Upload).filter_by(id_=arguments["upload_id"]).first()
             )
             result = self.process_individual_upload(
-                db_session, repoid, commitid, upload, flaky_test_set
+                db_session,
+                archive_service,
+                repository,
+                commitid,
+                upload,
+                flaky_test_set,
             )
 
             results.append(result)
             upload_list.append(upload)
 
         if self.should_delete_archive(commit_yaml):
-            repository = (
-                db_session.query(Repository)
-                .filter(Repository.repoid == int(repoid))
-                .first()
-            )
             self.delete_archive(
                 commitid, repository, commit_yaml, uploads_to_delete=upload_list
             )
@@ -384,7 +391,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         )
 
     def process_individual_upload(
-        self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
+        self,
+        db_session,
+        archive_service: ArchiveService,
+        repository: Repository,
+        commitid,
+        upload_obj: Upload,
+        flaky_test_set: set[str],
     ):
         upload_id = upload_obj.id
         log.info(
@@ -392,11 +405,17 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             extra=dict(upload_id=upload_id),
         )
         with metrics.timer("test_results.processor.process_individual_arg"):
-            arg_processing_result: TestResultsProcessingResult = (
+            arg_processing_result: TestResultsProcessingResult | None = (
                 self.process_individual_arg(
-                    db_session, upload_obj, upload_obj.report.commit.repository
+                    db_session,
+                    archive_service,
+                    upload_obj,
                 )
             )
+
+        if arg_processing_result is None:
+            return
+
         if all(
             [
                 len(result.testruns) == 0
@@ -406,11 +425,30 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             log.error(
                 "No test result files were successfully parsed for this upload",
                 extra=dict(
-                    repoid=repoid,
+                    repoid=repository.repoid,
                     commitid=commitid,
                     upload_id=upload_id,
                 ),
             )
+
+            upload_obj.state = "has_failed"
+            db_session.commit()
+
+            readable_report = self.rewrite_readable(
+                arg_processing_result.network_files,
+                arg_processing_result.report_contents,
+            )
+            archive_service.write_file(
+                upload_obj.storage_path, readable_report.getvalue()
+            )
+
+            log.info(
+                "Wrote readable report to archive",
+                extra=dict(
+                    upload_id=upload_obj.id,
+                ),
+            )
+
             return {
                 "successful": False,
             }
@@ -418,7 +456,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         branch = upload_obj.report.commit.branch
         self._bulk_write_tests_to_db(
             db_session,
-            repoid,
+            repository.repoid,
             commitid,
             upload_id,
             branch,
@@ -432,6 +470,15 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             "Finished processing individual upload",
             extra=dict(upload_id=upload_id),
         )
+
+        upload_obj.state = "processed"
+        db_session.commit()
+
+        readable_report = self.rewrite_readable(
+            arg_processing_result.network_files,
+            arg_processing_result.report_contents,
+        )
+        archive_service.write_file(upload_obj.storage_path, readable_report.getvalue())
 
         return {
             "successful": True,
@@ -453,12 +500,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         return buffer
 
     def process_individual_arg(
-        self, db_session: Session, upload: Upload, repository
-    ) -> TestResultsProcessingResult:
+        self,
+        db_session: Session,
+        archive_service: ArchiveService,
+        upload: Upload,
+    ) -> TestResultsProcessingResult | None:
         if upload.state == "processed" or upload.state == "has_failed":
-            return TestResultsProcessingResult(network_files=None, parsing_results=[])
-
-        archive_service = ArchiveService(repository)
+            return None
 
         payload_bytes = archive_service.read_file(upload.storage_path)
         try:
@@ -471,9 +519,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 upload.state = "not parsed"
                 db_session.flush()
 
-                return TestResultsProcessingResult(
-                    network_files=None, parsing_results=[]
-                )
+                return None
 
         parsing_results: list[ParsingInfo] = []
 
@@ -504,11 +550,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     sentry_sdk.capture_exception(exc, scope)
                     upload.state = "has_failed"
 
-        if upload.state != "has_failed":
-            upload.state = "processed"
-
-        db_session.flush()
-        db_session.commit()
         log.info(
             "Marked upload as processed",
             extra=dict(
@@ -516,17 +557,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             ),
         )
 
-        readable_report = self.rewrite_readable(network, report_contents)
-        archive_service.write_file(upload.storage_path, readable_report.getvalue())
-        log.info(
-            "Wrote readable report to archive",
-            extra=dict(
-                upload_id=upload.id,
-            ),
-        )
-
         return TestResultsProcessingResult(
-            network_files=network, parsing_results=parsing_results
+            network_files=network,
+            parsing_results=parsing_results,
+            report_contents=report_contents,
         )
 
     def parse_single_file(
