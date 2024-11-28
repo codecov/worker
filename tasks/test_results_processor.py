@@ -48,9 +48,8 @@ class ReadableFile:
 
 
 class ParserFailureError(Exception):
-    def __init__(self, err_msg, file_content, parser="", parser_err_msg=""):
+    def __init__(self, err_msg, parser="", parser_err_msg=""):
         self.err_msg = err_msg
-        self.file_content = file_content
         self.parser = parser
         self.parser_err_msg = parser_err_msg
 
@@ -466,7 +465,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                         repoid=upload.report.commit.repoid,
                         commitid=upload.report.commit_id,
                         uploadid=upload.id,
-                        file_content=exc.file_content,
                         parser_err_msg=exc.parser_err_msg,
                     ),
                 )
@@ -510,7 +508,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             )
             raise ParserFailureError(
                 err_msg="Error parsing file",
-                file_content=file_content.decode()[:300],
                 parser_err_msg=str(e),
             ) from e
         metrics.incr(
