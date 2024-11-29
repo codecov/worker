@@ -1,11 +1,11 @@
-from datetime import date, timezone
+import datetime as dt
 
 import polars as pl
 from django.db import connections
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
 from shared.config import get_config
-from shared.django_apps.reports.models import LastCacheRollupDate, RepositoryFlag
+from shared.django_apps.reports.models import LastCacheRollupDate
 
 from app import celery_app
 from django_scaffold import settings
@@ -59,9 +59,11 @@ AND base_cte.test_id = latest_rollups.test_id
 
 TEST_FLAGS_SUBQUERY = """
 SELECT test_id,
-       array_agg(DISTINCT flag_id) AS flags
+       array_agg(DISTINCT flag_name) AS flags
 FROM reports_test_results_flag_bridge tfb
 JOIN reports_test rt ON rt.id = tfb.test_id
+JOIN reports_repositoryflag rr ON tfb.flag_id = rr.id
+WHERE rt.repoid = %(repoid)s
 GROUP BY test_id
 """
 
@@ -122,12 +124,6 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
         else:
             connection = connections["default"]
 
-        repo_flags = dict(
-            RepositoryFlag.objects.filter(repository_id=repoid)
-            .values_list("id", "flag_name")
-            .all()
-        )
-
         with connection.cursor() as cursor:
             for interval_start, interval_end in [
                 (1, None),
@@ -147,17 +143,11 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                 if interval_end is not None:
                     query_params["interval_end"] = f"{interval_end} days"
 
-                cursor.execute(base_query, query_params)
-                results = cursor.fetchall()
-
-                # manually map the flags from IDs to their names
-                def resolve_flags(result_t: tuple) -> list:
-                    result = list(result_t)
-                    if result[2]:
-                        result[2] = [repo_flags[flag_id] for flag_id in result[2]]
-                    return result
-
-                aggregation_of_test_results = map(resolve_flags, results)
+                cursor.execute(
+                    base_query,
+                    query_params,
+                )
+                aggregation_of_test_results = cursor.fetchall()
 
                 df = pl.DataFrame(
                     aggregation_of_test_results,
@@ -168,7 +158,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                         "test_id",
                         "failure_rate",
                         "flake_rate",
-                        ("updated_at", pl.Datetime(time_zone=timezone.utc)),
+                        ("updated_at", pl.Datetime(time_zone=dt.UTC)),
                         "avg_duration",
                         "total_fail_count",
                         "total_flaky_fail_count",
@@ -191,7 +181,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                     LastCacheRollupDate.objects.update_or_create(
                         repository_id=repoid,
                         branch=branch,
-                        defaults=dict(last_rollup_date=date.today()),
+                        defaults=dict(last_rollup_date=dt.date.today()),
                     )
 
                 serialized_table.seek(0)  # avoids Stream must be at beginning errors
