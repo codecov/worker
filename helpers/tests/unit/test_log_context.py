@@ -12,6 +12,7 @@ def create_db_records(dbsession):
         service="github",
         username="codecove2e",
         unencrypted_oauth_token="test76zow6xgh7modd88noxr245j2z25t4ustoff",
+        plan="users-basic",
     )
     dbsession.add(owner)
 
@@ -43,7 +44,10 @@ def test_populate_just_owner(dbsession):
     log_context.populate_from_sqlalchemy(dbsession)
 
     assert log_context == LogContext(
-        owner_id=owner.ownerid, owner_username="codecove2e", owner_service="github"
+        owner_id=owner.ownerid,
+        owner_username="codecove2e",
+        owner_service="github",
+        owner_plan="users-basic",
     )
 
 
@@ -58,6 +62,7 @@ def test_populate_just_repo(dbsession):
         owner_id=owner.ownerid,
         owner_username="codecove2e",
         owner_service="github",
+        owner_plan="users-basic",
     )
 
 
@@ -80,6 +85,7 @@ def test_populate_just_commit_id(dbsession):
         owner_id=owner.ownerid,
         owner_username="codecove2e",
         owner_service="github",
+        owner_plan="users-basic",
         commit_sha=commit.commitid,
         commit_id=commit.id_,
     )
@@ -96,6 +102,7 @@ def test_populate_repo_and_commit_sha(dbsession):
         owner_id=owner.ownerid,
         owner_username="codecove2e",
         owner_service="github",
+        owner_plan="users-basic",
         commit_sha=commit.commitid,
         commit_id=commit.id_,
     )
@@ -147,6 +154,7 @@ def test_as_dict(dbsession, mocker):
         "owner_id": owner.ownerid,
         "owner_username": owner.username,
         "owner_service": owner.service,
+        "owner_plan": owner.plan,
         "sentry_trace_id": 123,
         "checkpoints_data": {},
     }
