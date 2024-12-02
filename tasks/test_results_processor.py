@@ -40,35 +40,18 @@ class ReadableFile:
     contents: bytes
 
 
-def get_existing_flag_bridges(
-    db_session: Session, flag_ids: list[int]
-) -> dict[str, TestFlagBridge]:
-    existing_flag_bridges = (
-        db_session.query(TestFlagBridge)
-        .filter(TestFlagBridge.flag_id.in_(flag_ids))
-        .all()
-    )
-    return {flag_bridge.test_id: flag_bridge for flag_bridge in existing_flag_bridges}
+def get_repo_flag_ids(db_session: Session, repoid: int, flags: list[str]) -> set[int]:
+    if not flags:
+        return set()
 
-
-def get_repo_flags(
-    db_session: Session, repoid: int, flags: list[str]
-) -> dict[str, int]:
-    repo_flags: list[RepositoryFlag] = (
-        db_session.query(RepositoryFlag)
+    return set(
+        db_session.query(RepositoryFlag.id_)
         .filter(
             RepositoryFlag.repository_id == repoid,
             RepositoryFlag.flag_name.in_(flags),
         )
         .all()
     )
-
-    # flag name => flag id
-    repo_flag_mapping: dict[str, int] = {
-        repo_flag.flag_name: repo_flag.id_ for repo_flag in repo_flags
-    }
-
-    return repo_flag_mapping
 
 
 @dataclass
@@ -148,10 +131,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         daily_totals: dict[str, dict[str, str | int | list[str]]] = dict()
 
         flags_hash = generate_flags_hash(flags)
-        repo_flags = get_repo_flags(db_session, repoid, flags)
-        existing_flag_bridges = get_existing_flag_bridges(
-            db_session, list(repo_flags.values())
-        )
+        repo_flag_ids = get_repo_flag_ids(db_session, repoid, flags)
 
         for p in parsing_results:
             framework = str(p.framework) if p.framework else None
@@ -178,10 +158,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     computed_name=testrun.computed_name,
                 )
 
-                if test_id not in existing_flag_bridges and flags:
+                if repo_flag_ids:
                     test_flag_bridge_data.extend(
-                        {"test_id": test_id, "flag_id": repo_flags[flag]}
-                        for flag in flags
+                        {"test_id": test_id, "flag_id": flag_id}
+                        for flag_id in repo_flag_ids
                     )
 
                 test_instance_data.append(
