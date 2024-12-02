@@ -6,11 +6,12 @@
     line-height: 55px;
     margin: 0;
     text-align: center;
+    color: black;
   "
 >
   Oops! Let's fix this, {{ name }}
 </h2>
-<p style="text-align: center; font-weight: 400; font-size: 18px; line-height: 27px">
+<p style="text-align: center; font-weight: 400; font-size: 18px; line-height: 27px; color: black">
   Total: USD
   <span style="color: rgb(245, 32, 32); font-weight: 700"
     >${{ amount }}</span
@@ -42,6 +43,7 @@
     font-size: 18px;
     line-height: 27px;
     margin: 0;
+    color: black;
   "
 >
   We were unable to process your {% if card_type %}{{ card_type |
@@ -76,14 +78,14 @@
     margin-bottom: 20px;
   "
 >
-  <h3 style="font-size: 18px; font-weight: 600; line-height: 27px;">Why did the payment fail?</h3>
-  <p style="font-weight: 400; font-size: 18px; line-height: 27px;">In most cases, a payment might fail due to:</p>
-  <ul style="padding-left: 25px; font-weight: 400; font-size: 18px; line-height: 27px;">
+  <h3 style="font-size: 18px; font-weight: 600; line-height: 27px; color: black;">Why did the payment fail?</h3>
+  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black;">In most cases, a payment might fail due to:</p>
+  <ul style="padding-left: 25px; font-weight: 400; font-size: 18px; line-height: 27px; color: black;">
     <li>An expired card</li>
     <li>Insufficient funds</li>
     <li>Requiring additional authentication</li>
   </ul>
-  <p style="font-weight: 400; font-size: 18px; line-height: 27px">
+  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black;">
     If you have any questions or need help, please contact us at
     <a
       href="mailto:support@codecov.io"
