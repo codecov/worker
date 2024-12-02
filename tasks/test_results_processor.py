@@ -4,7 +4,6 @@ import logging
 import zlib
 from dataclasses import dataclass
 from datetime import date, datetime
-from io import BytesIO
 from typing import List
 
 import sentry_sdk
@@ -13,12 +12,7 @@ from shared.config import get_config
 from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
-from test_results_parser import (
-    Outcome,
-    ParserError,
-    ParsingInfo,
-    parse_junit_xml,
-)
+from test_results_parser import Outcome, ParserError, ParsingInfo, parse_junit_xml
 
 from app import celery_app
 from database.models import (
@@ -31,7 +25,6 @@ from database.models import (
     TestInstance,
     Upload,
 )
-from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
 from services.test_results import generate_flags_hash, generate_test_id
@@ -45,16 +38,6 @@ log = logging.getLogger(__name__)
 class ReadableFile:
     path: str
     contents: bytes
-
-
-class ParserFailureError(Exception):
-    def __init__(self, err_msg, parser="", parser_err_msg=""):
-        self.err_msg = err_msg
-        self.parser = parser
-        self.parser_err_msg = parser_err_msg
-
-
-class ParserNotSupportedError(Exception): ...
 
 
 def get_existing_flag_bridges(
@@ -93,12 +76,6 @@ def get_repo_flags(
 class PytestName:
     actual_class_name: str
     test_file_path: str
-
-
-@dataclass
-class TestResultsProcessingResult:
-    network_files: list[str] | None
-    parsing_results: list[ParsingInfo]
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
@@ -153,6 +130,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         return results
 
+    @sentry_sdk.trace
     def _bulk_write_tests_to_db(
         self,
         db_session: Session,
@@ -160,26 +138,19 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         commitid: str,
         upload_id: int,
         branch: str,
-        parsing_results: List[ParsingInfo],
-        network: list[str] | None,
+        parsing_results: list[ParsingInfo],
         flaky_test_set: set[str],
         flags: list[str],
     ):
-        log.info(
-            "Writing tests to database",
-            extra=dict(upload_id=upload_id),
-        )
+        log.info("Writing tests to database", extra=dict(upload_id=upload_id))
         test_data = {}
         test_instance_data = []
-        test_flag_bridge_data = []
+        test_flag_bridge_data: list[dict] = []
         daily_totals: dict[str, dict[str, str | int | list[str]]] = dict()
+
         flags_hash = generate_flags_hash(flags)
-
-        repo_flags: dict[str, int] = get_repo_flags(db_session, repoid, flags)
-
-        existing_flag_bridges: dict[str, TestFlagBridge] = get_existing_flag_bridges(
-            db_session, repoid, flags
-        )
+        repo_flags = get_repo_flags(db_session, repoid, flags)
+        existing_flag_bridges = get_existing_flag_bridges(db_session, repoid, flags)
 
         for p in parsing_results:
             framework = str(p.framework) if p.framework else None
@@ -207,10 +178,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 )
 
                 if test_id not in existing_flag_bridges and flags:
-                    test_flag_bridge_data += [
+                    test_flag_bridge_data.extend(
                         {"test_id": test_id, "flag_id": repo_flags[flag]}
                         for flag in flags
-                    ]
+                    )
 
                 test_instance_data.append(
                     dict(
@@ -311,10 +282,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.execute(insert_on_conflict_do_update)
             db_session.commit()
 
-        log.info(
-            "Upserted tests to database",
-            extra=dict(upload_id=upload_id),
-        )
+        log.info("Upserted tests to database", extra=dict(upload_id=upload_id))
 
         if len(test_flag_bridge_data):
             insert_on_conflict_do_nothing_flags = (
@@ -366,8 +334,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.commit()
 
         log.info(
-            "Upserted daily test rollups to database",
-            extra=dict(upload_id=upload_id),
+            "Upserted daily test rollups to database", extra=dict(upload_id=upload_id)
         )
 
         # Save TestInstances
@@ -378,85 +345,60 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             db_session.execute(insert_test_instances)
             db_session.commit()
 
-        log.info(
-            "Inserted test instances to database",
-            extra=dict(upload_id=upload_id),
-        )
+        log.info("Inserted test instances to database", extra=dict(upload_id=upload_id))
 
     def process_individual_upload(
         self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
     ):
         upload_id = upload_obj.id
-        log.info(
-            "Processing individual upload",
-            extra=dict(upload_id=upload_id),
+        log.info("Processing individual upload", extra=dict(upload_id=upload_id))
+        parsing_results = self.process_individual_arg(
+            db_session, upload_obj, upload_obj.report.commit.repository
         )
-        with metrics.timer("test_results.processor.process_individual_arg"):
-            arg_processing_result: TestResultsProcessingResult = (
-                self.process_individual_arg(
-                    db_session, upload_obj, upload_obj.report.commit.repository
-                )
-            )
-        if all(
-            [
-                len(result.testruns) == 0
-                for result in arg_processing_result.parsing_results
-            ]
-        ):
+
+        if all(len(result.testruns) == 0 for result in parsing_results):
             log.error(
                 "No test result files were successfully parsed for this upload",
-                extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    upload_id=upload_id,
-                ),
+                extra=dict(upload_id=upload_id),
             )
-            return {
-                "successful": False,
-            }
-        upload_id = upload_obj.id
-        branch = upload_obj.report.commit.branch
+            return {"successful": False}
+
         self._bulk_write_tests_to_db(
             db_session,
             repoid,
             commitid,
             upload_id,
-            branch,
-            arg_processing_result.parsing_results,
-            arg_processing_result.network_files,
+            upload_obj.report.commit.branch,
+            parsing_results,
             flaky_test_set,
             upload_obj.flag_names,
         )
-
         log.info(
-            "Finished processing individual upload",
-            extra=dict(upload_id=upload_id),
+            "Finished processing individual upload", extra=dict(upload_id=upload_id)
         )
 
-        return {
-            "successful": True,
-        }
+        return {"successful": True}
 
     def rewrite_readable(
         self, network: list[str] | None, report_contents: list[ReadableFile]
-    ):
-        buffer = BytesIO()
+    ) -> bytes:
+        buffer = b""
         if network is not None:
-            for path in network:
-                buffer.write(f"# path={path}\n".encode("utf-8"))
-            buffer.write(b"<<<<<< network\n\n")
+            for file in network:
+                buffer += f"{file}\n".encode("utf-8")
+            buffer += b"<<<<<< network\n\n"
         for report_content in report_contents:
-            buffer.write(f"# path={report_content.path}\n".encode("utf-8"))
-            buffer.write(report_content.contents)
-            buffer.write(b"\n<<<<<< EOF\n\n")
-        buffer.seek(0)
+            buffer += f"# path={report_content.path}\n".encode("utf-8")
+            buffer += report_content.contents
+            buffer += b"\n<<<<<< EOF\n\n"
         return buffer
 
+    @sentry_sdk.trace
     def process_individual_arg(
-        self, db_session: Session, upload: Upload, repository
-    ) -> TestResultsProcessingResult:
+        self, db_session: Session, upload: Upload, repository: Repository
+    ) -> list[ParsingInfo]:
         if upload.state == "processed" or upload.state == "has_failed":
-            return TestResultsProcessingResult(network_files=None, parsing_results=[])
+            return []
 
         archive_service = ArchiveService(repository)
 
@@ -470,89 +412,46 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
                 upload.state = "not parsed"
                 db_session.flush()
-
-                return TestResultsProcessingResult(
-                    network_files=None, parsing_results=[]
-                )
+                return []
 
         parsing_results: list[ParsingInfo] = []
-
         network: list[str] | None = data.get("network_files")
-
-        report_contents = []
+        report_contents: list[ReadableFile] = []
 
         for file_dict in data["test_results_files"]:
             file = file_dict["data"]
-            file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
+            file_bytes = zlib.decompress(base64.b64decode(file))
             report_contents.append(
-                ReadableFile(path=file_dict["filename"], contents=file_bytes.getvalue())
+                ReadableFile(path=file_dict["filename"], contents=file_bytes)
             )
             try:
-                parsing_results.append(self.parse_single_file(file_bytes))
-            except ParserFailureError as exc:
+                parsing_results.append(parse_junit_xml(file_bytes))
+            except ParserError as exc:
                 log.error(
-                    exc.err_msg,
+                    "Error parsing file",
                     extra=dict(
                         repoid=upload.report.commit.repoid,
                         commitid=upload.report.commit_id,
                         uploadid=upload.id,
-                        parser_err_msg=exc.parser_err_msg,
+                        parser_err_msg=str(exc),
                     ),
                 )
-                with sentry_sdk.new_scope() as scope:
-                    scope.set_tag("upload_state", upload.state)
-                    sentry_sdk.capture_exception(exc, scope)
-                    upload.state = "has_failed"
+                sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
+                upload.state = "has_failed"
 
         if upload.state != "has_failed":
             upload.state = "processed"
 
         db_session.flush()
         db_session.commit()
-        log.info(
-            "Marked upload as processed",
-            extra=dict(
-                upload_id=upload.id,
-            ),
-        )
+        log.info("Marked upload as processed", extra=dict(upload_id=upload.id))
 
+        # FIXME: we are unconditionally rewriting as readable, even if we delete it later
         readable_report = self.rewrite_readable(network, report_contents)
-        archive_service.write_file(upload.storage_path, readable_report.getvalue())
-        log.info(
-            "Wrote readable report to archive",
-            extra=dict(
-                upload_id=upload.id,
-            ),
-        )
+        archive_service.write_file(upload.storage_path, readable_report)
+        log.info("Wrote readable report to archive", extra=dict(upload_id=upload.id))
 
-        return TestResultsProcessingResult(
-            network_files=network, parsing_results=parsing_results
-        )
-
-    def parse_single_file(
-        self,
-        file_bytes: BytesIO,
-    ):
-        try:
-            file_content = file_bytes.read()
-            with metrics.timer("test_results.processor.file_parsing"):
-                res = parse_junit_xml(file_content)
-        except ParserError as e:
-            metrics.incr(
-                "test_results.processor.parsing.failure.failed_to_parse",
-            )
-            raise ParserFailureError(
-                err_msg="Error parsing file",
-                parser_err_msg=str(e),
-            ) from e
-        metrics.incr(
-            "test_results.processor.parsing.success",
-        )
-
-        return res
-
-    def remove_space_from_line(self, line):
-        return bytes("".join(line.decode("utf-8").split()), "utf-8")
+        return parsing_results
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):
