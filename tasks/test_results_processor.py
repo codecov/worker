@@ -41,12 +41,11 @@ class ReadableFile:
 
 
 def get_existing_flag_bridges(
-    db_session: Session, repoid: int, flags: list[str]
+    db_session: Session, flag_ids: list[int]
 ) -> dict[str, TestFlagBridge]:
     existing_flag_bridges = (
         db_session.query(TestFlagBridge)
-        .join(RepositoryFlag, TestFlagBridge.flag_id == RepositoryFlag.id_)
-        .filter(RepositoryFlag.repository_id == repoid)
+        .filter(TestFlagBridge.flag_id.in_(flag_ids))
         .all()
     )
     return {flag_bridge.test_id: flag_bridge for flag_bridge in existing_flag_bridges}
@@ -150,7 +149,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         flags_hash = generate_flags_hash(flags)
         repo_flags = get_repo_flags(db_session, repoid, flags)
-        existing_flag_bridges = get_existing_flag_bridges(db_session, repoid, flags)
+        existing_flag_bridges = get_existing_flag_bridges(
+            db_session, list(repo_flags.values())
+        )
 
         for p in parsing_results:
             framework = str(p.framework) if p.framework else None
