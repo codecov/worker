@@ -57,10 +57,6 @@ class Account(CodecovBaseModel, MixinBaseClass):
 
     users = relationship("User", secondary="accounts_users", backref="accounts")
 
-    def __str__(self):
-        str_representation_of_is_active = "Active" if self.is_active else "Inactive"
-        return f"{str_representation_of_is_active} Account: {self.name}"
-
 
 class AccountsUsers(CodecovBaseModel):
     __tablename__ = "accounts_users"
