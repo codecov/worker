@@ -11,10 +11,18 @@ from sqlalchemy.orm import Session, backref, relationship, validates
 from sqlalchemy.schema import FetchedValue
 
 import database.models
-from database.base import CodecovBaseModel, MixinBaseClass
+from database.base import CodecovBaseModel, MixinBaseClass, MixinBaseClassNoExternalID
 from database.enums import Decoration, Notification, NotificationState, ReportType
 from database.utils import ArchiveField
 from helpers.config import should_write_data_to_storage_config_check
+
+
+class AccountsUsers(CodecovBaseModel, MixinBaseClassNoExternalID):
+    __tablename__ = "codecov_auth_accountsusers"
+    user_id = Column("user_id", ForeignKey("users.id"), primary_key=True)
+    account_id = Column(
+        "account_id", ForeignKey("codecov_auth_account.id"), primary_key=True
+    )
 
 
 class User(CodecovBaseModel, MixinBaseClass):
@@ -35,6 +43,10 @@ class User(CodecovBaseModel, MixinBaseClass):
     external_id = Column(postgresql.UUID(as_uuid=True), unique=True, default=uuid.uuid4)
     email_opt_in = Column(types.Boolean, default=False)
 
+    accounts = relationship(
+        "Account", secondary="codecov_auth_accountsusers", back_populates="users"
+    )
+
     @validates("external_id")
     def validate_external_id(self, key, value):
         if self.external_id:
@@ -42,9 +54,8 @@ class User(CodecovBaseModel, MixinBaseClass):
         return value
 
 
-class Account(CodecovBaseModel, MixinBaseClass):
-    __tablename__ = "accounts"
-    id_ = Column("id", types.BigInteger, primary_key=True)
+class Account(CodecovBaseModel, MixinBaseClassNoExternalID):
+    __tablename__ = "codecov_auth_account"
     name = Column(types.String(100), nullable=False, unique=True)
     is_active = Column(types.Boolean, nullable=False, default=True)
     plan = Column(
@@ -55,14 +66,10 @@ class Account(CodecovBaseModel, MixinBaseClass):
     plan_auto_activate = Column(types.Boolean, nullable=False, default=True)
     is_delinquent = Column(types.Boolean, nullable=False, default=False)
 
-    users = relationship("User", secondary="accounts_users", backref="accounts")
-
-
-class AccountsUsers(CodecovBaseModel):
-    __tablename__ = "accounts_users"
-    account_id = Column(types.BigInteger, ForeignKey("accounts.id"), primary_key=True)
-    user_id = Column(types.BigInteger, ForeignKey("users.id"), primary_key=True)
-    created_at = Column(types.DateTime, nullable=False, default=datetime.utcnow)
+    users = relationship(
+        "User", secondary="codecov_auth_accountsusers", back_populates="accounts"
+    )
+    organizations = relationship("Owner", back_populates="account")
 
 
 class Owner(CodecovBaseModel):
@@ -88,8 +95,8 @@ class Owner(CodecovBaseModel):
         types.Integer, nullable=False, default=0, server_default=FetchedValue()
     )
 
-    account_id = Column(types.BigInteger, ForeignKey("accounts.id"))
-    account = relationship("Account", backref="organizations")
+    account_id = Column(types.BigInteger, ForeignKey("codecov_auth_account.id"))
+    account = relationship("Account", back_populates="organizations")
 
     # DEPRECATED - Prefer GithubAppInstallation
     integration_id = Column(types.Integer, server_default=FetchedValue())
