@@ -99,7 +99,4 @@ def rewrite_or_delete_upload(
 
     elif isinstance(report_info.raw_report, VersionOneParsedRawReport):
         # only a version 1 report needs to be "rewritten readable"
-
-        archive_service.write_file(
-            archive_url, report_info.raw_report.content().getvalue()
-        )
+        archive_service.write_file(archive_url, report_info.raw_report.as_readable())

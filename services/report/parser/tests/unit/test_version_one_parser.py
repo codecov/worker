@@ -4,6 +4,7 @@ import zlib
 from services.report.parser.version_one import (
     ParsedUploadedReportFile,
     VersionOneReportParser,
+    _parse_coverage_file_contents,
 )
 
 input_data = b"""{
@@ -47,7 +48,6 @@ input_data = b"""{
 def test_version_one_parser():
     subject = VersionOneReportParser()
     res = subject.parse_raw_report_from_bytes(input_data)
-    assert res.get_env() is None
     assert res.get_report_fixes(None) == {
         "SwiftExample/AppDelegate.swift": {
             "eof": 15,
@@ -58,13 +58,13 @@ def test_version_one_parser():
             "lines": [1, 17, 3, 22, 7, 9, 12, 14],
         },
     }
-    assert res.get_toc() == [
+    assert res.toc == [
         "path/to/file1.c",
         "path/from/another.cpp",
         "path/from/aaaaaa.cpp",
     ]
-    assert len(res.get_uploaded_files()) == 2
-    first_file, second_file = res.get_uploaded_files()
+    assert len(res.uploaded_files) == 2
+    first_file, second_file = res.uploaded_files
     assert isinstance(first_file, ParsedUploadedReportFile)
     assert first_file.filename == "coverage.xml"
     assert (
@@ -82,15 +82,14 @@ def test_version_one_parser():
     assert second_file.labels == ["simple", "a.py::fileclass::test_simple"]
 
     assert (
-        res.content().getvalue().decode("utf-8")
-        == f"path/to/file1.c\npath/from/another.cpp\npath/from/aaaaaa.cpp\n<<<<<< network\n\n# path=coverage.xml\n{first_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n# path=another.coverage.json\n{second_file.contents.decode('utf-8')}\n<<<<<< EOF\n\n"
+        res.as_readable()
+        == f"path/to/file1.c\npath/from/another.cpp\npath/from/aaaaaa.cpp\n<<<<<< network\n\n# path=coverage.xml\n{first_file.contents.decode()}\n<<<<<< EOF\n\n# path=another.coverage.json\n{second_file.contents.decode()}\n<<<<<< EOF\n\n".encode()
     )
 
 
 def test_version_one_parser_parse_coverage_file_contents_bad_format():
-    subject = VersionOneReportParser()
     coverage_file = {"format": "unknown", "data": b"simple", "filename": "filename.py"}
-    assert subject._parse_coverage_file_contents(coverage_file) == b"simple"
+    assert _parse_coverage_file_contents(coverage_file) == b"simple"
 
 
 def test_version_one_parser_parse_coverage_file_contents_base64_zip_format():
@@ -98,12 +97,11 @@ def test_version_one_parser_parse_coverage_file_contents_base64_zip_format():
     formatted_input = base64.b64encode(zlib.compress(original_input))
     # An assert for the sake of showing the result
     assert formatted_input == b"eJwrzs9NjU/Oz8+JLy4pysxLVyjKTM8oUeBSyEgtSgUArOcK4w=="
-    subject = VersionOneReportParser()
     coverage_file = {
         "format": "base64+compressed",
         "data": formatted_input,
         "filename": "filename.py",
     }
-    res = subject._parse_coverage_file_contents(coverage_file)
+    res = _parse_coverage_file_contents(coverage_file)
     assert isinstance(res, bytes)
     assert res == b"some_cool_string right \n here"
