@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -5,7 +7,8 @@ from shared.torngit.exceptions import (
     TorngitRepoNotFoundError,
 )
 
-from database.tests.factories import CommitFactory
+from database.models import Branch
+from database.tests.factories import BranchFactory, CommitFactory, PullFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
 from tasks.commit_update import CommitUpdateTask
 
@@ -168,6 +171,9 @@ class TestCommitUpdate(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
+    @pytest.mark.parametrize("branch_authors", [None, False, True])
+    @pytest.mark.parametrize("prev_head", ["old_head", "new_head"])
+    @pytest.mark.parametrize("deleted", [False, True])
     def test_update_commit_already_populated(
         self,
         mocker,
@@ -176,6 +182,9 @@ class TestCommitUpdate(object):
         mock_redis,
         mock_repo_provider,
         mock_storage,
+        branch_authors,
+        prev_head,
+        deleted,
     ):
         commit = CommitFactory.create(
             message="commit_msg",
@@ -184,8 +193,59 @@ class TestCommitUpdate(object):
             repository__owner__username="test-acc9",
             repository__yaml={"codecov": {"max_report_age": "764y ago"}},
             repository__name="test_example",
+            timestamp=dt.datetime.fromisoformat("2019-02-01T17:59:47"),
         )
         dbsession.add(commit)
+        dbsession.flush()
+
+        commit.branch = "featureA"
+        commit.pullid = 1
+        dbsession.flush()
+
+        old_head = CommitFactory.create(
+            message="",
+            commitid="b2d3e3c30547a000f026daa47610bb3f7b63aece",
+            repository=commit.repository,
+            timestamp=dt.datetime.fromisoformat("2019-01-01T17:59:47"),
+        )
+        dbsession.add(old_head)
+        dbsession.flush()
+
+        old_head.branch = "featureA"
+        old_head.pullid = 1
+        dbsession.flush()
+
+        pull = PullFactory(
+            repository=commit.repository, pullid=1, head=old_head.commitid
+        )
+        dbsession.add(pull)
+        dbsession.flush()
+
+        if branch_authors is False:
+            branch_authors = []
+        elif branch_authors is True:
+            branch_authors = [commit.author_id]
+
+        if prev_head == "old_head":
+            prev_head = old_head
+        elif prev_head == "new_head":
+            prev_head = commit
+
+        if deleted:
+            prev_head.deleted = True
+            dbsession.flush()
+
+        b = dbsession.query(Branch).first()
+        dbsession.delete(b)
+        dbsession.flush()
+
+        branch = BranchFactory(
+            repository=commit.repository,
+            branch="featureA",
+            head=prev_head.commitid,
+            authors=branch_authors,
+        )
+        dbsession.add(branch)
         dbsession.flush()
 
         result = CommitUpdateTask().run_impl(dbsession, commit.repoid, commit.commitid)
@@ -193,3 +253,11 @@ class TestCommitUpdate(object):
         assert expected_result == result
         assert commit.message == "commit_msg"
         assert commit.parent_commit_id is None
+        assert commit.timestamp == dt.datetime.fromisoformat("2019-02-01T17:59:47")
+        assert commit.branch == "featureA"
+
+        dbsession.refresh(pull)
+        assert pull.head == commit.commitid
+
+        dbsession.refresh(branch)
+        assert branch.head == commit.commitid

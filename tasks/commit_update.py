@@ -1,10 +1,11 @@
+import datetime as dt
 import logging
 
 from shared.celery_config import commit_update_task_name
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 
 from app import celery_app
-from database.models import Commit
+from database.models import Branch, Commit, Pull
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.repository import (
@@ -43,6 +44,81 @@ class CommitUpdateTask(BaseCodecovTask, name=commit_update_task_name):
             was_updated = possibly_update_commit_from_provider_info(
                 commit, repository_service
             )
+
+            if isinstance(commit.timestamp, str):
+                commit.timestamp = dt.datetime.fromisoformat(commit.timestamp).replace(
+                    tzinfo=None
+                )
+
+            if commit.pullid is not None:
+                # upsert pull
+                pull = (
+                    db_session.query(Pull)
+                    .filter(Pull.repoid == repoid, Pull.pullid == commit.pullid)
+                    .first()
+                )
+
+                if pull is None:
+                    pull = Pull(
+                        repoid=repoid,
+                        pullid=commit.pullid,
+                        author_id=commit.author_id,
+                        head=commit.commitid,
+                    )
+                    db_session.add(pull)
+                else:
+                    previous_pull_head = (
+                        db_session.query(Commit)
+                        .filter(Commit.repoid == repoid, Commit.commitid == pull.head)
+                        .first()
+                    )
+                    if (
+                        previous_pull_head is None
+                        or previous_pull_head.deleted == True
+                        or previous_pull_head.timestamp < commit.timestamp
+                    ):
+                        pull.head = commit.commitid
+
+                db_session.flush()
+
+            if commit.branch is not None:
+                # upsert branch
+                branch = (
+                    db_session.query(Branch)
+                    .filter(Branch.repoid == repoid, Branch.branch == commit.branch)
+                    .first()
+                )
+
+                if branch is None:
+                    branch = Branch(
+                        repoid=repoid,
+                        branch=commit.branch,
+                        head=commit.commitid,
+                        authors=[commit.author_id],
+                    )
+                    db_session.add(branch)
+                else:
+                    if commit.author_id is not None:
+                        if branch.authors is None:
+                            branch.authors = [commit.author_id]
+                        elif commit.author_id not in branch.authors:
+                            branch.authors.append(commit.author_id)
+
+                    previous_branch_head = (
+                        db_session.query(Commit)
+                        .filter(Commit.repoid == repoid, Commit.commitid == branch.head)
+                        .first()
+                    )
+
+                    if (
+                        previous_branch_head is None
+                        or previous_branch_head.deleted == True
+                        or previous_branch_head.timestamp < commit.timestamp
+                    ):
+                        branch.head = commit.commitid
+
+                db_session.flush()
+
         except RepositoryWithoutValidBotError:
             log.warning(
                 "Unable to reach git provider because repo doesn't have a valid bot",
