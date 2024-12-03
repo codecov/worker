@@ -33,16 +33,8 @@ def process_raw_upload(
     # ----------------------
     # Extract `git ls-files`
     # ----------------------
-    toc = []
-    if raw_reports.has_toc():
-        toc = raw_reports.get_toc()
-
-    if raw_reports.has_env():
-        env = raw_reports.get_env()
-        session.env = dict([e.split("=", 1) for e in env.split("\n") if "=" in e])
-
     path_fixer = PathFixer.init_from_user_yaml(
-        commit_yaml=commit_yaml, toc=toc, flags=session.flags
+        commit_yaml=commit_yaml, toc=raw_reports.toc, flags=session.flags
     )
 
     # ------------------
@@ -54,7 +46,7 @@ def process_raw_upload(
 
     # [javascript] check for both coverage.json and coverage/coverage.lcov
     skip_files = set()
-    for report_file in raw_reports.get_uploaded_files():
+    for report_file in raw_reports.uploaded_files:
         if report_file.filename == "coverage/coverage.json":
             skip_files.add("coverage/coverage.lcov")
 
@@ -64,7 +56,7 @@ def process_raw_upload(
     # ---------------
     # Process reports
     # ---------------
-    for report_file in raw_reports.get_uploaded_files():
+    for report_file in raw_reports.uploaded_files:
         current_filename = report_file.filename
         if current_filename in skip_files or not report_file.contents:
             continue
