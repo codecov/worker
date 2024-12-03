@@ -539,8 +539,14 @@ class ReportService(BaseReportService):
         """
         archive_service = self.get_archive_service(repo)
         archive_url = upload.storage_path
+
         log.info(
-            "Parsing the raw report from storage", extra=dict(archive_url=archive_url)
+            "Parsing the raw report from storage",
+            extra=dict(
+                commit=upload.report.commit_id,
+                repoid=repo.repoid,
+                archive_url=archive_url,
+            ),
         )
 
         archive_file = archive_service.read_file(archive_url)
@@ -553,11 +559,13 @@ class ReportService(BaseReportService):
 
         raw_uploaded_report = parser.parse_raw_report_from_bytes(archive_file)
 
-        raw_report_count = len(raw_uploaded_report.uploaded_files)
+        raw_report_count = len(raw_uploaded_report.get_uploaded_files())
         if raw_report_count < 1:
             log.warning(
                 "Raw upload contains no uploaded files",
                 extra=dict(
+                    commit=upload.report.commit_id,
+                    repoid=repo.repoid,
                     raw_report_count=raw_report_count,
                     upload_version=upload_version,
                     archive_url=archive_url,
