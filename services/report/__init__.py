@@ -605,7 +605,8 @@ class ReportService(BaseReportService):
         try:
             raw_report = self.parse_raw_report_from_storage(commit.repository, upload)
             raw_report_info.raw_report = raw_report
-        except FileNotInStorageError:
+        except FileNotInStorageError as e:
+            sentry_sdk.capture_exception(e)
             log.info(
                 "Raw report file was not found",
                 extra=dict(
@@ -622,6 +623,7 @@ class ReportService(BaseReportService):
             raw_report_info.error = result.error
             return result
         except Exception as e:
+            sentry_sdk.capture_exception(e)
             log.exception(
                 "Unknown error when fetching raw report from storage",
                 extra=dict(archive_path=archive_url),
@@ -650,6 +652,7 @@ class ReportService(BaseReportService):
             )
             return result
         except ReportExpiredException as r:
+            sentry_sdk.capture_exception(r)
             log.info(
                 "Report is expired",
                 extra=dict(
@@ -661,12 +664,14 @@ class ReportService(BaseReportService):
             )
             raw_report_info.error = result.error
             return result
-        except ReportEmptyError:
+        except ReportEmptyError as e:
+            sentry_sdk.capture_exception(e)
             log.warning("Report is empty", extra=dict(reportid=reportid))
             result.error = ProcessingError(code=UploadErrorCode.REPORT_EMPTY, params={})
             raw_report_info.error = result.error
             return result
         except Exception as e:
+            sentry_sdk.capture_exception(e)
             log.exception(
                 "Unknown error when processing raw upload",
                 extra=dict(archive_path=archive_url),
