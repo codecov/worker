@@ -17,7 +17,7 @@
     />
   </svg>
   <p>
-    Your ${{ amount }} payment to Functional Software, Inc, dba Sentry has
+    Your {{ amount }} payment to Functional Software, Inc, dba Sentry has
     failed
   </p>
 </div>
@@ -41,6 +41,6 @@
   </p>
 </div>
 {% endblock %} {% block aside %}
-<p>Total: USD <span class="red-money-text">${{ amount }}</span></p>
+<p>Total: <span class="red-money-text">{{ amount }}</span></p>
 <p>{{ date }}</p>
 {% endblock %}
