@@ -328,7 +328,7 @@ sentry-sdk==2.13.0
     #   shared
 setuptools==75.6.0
     # via nodeenv
-shared @ https://github.com/codecov/shared/archive/f96b72f47583a083e0c78ec7c7ff4da5d3ad6a19.tar.gz#egg=shared
+shared @ https://github.com/codecov/shared/archive/c481846ba657aee3fc15a613a0fd2c18ac1eabd2.tar.gz#egg=shared
     # via -r requirements.in
 six==1.16.0
     # via
@@ -358,7 +358,7 @@ statsd==3.3.0
     # via -r requirements.in
 stripe==9.6.0
     # via -r requirements.in
-test-results-parser @ https://github.com/codecov/test-results-parser/archive/94ff26cb083a02ff726dd2497c2129e4aaf5f7cd.tar.gz#egg=test-results-parser
+test-results-parser @ https://github.com/codecov/test-results-parser/archive/c840502d1b4dd7d05b2efc2c1328affaf2acd27c.tar.gz#egg=test-results-parser
     # via -r requirements.in
 text-unidecode==1.3
     # via faker
