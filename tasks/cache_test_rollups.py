@@ -1,7 +1,7 @@
 import datetime as dt
 
 import polars as pl
-from django.db import connections
+from django.db import DatabaseError, connections, transaction
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
 from shared.config import get_config
@@ -106,17 +106,38 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
     def run_impl(
         self, _db_session, repoid: int, branch: str, update_date: bool = True, **kwargs
     ):
+        # TODO(swatinem): We currently nest 2 locks, in Redis and Postgres.
+        # We can remove the first Redis lock in a followup once this is fully rolled out.
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(
                 f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
             ):
-                self.run_impl_within_lock(repoid, branch, update_date)
-                return {"success": True}
+                with transaction.atomic():
+                    try:
+                        last_update, _created = (
+                            LastCacheRollupDate.objects.select_for_update(
+                                nowait=True
+                            ).get_or_create(
+                                repository_id=repoid,
+                                branch=branch,
+                                defaults={"last_rollup_date": dt.date.today()},
+                            )
+                        )
+                    except DatabaseError:
+                        return {"in_progress": True}
+
+                    self.run_impl_within_lock(repoid, branch)
+
+                    if update_date:
+                        last_update.last_rollup_date = dt.date.today()
+                        last_update.save()
+
+                    return {"success": True}
         except LockError:
             return {"in_progress": True}
 
-    def run_impl_within_lock(self, repoid: int, branch: str, update_date: bool = True):
+    def run_impl_within_lock(self, repoid: int, branch: str):
         storage_service = get_storage_client()
 
         if get_config("setup", "database", "read_replica_enabled", default=False):
@@ -169,28 +190,18 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                     ],
                     orient="row",
                 )
+
+                serialized_table = df.write_ipc(None)
+                serialized_table.seek(0)  # avoids Stream must be at beginning errors
+
                 storage_key = (
                     f"test_results/rollups/{repoid}/{branch}/{interval_start}"
                     if interval_end is None
                     else f"test_results/rollups/{repoid}/{branch}/{interval_start}_{interval_end}"
                 )
-
-                serialized_table = df.write_ipc(None)
-
-                if update_date:
-                    LastCacheRollupDate.objects.update_or_create(
-                        repository_id=repoid,
-                        branch=branch,
-                        defaults=dict(last_rollup_date=dt.date.today()),
-                    )
-
-                serialized_table.seek(0)  # avoids Stream must be at beginning errors
-
                 storage_service.write_file(
                     settings.GCS_BUCKET_NAME, storage_key, serialized_table
                 )
-
-        return
 
 
 RegisteredCacheTestRollupTask = celery_app.register_task(CacheTestRollupsTask())

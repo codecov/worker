@@ -4,7 +4,6 @@ import logging
 import zlib
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import List
 
 import sentry_sdk
 from shared.celery_config import test_results_processor_task_name
@@ -40,36 +39,18 @@ class ReadableFile:
     contents: bytes
 
 
-def get_existing_flag_bridges(
-    db_session: Session, repoid: int, flags: list[str]
-) -> dict[str, TestFlagBridge]:
-    existing_flag_bridges = (
-        db_session.query(TestFlagBridge)
-        .join(RepositoryFlag, TestFlagBridge.flag_id == RepositoryFlag.id_)
-        .filter(RepositoryFlag.repository_id == repoid)
-        .all()
-    )
-    return {flag_bridge.test_id: flag_bridge for flag_bridge in existing_flag_bridges}
+def get_repo_flag_ids(db_session: Session, repoid: int, flags: list[str]) -> set[int]:
+    if not flags:
+        return set()
 
-
-def get_repo_flags(
-    db_session: Session, repoid: int, flags: list[str]
-) -> dict[str, int]:
-    repo_flags: list[RepositoryFlag] = (
-        db_session.query(RepositoryFlag)
+    return set(
+        db_session.query(RepositoryFlag.id_)
         .filter(
             RepositoryFlag.repository_id == repoid,
             RepositoryFlag.flag_name.in_(flags),
         )
         .all()
     )
-
-    # flag name => flag id
-    repo_flag_mapping: dict[str, int] = {
-        repo_flag.flag_name: repo_flag.id_ for repo_flag in repo_flags
-    }
-
-    return repo_flag_mapping
 
 
 @dataclass
@@ -97,7 +78,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         repoid = int(repoid)
 
         results = []
-        upload_list = []
 
         repo_flakes = (
             db_session.query(Flake.testid)
@@ -105,6 +85,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             .all()
         )
         flaky_test_set = {flake.testid for flake in repo_flakes}
+        repository = (
+            db_session.query(Repository)
+            .filter(Repository.repoid == int(repoid))
+            .first()
+        )
+
+        should_delete_archive = self.should_delete_archive(commit_yaml)
+        archive_service = ArchiveService(repository)
 
         # process each report session's test information
         for arguments in arguments_list:
@@ -112,21 +100,16 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 db_session.query(Upload).filter_by(id_=arguments["upload_id"]).first()
             )
             result = self.process_individual_upload(
-                db_session, repoid, commitid, upload, flaky_test_set
+                db_session,
+                archive_service,
+                repository,
+                commitid,
+                upload,
+                flaky_test_set,
+                should_delete_archive,
             )
 
             results.append(result)
-            upload_list.append(upload)
-
-        if self.should_delete_archive(commit_yaml):
-            repository = (
-                db_session.query(Repository)
-                .filter(Repository.repoid == int(repoid))
-                .first()
-            )
-            self.delete_archive(
-                commitid, repository, commit_yaml, uploads_to_delete=upload_list
-            )
 
         return results
 
@@ -149,8 +132,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         daily_totals: dict[str, dict[str, str | int | list[str]]] = dict()
 
         flags_hash = generate_flags_hash(flags)
-        repo_flags = get_repo_flags(db_session, repoid, flags)
-        existing_flag_bridges = get_existing_flag_bridges(db_session, repoid, flags)
+        repo_flag_ids = get_repo_flag_ids(db_session, repoid, flags)
 
         for p in parsing_results:
             framework = str(p.framework) if p.framework else None
@@ -177,10 +159,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     computed_name=testrun.computed_name,
                 )
 
-                if test_id not in existing_flag_bridges and flags:
+                if repo_flag_ids:
                     test_flag_bridge_data.extend(
-                        {"test_id": test_id, "flag_id": repo_flags[flag]}
-                        for flag in flags
+                        {"test_id": test_id, "flag_id": flag_id}
+                        for flag_id in repo_flag_ids
                     )
 
                 test_instance_data.append(
@@ -348,59 +330,20 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         log.info("Inserted test instances to database", extra=dict(upload_id=upload_id))
 
     def process_individual_upload(
-        self, db_session, repoid, commitid, upload_obj: Upload, flaky_test_set: set[str]
+        self,
+        db_session,
+        archive_service: ArchiveService,
+        repository: Repository,
+        commitid,
+        upload: Upload,
+        flaky_test_set: set[str],
+        should_delete_archive: bool,
     ):
-        upload_id = upload_obj.id
+        upload_id = upload.id
+
         log.info("Processing individual upload", extra=dict(upload_id=upload_id))
-        parsing_results = self.process_individual_arg(
-            db_session, upload_obj, upload_obj.report.commit.repository
-        )
-
-        if all(len(result.testruns) == 0 for result in parsing_results):
-            log.error(
-                "No test result files were successfully parsed for this upload",
-                extra=dict(upload_id=upload_id),
-            )
-            return {"successful": False}
-
-        self._bulk_write_tests_to_db(
-            db_session,
-            repoid,
-            commitid,
-            upload_id,
-            upload_obj.report.commit.branch,
-            parsing_results,
-            flaky_test_set,
-            upload_obj.flag_names,
-        )
-        log.info(
-            "Finished processing individual upload", extra=dict(upload_id=upload_id)
-        )
-
-        return {"successful": True}
-
-    def rewrite_readable(
-        self, network: list[str] | None, report_contents: list[ReadableFile]
-    ) -> bytes:
-        buffer = b""
-        if network is not None:
-            for file in network:
-                buffer += f"{file}\n".encode("utf-8")
-            buffer += b"<<<<<< network\n\n"
-        for report_content in report_contents:
-            buffer += f"# path={report_content.path}\n".encode("utf-8")
-            buffer += report_content.contents
-            buffer += b"\n<<<<<< EOF\n\n"
-        return buffer
-
-    @sentry_sdk.trace
-    def process_individual_arg(
-        self, db_session: Session, upload: Upload, repository: Repository
-    ) -> list[ParsingInfo]:
         if upload.state == "processed" or upload.state == "has_failed":
             return []
-
-        archive_service = ArchiveService(repository)
 
         payload_bytes = archive_service.read_file(upload.storage_path)
         try:
@@ -442,16 +385,53 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         if upload.state != "has_failed":
             upload.state = "processed"
 
-        db_session.flush()
+        if all(len(result.testruns) == 0 for result in parsing_results):
+            successful = False
+            log.error(
+                "No test result files were successfully parsed for this upload",
+                extra=dict(upload_id=upload_id),
+            )
+        else:
+            successful = True
+
+            self._bulk_write_tests_to_db(
+                db_session,
+                repository.repoid,
+                commitid,
+                upload_id,
+                upload.report.commit.branch,
+                parsing_results,
+                flaky_test_set,
+                upload.flag_names,
+            )
+
         db_session.commit()
-        log.info("Marked upload as processed", extra=dict(upload_id=upload.id))
 
-        # FIXME: we are unconditionally rewriting as readable, even if we delete it later
-        readable_report = self.rewrite_readable(network, report_contents)
-        archive_service.write_file(upload.storage_path, readable_report)
-        log.info("Wrote readable report to archive", extra=dict(upload_id=upload.id))
+        log.info(
+            "Finished processing individual upload", extra=dict(upload_id=upload_id)
+        )
 
-        return parsing_results
+        if should_delete_archive:
+            self.delete_archive(archive_service, upload)
+        else:
+            readable_report = self.rewrite_readable(network, report_contents)
+            archive_service.write_file(upload.storage_path, readable_report)
+
+        return {"successful": successful}
+
+    def rewrite_readable(
+        self, network: list[str] | None, report_contents: list[ReadableFile]
+    ) -> bytes:
+        buffer = b""
+        if network is not None:
+            for file in network:
+                buffer += f"{file}\n".encode("utf-8")
+            buffer += b"<<<<<< network\n\n"
+        for report_content in report_contents:
+            buffer += f"# path={report_content.path}\n".encode("utf-8")
+            buffer += report_content.contents
+            buffer += b"\n<<<<<< EOF\n\n"
+        return buffer
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):
@@ -460,23 +440,17 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             commit_yaml, ("codecov", "archive", "uploads"), _else=True
         )
 
-    def delete_archive(
-        self, commitid, repository, commit_yaml, uploads_to_delete: List[Upload]
-    ):
-        archive_service = ArchiveService(repository)
-        for upload in uploads_to_delete:
-            archive_url = upload.storage_path
-            if archive_url and not archive_url.startswith("http"):
-                log.info(
-                    "Deleting uploaded file as requested",
-                    extra=dict(
-                        archive_url=archive_url,
-                        commit=commitid,
-                        upload=upload.external_id,
-                        parent_task=self.request.parent_id,
-                    ),
-                )
-                archive_service.delete_file(archive_url)
+    def delete_archive(self, archive_service: ArchiveService, upload: Upload):
+        archive_url = upload.storage_path
+        if archive_url and not archive_url.startswith("http"):
+            log.info(
+                "Deleting uploaded file as requested",
+                extra=dict(
+                    archive_url=archive_url,
+                    upload=upload.external_id,
+                ),
+            )
+            archive_service.delete_file(archive_url)
 
 
 RegisteredTestResultsProcessorTask = celery_app.register_task(
