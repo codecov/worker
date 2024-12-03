@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime
 from functools import cached_property
 
-from shared.plan.constants import PlanName
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, backref, relationship, validates
@@ -42,29 +41,6 @@ class User(CodecovBaseModel, MixinBaseClass):
         return value
 
 
-class Account(CodecovBaseModel, MixinBaseClass):
-    __tablename__ = "accounts"
-    id_ = Column("id", types.BigInteger, primary_key=True)
-    name = Column(types.String(100), nullable=False, unique=True)
-    is_active = Column(types.Boolean, nullable=False, default=True)
-    plan = Column(
-        types.String(50), nullable=False, default=PlanName.BASIC_PLAN_NAME.value
-    )
-    plan_seat_count = Column(types.SmallInteger, nullable=False, default=1)
-    free_seat_count = Column(types.SmallInteger, nullable=False, default=0)
-    plan_auto_activate = Column(types.Boolean, nullable=False, default=True)
-    is_delinquent = Column(types.Boolean, nullable=False, default=False)
-
-    users = relationship("User", secondary="accounts_users", backref="accounts")
-
-
-class AccountsUsers(CodecovBaseModel):
-    __tablename__ = "accounts_users"
-    account_id = Column(types.BigInteger, ForeignKey("accounts.id"), primary_key=True)
-    user_id = Column(types.BigInteger, ForeignKey("users.id"), primary_key=True)
-    created_at = Column(types.DateTime, nullable=False, default=datetime.utcnow)
-
-
 class Owner(CodecovBaseModel):
     __tablename__ = "owners"
     ownerid = Column(types.Integer, primary_key=True)
@@ -87,9 +63,6 @@ class Owner(CodecovBaseModel):
     free = Column(
         types.Integer, nullable=False, default=0, server_default=FetchedValue()
     )
-
-    account_id = Column(types.BigInteger, ForeignKey("accounts.id"))
-    account = relationship("Account", backref="organizations")
 
     # DEPRECATED - Prefer GithubAppInstallation
     integration_id = Column(types.Integer, server_default=FetchedValue())

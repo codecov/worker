@@ -1,5 +1,6 @@
-from database.tests.factories import OwnerFactory, PullFactory
 from shared.billing import BillingPlan
+
+from database.tests.factories import OwnerFactory, PullFactory
 from services.repository import EnrichedPull
 from services.seats import ShouldActivateSeat, determine_seat_activation
 

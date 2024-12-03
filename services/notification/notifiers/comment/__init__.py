@@ -4,6 +4,7 @@ from typing import Any, Mapping
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
+from shared.billing import BillingPlan
 from shared.metrics import Counter, inc_counter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -12,7 +13,6 @@ from shared.torngit.exceptions import (
 )
 
 from database.enums import Notification
-from shared.billing import BillingPlan
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
 from services.license import requires_license
