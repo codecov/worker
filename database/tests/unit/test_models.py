@@ -220,6 +220,11 @@ class TestAccountModels(object):
         dbsession.add_all([user, owner_person, owner_org, account])
         dbsession.commit()
 
+        # this is the evaluation from shared that was breaking
+        assert owner_org.account is None
+        has_account = owner_org.account is not None
+        assert has_account is False
+
         owner_person.user = user
         account.users.append(user)
         account.organizations.append(owner_org)
@@ -236,6 +241,9 @@ class TestAccountModels(object):
         assert owner_org.account == account
         assert account.users == [user]
         assert account.organizations == [owner_org]
+        # this is the evaluation from shared that was breaking
+        has_account = owner_org.account is not None
+        assert has_account is True
 
         through_table_obj = dbsession.query(AccountsUsers).first()
         assert through_table_obj.user_id == user.id
