@@ -15,6 +15,7 @@ from helpers.exceptions import ReportEmptyError, ReportExpiredException
 from services.archive import ArchiveService
 from services.processing.processing import process_upload
 from services.report import ProcessingError, RawReportInfo, ReportService
+from services.report.parser.legacy import LegacyReportParser
 from tasks.upload_processor import UploadProcessorTask
 
 here = Path(__file__)
@@ -178,6 +179,11 @@ class TestUploadProcessorTask(object):
             "arguments": {"url": url, "upload_id": upload.id_},
             "successful": True,
         }
+
+        # storage is overwritten with parsed contents
+        data = mock_storage.read_file("archive", url)
+        parsed = LegacyReportParser().parse_raw_report_from_bytes(content)
+        assert data == parsed.content().getvalue()
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_task_call_exception_within_individual_upload(
