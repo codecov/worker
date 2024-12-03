@@ -5,7 +5,7 @@ from celery_config import trial_expiration_cron_task_name, trial_expiration_task
 from database.enums import TrialStatus
 from database.models.core import Owner
 from helpers.clock import get_utc_now
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)

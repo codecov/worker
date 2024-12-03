@@ -4,7 +4,7 @@ from unittest.mock import patch
 from celery_config import trial_expiration_task_name
 from database.enums import TrialStatus
 from database.tests.factories.core import OwnerFactory
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from tasks.trial_expiration_cron import TrialExpirationCronTask
 
 

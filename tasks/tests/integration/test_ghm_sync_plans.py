@@ -2,7 +2,7 @@ import pytest
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from services.github_marketplace import GitHubMarketplaceService
 from tasks.github_marketplace import SyncPlansTask
 

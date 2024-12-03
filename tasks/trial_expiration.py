@@ -4,7 +4,7 @@ from app import celery_app
 from celery_config import trial_expiration_task_name
 from database.enums import TrialStatus
 from database.models.core import Owner
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)

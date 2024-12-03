@@ -12,7 +12,7 @@ from shared.torngit.exceptions import (
 )
 
 from database.enums import Notification
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
 from services.license import requires_license

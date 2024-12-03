@@ -22,7 +22,7 @@ from database.tests.factories import (
     PullFactory,
     UploadFactory,
 )
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from services.repository import EnrichedPull
 from services.test_results import generate_test_id
 from services.urls import get_members_url

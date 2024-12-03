@@ -9,7 +9,7 @@ from app import celery_app
 from database.enums import Decoration
 from database.models import Owner, Pull, Repository
 from helpers.metrics import metrics
-from services.billing import is_pr_billing_plan
+from shared.billing import is_pr_billing_plan
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)

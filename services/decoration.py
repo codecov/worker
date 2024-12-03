@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from database.enums import Decoration
 from database.models import Owner
-from services.billing import is_pr_billing_plan
+from shared.billing import is_pr_billing_plan
 from services.license import requires_license
 from services.repository import EnrichedPull
 

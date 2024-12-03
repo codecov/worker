@@ -1,6 +1,6 @@
 from database.models.core import OrganizationLevelToken
 from database.tests.factories.core import OrgLevelTokenFactory, OwnerFactory
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from tasks.plan_manager_task import DailyPlanManagerTask
 
 

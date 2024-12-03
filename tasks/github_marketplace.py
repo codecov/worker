@@ -6,7 +6,7 @@ from shared.celery_config import ghm_sync_plans_task_name
 
 from app import celery_app
 from database.models import Owner, Repository
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from services.github_marketplace import GitHubMarketplaceService
 from services.stripe import stripe
 from tasks.base import BaseCodecovTask

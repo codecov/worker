@@ -8,7 +8,7 @@ from shared.validation.helpers import LayoutStructure
 from database.models.core import Owner
 from helpers.environment import is_enterprise
 from helpers.metrics import metrics
-from services.billing import BillingPlan
+from shared.billing import BillingPlan
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,

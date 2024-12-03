@@ -1,11 +1,8 @@
-import logging
 from enum import Enum
 
+from django.conf import settings
+
 from shared.license import get_current_license
-
-from services.license import requires_license
-
-log = logging.getLogger(__name__)
 
 
 class BillingPlan(Enum):
@@ -22,9 +19,25 @@ class BillingPlan(Enum):
     team_monthly = "users-teamm"
     team_yearly = "users-teamy"
 
+    def __init__(self, db_name):
+        self.db_name = db_name
+
+    @classmethod
+    def from_str(cls, plan_name: str):
+        for plan in cls:
+            if plan.db_name == plan_name:
+                return plan
+
+
+def is_enterprise_cloud_plan(plan: BillingPlan) -> bool:
+    return plan in [
+        BillingPlan.enterprise_cloud_monthly,
+        BillingPlan.enterprise_cloud_yearly,
+    ]
+
 
 def is_pr_billing_plan(plan: str) -> bool:
-    if not requires_license():
+    if not settings.IS_ENTERPRISE:
         return plan in [
             BillingPlan.pr_monthly.value,
             BillingPlan.pr_yearly.value,
@@ -38,7 +51,4 @@ def is_pr_billing_plan(plan: str) -> bool:
             BillingPlan.users_ghm.value,
         ]
     else:
-        license = get_current_license()
-        if license.is_pr_billing:
-            return True
-        return False
+        return get_current_license().is_pr_billing
