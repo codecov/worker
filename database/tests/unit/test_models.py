@@ -2,14 +2,24 @@ import json
 from unittest.mock import PropertyMock, call
 
 from mock import MagicMock, patch
+from shared.plan.constants import PlanName
 from shared.reports.types import ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
 from sqlalchemy.orm import Session
 
-from database.models import Branch, Commit, CommitNotification, Owner, Pull, Repository
+from database.models import (
+    Account,
+    Branch,
+    Commit,
+    CommitNotification,
+    Owner,
+    Pull,
+    Repository,
+)
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    AccountsUsers,
     GithubAppInstallation,
 )
 from database.models.reports import ReportDetails
@@ -22,7 +32,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from database.tests.factories.core import ReportDetailsFactory
+from database.tests.factories.core import ReportDetailsFactory, UserFactory
 
 
 class TestReprModels(object):
@@ -180,6 +190,64 @@ class TestOwnerModel(object):
         dbsession.refresh(tokens_not_required_owner)
         assert tokens_not_required_owner.onboarding_completed is True
         assert tokens_not_required_owner.upload_token_required_for_public_repos is False
+
+
+class TestAccountModels(object):
+    def test_create_account(self, dbsession):
+        account = Account(
+            name="test_name",
+        )
+        dbsession.add(account)
+        dbsession.commit()
+        dbsession.refresh(account)
+        assert account.name == "test_name"
+        assert account.is_active is True
+        assert account.plan == PlanName.BASIC_PLAN_NAME.value
+        assert account.plan_seat_count == 1
+        assert account.free_seat_count == 0
+        assert account.plan_auto_activate is True
+        assert account.is_delinquent is False
+        assert account.users == []
+        assert account.organizations == []
+
+    def test_account_fks(self, dbsession):
+        user = UserFactory()
+        owner_person = OwnerFactory()
+        owner_org = OwnerFactory()
+        account = Account(
+            name="test_name",
+        )
+        dbsession.add_all([user, owner_person, owner_org, account])
+        dbsession.commit()
+
+        # this is the evaluation from shared that was breaking
+        assert owner_org.account is None
+        has_account = owner_org.account is not None
+        assert has_account is False
+
+        owner_person.user = user
+        account.users.append(user)
+        account.organizations.append(owner_org)
+        dbsession.add_all([owner_person, account])
+        dbsession.commit()
+
+        dbsession.refresh(user)
+        dbsession.refresh(owner_person)
+        dbsession.refresh(owner_org)
+        dbsession.refresh(account)
+
+        assert user.accounts == [account]
+        assert owner_person.account is None
+        assert owner_org.account == account
+        assert account.users == [user]
+        assert account.organizations == [owner_org]
+        # this is the evaluation from shared that was breaking
+        has_account = owner_org.account is not None
+        assert has_account is True
+
+        through_table_obj = dbsession.query(AccountsUsers).first()
+        assert through_table_obj.user_id == user.id
+        assert through_table_obj.account_id == account.id
 
 
 class TestReportDetailsModel(object):
