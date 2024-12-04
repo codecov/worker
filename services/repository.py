@@ -540,6 +540,8 @@ async def fetch_and_update_pull_request_information(
         if pr_author:
             pull.author = pr_author
 
+    db_session.commit()
+
     return EnrichedPull(database_pull=pull, provider_pull=pull_information)
 
 
