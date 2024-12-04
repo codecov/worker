@@ -4,6 +4,7 @@ import logging
 import zlib
 from dataclasses import dataclass
 from datetime import date, datetime
+from typing import TypedDict
 
 import sentry_sdk
 from shared.celery_config import test_results_processor_task_name
@@ -57,6 +58,21 @@ def get_repo_flag_ids(db_session: Session, repoid: int, flags: list[str]) -> set
 class PytestName:
     actual_class_name: str
     test_file_path: str
+
+
+class DailyTotals(TypedDict):
+    test_id: str
+    repoid: int
+    pass_count: int
+    fail_count: int
+    skip_count: int
+    flaky_fail_count: int
+    branch: str
+    date: date
+    latest_run: datetime
+    commits_where_fail: list[str]
+    last_duration_seconds: float
+    avg_duration_seconds: float
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
@@ -129,7 +145,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         test_data = {}
         test_instance_data = []
         test_flag_bridge_data: list[dict] = []
-        daily_totals: dict[str, dict[str, str | int | list[str]]] = dict()
+        daily_totals: dict[str, DailyTotals] = dict()
 
         flags_hash = generate_flags_hash(flags)
         repo_flag_ids = get_repo_flag_ids(db_session, repoid, flags)
@@ -142,7 +158,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 name: str = f"{testrun.classname}\x1f{testrun.name}"
                 testsuite: str = testrun.testsuite
                 outcome: str = str(testrun.outcome)
-                duration_seconds: float = testrun.duration
+                duration_seconds: float = (
+                    testrun.duration if testrun.duration is not None else 0.0
+                )
                 failure_message: str | None = testrun.failure_message
                 test_id: str = generate_test_id(repoid, testsuite, name, flags_hash)
 

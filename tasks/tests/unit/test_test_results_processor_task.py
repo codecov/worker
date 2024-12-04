@@ -1,3 +1,6 @@
+import base64
+import json
+import zlib
 from datetime import date, datetime, timedelta, timezone
 from itertools import chain
 from pathlib import Path
@@ -781,4 +784,78 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = []
+        expected_result = [[]]
+
+        assert expected_result == result
+
+    @pytest.mark.integration
+    def test_upload_processor_task_call_already_processed_with_junit(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        tests = dbsession.query(Test).all()
+        test_instances = dbsession.query(TestInstance).all()
+        assert len(tests) == 0
+        assert len(test_instances) == 0
+
+        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        with open(here.parent.parent / "samples" / "sample_ta_file.xml") as f:
+            content = f.read()
+            compressed_and_base64_encoded = base64.b64encode(
+                zlib.compress(content.encode("utf-8"))
+            ).decode("utf-8")
+            thing = {
+                "test_results_files": [
+                    {
+                        "filename": "codecov-demo/temp.junit.xml",
+                        "format": "base64+compressed",
+                        "data": compressed_and_base64_encoded,
+                    }
+                ]
+            }
+            mock_storage.write_file("archive", url, json.dumps(thing))
+        upload = UploadFactory.create(storage_path=url)
+        dbsession.add(upload)
+        dbsession.flush()
+
+        redis_queue = [{"url": url, "upload_id": upload.id_}]
+        mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
+
+        commit = CommitFactory.create(
+            message="hello world",
+            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="joseph-sentry",
+            repository__owner__service="github",
+            repository__name="codecov-demo",
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        current_report_row = CommitReport(commit_id=commit.id_)
+        dbsession.add(current_report_row)
+        dbsession.flush()
+        result = TestResultsProcessorTask().run_impl(
+            dbsession,
+            repoid=upload.report.commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+            arguments_list=redis_queue,
+        )
+        expected_result = [
+            {
+                "successful": True,
+            }
+        ]
+
+        tests = dbsession.query(Test).all()
+        test_instances = dbsession.query(TestInstance).all()
+
+        assert expected_result == result
+        assert len(tests) == 4
+        assert len(test_instances) == 4
