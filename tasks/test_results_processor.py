@@ -54,6 +54,66 @@ def get_repo_flag_ids(db_session: Session, repoid: int, flags: list[str]) -> set
     )
 
 
+def create_daily_totals(
+    daily_totals: dict,
+    test_id: str,
+    repoid: int,
+    duration_seconds: float,
+    outcome: Outcome,
+    branch: str,
+    commitid: str,
+    flaky_test_set: set[str],
+):
+    daily_totals[test_id] = {
+        "test_id": test_id,
+        "repoid": repoid,
+        "last_duration_seconds": duration_seconds,
+        "avg_duration_seconds": duration_seconds,
+        "pass_count": 1 if outcome == str(Outcome.Pass) else 0,
+        "fail_count": 1
+        if outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
+        else 0,
+        "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
+        "flaky_fail_count": 1
+        if test_id in flaky_test_set
+        and (outcome == str(Outcome.Failure) or outcome == str(Outcome.Error))
+        else 0,
+        "branch": branch,
+        "date": date.today(),
+        "latest_run": datetime.now(),
+        "commits_where_fail": [commitid]
+        if (outcome == str(Outcome.Failure) or outcome == str(Outcome.Error))
+        else [],
+    }
+
+
+def update_daily_totals(
+    daily_totals: dict,
+    test_id: str,
+    duration_seconds: float,
+    outcome: Outcome,
+):
+    daily_totals[test_id]["last_duration_seconds"] = duration_seconds
+
+    # logic below is a little complicated but we're basically doing:
+
+    # (old_avg * num of values used to compute old avg) + new value
+    # -------------------------------------------------------------
+    #          num of values used to compute old avg + 1
+    daily_totals[test_id]["avg_duration_seconds"] = (
+        daily_totals[test_id]["avg_duration_seconds"]
+        * (daily_totals[test_id]["pass_count"] + daily_totals[test_id]["fail_count"])
+        + duration_seconds
+    ) / (daily_totals[test_id]["pass_count"] + daily_totals[test_id]["fail_count"] + 1)
+
+    if outcome == str(Outcome.Pass):
+        daily_totals[test_id]["pass_count"] += 1
+    elif outcome == str(Outcome.Failure) or outcome == str(Outcome.Error):
+        daily_totals[test_id]["fail_count"] += 1
+    elif outcome == str(Outcome.Skip):
+        daily_totals[test_id]["skip_count"] += 1
+
+
 @dataclass
 class PytestName:
     actual_class_name: str
@@ -163,6 +223,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 )
                 failure_message: str | None = testrun.failure_message
                 test_id: str = generate_test_id(repoid, testsuite, name, flags_hash)
+                computed_name = testrun.computed_name
 
                 filename: str | None = testrun.filename
 
@@ -174,7 +235,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     flags_hash=flags_hash,
                     framework=framework,
                     filename=filename,
-                    computed_name=testrun.computed_name,
+                    computed_name=computed_name,
                 )
 
                 if repo_flag_ids:
@@ -197,155 +258,145 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     )
                 )
 
-                def update_daily_total():
-                    daily_totals[test_id]["last_duration_seconds"] = duration_seconds
-
-                    # logic below is a little complicated but we're basically doing:
-
-                    # (old_avg * num of values used to compute old avg) + new value
-                    # -------------------------------------------------------------
-                    #          num of values used to compute old avg + 1
-                    daily_totals[test_id]["avg_duration_seconds"] = (
-                        daily_totals[test_id]["avg_duration_seconds"]
-                        * (
-                            daily_totals[test_id]["pass_count"]
-                            + daily_totals[test_id]["fail_count"]
-                        )
-                        + duration_seconds
-                    ) / (
-                        daily_totals[test_id]["pass_count"]
-                        + daily_totals[test_id]["fail_count"]
-                        + 1
-                    )
-
-                    if outcome == str(Outcome.Pass):
-                        daily_totals[test_id]["pass_count"] += 1
-                    elif outcome == str(Outcome.Failure) or outcome == str(
-                        Outcome.Error
-                    ):
-                        daily_totals[test_id]["fail_count"] += 1
-                    elif outcome == str(Outcome.Skip):
-                        daily_totals[test_id]["skip_count"] += 1
-
-                def create_daily_total():
-                    daily_totals[test_id] = {
-                        "test_id": test_id,
-                        "repoid": repoid,
-                        "last_duration_seconds": duration_seconds,
-                        "avg_duration_seconds": duration_seconds,
-                        "pass_count": 1 if outcome == str(Outcome.Pass) else 0,
-                        "fail_count": 1
-                        if outcome == str(Outcome.Failure)
-                        or outcome == str(Outcome.Error)
-                        else 0,
-                        "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
-                        "flaky_fail_count": 1
-                        if test_id in flaky_test_set
-                        and (
-                            outcome == str(Outcome.Failure)
-                            or outcome == str(Outcome.Error)
-                        )
-                        else 0,
-                        "branch": branch,
-                        "date": date.today(),
-                        "latest_run": datetime.now(),
-                        "commits_where_fail": [commitid]
-                        if (
-                            outcome == str(Outcome.Failure)
-                            or outcome == str(Outcome.Error)
-                        )
-                        else [],
-                    }
-
                 if outcome != str(Outcome.Skip):
                     if test_id in daily_totals:
-                        update_daily_total()
+                        update_daily_totals(
+                            daily_totals, test_id, duration_seconds, outcome
+                        )
                     else:
-                        create_daily_total()
+                        create_daily_totals(
+                            daily_totals,
+                            test_id,
+                            repoid,
+                            duration_seconds,
+                            outcome,
+                            branch,
+                            commitid,
+                            flaky_test_set,
+                        )
 
         # Upsert Tests
         if len(test_data) > 0:
-            test_insert = insert(Test.__table__).values(
-                sorted(
-                    test_data.values(),
-                    key=lambda x: str(x["id"]),
-                )
+            sorted_tests = sorted(
+                test_data.values(),
+                key=lambda x: str(x["id"]),
             )
-            insert_on_conflict_do_update = test_insert.on_conflict_do_update(
-                index_elements=["repoid", "name", "testsuite", "flags_hash"],
-                set_={
-                    "framework": test_insert.excluded.framework,
-                    "computed_name": test_insert.excluded.computed_name,
-                    "filename": test_insert.excluded.filename,
-                },
+            self.save_tests(db_session, sorted_tests)
+
+            log.info("Upserted tests to database", extra=dict(upload_id=upload_id))
+
+        if len(test_flag_bridge_data) > 0:
+            self.save_test_flag_bridges(db_session, test_flag_bridge_data)
+
+            log.info(
+                "Inserted new test flag bridges to database",
+                extra=dict(upload_id=upload_id),
             )
-            db_session.execute(insert_on_conflict_do_update)
-            db_session.commit()
 
-        log.info("Upserted tests to database", extra=dict(upload_id=upload_id))
-
-        if len(test_flag_bridge_data):
-            insert_on_conflict_do_nothing_flags = (
-                insert(TestFlagBridge.__table__)
-                .values(test_flag_bridge_data)
-                .on_conflict_do_nothing(index_elements=["test_id", "flag_id"])
-            )
-            db_session.execute(insert_on_conflict_do_nothing_flags)
-            db_session.commit()
-
-        log.info(
-            "Inserted new test flag bridges to database",
-            extra=dict(upload_id=upload_id),
-        )
-
-        # Upsert Daily Test Totals
         if len(daily_totals) > 0:
-            rollup_table = DailyTestRollup.__table__
-            stmt = insert(rollup_table).values(
-                sorted(daily_totals.values(), key=lambda x: str(x["test_id"]))
+            sorted_rollups = sorted(
+                daily_totals.values(), key=lambda x: str(x["test_id"])
             )
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[
-                    "repoid",
-                    "branch",
-                    "test_id",
-                    "date",
-                ],
-                set_={
-                    "last_duration_seconds": stmt.excluded.last_duration_seconds,
-                    "avg_duration_seconds": (
-                        rollup_table.c.avg_duration_seconds
-                        * (rollup_table.c.pass_count + rollup_table.c.fail_count)
-                        + stmt.excluded.avg_duration_seconds
-                    )
-                    / (rollup_table.c.pass_count + rollup_table.c.fail_count + 1),
-                    "latest_run": stmt.excluded.latest_run,
-                    "pass_count": rollup_table.c.pass_count + stmt.excluded.pass_count,
-                    "skip_count": rollup_table.c.skip_count + stmt.excluded.skip_count,
-                    "fail_count": rollup_table.c.fail_count + stmt.excluded.fail_count,
-                    "flaky_fail_count": rollup_table.c.flaky_fail_count
-                    + stmt.excluded.flaky_fail_count,
-                    "commits_where_fail": rollup_table.c.commits_where_fail
-                    + stmt.excluded.commits_where_fail,
-                },
+            self.save_daily_test_rollups(db_session, sorted_rollups)
+
+            log.info(
+                "Upserted daily test rollups to database",
+                extra=dict(upload_id=upload_id),
             )
-
-            db_session.execute(stmt)
-            db_session.commit()
-
-        log.info(
-            "Upserted daily test rollups to database", extra=dict(upload_id=upload_id)
-        )
 
         # Save TestInstances
         if len(test_instance_data) > 0:
-            insert_test_instances = insert(TestInstance.__table__).values(
-                test_instance_data
-            )
-            db_session.execute(insert_test_instances)
-            db_session.commit()
+            self.save_test_instances(db_session, test_instance_data)
 
-        log.info("Inserted test instances to database", extra=dict(upload_id=upload_id))
+            log.info(
+                "Inserted test instances to database", extra=dict(upload_id=upload_id)
+            )
+
+    def save_tests(self, db_session: Session, test_data: list[dict]):
+        test_insert = insert(Test.__table__).values(test_data)
+        insert_on_conflict_do_update = test_insert.on_conflict_do_update(
+            index_elements=["repoid", "name", "testsuite", "flags_hash"],
+            set_={
+                "framework": test_insert.excluded.framework,
+                "computed_name": test_insert.excluded.computed_name,
+                "filename": test_insert.excluded.filename,
+            },
+        )
+        db_session.execute(insert_on_conflict_do_update)
+        db_session.commit()
+
+    def save_daily_test_rollups(self, db_session: Session, daily_rollups: list[dict]):
+        rollup_table = DailyTestRollup.__table__
+        stmt = insert(rollup_table).values(daily_rollups)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[
+                "repoid",
+                "branch",
+                "test_id",
+                "date",
+            ],
+            set_={
+                "last_duration_seconds": stmt.excluded.last_duration_seconds,
+                "avg_duration_seconds": (
+                    rollup_table.c.avg_duration_seconds
+                    * (rollup_table.c.pass_count + rollup_table.c.fail_count)
+                    + stmt.excluded.avg_duration_seconds
+                )
+                / (rollup_table.c.pass_count + rollup_table.c.fail_count + 1),
+                "latest_run": stmt.excluded.latest_run,
+                "pass_count": rollup_table.c.pass_count + stmt.excluded.pass_count,
+                "skip_count": rollup_table.c.skip_count + stmt.excluded.skip_count,
+                "fail_count": rollup_table.c.fail_count + stmt.excluded.fail_count,
+                "flaky_fail_count": rollup_table.c.flaky_fail_count
+                + stmt.excluded.flaky_fail_count,
+                "commits_where_fail": rollup_table.c.commits_where_fail
+                + stmt.excluded.commits_where_fail,
+            },
+        )
+
+        db_session.execute(stmt)
+        db_session.commit()
+
+    def save_test_instances(self, db_session: Session, test_instance_data: list[dict]):
+        insert_test_instances = insert(TestInstance.__table__).values(
+            test_instance_data
+        )
+        db_session.execute(insert_test_instances)
+        db_session.commit()
+
+    def save_test_flag_bridges(
+        self, db_session: Session, test_flag_bridge_data: list[dict]
+    ):
+        insert_on_conflict_do_nothing_flags = (
+            insert(TestFlagBridge.__table__)
+            .values(test_flag_bridge_data)
+            .on_conflict_do_nothing(index_elements=["test_id", "flag_id"])
+        )
+        db_session.execute(insert_on_conflict_do_nothing_flags)
+        db_session.commit()
+
+    def decode_raw_file(self, file: bytes) -> bytes:
+        file_bytes = zlib.decompress(base64.b64decode(file))
+        return file_bytes
+
+    def parse_file(
+        self, file_bytes: bytes, upload: Upload, parsing_results: list[ParsingInfo]
+    ) -> bool:
+        try:
+            parsing_results.append(parse_junit_xml(file_bytes))
+            return True
+        except ParserError as exc:
+            log.error(
+                "Error parsing file",
+                extra=dict(
+                    repoid=upload.report.commit.repoid,
+                    commitid=upload.report.commit_id,
+                    uploadid=upload.id,
+                    parser_err_msg=str(exc),
+                ),
+            )
+            sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
+            return False
 
     def process_individual_upload(
         self,
@@ -379,29 +430,21 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         network: list[str] | None = data.get("network_files")
         report_contents: list[ReadableFile] = []
 
+        all_succesful = True
         for file_dict in data["test_results_files"]:
             file = file_dict["data"]
-            file_bytes = zlib.decompress(base64.b64decode(file))
+            file_bytes = self.decode_raw_file(file)
             report_contents.append(
                 ReadableFile(path=file_dict["filename"], contents=file_bytes)
             )
-            try:
-                parsing_results.append(parse_junit_xml(file_bytes))
-            except ParserError as exc:
-                log.error(
-                    "Error parsing file",
-                    extra=dict(
-                        repoid=upload.report.commit.repoid,
-                        commitid=upload.report.commit_id,
-                        uploadid=upload.id,
-                        parser_err_msg=str(exc),
-                    ),
-                )
-                sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
-                upload.state = "has_failed"
+            success = self.parse_file(file_bytes, upload, parsing_results)
+            if not success:
+                all_succesful = False
 
-        if upload.state != "has_failed":
+        if all_succesful:
             upload.state = "processed"
+        else:
+            upload.state = "has_failed"
 
         if all(len(result.testruns) == 0 for result in parsing_results):
             successful = False
