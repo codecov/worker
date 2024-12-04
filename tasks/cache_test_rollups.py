@@ -13,6 +13,19 @@ from services.redis import get_redis_connection
 from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
+# Reminder: `a BETWEEN x AND y` is equivalent to `a >= x AND a <= y`
+# Since we are working with calendar days, using a range of `0..0` gives us *today*,
+# and a range of `1..1` gives use *yesterday*.
+BASE_SUBQUERY = """
+SELECT *
+FROM reports_dailytestrollups
+WHERE repoid = %(repoid)s
+  AND branch = %(branch)s
+  AND date BETWEEN
+    (CURRENT_DATE - INTERVAL %(interval_start)s) AND
+    (CURRENT_DATE - INTERVAL %(interval_end)s)
+"""
+
 TEST_AGGREGATION_SUBQUERY = """
 SELECT test_id,
        CASE
@@ -67,20 +80,9 @@ WHERE rt.repoid = %(repoid)s
 GROUP BY test_id
 """
 
-
-def get_query(with_end: bool) -> str:
-    rollups_subquery = f"""
-SELECT *
-FROM reports_dailytestrollups
-WHERE repoid = %(repoid)s
-  AND branch = %(branch)s
-  AND date >= CURRENT_DATE - interval %(interval)s
-  {"AND date < current_date - interval %(interval_end)s" if with_end else ""}
-"""
-
-    return f"""
+ROLLUP_QUERY = f"""
 WITH
-  base_cte AS ({rollups_subquery}),
+  base_cte AS ({BASE_SUBQUERY}),
   failure_rate_cte AS ({TEST_AGGREGATION_SUBQUERY}),
   commits_where_fail_cte AS ({COMMITS_FAILED_SUBQUERY}),
   last_duration_cte AS ({LAST_DURATION_SUBQUERY}),
@@ -147,27 +149,26 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
 
         with connection.cursor() as cursor:
             for interval_start, interval_end in [
+                # NOTE: working with calendar days and intervals,
+                # `(CURRENT_DATE - INTERVAL '1 days')` means *yesterday*,
+                # and `2..1` matches *the day before yesterday*.
                 (1, None),
-                (7, None),
-                (30, None),
                 (2, 1),
+                (7, None),
                 (14, 7),
+                (30, None),
                 (60, 30),
             ]:
-                base_query = get_query(with_end=interval_end is not None)
                 query_params = {
                     "repoid": repoid,
                     "branch": branch,
-                    "interval": f"{interval_start} days",
+                    "interval_start": f"{interval_start} days",
+                    # SQL `BETWEEN` syntax is equivalent to `<= end`, with an inclusive end date,
+                    # thats why we do a `+1` here:
+                    "interval_end": f"{interval_end+1 if interval_end else 0} days",
                 }
 
-                if interval_end is not None:
-                    query_params["interval_end"] = f"{interval_end} days"
-
-                cursor.execute(
-                    base_query,
-                    query_params,
-                )
+                cursor.execute(ROLLUP_QUERY, query_params)
                 aggregation_of_test_results = cursor.fetchall()
 
                 df = pl.DataFrame(
