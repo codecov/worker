@@ -992,8 +992,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         ].apply_async.assert_called_with(
             kwargs={
                 "repo_id": repoid,
-                "commit_id_list": [commit.commitid],
-                "branch": "main",
+                "commit_id": commit.commitid,
             },
         )
         test_results_mock_app.tasks[
@@ -1180,7 +1179,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         ].apply_async.assert_called_with(
             kwargs={
                 "repo_id": repoid,
-                "commit_id_list": [commit.commitid],
-                "branch": "main",
+                "commit_id": commit.commitid,
             },
         )

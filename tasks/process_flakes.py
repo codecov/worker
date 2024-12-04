@@ -1,8 +1,15 @@
 import logging
 
+from django.db import transaction as django_transaction
 from django.db.models import Q
 from shared.celery_config import process_flakes_task_name
-from shared.django_apps.reports.models import DailyTestRollup, Flake, TestInstance
+from shared.django_apps.reports.models import (
+    CommitReport,
+    DailyTestRollup,
+    Flake,
+    ReportSession,
+    TestInstance,
+)
 
 from app import celery_app
 from helpers.metrics import metrics
@@ -26,15 +33,26 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         _db_session,
         *,
         repo_id,
-        commit_id_list,
-        branch,
+        commit_id,
         **kwargs,
     ):
         repo_id = int(repo_id)
         log.info(
             "Received process flakes task",
-            extra=dict(repoid=repo_id, commit=commit_id_list),
+            extra=dict(repoid=repo_id, commit=commit_id),
         )
+
+        uploads = (
+            ReportSession.objects.select_related("report", "report__commit")
+            .filter(
+                report__report_type=CommitReport.ReportType.TEST_RESULTS.value,
+                report__commit__commitid=commit_id,
+                state="processed",
+            )
+            .all()
+        )
+
+        print(f"uploads: {uploads}")
 
         with metrics.timer("process_flakes"):
             flake_dict = generate_flake_dict(repo_id)
@@ -43,10 +61,8 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                 test_id for (test_id, _) in list(flake_dict.keys())
             ]
 
-            for commit_id in commit_id_list:
-                test_instances = get_test_instances(
-                    commit_id, repo_id, branch, flaky_tests
-                )
+            for upload in uploads:
+                test_instances = get_test_instances(upload, flaky_tests)
                 for test_instance in test_instances:
                     if test_instance.outcome == TestInstance.Outcome.PASS.value:
                         flake = flake_dict.get(
@@ -71,28 +87,27 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                                     upserted_flake.reduced_error_id,
                                 )
                             ] = upserted_flake
+                upload.state = "flake_processed"
+                upload.save()
+                django_transaction.commit()
 
         log.info(
             "Successfully processed flakes",
-            extra=dict(repoid=repo_id, commit=commit_id_list),
+            extra=dict(repoid=repo_id, commit=commit_id),
         )
 
         return {"successful": True}
 
 
 def get_test_instances(
-    commit_id: str,
-    repo_id: int,
-    branch: str,
+    upload: ReportSession,
     flaky_tests: list[str],
 ) -> list[TestInstance]:
     # get test instances on this repo commit branch combination that either:
     # - failed
     # - passed but belong to an already flaky test
 
-    repo_commit_branch_filter = (
-        Q(commitid=commit_id) & Q(repoid=repo_id) & Q(branch=branch)
-    )
+    upload_filter = Q(upload_id=upload.id)
     test_failed_filter = Q(outcome=TestInstance.Outcome.ERROR.value) | Q(
         outcome=TestInstance.Outcome.FAILURE.value
     )
@@ -101,8 +116,7 @@ def get_test_instances(
     )
     test_instances = list(
         TestInstance.objects.filter(
-            repo_commit_branch_filter
-            & (test_failed_filter | test_passed_but_flaky_filter)
+            upload_filter & (test_failed_filter | test_passed_but_flaky_filter)
         )
         .select_related("test")
         .all()

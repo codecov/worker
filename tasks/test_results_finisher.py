@@ -121,14 +121,14 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
         repo = commit.repository
 
-        if should_do_flaky_detection(repo, commit_yaml) and (
-            commit.merged is True or commit.branch == repo.branch
-        ):
-            self.app.tasks[process_flakes_task_name].apply_async(
-                kwargs=dict(
-                    repo_id=repoid, commit_id_list=[commit.commitid], branch=repo.branch
+        if should_do_flaky_detection(repo, commit_yaml):
+            if commit.merged is True or commit.branch == repo.branch:
+                self.app.tasks[process_flakes_task_name].apply_async(
+                    kwargs=dict(
+                        repo_id=repoid,
+                        commit_id=commit.commitid,
+                    )
                 )
-            )
 
         if commit.branch is not None:
             self.app.tasks[cache_test_rollups_task_name].apply_async(
