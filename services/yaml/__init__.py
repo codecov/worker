@@ -146,7 +146,7 @@ def maybe_update_repo_bot(
     new_bot_owner_username = read_yaml_field(new_yaml, ("codecov", "bot"))
     if new_bot_owner_username:
         bot_owner_id = get_ownerid_if_member(
-            repository.service_id, new_bot_owner_username, repository.ownerid
+            repository.owner.service, new_bot_owner_username, repository.ownerid
         )
         if bot_owner_id and bot_owner_id != repository.bot_id:
             repository.bot_id = bot_owner_id
