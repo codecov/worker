@@ -142,7 +142,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 name: str = f"{testrun.classname}\x1f{testrun.name}"
                 testsuite: str = testrun.testsuite
                 outcome: str = str(testrun.outcome)
-                duration_seconds: float = testrun.duration
+                duration_seconds: float = (
+                    testrun.duration if testrun.duration is not None else 0.0
+                )
                 failure_message: str | None = testrun.failure_message
                 test_id: str = generate_test_id(repoid, testsuite, name, flags_hash)
 
