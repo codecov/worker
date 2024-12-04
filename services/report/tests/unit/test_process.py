@@ -82,6 +82,9 @@ class TestProcessRawUpload(BaseTestCase):
         )
         master = process.process_raw_upload(None, parsed_report, Session())
 
+        if "e" in keys:
+            assert master.sessions[0].env == {"A": "b"}
+
         assert master.totals.files == 1 + (
             1 if ("m" in keys and "n" not in keys) else 0
         )
@@ -716,7 +719,8 @@ class TestProcessReport(BaseTestCase):
         third_banana.append(5, ReportLine.create(0, sessions=[LineSession(0, 0)]))
         third_raw_report_result.append(third_banana)
         uploaded_reports = LegacyParsedRawReport(
-            toc=[],
+            toc=None,
+            env=None,
             report_fixes=None,
             uploaded_files=[
                 ParsedUploadedReportFile(
@@ -797,7 +801,8 @@ class TestProcessReport(BaseTestCase):
     def test_process_raw_upload_expired_report(self, mocker):
         filename = "/Users/path/to/app.coverage.txt"
         uploaded_reports = LegacyParsedRawReport(
-            toc=[],
+            toc=None,
+            env=None,
             report_fixes=None,
             uploaded_files=[
                 ParsedUploadedReportFile(
