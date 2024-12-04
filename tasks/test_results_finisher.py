@@ -141,8 +141,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 self.app.tasks[process_flakes_task_name].apply_async(
                     kwargs=dict(
                         repo_id=repoid,
-                        commit_id_list=[commit.commitid],
-                        branch=repo.branch,
+                        commit_id=commit.commitid,
                     )
                 )
 
