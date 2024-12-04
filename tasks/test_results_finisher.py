@@ -146,10 +146,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     )
                 )
 
-        self.app.tasks[cache_test_rollups_task_name].apply_async(
-            args=None,
-            kwargs=dict(repoid=repoid, branch=commit.branch),
-        )
+        if commit.branch is not None:
+            self.app.tasks[cache_test_rollups_task_name].apply_async(
+                args=None,
+                kwargs=dict(repoid=repoid, branch=commit.branch),
+            )
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
 
