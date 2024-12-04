@@ -805,7 +805,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         assert len(test_instances) == 0
 
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_junit.xml") as f:
+        with open(here.parent.parent / "samples" / "sample_ta_file.xml") as f:
             content = f.read()
             compressed_and_base64_encoded = base64.b64encode(
                 zlib.compress(content.encode("utf-8"))
