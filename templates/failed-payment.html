@@ -1,46 +1,101 @@
 {% extends "base.html" %} {% block main %}
-<h2>Oops! Let's fix this, {{ name }}</h2>
-<div class="error-banner">
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
+<h2
+  style="
+    font-size: 50px;
+    font-weight: 300;
+    line-height: 55px;
+    margin: 0;
+    text-align: center;
+    color: black;
+  "
+>
+  Oops! Let's fix this, {{ name }}
+</h2>
+<p style="text-align: center; font-weight: 400; font-size: 18px; line-height: 27px; color: black">
+  Total: USD
+  <span style="color: rgb(245, 32, 32); font-weight: 700"
+    >${{ amount }}</span
   >
-    <path
-      d="M10 14L12 12M12 12L14 10M12 12L10 10M12 12L14 14M21 12C21 13.1819 20.7672 14.3522 20.3149 15.4442C19.8626 16.5361 19.1997 17.5282 18.364 18.364C17.5282 19.1997 16.5361 19.8626 15.4442 20.3149C14.3522 20.7672 13.1819 21 12 21C10.8181 21 9.64778 20.7672 8.55585 20.3149C7.46392 19.8626 6.47177 19.1997 5.63604 18.364C4.80031 17.5282 4.13738 16.5361 3.68508 15.4442C3.23279 14.3522 3 13.1819 3 12C3 9.61305 3.94821 7.32387 5.63604 5.63604C7.32387 3.94821 9.61305 3 12 3C14.3869 3 16.6761 3.94821 18.364 5.63604C20.0518 7.32387 21 9.61305 21 12Z"
-      stroke="#F52020"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-  <p>
-    Your ${{ amount }} payment to Functional Software, Inc, dba Sentry has
-    failed
+  <b>|</b> {{ date }}
+</p>
+<div>
+  <p
+    id="error-banner"
+    style="
+      background-color: rgb(255, 247, 247);
+      padding: 15px 20px;
+      width: 95%;
+      border-left: solid 3px rgb(245, 32, 32);
+      font-size: 14px;
+      line-height: 21px;
+      font-weight: 400;
+      color: rgb(14, 27, 41);
+    "
+  >
+    Your ${{ amount }} payment to Functional Software, Inc, dba
+    Sentry has failed
   </p>
 </div>
-<p>
-  We were unable to process your {% if card_type %}{{ card_type | capitalize }}{% else %}card{% endif %}{% if last_four %} ending in {{
-  last_four }}{% endif %}. Please take a moment to double check your payment information to
-  ensure your account continues to run smoothly.
+<p
+  style="
+    text-align: center;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 27px;
+    margin: 0;
+    color: black;
+  "
+>
+  We were unable to process your {% if card_type %}{{ card_type |
+  capitalize }}{% else %}card{% endif %}{% if last_four %} ending in
+  {{ last_four }}{% endif %}. Please take a moment to double check
+  your payment information to ensure your account continues to run
+  smoothly.
 </p>
-<a href="{{ cta_link }}" class="primary-cta">Update your billing info</a>
-<div class="card">
-  <h3>Why did the payment fail?</h3>
-  <p>In most cases, a payment might fail due to:</p>
-  <ul>
+<p style="width: 100%; padding: 35px 0px; text-align: center">
+  <a
+    href="{{ cta_link }}"
+    style="
+      background-color: rgb(0, 113, 194);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 24px;
+      padding: 25px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    "
+    >Update your billing info</a
+  >
+</p>
+<div
+  style="
+    background-color: rgb(247, 248, 251);
+    border-radius: 8px;
+    padding: 15px 35px;
+    margin-bottom: 20px;
+  "
+>
+  <h3 style="font-size: 18px; font-weight: 600; line-height: 27px; color: black;">Why did the payment fail?</h3>
+  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black;">In most cases, a payment might fail due to:</p>
+  <ul style="padding-left: 25px; font-weight: 400; font-size: 18px; line-height: 27px; color: black;">
     <li>An expired card</li>
     <li>Insufficient funds</li>
     <li>Requiring additional authentication</li>
   </ul>
-  <p>
+  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black;">
     If you have any questions or need help, please contact us at
-    <a href="mailto:support@codecov.io">support@codecov.io</a>
+    <a
+      href="mailto:support@codecov.io"
+      style="
+        color: rgb(0, 113, 194);
+        text-decoration: none;
+        font-weight: 500;
+      "
+      >support@codecov.io</a
+    >
   </p>
 </div>
-{% endblock %} {% block aside %}
-<p>Total: USD <span class="red-money-text">${{ amount }}</span></p>
-<p>{{ date }}</p>
 {% endblock %}
