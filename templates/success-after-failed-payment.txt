@@ -1,0 +1,7 @@
+Your ${{ amount }} payment to Functional Software, Inc, dba Sentry has been received.
+
+To view your recent payment, click the link below. Thank you for choosing Codecov.
+
+{{ cta_link }}
+
+If you have any questions or need help, please contact us at support@codecov.io

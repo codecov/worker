@@ -1,0 +1,80 @@
+{% extends "base.html" %} {% block main %}
+<h2
+  style="
+    font-size: 50px;
+    font-weight: 300;
+    line-height: 55px;
+    margin: 0;
+    text-align: center;
+  "
+>
+  You're all set!
+</h2>
+<p style="text-align: center; font-weight: 400; font-size: 18px; line-height: 27px; color: black">
+  Total: USD
+  <span style="color: rgb(33, 181, 119); font-weight: 700"
+    >${{ amount }}</span
+  >
+  <b>|</b> {{ date }}
+</p>
+<div>
+  <p
+    id="success-banner"
+    style="
+      background-color: rgb(242, 252, 243);
+      padding: 15px 20px;
+      width: 95%;
+      border-left: solid 3px rgb(66, 159, 73);
+      font-size: 14px;
+      line-height: 21px;
+      font-weight: 400;
+      color: rgb(14, 27, 41);
+    "
+  >
+    Your ${{ amount }} payment to Functional Software, Inc, dba
+    Sentry has been received
+  </p>
+</div>
+<p
+  style="
+    text-align: center;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 27px;
+    margin: 0;
+    color: black;
+  "
+>
+  To view your recent payment, click the link below. Thank you for choosing Codecov.
+</p>
+<p style="width: 100%; padding: 35px 0px; text-align: center">
+  <a
+    href="{{ cta_link }}"
+    style="
+      background-color: rgb(0, 113, 194);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 24px;
+      padding: 25px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    "
+    >View invoice</a
+  >
+</p>
+<p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black; text-align: center;">
+  If you have any questions or need help, please contact us at
+  <a
+    href="mailto:support@codecov.io"
+    style="
+      color: rgb(0, 113, 194);
+      text-decoration: none;
+      font-weight: 500;
+    "
+    >support@codecov.io</a
+  >
+</p>
+{% endblock %}
