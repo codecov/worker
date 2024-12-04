@@ -1,11 +1,11 @@
 import logging
 
+from shared.billing import BillingPlan
 from sqlalchemy.orm import Session
 
 from app import celery_app
 from celery_config import daily_plan_manager_task_name
 from database.models.core import OrganizationLevelToken, Owner
-from services.billing import BillingPlan
 from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)

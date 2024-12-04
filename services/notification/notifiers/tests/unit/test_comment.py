@@ -4,6 +4,7 @@ from typing import List
 from unittest.mock import PropertyMock
 
 import pytest
+from shared.billing import BillingPlan
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import Change, LineSession, ReportLine, ReportTotals
@@ -21,7 +22,6 @@ from database.enums import TestResultsProcessingError
 from database.models.core import Commit, GithubAppInstallation, Pull, Repository
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
-from services.billing import BillingPlan
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.overlays.critical_path import CriticalPathOverlay
 from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
