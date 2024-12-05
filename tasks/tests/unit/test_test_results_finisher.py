@@ -56,10 +56,6 @@ def mock_repo_provider_comments(mocker):
         return_value=m,
     )
     _ = mocker.patch(
-        "services.test_results.get_repo_provider_service",
-        return_value=m,
-    )
-    _ = mocker.patch(
         "tasks.test_results_finisher.get_repo_provider_service",
         return_value=m,
     )
@@ -86,6 +82,7 @@ def test_results_setup(mocker, dbsession):
     dbsession.flush()
 
     repoid = commit.repoid
+    commitid = commit.commitid
 
     current_report_row = CommitReport(
         commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
@@ -106,7 +103,6 @@ def test_results_setup(mocker, dbsession):
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=enriched_pull,
     )
-
     _ = mocker.patch(
         "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
         return_value=enriched_pull,
@@ -185,6 +181,8 @@ def test_results_setup(mocker, dbsession):
             failure_message="This should not be in the comment, it will get overwritten by the last test instance",
             duration_seconds=1.0,
             upload_id=uploads[0].id,
+            repoid=repoid,
+            commitid=commitid,
         ),
         TestInstance(
             test_id=test_id2,
@@ -192,6 +190,8 @@ def test_results_setup(mocker, dbsession):
             failure_message="Shared \n\n\n\n <pre> ````````\n \r\n\r\n | test | test | test </pre>failure message",
             duration_seconds=2.0,
             upload_id=uploads[1].id,
+            repoid=repoid,
+            commitid=commitid,
         ),
         TestInstance(
             test_id=test_id3,
@@ -199,6 +199,8 @@ def test_results_setup(mocker, dbsession):
             failure_message="Shared \n\n\n\n <pre> \n  ````````  \n \r\n\r\n | test | test | test </pre>failure message",
             duration_seconds=3.0,
             upload_id=uploads[2].id,
+            repoid=repoid,
+            commitid=commitid,
         ),
         TestInstance(
             test_id=test_id1,
@@ -206,6 +208,8 @@ def test_results_setup(mocker, dbsession):
             failure_message="<pre>Fourth \r\n\r\n</pre> | test  | instance |",
             duration_seconds=4.0,
             upload_id=uploads[3].id,
+            repoid=repoid,
+            commitid=commitid,
         ),
         TestInstance(
             test_id=test_id4,
@@ -213,6 +217,8 @@ def test_results_setup(mocker, dbsession):
             failure_message=None,
             duration_seconds=5.0,
             upload_id=uploads[3].id,
+            repoid=repoid,
+            commitid=commitid,
         ),
     ]
     for instance in test_instances:
@@ -248,12 +254,18 @@ def test_results_setup_no_instances(mocker, dbsession):
 
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
 
+    enriched_pull = EnrichedPull(
+        database_pull=pull,
+        provider_pull={},
+    )
+
     _ = mocker.patch(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
-        return_value=EnrichedPull(
-            database_pull=pull,
-            provider_pull={},
-        ),
+        return_value=enriched_pull,
+    )
+    _ = mocker.patch(
+        "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+        return_value=enriched_pull,
     )
 
     uploads = [UploadFactory.create() for _ in range(4)]
@@ -364,7 +376,6 @@ class TestUploadTestFinisherTask(object):
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
@@ -501,7 +512,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
@@ -566,7 +576,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
@@ -641,7 +650,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
@@ -689,7 +697,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
@@ -816,7 +823,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
@@ -898,7 +904,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
@@ -994,7 +999,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         test_results_mock_app.tasks[
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
-            args=None,
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
