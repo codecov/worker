@@ -1,5 +1,4 @@
 import datetime as dt
-import zoneinfo
 
 import polars as pl
 import time_machine
@@ -22,9 +21,7 @@ class TestCacheTestRollupsTask:
         return pl.read_ipc(decompressed_table)
 
     def test_cache_test_rollups(self, mock_storage, transactional_db):
-        with time_machine.travel(
-            dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")), tick=False
-        ):
+        with time_machine.travel(dt.datetime.now(dt.timezone.utc), tick=False):
             self.repo = RepositoryFactory()
             self.flag = RepositoryFlagFactory(
                 repository=self.repo,
@@ -54,7 +51,7 @@ class TestCacheTestRollupsTask:
                 branch="main",
                 pass_count=1,
                 date=dt.date.today(),
-                latest_run=dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")),
+                latest_run=dt.datetime.now(dt.timezone.utc),
             )
             r = DailyTestRollupFactory(
                 test=self.test2,
@@ -64,11 +61,9 @@ class TestCacheTestRollupsTask:
                 fail_count=1,
                 date=dt.date.today() - dt.timedelta(days=6),
                 commits_where_fail=["123"],
-                latest_run=dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")),
+                latest_run=dt.datetime.now(dt.timezone.utc),
             )
-            r.created_at = dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")) - dt.timedelta(
-                seconds=1
-            )
+            r.created_at = dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=1)
             r.save()
             _ = DailyTestRollupFactory(
                 test=self.test2,
@@ -78,8 +73,7 @@ class TestCacheTestRollupsTask:
                 fail_count=10,
                 date=dt.date.today() - dt.timedelta(days=29),
                 commits_where_fail=["123", "789"],
-                latest_run=dt.datetime.now(zoneinfo.ZoneInfo(key="UTC"))
-                - dt.timedelta(days=29),
+                latest_run=dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=29),
             )
             _ = DailyTestRollupFactory(
                 test=self.test3,
@@ -89,8 +83,7 @@ class TestCacheTestRollupsTask:
                 fail_count=10,
                 date=dt.date.today() - dt.timedelta(days=50),
                 commits_where_fail=["123", "789"],
-                latest_run=dt.datetime.now(zoneinfo.ZoneInfo(key="UTC"))
-                - dt.timedelta(days=50),
+                latest_run=dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=50),
             )
 
             task = CacheTestRollupsTask()
@@ -116,7 +109,7 @@ class TestCacheTestRollupsTask:
                 "total_flaky_fail_count": [0],
                 "total_pass_count": [1],
                 "total_skip_count": [0],
-                "updated_at": [dt.datetime.now(zoneinfo.ZoneInfo(key="UTC"))],
+                "updated_at": [dt.datetime.now(dt.timezone.utc)],
             }
 
             storage_key = f"test_results/rollups/{self.repo.repoid}/main/7"
@@ -137,8 +130,8 @@ class TestCacheTestRollupsTask:
                 "total_pass_count": [1, 1],
                 "total_skip_count": [0, 0],
                 "updated_at": [
-                    dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")),
-                    dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")),
+                    dt.datetime.now(dt.timezone.utc),
+                    dt.datetime.now(dt.timezone.utc),
                 ],
             }
 
@@ -160,8 +153,8 @@ class TestCacheTestRollupsTask:
                 "total_pass_count": [1, 1],
                 "total_skip_count": [0, 0],
                 "updated_at": [
-                    dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")),
-                    dt.datetime.now(zoneinfo.ZoneInfo(key="UTC")),
+                    dt.datetime.now(dt.timezone.utc),
+                    dt.datetime.now(dt.timezone.utc),
                 ],
             }
 
@@ -176,8 +169,7 @@ class TestCacheTestRollupsTask:
                 "failure_rate": [1.0],
                 "flake_rate": [0.0],
                 "updated_at": [
-                    dt.datetime.now(zoneinfo.ZoneInfo(key="UTC"))
-                    - dt.timedelta(days=50)
+                    dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=50)
                 ],
                 "avg_duration": [0.0],
                 "total_fail_count": [10],
