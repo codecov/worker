@@ -102,10 +102,7 @@ class TestCommitStatusMessage:
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
-        mocker.patch(
-            "services.bundle_analysis.comparison.get_appropriate_storage_service",
-            return_value=mock_storage,
-        )
+
         context = builder.build_context().get_result()
         message = CommitStatusMessageStrategy().build_message(context)
         assert message == expected
@@ -157,10 +154,7 @@ class TestCommitStatusMessage:
         builder = CommitStatusNotificationContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
-        mocker.patch(
-            "services.bundle_analysis.comparison.get_appropriate_storage_service",
-            return_value=mock_storage,
-        )
+
         context = builder.build_context().get_result()
         message = CommitStatusMessageStrategy().build_message(context)
         assert message == expected
@@ -178,10 +172,7 @@ class TestCommitStatusMessage:
             "services.bundle_analysis.notify.contexts.get_repo_provider_service",
             return_value=fake_repo_provider,
         )
-        mocker.patch(
-            "services.bundle_analysis.comparison.get_appropriate_storage_service",
-            return_value=mock_storage,
-        )
+
         head_commit, base_commit = get_commit_pair(dbsession)
         head_commit.parent_commit_id = base_commit.commitid
         dbsession.add_all([head_commit, base_commit])

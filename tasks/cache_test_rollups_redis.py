@@ -1,5 +1,6 @@
 import datetime as dt
 
+import shared.storage
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_redis_task_name
 from shared.storage.exceptions import FileNotInStorageError
@@ -7,7 +8,6 @@ from shared.storage.exceptions import FileNotInStorageError
 from app import celery_app
 from django_scaffold import settings
 from services.redis import get_redis_connection
-from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
 
@@ -28,7 +28,7 @@ class CacheTestRollupsRedisTask(
             return {"in_progress": True}
 
     def run_impl_within_lock(self, repoid, branch) -> None:
-        storage_service = get_storage_client()
+        storage_service = shared.storage.get_appropriate_storage_service(repoid)
         redis_conn = get_redis_connection()
 
         for interval_start, interval_end in [

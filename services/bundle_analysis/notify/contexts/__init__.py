@@ -3,6 +3,7 @@ from functools import cached_property
 from typing import Generic, Literal, Self, TypeVar
 
 import sentry_sdk
+import shared.storage
 from shared.bundle_analysis import BundleAnalysisReport, BundleAnalysisReportLoader
 from shared.torngit.base import TorngitBaseAdapter
 from shared.validation.types import BundleThreshold
@@ -18,7 +19,6 @@ from services.bundle_analysis.notify.types import (
     NotificationUserConfig,
 )
 from services.repository import get_repo_provider_service
-from services.storage import get_storage_client
 
 T = TypeVar("T")
 
@@ -167,7 +167,9 @@ class NotificationContextBuilder:
         repo_hash = ArchiveService.get_archive_hash(
             self._notification_context.repository
         )
-        storage_service = get_storage_client()
+        storage_service = shared.storage.get_appropriate_storage_service(
+            self._notification_context.repository.repoid
+        )
         analysis_report_loader = BundleAnalysisReportLoader(storage_service, repo_hash)
         bundle_analysis_report = analysis_report_loader.load(
             self._notification_context.commit_report.external_id

@@ -1,9 +1,9 @@
 import polars as pl
+import shared.storage
 from shared.django_apps.core.tests.factories import RepositoryFactory
 from shared.storage.exceptions import BucketAlreadyExistsError
 
 from services.redis import get_redis_connection
-from services.storage import get_storage_client
 from tasks.cache_test_rollups_redis import CacheTestRollupsRedisTask
 
 
@@ -16,7 +16,7 @@ class TestCacheTestRollupsTask:
         repo = RepositoryFactory()
 
         redis = get_redis_connection()
-        storage_service = get_storage_client()
+        storage_service = shared.storage.get_appropriate_storage_service()
         storage_key = f"test_results/rollups/{repo.repoid}/main/1"
         try:
             storage_service.create_root_storage("codecov")

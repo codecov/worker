@@ -270,10 +270,10 @@ def mock_redis(mocker):
 
 @pytest.fixture
 def mock_storage(mocker):
-    m = mocker.patch("services.storage._cached_get_storage_client")
+    m = mocker.patch("shared.storage.get_appropriate_storage_service")
     storage_server = MemoryStorageService({})
     m.return_value = storage_server
-    yield storage_server
+    return storage_server
 
 
 @pytest.fixture

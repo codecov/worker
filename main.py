@@ -5,6 +5,7 @@ import sys
 import typing
 
 import click
+import shared.storage
 from celery.signals import worker_process_shutdown
 from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
 from shared.celery_config import BaseCeleryConfig
@@ -16,7 +17,6 @@ from shared.storage.exceptions import BucketAlreadyExistsError
 import app
 from helpers.environment import get_external_dependencies_folder
 from helpers.version import get_current_version
-from services.storage import get_storage_client
 
 log = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ def setup_worker():
 
     start_prometheus(9996, registry=registry)  # 9996 is an arbitrary port number
 
-    storage_client = get_storage_client()
+    storage_client = shared.storage.get_appropriate_storage_service()
     minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")
     auto_create_bucket = get_config(

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import sentry_sdk
+import shared.storage
 from shared.bundle_analysis import BundleAnalysisReport, BundleAnalysisReportLoader
 from shared.bundle_analysis.models import AssetType, MetadataKey
 from shared.bundle_analysis.storage import get_bucket_name
@@ -25,7 +26,6 @@ from database.models.reports import CommitReport, Upload, UploadError
 from database.models.timeseries import Measurement, MeasurementName
 from services.archive import ArchiveService
 from services.report import BaseReportService
-from services.storage import get_storage_client
 from services.timeseries import repository_datasets_query
 
 log = logging.getLogger(__name__)
@@ -234,7 +234,7 @@ class BundleAnalysisReportService(BaseReportService):
         """
         commit_report: CommitReport = upload.report
         repo_hash = ArchiveService.get_archive_hash(commit_report.commit.repository)
-        storage_service = get_storage_client()
+        storage_service = shared.storage.get_appropriate_storage_service(commit.repoid)
         bundle_loader = BundleAnalysisReportLoader(storage_service, repo_hash)
 
         # fetch existing bundle report from storage
@@ -383,7 +383,9 @@ class BundleAnalysisReportService(BaseReportService):
         try:
             commit_report: CommitReport = upload.report
             repo_hash = ArchiveService.get_archive_hash(commit_report.commit.repository)
-            storage_service = get_storage_client()
+            storage_service = shared.storage.get_appropriate_storage_service(
+                commit.repoid
+            )
             bundle_loader = BundleAnalysisReportLoader(storage_service, repo_hash)
 
             # fetch existing bundle report from storage
