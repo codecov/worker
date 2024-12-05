@@ -404,9 +404,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                     )
 
                 if db_session.query(Test).filter(Test.repoid == repoid).count() > 0:
-                    self.trigger_process_flakes(
-                        repository, pull.head, pull_dict["head"]["branch"], current_yaml
-                    )
+                    self.trigger_process_flakes(repository, pull.head, current_yaml)
 
             # set the rest of the commits to deleted (do not show in the UI)
             deleted_count = (
@@ -530,15 +528,12 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         self,
         repository: Repository,
         pull_head: str,
-        branch: str,
         current_yaml: UserYaml,
     ):
         # but only if flake processing is enabled for this repo
         if should_do_flaky_detection(repository, current_yaml):
             self.app.tasks[process_flakes_task_name].apply_async(
-                kwargs=dict(
-                    repo_id=repository.repoid, commit_id_list=[pull_head], branch=branch
-                )
+                kwargs=dict(repo_id=repository.repoid, commit_id=pull_head)
             )
 
     def trigger_ai_pr_review(self, enriched_pull: EnrichedPull, current_yaml: UserYaml):
