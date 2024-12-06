@@ -2,7 +2,7 @@ from textwrap import dedent
 from unittest.mock import PropertyMock
 
 import pytest
-from shared.bundle_analysis.comparison import BundleChange
+from shared.bundle_analysis.comparison import BundleChange, RouteChange
 from shared.bundle_analysis.models import AssetType
 from shared.bundle_analysis.storage import get_bucket_name
 from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
@@ -58,7 +58,7 @@ def hook_mock_pull(mocker, mock_pull):
 
 
 @pytest.mark.parametrize(
-    "bundle_changes, percent_change, user_config, expected_message",
+    "bundle_changes, bundle_routes_changes, percent_change, user_config, expected_message",
     [
         pytest.param(
             [
@@ -81,6 +81,7 @@ def hook_mock_pull(mocker, mock_pull):
                     percentage_delta=-1.23,
                 ),
             ],
+            {},
             5.56,
             {
                 **PATCH_CENTRIC_DEFAULT_CONFIG,
@@ -98,7 +99,8 @@ def hook_mock_pull(mocker, mock_pull):
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::warning: |
             | changed-bundle | 123.46kB | 3.46kB (0.35%) :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB (-1.23%) :arrow_down: |"""),
+            | removed-bundle | (removed) | 1.23kB (-1.23%) :arrow_down: |
+            """),
             id="comment_increase_size_warning",
         ),
         pytest.param(
@@ -122,6 +124,7 @@ def hook_mock_pull(mocker, mock_pull):
                     percentage_delta=-100.0,
                 ),
             ],
+            {},
             5.56,
             {
                 **PATCH_CENTRIC_DEFAULT_CONFIG,
@@ -139,7 +142,8 @@ def hook_mock_pull(mocker, mock_pull):
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::x: |
             | changed-bundle | 123.46kB | 3.46kB (2.56%) :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB (-100.0%) :arrow_down: |"""),
+            | removed-bundle | (removed) | 1.23kB (-100.0%) :arrow_down: |
+            """),
             id="comment_increase_size_error",
         ),
         pytest.param(
@@ -163,6 +167,7 @@ def hook_mock_pull(mocker, mock_pull):
                     percentage_delta=2.56,
                 ),
             ],
+            {},
             3.46,
             {
                 **PATCH_CENTRIC_DEFAULT_CONFIG,
@@ -187,7 +192,8 @@ def hook_mock_pull(mocker, mock_pull):
             </details>
 
             ℹ️ *Bundle size includes cached data from a previous commit
-        """),
+
+            """),
             id="comment_increase_size_cached_values",
         ),
         pytest.param(
@@ -199,6 +205,7 @@ def hook_mock_pull(mocker, mock_pull):
                     percentage_delta=-2.56,
                 ),
             ],
+            {},
             -0.52,
             {
                 **PATCH_CENTRIC_DEFAULT_CONFIG,
@@ -218,7 +225,8 @@ def hook_mock_pull(mocker, mock_pull):
             | ----------- | ---- | ------ |
             | test-bundle | 123.46kB | 3.46kB (-2.56%) :arrow_down: |
 
-            </details>"""),
+            </details>
+            """),
             id="comment_decrease_size",
         ),
         pytest.param(
@@ -230,6 +238,7 @@ def hook_mock_pull(mocker, mock_pull):
                     percentage_delta=0.0,
                 ),
             ],
+            {},
             0,
             {
                 **PATCH_CENTRIC_DEFAULT_CONFIG,
@@ -243,13 +252,134 @@ def hook_mock_pull(mocker, mock_pull):
 
             Bundle size has no change :white_check_mark:
 
+
         """),
             id="comment_no_change",
+        ),
+        pytest.param(
+            [
+                BundleChange(
+                    bundle_name="added-bundle",
+                    change_type=BundleChange.ChangeType.ADDED,
+                    size_delta=12345,
+                    percentage_delta=5.56,
+                ),
+                BundleChange(
+                    bundle_name="changed-bundle",
+                    change_type=BundleChange.ChangeType.CHANGED,
+                    size_delta=3456,
+                    percentage_delta=0.35,
+                ),
+                BundleChange(
+                    bundle_name="removed-bundle",
+                    change_type=BundleChange.ChangeType.REMOVED,
+                    size_delta=-1234,
+                    percentage_delta=-1.23,
+                ),
+            ],
+            {
+                "BundleA": [
+                    RouteChange(
+                        route_name="/users",
+                        change_type=RouteChange.ChangeType.ADDED,
+                        size_delta=1000,
+                        size_base=0,
+                        size_head=1000,
+                        percentage_delta=100,
+                    ),
+                    RouteChange(
+                        route_name="/faq",
+                        change_type=RouteChange.ChangeType.REMOVED,
+                        size_delta=-5000,
+                        size_base=5000,
+                        size_head=0,
+                        percentage_delta=-100.0,
+                    ),
+                    RouteChange(
+                        route_name="/careers",
+                        change_type=RouteChange.ChangeType.CHANGED,
+                        size_delta=10000,
+                        size_base=20000,
+                        size_head=30000,
+                        percentage_delta=50.0,
+                    ),
+                ],
+                "BundleB": [
+                    RouteChange(
+                        route_name="/users",
+                        change_type=RouteChange.ChangeType.ADDED,
+                        size_delta=1000,
+                        size_base=0,
+                        size_head=1000,
+                        percentage_delta=100,
+                    ),
+                    RouteChange(
+                        route_name="/faq",
+                        change_type=RouteChange.ChangeType.REMOVED,
+                        size_delta=-5000,
+                        size_base=5000,
+                        size_head=0,
+                        percentage_delta=-100.0,
+                    ),
+                    RouteChange(
+                        route_name="/about-us",
+                        change_type=RouteChange.ChangeType.CHANGED,
+                        size_delta=10000,
+                        size_base=20000,
+                        size_head=30000,
+                        percentage_delta=50.0,
+                    ),
+                ],
+            },
+            5.56,
+            {
+                **PATCH_CENTRIC_DEFAULT_CONFIG,
+                "bundle_analysis": {
+                    "status": "informational",
+                    "warning_threshold": ["percentage", 5.0],
+                },
+            },
+            dedent("""\
+            ## [Bundle](URL) Report
+
+            Changes will increase total bundle size by 14.57kB (5.56%) :arrow_up::warning:, exceeding the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold of 5%.
+
+            | Bundle name | Size | Change |
+            | ----------- | ---- | ------ |
+            | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::warning: |
+            | changed-bundle | 123.46kB | 3.46kB (0.35%) :arrow_up: |
+            | removed-bundle | (removed) | 1.23kB (-1.23%) :arrow_down: |
+
+            <details>
+              <summary>View changes by path for bundle: BundleA</summary>
+
+            | File path | Size | Change |
+            | --------- | ---- | ------ |
+            | /users | 1.0kB | 1.0kB (100%) :arrow_up: |
+            | /faq | (removed) | 5.0kB (-100.0%) :arrow_down: |
+            | /careers | 30.0kB | 10.0kB (50.0%) :arrow_up: |
+
+            </details>
+
+            <details>
+              <summary>View changes by path for bundle: BundleB</summary>
+
+            | File path | Size | Change |
+            | --------- | ---- | ------ |
+            | /users | 1.0kB | 1.0kB (100%) :arrow_up: |
+            | /faq | (removed) | 5.0kB (-100.0%) :arrow_down: |
+            | /about-us | 30.0kB | 10.0kB (50.0%) :arrow_up: |
+
+            </details>
+
+            """),
+            id="comparison_by_file_path",
         ),
     ],
 )
 def test_bundle_analysis_notify(
     bundle_changes: list[BundleChange],
+    bundle_routes_changes: dict[str, list[RouteChange]],
     percent_change: float,
     user_config: dict,
     expected_message: str,
@@ -301,6 +431,10 @@ def test_bundle_analysis_notify(
     mocker.patch(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_changes",
         return_value=bundle_changes,
+    )
+    mocker.patch(
+        "shared.bundle_analysis.comparison.BundleAnalysisComparison.bundle_routes_changes",
+        return_value=bundle_routes_changes,
     )
     mock_percentage = mocker.patch(
         "shared.bundle_analysis.comparison.BundleAnalysisComparison.percentage_delta",
