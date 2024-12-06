@@ -135,10 +135,6 @@ class TestCreateContextForNotification:
         enriched_pull = get_enriched_pull_setting_up_mocks(
             dbsession, mocker, (head_commit, base_commit)
         )
-        mocker.patch(
-            "services.bundle_analysis.comparison.get_appropriate_storage_service",
-            return_value=mock_storage,
-        )
         service = BundleAnalysisNotifyService(head_commit, current_yaml)
         result = service.create_context_for_notification(
             BaseBundleAnalysisNotificationContext(

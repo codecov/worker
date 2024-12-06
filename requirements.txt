@@ -328,7 +328,7 @@ sentry-sdk==2.13.0
     #   shared
 setuptools==75.6.0
     # via nodeenv
-shared @ https://github.com/codecov/shared/archive/45252f75524c38172b991a960bac964ec7b6f7d1.tar.gz#egg=shared
+shared @ https://github.com/codecov/shared/archive/8c5de3fadd3c987304043c6cfd64864f372d674f.tar.gz#egg=shared
     # via -r requirements.in
 six==1.16.0
     # via
@@ -399,4 +399,6 @@ wrapt==1.16.0
 yarl==1.9.4
     # via vcrpy
 zstandard==0.23.0
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   shared

@@ -1,6 +1,7 @@
 import datetime as dt
 
 import polars as pl
+import shared.storage
 from django.db import DatabaseError, connections, transaction
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
@@ -10,7 +11,6 @@ from shared.django_apps.reports.models import LastCacheRollupDate
 from app import celery_app
 from django_scaffold import settings
 from services.redis import get_redis_connection
-from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
 
 # Reminder: `a BETWEEN x AND y` is equivalent to `a >= x AND a <= y`
@@ -140,7 +140,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
             return {"in_progress": True}
 
     def run_impl_within_lock(self, repoid: int, branch: str):
-        storage_service = get_storage_client()
+        storage_service = shared.storage.get_appropriate_storage_service(repoid)
 
         if get_config("setup", "database", "read_replica_enabled", default=False):
             connection = connections["default_read"]

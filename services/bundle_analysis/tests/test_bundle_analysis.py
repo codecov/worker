@@ -63,20 +63,20 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "added-bundle",
-                    BundleChange.ChangeType.ADDED,
+                    bundle_name="added-bundle",
+                    change_type=BundleChange.ChangeType.ADDED,
                     size_delta=12345,
                     percentage_delta=5.56,
                 ),
                 BundleChange(
-                    "changed-bundle",
-                    BundleChange.ChangeType.CHANGED,
+                    bundle_name="changed-bundle",
+                    change_type=BundleChange.ChangeType.CHANGED,
                     size_delta=3456,
                     percentage_delta=0.35,
                 ),
                 BundleChange(
-                    "removed-bundle",
-                    BundleChange.ChangeType.REMOVED,
+                    bundle_name="removed-bundle",
+                    change_type=BundleChange.ChangeType.REMOVED,
                     size_delta=-1234,
                     percentage_delta=-1.23,
                 ),
@@ -104,20 +104,20 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "added-bundle",
-                    BundleChange.ChangeType.ADDED,
+                    bundle_name="added-bundle",
+                    change_type=BundleChange.ChangeType.ADDED,
                     size_delta=12345,
                     percentage_delta=5.56,
                 ),
                 BundleChange(
-                    "changed-bundle",
-                    BundleChange.ChangeType.CHANGED,
+                    bundle_name="changed-bundle",
+                    change_type=BundleChange.ChangeType.CHANGED,
                     size_delta=3456,
                     percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "removed-bundle",
-                    BundleChange.ChangeType.REMOVED,
+                    bundle_name="removed-bundle",
+                    change_type=BundleChange.ChangeType.REMOVED,
                     size_delta=-1234,
                     percentage_delta=-100.0,
                 ),
@@ -145,20 +145,20 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "added-bundle",
-                    BundleChange.ChangeType.ADDED,
+                    bundle_name="added-bundle",
+                    change_type=BundleChange.ChangeType.ADDED,
                     size_delta=12345,
                     percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "cached-bundle",
-                    BundleChange.ChangeType.CHANGED,
+                    bundle_name="cached-bundle",
+                    change_type=BundleChange.ChangeType.CHANGED,
                     size_delta=3456,
                     percentage_delta=2.56,
                 ),
                 BundleChange(
-                    "removed-bundle",
-                    BundleChange.ChangeType.REMOVED,
+                    bundle_name="removed-bundle",
+                    change_type=BundleChange.ChangeType.REMOVED,
                     size_delta=-1234,
                     percentage_delta=2.56,
                 ),
@@ -177,13 +177,13 @@ def hook_mock_pull(mocker, mock_pull):
             Changes will increase total bundle size by 14.57kB (3.46%) :arrow_up:. This is within the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold :white_check_mark:
 
             <details><summary>Detailed changes</summary>
-                   
+
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB (2.56%) :arrow_up: |
             | cached-bundle* | 123.46kB | 3.46kB (2.56%) :arrow_up: |
             | removed-bundle | (removed) | 1.23kB (2.56%) :arrow_down: |
-                   
+
             </details>
 
             ℹ️ *Bundle size includes cached data from a previous commit
@@ -193,8 +193,8 @@ def hook_mock_pull(mocker, mock_pull):
         pytest.param(
             [
                 BundleChange(
-                    "test-bundle",
-                    BundleChange.ChangeType.CHANGED,
+                    bundle_name="test-bundle",
+                    change_type=BundleChange.ChangeType.CHANGED,
                     size_delta=-3456,
                     percentage_delta=-2.56,
                 ),
@@ -213,19 +213,19 @@ def hook_mock_pull(mocker, mock_pull):
             Changes will decrease total bundle size by 3.46kB (-0.52%) :arrow_down:. This is within the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold :white_check_mark:
 
             <details><summary>Detailed changes</summary>
-            
+
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
             | test-bundle | 123.46kB | 3.46kB (-2.56%) :arrow_down: |
-            
+
             </details>"""),
             id="comment_decrease_size",
         ),
         pytest.param(
             [
                 BundleChange(
-                    "test-bundle",
-                    BundleChange.ChangeType.CHANGED,
+                    bundle_name="test-bundle",
+                    change_type=BundleChange.ChangeType.CHANGED,
                     size_delta=0,
                     percentage_delta=0.0,
                 ),
@@ -296,10 +296,6 @@ def test_bundle_analysis_notify(
         "test-content",
     )
 
-    mocker.patch(
-        "services.bundle_analysis.comparison.get_appropriate_storage_service",
-        return_value=mock_storage,
-    )
     mocker.patch("shared.bundle_analysis.report.BundleAnalysisReport._setup")
 
     mocker.patch(
