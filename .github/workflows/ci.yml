@@ -44,7 +44,7 @@ jobs:
   test:
     name: Test
     needs: [build]
-    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.26
+    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@b890ad6c38e095afa44cc6ddef954c06da939b9a
 
     secrets: inherit
     with:
