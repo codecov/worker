@@ -5,7 +5,9 @@ from typing import List
 
 from shared.reports.resources import Report
 
+from database.models import Repository
 from helpers.reports import get_totals_from_file_in_reports
+from rollouts import SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG
 from services.comparison import ComparisonProxy
 from services.notification.notifiers.mixins.message.helpers import (
     ellipsis,
@@ -138,7 +140,7 @@ class TeamPlanWriter:
 
         return lines
 
-    def footer_lines(self) -> List[str]:
+    def footer_lines(self, comparison: ComparisonProxy) -> List[str]:
         lines = []
         lines.append("")
         lines.append(
@@ -146,5 +148,13 @@ class TeamPlanWriter:
                 "https://github.com/codecov/feedback/issues/255"
             )
         )
-
+        # CAN BE REMOVED AFTER January 31st 2025
+        # Will only be shown to orgs specified in the feature flag override.
+        repo: Repository = comparison.head.commit.repository
+        if SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG.check_value(
+            identifier=repo.repoid, default=False
+        ):
+            lines.append(
+                ":warning: Impact Analysis from Codecov is deprecated and will be sunset on Jan 31 2025. [See more](https://docs.codecov.com/docs/impact-analysis)"
+            )
         return lines
