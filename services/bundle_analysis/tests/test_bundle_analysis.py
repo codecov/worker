@@ -303,6 +303,14 @@ def hook_mock_pull(mocker, mock_pull):
                         size_head=30000,
                         percentage_delta=50.0,
                     ),
+                    RouteChange(
+                        route_name="/no-change",
+                        change_type=RouteChange.ChangeType.CHANGED,
+                        size_delta=0,
+                        size_base=999999,
+                        size_head=999999,
+                        percentage_delta=0,
+                    ),
                 ],
                 "BundleB": [
                     RouteChange(
