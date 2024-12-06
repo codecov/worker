@@ -296,10 +296,6 @@ class TestResultsNotifier(BaseNotifier):
     def error_comment(self):
         pull = self.get_pull()
         if pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(commitid=self.commit.commitid),
-            )
             return False, "no_pull"
 
         message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
@@ -313,10 +309,6 @@ class TestResultsNotifier(BaseNotifier):
     def upgrade_comment(self):
         pull = self.get_pull()
         if pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(commitid=self.commit.commitid),
-            )
             return False, "no_pull"
 
         db_pull = pull.database_pull

@@ -149,11 +149,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             db_session.add(totals)
             db_session.flush()
 
-        repo_service = get_repo_provider_service(repo)
-        pull = async_to_sync(fetch_and_update_pull_request_information_from_commit)(
-            repo_service, commit, commit_yaml
-        )
-
         if self.check_if_no_success(previous_result):
             # every processor errored, nothing to notify on
             queue_notify = False
@@ -161,9 +156,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             # if error is None this whole process should be a noop
             if totals.error is not None:
                 # make an attempt to make test results comment
-                notifier = TestResultsNotifier(
-                    commit, commit_yaml, _pull=pull, _repo_service=repo_service
-                )
+                notifier = TestResultsNotifier(commit, commit_yaml)
                 success, reason = notifier.error_comment()
 
                 # also make attempt to make coverage comment
@@ -237,6 +230,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "queue_notify": True,
             }
 
+        repo_service = get_repo_provider_service(repo)
+        pull = async_to_sync(fetch_and_update_pull_request_information_from_commit)(
+            repo_service, commit, commit_yaml
+        )
+
         if pull is not None:
             activate_seat_info = determine_seat_activation(pull)
 
@@ -283,7 +281,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             flaky_tests = self.get_flaky_tests(db_session, repoid, failures)
 
         failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
-
         payload = TestResultsNotificationPayload(
             failed_tests, passed_tests, skipped_tests, failures, flaky_tests
         )
@@ -291,13 +288,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             commit, commit_yaml, payload=payload, _pull=pull, _repo_service=repo_service
         )
         notifier_result = notifier.notify()
+        success = True if notifier_result is NotifierResult.COMMENT_POSTED else False
         TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
-
-        match notifier_result:
-            case NotifierResult.COMMENT_POSTED:
-                success = True
-            case _:
-                success = False
 
         if len(flaky_tests):
             log.info(
