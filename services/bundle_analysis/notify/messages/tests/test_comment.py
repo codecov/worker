@@ -66,7 +66,8 @@ class TestCommentMesage:
                 | @codecov/bundler-plugin-core-cjs | 43.32kB | 611 bytes (1.43%) :arrow_up: |
                 | @codecov/example-next-app-server-cjs | (removed) | 342.32kB (-100.0%) :arrow_down: |
 
-                </details>""").format(
+                </details>
+                """).format(
             pullid=enriched_pull.database_pull.pullid,
             owner=head_commit.repository.owner.username,
             repo=head_commit.repository.name,
