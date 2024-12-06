@@ -212,7 +212,11 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
             rows = []
             for route_change in route_changes:
                 change_size, icon = route_change.size_delta, ""
-                size = "(removed)" if route_change.change_type == RouteChange.ChangeType.REMOVED else bytes_readable(route_change.size_head)
+                size = (
+                    "(removed)"
+                    if route_change.change_type == RouteChange.ChangeType.REMOVED
+                    else bytes_readable(route_change.size_head)
+                )
 
                 if change_size == 0:
                     # Don't include bundles that were not changes in the table
