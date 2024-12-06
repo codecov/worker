@@ -678,6 +678,17 @@ class ReportService(BaseReportService):
             result.error = ProcessingError(code=UploadErrorCode.REPORT_EMPTY, params={})
             raw_report_info.error = result.error
             return result
+        except SoftTimeLimitExceeded as e:
+            sentry_sdk.capture_exception(e)
+            log.warning(
+                "Timed out while processing report", extra=dict(reportid=reportid)
+            )
+            result.error = ProcessingError(
+                code=UploadErrorCode.PROCESSING_TIMEOUT, params={}
+            )
+            raw_report_info.error = result.error
+            # Return and attempt to save the error result rather than re-raise
+            return result
         except Exception as e:
             sentry_sdk.capture_exception(e)
             log.exception(
