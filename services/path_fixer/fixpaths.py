@@ -115,7 +115,6 @@ def clean_toc(toc: str) -> list[str]:
             continue
 
         # This path is good; save it.
-        if path:
-            rv.append(path)
+        rv.append(path)
 
     return rv

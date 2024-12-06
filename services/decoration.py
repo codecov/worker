@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 
+from shared.billing import is_pr_billing_plan
 from shared.config import get_config
 from shared.plan.service import PlanService
 from shared.upload.utils import query_monthly_coverage_measurements
@@ -8,7 +9,6 @@ from sqlalchemy import func
 
 from database.enums import Decoration
 from database.models import Owner
-from services.billing import is_pr_billing_plan
 from services.license import requires_license
 from services.repository import EnrichedPull
 

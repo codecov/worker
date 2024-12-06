@@ -3,7 +3,6 @@ from io import BytesIO
 
 import sentry_sdk
 
-from services.path_fixer.fixpaths import clean_toc
 from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedReportFile
 
 
@@ -68,6 +67,7 @@ class LegacyReportParser(object):
 
         This function takes the proper steps to find all the relevant sections of a report:
             - toc: the 'network', list of files present on this report
+            - env: the envvars the user set on the upload
             - uploaded_files: the actual report files
             - report_fixes: the report fixes some languages need
 
@@ -99,8 +99,8 @@ class LegacyReportParser(object):
                     while i_start < i_end and raw_report[i_start] in whitespaces:
                         i_start += 1
                 yield {
-                    "filename": filename,
                     "contents": raw_report[i_start:i_end],
+                    "filename": filename,
                     "footer": separator,
                 }
 
@@ -110,27 +110,32 @@ class LegacyReportParser(object):
             self.ignore_from_now_on_marker
         )
         sections = self.cut_sections(raw_report)
-        return self._generate_parsed_report_from_sections(sections)
+        res = self._generate_parsed_report_from_sections(sections)
+        return res
 
     def _generate_parsed_report_from_sections(self, sections):
         uploaded_files = []
-        toc = None
-        report_fixes = None
+        toc_section = None
+        env_section = None
+        report_fixes_section = None
         for sect in sections:
             if sect["footer"] == self.network_separator:
-                toc = clean_toc(sect["contents"].decode(errors="replace").strip())
+                toc_section = sect["contents"]
             elif sect["footer"] == self.env_separator:
-                pass
-            elif sect["filename"] == "fixes":
-                report_fixes = sect["contents"]
+                env_section = sect["contents"]
             else:
-                file = ParsedUploadedReportFile(
-                    filename=sect["filename"], file_contents=sect["contents"]
-                )
-                uploaded_files.append(file)
-
+                if sect["filename"] == "fixes":
+                    report_fixes_section = sect["contents"]
+                else:
+                    uploaded_files.append(
+                        ParsedUploadedReportFile(
+                            filename=sect.get("filename"),
+                            file_contents=sect["contents"],
+                        )
+                    )
         return LegacyParsedRawReport(
-            toc=toc or [],
+            toc=toc_section,
+            env=env_section,
             uploaded_files=uploaded_files,
-            report_fixes=report_fixes,
+            report_fixes=report_fixes_section,
         )

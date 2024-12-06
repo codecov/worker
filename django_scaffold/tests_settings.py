@@ -24,3 +24,4 @@ TEMPLATES = [
 ]
 
 DATABASES["default"]["TEST"] = {"NAME": "test_postgres_django"}
+IS_ENTERPRISE = False

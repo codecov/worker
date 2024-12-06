@@ -13,6 +13,7 @@ if "timeseries" in DATABASES:
     DATABASES["timeseries"]["AUTOCOMMIT"] = False
 
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
+IS_ENTERPRISE = os.getenv("RUN_ENV") == "ENTERPRISE"
 
 GCS_BUCKET_NAME = get_config("services", "minio", "bucket", default="codecov")
 
