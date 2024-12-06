@@ -16,7 +16,7 @@ class TestCacheTestRollupsTask:
         repo = RepositoryFactory()
 
         redis = get_redis_connection()
-        storage_service = shared.storage.get_appropriate_storage_service()
+        storage_service = shared.storage.get_appropriate_storage_service(repo.repoid)
         storage_key = f"test_results/rollups/{repo.repoid}/main/1"
         try:
             storage_service.create_root_storage("codecov")

@@ -69,6 +69,8 @@ def setup_worker():
 
     start_prometheus(9996, registry=registry)  # 9996 is an arbitrary port number
 
+    # this storage client is only used to create the bucket so it doesn't need to be
+    # aware of the repoid
     storage_client = shared.storage.get_appropriate_storage_service()
     minio_config = get_config("services", "minio")
     bucket_name = get_config("services", "minio", "bucket", default="archive")

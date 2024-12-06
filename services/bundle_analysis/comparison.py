@@ -69,7 +69,9 @@ class ComparisonLoader:
 
     def get_comparison(self) -> BundleAnalysisComparison:
         loader = BundleAnalysisReportLoader(
-            storage_service=shared.storage.get_appropriate_storage_service(),
+            storage_service=shared.storage.get_appropriate_storage_service(
+                self.repository.repoid
+            ),
             repo_key=ArchiveService.get_archive_hash(self.repository),
         )
 
