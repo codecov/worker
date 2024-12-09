@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from typing import Literal
 
 from asgiref.sync import async_to_sync
 from shared.torngit.base import TorngitBaseAdapter
@@ -27,16 +28,22 @@ class NotifierResult(Enum):
 class BaseNotifier:
     commit: Commit
     commit_yaml: UserYaml | None
-    _pull: EnrichedPull | None = None
+    _pull: EnrichedPull | None | Literal[False] = False
     _repo_service: TorngitBaseAdapter | None = None
 
-    def get_pull(self):
+    def get_pull(self, do_log=True) -> EnrichedPull | None:
         repo_service = self.get_repo_service()
 
-        if self._pull is None:
+        if self._pull is False:
             self._pull = async_to_sync(
                 fetch_and_update_pull_request_information_from_commit
             )(repo_service, self.commit, self.commit_yaml)
+
+        if self._pull is None and do_log:
+            log.info(
+                "Not notifying since there is no pull request associated with this commit",
+                extra=dict(commitid=self.commit.commitid),
+            )
 
         return self._pull
 
@@ -46,7 +53,7 @@ class BaseNotifier:
 
         return self._repo_service
 
-    def send_to_provider(self, pull, message):
+    def send_to_provider(self, pull: EnrichedPull, message: str) -> bool:
         repo_service = self.get_repo_service()
         assert repo_service
 
@@ -75,12 +82,6 @@ class BaseNotifier:
     def notify(self) -> NotifierResult:
         pull = self.get_pull()
         if pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                ),
-            )
             return NotifierResult.NO_PULL
 
         message = self.build_message()

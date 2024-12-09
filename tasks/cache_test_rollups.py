@@ -1,7 +1,8 @@
 import datetime as dt
 
 import polars as pl
-from django.db import connections
+import shared.storage
+from django.db import DatabaseError, connections, transaction
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
 from shared.config import get_config
@@ -10,8 +11,20 @@ from shared.django_apps.reports.models import LastCacheRollupDate
 from app import celery_app
 from django_scaffold import settings
 from services.redis import get_redis_connection
-from services.storage import get_storage_client
 from tasks.base import BaseCodecovTask
+
+# Reminder: `a BETWEEN x AND y` is equivalent to `a >= x AND a <= y`
+# Since we are working with calendar days, using a range of `0..0` gives us *today*,
+# and a range of `1..1` gives use *yesterday*.
+BASE_SUBQUERY = """
+SELECT *
+FROM reports_dailytestrollups
+WHERE repoid = %(repoid)s
+  AND branch = %(branch)s
+  AND date BETWEEN
+    (CURRENT_DATE - INTERVAL %(interval_start)s) AND
+    (CURRENT_DATE - INTERVAL %(interval_end)s)
+"""
 
 TEST_AGGREGATION_SUBQUERY = """
 SELECT test_id,
@@ -67,20 +80,9 @@ WHERE rt.repoid = %(repoid)s
 GROUP BY test_id
 """
 
-
-def get_query(with_end: bool) -> str:
-    rollups_subquery = f"""
-SELECT *
-FROM reports_dailytestrollups
-WHERE repoid = %(repoid)s
-  AND branch = %(branch)s
-  AND date >= CURRENT_DATE - interval %(interval)s
-  {"AND date < current_date - interval %(interval_end)s" if with_end else ""}
-"""
-
-    return f"""
+ROLLUP_QUERY = f"""
 WITH
-  base_cte AS ({rollups_subquery}),
+  base_cte AS ({BASE_SUBQUERY}),
   failure_rate_cte AS ({TEST_AGGREGATION_SUBQUERY}),
   commits_where_fail_cte AS ({COMMITS_FAILED_SUBQUERY}),
   last_duration_cte AS ({LAST_DURATION_SUBQUERY}),
@@ -106,18 +108,39 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
     def run_impl(
         self, _db_session, repoid: int, branch: str, update_date: bool = True, **kwargs
     ):
+        # TODO(swatinem): We currently nest 2 locks, in Redis and Postgres.
+        # We can remove the first Redis lock in a followup once this is fully rolled out.
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(
                 f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
             ):
-                self.run_impl_within_lock(repoid, branch, update_date)
-                return {"success": True}
+                with transaction.atomic():
+                    try:
+                        last_update, _created = (
+                            LastCacheRollupDate.objects.select_for_update(
+                                nowait=True
+                            ).get_or_create(
+                                repository_id=repoid,
+                                branch=branch,
+                                defaults={"last_rollup_date": dt.date.today()},
+                            )
+                        )
+                    except DatabaseError:
+                        return {"in_progress": True}
+
+                    self.run_impl_within_lock(repoid, branch)
+
+                    if update_date:
+                        last_update.last_rollup_date = dt.date.today()
+                        last_update.save()
+
+                    return {"success": True}
         except LockError:
             return {"in_progress": True}
 
-    def run_impl_within_lock(self, repoid: int, branch: str, update_date: bool = True):
-        storage_service = get_storage_client()
+    def run_impl_within_lock(self, repoid: int, branch: str):
+        storage_service = shared.storage.get_appropriate_storage_service(repoid)
 
         if get_config("setup", "database", "read_replica_enabled", default=False):
             connection = connections["default_read"]
@@ -126,27 +149,26 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
 
         with connection.cursor() as cursor:
             for interval_start, interval_end in [
+                # NOTE: working with calendar days and intervals,
+                # `(CURRENT_DATE - INTERVAL '1 days')` means *yesterday*,
+                # and `2..1` matches *the day before yesterday*.
                 (1, None),
-                (7, None),
-                (30, None),
                 (2, 1),
+                (7, None),
                 (14, 7),
+                (30, None),
                 (60, 30),
             ]:
-                base_query = get_query(with_end=interval_end is not None)
                 query_params = {
                     "repoid": repoid,
                     "branch": branch,
-                    "interval": f"{interval_start} days",
+                    "interval_start": f"{interval_start} days",
+                    # SQL `BETWEEN` syntax is equivalent to `<= end`, with an inclusive end date,
+                    # thats why we do a `+1` here:
+                    "interval_end": f"{interval_end+1 if interval_end else 0} days",
                 }
 
-                if interval_end is not None:
-                    query_params["interval_end"] = f"{interval_end} days"
-
-                cursor.execute(
-                    base_query,
-                    query_params,
-                )
+                cursor.execute(ROLLUP_QUERY, query_params)
                 aggregation_of_test_results = cursor.fetchall()
 
                 df = pl.DataFrame(
@@ -169,28 +191,18 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                     ],
                     orient="row",
                 )
+
+                serialized_table = df.write_ipc(None)
+                serialized_table.seek(0)  # avoids Stream must be at beginning errors
+
                 storage_key = (
                     f"test_results/rollups/{repoid}/{branch}/{interval_start}"
                     if interval_end is None
                     else f"test_results/rollups/{repoid}/{branch}/{interval_start}_{interval_end}"
                 )
-
-                serialized_table = df.write_ipc(None)
-
-                if update_date:
-                    LastCacheRollupDate.objects.update_or_create(
-                        repository_id=repoid,
-                        branch=branch,
-                        defaults=dict(last_rollup_date=dt.date.today()),
-                    )
-
-                serialized_table.seek(0)  # avoids Stream must be at beginning errors
-
                 storage_service.write_file(
                     settings.GCS_BUCKET_NAME, storage_key, serialized_table
                 )
-
-        return
 
 
 RegisteredCacheTestRollupTask = celery_app.register_task(CacheTestRollupsTask())

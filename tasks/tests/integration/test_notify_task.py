@@ -921,7 +921,7 @@ class TestNotifyTask(object):
                             "head": {
                                 "author": expected_author_dict,
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
-                                "timestamp": "2019-02-01T17:59:47+00:00",
+                                "timestamp": "2019-02-01T17:59:47",
                                 "totals": {
                                     "files": 3,
                                     "lines": 20,
@@ -959,7 +959,7 @@ class TestNotifyTask(object):
                             "base": {
                                 "author": expected_author_dict,
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b",
-                                "timestamp": "2019-02-01T17:59:47+00:00",
+                                "timestamp": "2019-02-01T17:59:47",
                                 "totals": {
                                     "files": 3,
                                     "lines": 20,
@@ -1104,7 +1104,7 @@ class TestNotifyTask(object):
                                     "branch": "test",
                                     "message": "",
                                     "author": "joseph-sentry",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -1142,7 +1142,7 @@ class TestNotifyTask(object):
                                     "branch": "main",
                                     "message": "",
                                     "author": "joseph-sentry",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,

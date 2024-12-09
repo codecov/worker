@@ -7,11 +7,11 @@ from hashlib import md5
 from uuid import uuid4
 
 import sentry_sdk
+import shared.storage
 from shared.config import get_config
 from shared.utils.ReportEncoder import ReportEncoder
 
 from helpers.metrics import metrics
-from services.storage import get_storage_client
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class ArchiveService(object):
             self.root = get_config("services", "minio", "bucket", default="archive")
         else:
             self.root = bucket
-        self.storage = get_storage_client()
+        self.storage = shared.storage.get_appropriate_storage_service(repository.repoid)
         log.debug("Getting archive hash")
         self.storage_hash = self.get_archive_hash(repository)
 

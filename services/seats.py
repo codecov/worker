@@ -2,11 +2,11 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
+from shared.billing import is_pr_billing_plan
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database.models import Owner
-from services.billing import is_pr_billing_plan
 from services.decoration import _is_bot_account
 from services.repository import EnrichedPull
 

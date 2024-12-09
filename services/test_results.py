@@ -1,11 +1,13 @@
 import logging
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import List, Sequence
+from typing import Sequence
 
 from shared.plan.constants import FREE_PLAN_REPRESENTATIONS, TEAM_PLAN_REPRESENTATIONS
 from shared.yaml import UserYaml
-from sqlalchemy import desc
+from sqlalchemy import desc, distinct, func
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.session import Session
 
 from database.enums import ReportType
 from database.models import (
@@ -21,7 +23,6 @@ from rollouts import FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.processing.types import UploadArguments
 from services.report import BaseReportService
-from services.repository import get_repo_provider_service
 from services.urls import get_members_url, get_test_analytics_url
 from services.yaml import read_yaml_field
 
@@ -121,7 +122,7 @@ def generate_test_id(repoid, testsuite, name, flags_hash):
 class TestResultsNotificationFailure:
     failure_message: str
     display_name: str
-    envs: List[str]
+    envs: list[str]
     test_id: str
     duration_seconds: float
     build_url: str | None = None
@@ -138,7 +139,7 @@ class TestResultsNotificationPayload:
     failed: int
     passed: int
     skipped: int
-    failures: List[TestResultsNotificationFailure]
+    failures: list[TestResultsNotificationFailure]
     flaky_tests: dict[str, FlakeInfo]
 
 
@@ -149,10 +150,7 @@ def wrap_in_details(summary: str, content: str):
 
 def make_quoted(content: str) -> str:
     lines = content.splitlines()
-
-    result = ["> " + line for line in lines]
-
-    result = "\n".join(result)
+    result = "\n".join("> " + line for line in lines)
     return f"\n{result}\n"
 
 
@@ -246,9 +244,7 @@ class TestResultsNotifier(BaseNotifier):
         if self.payload is None:
             raise ValueError("Payload passed to notifier is None, cannot build message")
 
-        message = []
-
-        message.append(f"### :x: {self.payload.failed} Tests Failed:")
+        message = [f"### :x: {self.payload.failed} Tests Failed:"]
 
         completed = self.payload.failed + self.payload.passed
 
@@ -259,13 +255,13 @@ class TestResultsNotifier(BaseNotifier):
         ]
 
         failures = sorted(
-            filter(
-                lambda x: x.test_id not in self.payload.flaky_tests,
-                self.payload.failures,
+            (
+                failure
+                for failure in self.payload.failures
+                if failure.test_id not in self.payload.flaky_tests
             ),
             key=lambda x: (x.duration_seconds, x.display_name),
         )
-
         if failures:
             failure_content = [f"{messagify_failure(failure)}" for failure in failures]
 
@@ -276,19 +272,17 @@ class TestResultsNotifier(BaseNotifier):
 
             message.append(top_3_failed_section)
 
-        flaky_failures = list(
-            filter(
-                lambda x: x.test_id in self.payload.flaky_tests,
-                self.payload.failures,
-            ),
-        )
-
-        flake_content = [
-            f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id])}"
-            for flaky_failure in flaky_failures
+        flaky_failures = [
+            failure
+            for failure in self.payload.failures
+            if failure.test_id in self.payload.flaky_tests
         ]
+        if flaky_failures:
+            flake_content = [
+                f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id])}"
+                for flaky_failure in flaky_failures
+            ]
 
-        if flake_content:
             flaky_section = wrap_in_details(
                 f"View the full list of {len(flaky_failures)} :snowflake: flaky tests",
                 "\n".join(flake_content),
@@ -300,16 +294,8 @@ class TestResultsNotifier(BaseNotifier):
         return "\n".join(message)
 
     def error_comment(self):
-        self._repo_service = get_repo_provider_service(self.commit.repository)
-
         pull = self.get_pull()
         if pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                ),
-            )
             return False, "no_pull"
 
         message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
@@ -321,17 +307,8 @@ class TestResultsNotifier(BaseNotifier):
         return (True, "comment_posted")
 
     def upgrade_comment(self):
-        if self._repo_service is None:
-            self._repo_service = get_repo_provider_service(self.commit.repository)
-
         pull = self.get_pull()
         if pull is None:
-            log.info(
-                "Not notifying since there is no pull request associated with this commit",
-                extra=dict(
-                    commitid=self.commit.commitid,
-                ),
-            )
             return False, "no_pull"
 
         db_pull = pull.database_pull
@@ -369,30 +346,49 @@ class TestResultsNotifier(BaseNotifier):
         return (True, "comment_posted")
 
 
-def latest_test_instances_for_a_given_commit(db_session, commit_id):
+def latest_failures_for_commit(
+    db_session: Session, repo_id: int, commit_sha: str
+) -> list[TestInstance]:
     """
     This will result in a SQL query that looks something like this:
 
-    SELECT DISTINCT ON (rt.test_id) rt.id, rt.external_id, rt.created_at, rt.updated_at, rt.test_id, rt.duration_seconds, rt.outcome, rt.upload_id, rt.failure_message
-        FROM reports_testinstance rt JOIN reports_upload ru ON ru.id = rt.upload_id JOIN reports_commitreport rc ON rc.id = ru.report_id
-        WHERE rc.commit_id = <commit_id> ORDER BY rt.test_id, ru.created_at desc
+    SELECT DISTINCT ON (rti.test_id) rti.id, ...
+    FROM reports_testinstance rti
+    JOIN reports_upload ru ON ru.id = rti.upload_id
+    LEFT OUTER JOIN reports_test rt ON rt.id = rti.test_id
+    WHERE ...
+    ORDER BY rti.test_id, ru.created_at DESC
 
-    The goal of this query is to return: "the latest test instance for each unique test based on upload creation time"
+    The goal of this query is to return:
+    > the latest test instance failure for each unique test based on upload creation time
 
-    The `DISTINCT ON` test_id with the order by test_id, enforces that we are only fetching one test instance for each test
+    The `DISTINCT ON` test_id with the order by test_id, enforces that we are only fetching one test instance for each test.
 
-    The ordering of the upload.create_at desc enforces that we get the latest test instance for that unique test
+    The ordering by `upload.create_at DESC` enforces that we get the latest test instance for that unique test.
     """
+
     return (
         db_session.query(TestInstance)
-        .join(Upload)
-        .join(CommitReport)
-        .filter(
-            CommitReport.commit_id == commit_id,
-        )
+        .join(TestInstance.upload)
+        .options(joinedload(TestInstance.test))
+        .filter(TestInstance.repoid == repo_id, TestInstance.commitid == commit_sha)
+        .filter(TestInstance.outcome.in_(["failure", "error"]))
         .order_by(TestInstance.test_id)
         .order_by(desc(Upload.created_at))
         .distinct(TestInstance.test_id)
+        .all()
+    )
+
+
+def get_test_summary_for_commit(
+    db_session: Session, repo_id: int, commit_sha: str
+) -> dict[str, int]:
+    return dict(
+        db_session.query(
+            TestInstance.outcome, func.count(distinct(TestInstance.test_id))
+        )
+        .filter(TestInstance.repoid == repo_id, TestInstance.commitid == commit_sha)
+        .group_by(TestInstance.outcome)
         .all()
     )
 

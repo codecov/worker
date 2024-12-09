@@ -48,10 +48,7 @@ class TestCommentMesage:
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
         )
-        mocker.patch(
-            "services.bundle_analysis.comparison.get_appropriate_storage_service",
-            return_value=mock_storage,
-        )
+
         context = builder.build_context().get_result()
         message = BundleAnalysisCommentMarkdownStrategy().build_message(context)
         assert message == dedent("""\
