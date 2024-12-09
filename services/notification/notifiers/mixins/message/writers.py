@@ -29,7 +29,6 @@ class TeamPlanWriter:
 
         head_report = comparison.head.report
         diff_totals = head_report.apply_diff(diff)
-        files_in_diff = diff_totals.files
 
         if diff_totals:
             misses_and_partials = diff_totals.misses + diff_totals.partials
@@ -37,14 +36,7 @@ class TeamPlanWriter:
         else:
             misses_and_partials = None
             patch_coverage = None
-        # When your diff changes include non-coverable
-        if files_in_diff == 0:
-            print("le ici")
-            yield (
-                f"No coverable files are found to report :thumbsup:"
-            )
-            return
-        elif misses_and_partials:
+        if misses_and_partials:
             ln_text = "lines" if misses_and_partials > 1 else "line"
             lines.append(
                 f"Attention: Patch coverage is `{patch_coverage}%` with `{misses_and_partials} {ln_text}` in your changes missing coverage. Please review."

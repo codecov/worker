@@ -8,7 +8,6 @@ from urllib.parse import urlencode
 
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
-from shared.reports.types import ReportTotals
 
 from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
@@ -124,22 +123,13 @@ class HeaderSectionWriter(BaseSectionWriter):
         head_report = comparison.head.report
         pull_dict = comparison.enriched_pull.provider_pull
 
-        diff_totals: ReportTotals = head_report.apply_diff(diff)
-        files_in_diff = diff_totals and diff_totals.files
-
+        diff_totals = head_report.apply_diff(diff)
         if diff_totals:
             misses_and_partials = diff_totals.misses + diff_totals.partials
             patch_coverage = diff_totals.coverage
         else:
             misses_and_partials = None
             patch_coverage = None
-        # # When your diff changes include non-coverable
-        # if files_in_diff == 0:
-        #     print("le ici")
-        #     yield (
-        #         f"No coverable files are found to report :thumbsup:"
-        #     )
-        #     return
         if misses_and_partials:
             ln_text = "lines" if misses_and_partials > 1 else "line"
             yield (

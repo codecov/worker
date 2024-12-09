@@ -27,6 +27,7 @@ class TestOwnerServiceTestCase(object):
             "repo": {},
             "installation": None,
             "fallback_installations": None,
+            "additional_data": {},
         }
         assert res.service == "github"
         assert res.data == expected_data
@@ -70,6 +71,7 @@ class TestOwnerServiceTestCase(object):
                 "app_id": None,
             },
             "fallback_installations": [],
+            "additional_data": {},
         }
         assert res.service == "github"
         assert res.data == expected_data
@@ -96,6 +98,7 @@ class TestOwnerServiceTestCase(object):
             "repo": {},
             "installation": None,
             "fallback_installations": None,
+            "additional_data": {},
         }
         assert res.service == "gitlab"
         assert res.data == expected_data
@@ -123,6 +126,7 @@ class TestOwnerServiceTestCase(object):
             "repo": {},
             "installation": None,
             "fallback_installations": None,
+            "additional_data": {},
         }
         assert res.data["repo"] == expected_data["repo"]
         assert res.data == expected_data

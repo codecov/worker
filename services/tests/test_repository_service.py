@@ -83,6 +83,7 @@ def test_get_repo_provider_service_github(dbsession, repo):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert repo.owner.service == "github"
@@ -146,6 +147,7 @@ def test_get_repo_provider_service_github_with_installations(dbsession, mocker, 
                 "pem_path": None,
             }
         ],
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert repo.owner.service == "github"
@@ -182,6 +184,7 @@ def test_get_repo_provider_service_bitbucket(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert repo.owner.service == "bitbucket"
@@ -217,6 +220,7 @@ def test_get_repo_provider_service_with_token_refresh_callback(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert res._on_token_refresh is not None
@@ -253,6 +257,7 @@ def test_get_repo_provider_service_repo_bot(dbsession, mock_configuration):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert res.token == {
@@ -309,6 +314,7 @@ def test_get_repo_provider_service_different_bot(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data["repo"] == expected_data["repo"]
     assert res.data == expected_data
@@ -347,6 +353,7 @@ def test_get_repo_provider_service_no_bot(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert res.token == {
@@ -1093,6 +1100,7 @@ async def test_get_repo_gh_no_integration(dbsession, mocker):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data["repo"] == expected_data["repo"]
     assert res.data == expected_data
