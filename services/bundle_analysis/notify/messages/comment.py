@@ -34,6 +34,14 @@ class BundleRow(TypedDict):
     is_change_outside_threshold: bool
 
 
+class BundleRouteRow(TypedDict):
+    route_name: str
+    change_size_readable: str
+    percentage_change_readable: str
+    change_icon: str
+    route_size: str
+
+
 class BundleCommentTemplateContext(TypedDict):
     pull_url: str
     total_size_delta: int
@@ -42,6 +50,7 @@ class BundleCommentTemplateContext(TypedDict):
     status_level: Literal["INFO"] | Literal["WARNING"] | Literal["ERROR"]
     warning_threshold_readable: str
     bundle_rows: list[BundleRow]
+    bundle_route_data: dict[str, list[BundleRouteRow]]
     has_cached_bundles: bool
 
 
@@ -70,6 +79,9 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         bundle_rows = self._create_bundle_rows(
             context.bundle_analysis_comparison, warning_threshold
         )
+        bundle_route_data = self._create_bundle_route_data(
+            context.bundle_analysis_comparison
+        )
         if warning_threshold.type == "absolute":
             warning_threshold_readable = bytes_readable(warning_threshold.threshold)
         else:
@@ -77,6 +89,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         context = BundleCommentTemplateContext(
             has_cached=any(row["is_cached"] for row in bundle_rows),
             bundle_rows=bundle_rows,
+            bundle_route_data=bundle_route_data,
             pull_url=get_bundle_analysis_pull_url(pull=context.pull.database_pull),
             total_size_delta=total_size_delta,
             status_level=context.commit_status_level.name,
@@ -159,7 +172,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
 
             change_size = bundle_change.size_delta
             if change_size == 0:
-                # Don't include bundles that were not changes in the table
+                # Don't include bundles that were not changed in the table
                 continue
             icon = ""
             if change_size > 0:
@@ -184,3 +197,51 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
             )
 
         return bundle_rows
+
+    def _create_bundle_route_data(
+        self,
+        comparison: BundleAnalysisComparison,
+    ) -> dict[str, list[BundleRouteRow]]:
+        """
+        Translate BundleRouteComparison dict data into a template compatible dict data
+        """
+        bundle_route_data = {}
+        changes_dict = comparison.bundle_routes_changes()
+
+        for bundle_name, route_changes in changes_dict.items():
+            rows = []
+            for route_change in route_changes:
+                change_size, size = (
+                    route_change.size_delta,
+                    bytes_readable(route_change.size_head),
+                )
+
+                if change_size == 0:
+                    continue
+
+                if route_change.percentage_delta == 100:
+                    icon = ":rocket:"
+                    bundle_display_name = f"**{route_change.route_name}** _(New)_"
+                elif route_change.percentage_delta == -100:
+                    icon = ":wastebasket:"
+                    bundle_display_name = (
+                        f"~~**{route_change.route_name}**~~ _(Deleted)_"
+                    )
+                else:
+                    icon = ""
+                    bundle_display_name = route_change.route_name
+
+                rows.append(
+                    BundleRouteRow(
+                        route_name=bundle_display_name,
+                        change_size_readable=bytes_readable(change_size),
+                        percentage_change_readable=f"{route_change.percentage_delta}%",
+                        change_icon=icon,
+                        route_size=size,
+                    )
+                )
+
+            # Only include bundles that have routes
+            if rows:
+                bundle_route_data[bundle_name] = rows
+        return bundle_route_data
