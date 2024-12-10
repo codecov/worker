@@ -53,7 +53,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
     def run_impl(
         self,
         db_session: Session,
-        chord_result: dict[str, Any],
+        chord_result: list[bool],
         *,
         repoid: int,
         commitid: str,
@@ -109,7 +109,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid: int,
         commitid: str,
         commit_yaml: UserYaml,
-        previous_result: dict[str, Any],
+        previous_result: list[bool],
         **kwargs,
     ):
         log.info("Running test results finishers", extra=self.extra_dict)
@@ -149,7 +149,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             db_session.add(totals)
             db_session.flush()
 
-        if self.check_if_no_success(previous_result):
+        if not self.check_if_any_success(previous_result):
             # every processor errored, nothing to notify on
             queue_notify = False
 
@@ -337,12 +337,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         }
         return flaky_test_ids
 
-    def check_if_no_success(self, previous_result):
-        return all(
-            testrun_list["successful"] is False
-            for result in previous_result
-            for testrun_list in result
-        )
+    def check_if_any_success(self, previous_result: list[bool]) -> bool:
+        return any(result for result in previous_result)
 
 
 RegisteredTestResultsFinisherTask = celery_app.register_task(TestResultsFinisherTask())

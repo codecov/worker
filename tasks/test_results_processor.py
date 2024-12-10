@@ -147,13 +147,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         commit_yaml,
         arguments_list: list[UploadArguments],
         **kwargs,
-    ):
+    ) -> bool:
         log.info("Received upload test result processing task")
 
         commit_yaml = UserYaml(commit_yaml)
         repoid = int(repoid)
-
-        results = []
 
         repo_flakes = (
             db_session.query(Flake.testid)
@@ -170,6 +168,8 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         should_delete_archive = self.should_delete_archive(commit_yaml)
         archive_service = ArchiveService(repository)
 
+        successful = False
+
         # process each report session's test information
         for arguments in arguments_list:
             upload = (
@@ -184,10 +184,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 flaky_test_set,
                 should_delete_archive,
             )
+            if result:
+                successful = True
 
-            results.append(result)
-
-        return results
+        return successful
 
     @sentry_sdk.trace
     def _bulk_write_tests_to_db(
@@ -407,12 +407,12 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload: Upload,
         flaky_test_set: set[str],
         should_delete_archive: bool,
-    ):
+    ) -> bool:
         upload_id = upload.id
 
         log.info("Processing individual upload", extra=dict(upload_id=upload_id))
         if upload.state == "processed" or upload.state == "has_failed":
-            return []
+            return False
 
         payload_bytes = archive_service.read_file(upload.storage_path)
         try:
@@ -424,7 +424,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
                 upload.state = "not parsed"
                 db_session.flush()
-                return []
+                return False
 
         parsing_results: list[ParsingInfo] = []
         network: list[str] | None = data.get("network_files")
@@ -478,7 +478,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             readable_report = self.rewrite_readable(network, report_contents)
             archive_service.write_file(upload.storage_path, readable_report)
 
-        return {"successful": successful}
+        return successful
 
     def rewrite_readable(
         self, network: list[str] | None, report_contents: list[ReadableFile]
