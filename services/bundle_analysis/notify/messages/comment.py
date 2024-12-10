@@ -4,7 +4,7 @@ from typing import Literal, TypedDict
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from django.template import loader
-from shared.bundle_analysis import BundleAnalysisComparison, BundleChange, RouteChange
+from shared.bundle_analysis import BundleAnalysisComparison, BundleChange
 from shared.torngit.exceptions import TorngitClientError
 from shared.validation.types import BundleThreshold
 
@@ -211,24 +211,29 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
         for bundle_name, route_changes in changes_dict.items():
             rows = []
             for route_change in route_changes:
-                change_size, icon = route_change.size_delta, ""
-                size = (
-                    "(removed)"
-                    if route_change.change_type == RouteChange.ChangeType.REMOVED
-                    else bytes_readable(route_change.size_head)
+                change_size, size = (
+                    route_change.size_delta,
+                    bytes_readable(route_change.size_head),
                 )
 
                 if change_size == 0:
-                    # Don't include bundles that were not changes in the table
                     continue
-                elif change_size > 0:
-                    icon = ":arrow_up:"
-                elif change_size < 0:
-                    icon = ":arrow_down:"
+
+                if route_change.percentage_delta == 100:
+                    icon = ":rocket:"
+                    bundle_display_name = f"**{route_change.route_name}** _(New)_"
+                elif route_change.percentage_delta == -100:
+                    icon = ":wastebasket:"
+                    bundle_display_name = (
+                        f"~~**{route_change.route_name}**~~ _(Deleted)_"
+                    )
+                else:
+                    icon = ""
+                    bundle_display_name = route_change.route_name
 
                 rows.append(
                     BundleRouteRow(
-                        route_name=route_change.route_name,
+                        route_name=bundle_display_name,
                         change_size_readable=bytes_readable(change_size),
                         percentage_change_readable=f"{route_change.percentage_delta}%",
                         change_icon=icon,

@@ -363,9 +363,9 @@ def hook_mock_pull(mocker, mock_pull):
 
             | File path | Size | Change |
             | --------- | ---- | ------ |
-            | /users | 1.0kB | 1.0kB (100%) :arrow_up: |
-            | /faq | (removed) | 5.0kB (-100.0%) :arrow_down: |
-            | /careers | 30.0kB | 10.0kB (50.0%) :arrow_up: |
+            | **/users** _(New)_ | 1.0kB | 1.0kB (100%) :rocket: |
+            | ~~**/faq**~~ _(Deleted)_ | 0 bytes | 5.0kB (-100.0%) :wastebasket: |
+            | /careers | 30.0kB | 10.0kB (50.0%)  |
 
             </details>
 
@@ -374,9 +374,9 @@ def hook_mock_pull(mocker, mock_pull):
 
             | File path | Size | Change |
             | --------- | ---- | ------ |
-            | /users | 1.0kB | 1.0kB (100%) :arrow_up: |
-            | /faq | (removed) | 5.0kB (-100.0%) :arrow_down: |
-            | /about-us | 30.0kB | 10.0kB (50.0%) :arrow_up: |
+            | **/users** _(New)_ | 1.0kB | 1.0kB (100%) :rocket: |
+            | ~~**/faq**~~ _(Deleted)_ | 0 bytes | 5.0kB (-100.0%) :wastebasket: |
+            | /about-us | 30.0kB | 10.0kB (50.0%)  |
 
             </details>
 
