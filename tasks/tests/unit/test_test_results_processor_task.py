@@ -70,11 +70,7 @@ class TestUploadTestProcessorTask(object):
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -93,7 +89,7 @@ class TestUploadTestProcessorTask(object):
             failures[0].test.name
             == "api.temp.calculator.test_calculator\x1ftest_divide"
         )
-        assert expected_result == result
+        assert result is True
         assert commit.message == "hello world"
         assert (
             mock_storage.read_file("archive", url)
@@ -152,7 +148,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.add(current_report_row)
         dbsession.flush()
 
-        result = TestResultsProcessorTask().run_impl(
+        _ = TestResultsProcessorTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -208,11 +204,6 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
 
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
@@ -220,7 +211,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
         )
 
-        assert result == expected_result
+        assert result is True
 
         assert len(tests) == 4
         assert len(test_instances) == 4
@@ -281,9 +272,8 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [{"successful": False}]
 
-        assert expected_result == result
+        assert result == False
         assert (
             "No test result files were successfully parsed for this upload"
             in caplog.text
@@ -350,11 +340,6 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -373,7 +358,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             failures[0].test.name
             == "api.temp.calculator.test_calculator\x1ftest_divide"
         )
-        assert expected_result == result
+        assert result is True
         assert commit.message == "hello world"
 
     @pytest.mark.integration
@@ -444,11 +429,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -477,7 +458,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             failures[0].test.name
             == "api.temp.calculator.test_calculator\x1ftest_divide"
         )
-        assert expected_result == result
+        assert result is True
         assert commit.message == "hello world"
 
     @pytest.mark.integration
@@ -532,11 +513,6 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
                 commit_yaml={"codecov": {"max_report_age": False}},
                 arguments_list=redis_queue,
             )
-            expected_result = [
-                {
-                    "successful": True,
-                }
-            ]
 
             rollups = dbsession.query(DailyTestRollup).all()
 
@@ -591,13 +567,8 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
                 commit_yaml={"codecov": {"max_report_age": False}},
                 arguments_list=redis_queue,
             )
-            expected_result = [
-                {
-                    "successful": True,
-                }
-            ]
 
-            assert result == expected_result
+            assert result is True
 
             rollups_first_branch: list[DailyTestRollup] = (
                 dbsession.query(DailyTestRollup).filter_by(branch="first_branch").all()
@@ -701,11 +672,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -730,7 +697,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             failures[0].test.name
             == "api.temp.calculator.test_calculator\x1ftest_divide"
         )
-        assert expected_result == result
+        assert result is True
         assert commit.message == "hello world"
 
         assert mock_storage.read_file("archive", url).startswith(
@@ -784,9 +751,8 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [[]]
 
-        assert expected_result == result
+        assert result is False
 
     @pytest.mark.integration
     def test_upload_processor_task_call_already_processed_with_junit(
@@ -847,15 +813,10 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
 
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
 
-        assert expected_result == result
+        assert result is True
         assert len(tests) == 4
         assert len(test_instances) == 4
