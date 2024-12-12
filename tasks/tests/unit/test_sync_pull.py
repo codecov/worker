@@ -542,7 +542,12 @@ def test_trigger_process_flakes(dbsession, mocker, flake_detection, repository):
         task.app.tasks["app.tasks.flakes.ProcessFlakesTask"], "apply_async"
     )
 
+    if flake_detection:
+        TestFactory.create(repository=repository)
+        dbsession.flush()
+
     task.trigger_process_flakes(
+        dbsession,
         repository,
         commit.commitid,
         "main",

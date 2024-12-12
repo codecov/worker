@@ -403,12 +403,12 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                         )
                     )
 
-                if (
-                    should_do_flaky_detection(repository, current_yaml)
-                    and db_session.query(Test).filter(Test.repoid == repoid).count() > 0
-                ):
                     self.trigger_process_flakes(
-                        repository, pull.head, pull_dict["head"]["branch"], current_yaml
+                        db_session,
+                        repository,
+                        pull.head,
+                        pull_dict["head"]["branch"],
+                        current_yaml,
                     )
 
             # set the rest of the commits to deleted (do not show in the UI)
@@ -531,16 +531,22 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
 
     def trigger_process_flakes(
         self,
+        db_session: sqlalchemy.orm.Session,
         repository: Repository,
         pull_head: str,
         branch: str,
         current_yaml: UserYaml,
     ):
-        self.app.tasks[process_flakes_task_name].apply_async(
-            kwargs=dict(
-                repo_id=repository.repoid, commit_id_list=[pull_head], branch=branch
+        if (
+            should_do_flaky_detection(repository, current_yaml)
+            and db_session.query(Test).filter(Test.repoid == repository.repoid).count()
+            > 0
+        ):
+            self.app.tasks[process_flakes_task_name].apply_async(
+                kwargs=dict(
+                    repo_id=repository.repoid, commit_id_list=[pull_head], branch=branch
+                )
             )
-        )
 
     def trigger_ai_pr_review(self, enriched_pull: EnrichedPull, current_yaml: UserYaml):
         pull = enriched_pull.database_pull
