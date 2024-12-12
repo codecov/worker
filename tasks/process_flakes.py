@@ -103,7 +103,9 @@ def get_test_instances(
         TestInstance.objects.filter(
             repo_commit_branch_filter
             & (test_failed_filter | test_passed_but_flaky_filter)
-        ).all()
+        )
+        .select_related("test")
+        .all()
     )
     return test_instances
 
