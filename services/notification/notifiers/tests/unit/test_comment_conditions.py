@@ -7,10 +7,14 @@ from shared.validation.types import (
 )
 from shared.yaml import UserYaml
 
+from database.enums import Decoration
 from database.models.core import Repository
 from services.comparison import ComparisonProxy
 from services.notification.notifiers.comment import CommentNotifier
-from services.notification.notifiers.comment.conditions import HasEnoughRequiredChanges
+from services.notification.notifiers.comment.conditions import (
+    HasEnoughRequiredChanges,
+    NoAutoActivateMessageIfAutoActivateIsOff,
+)
 
 
 def _get_notifier(
@@ -253,3 +257,46 @@ def test_coverage_drop_with_different_project_configs(
         None,
     )
     assert HasEnoughRequiredChanges.check_condition(notifier, comparison) == expected
+
+
+@pytest.mark.parametrize(
+    "decoration_type, plan_auto_activate, expected",
+    [
+        pytest.param(
+            Decoration.upgrade, False, False, id="upgrade_no_auto_activate__dont_send"
+        ),
+        pytest.param(Decoration.upgrade, True, True, id="upgrade_auto_activate__send"),
+        pytest.param(
+            Decoration.upload_limit,
+            False,
+            True,
+            id="other_decoration_no_auto_activate__send",
+        ),
+        pytest.param(
+            Decoration.upload_limit,
+            True,
+            True,
+            id="other_decoration_auto_activate__send",
+        ),
+    ],
+)
+def test_no_auto_activate_message_if_auto_activate_is_off(
+    sample_comparison_no_change,
+    mock_repo_provider,
+    decoration_type,
+    plan_auto_activate,
+    expected,
+):
+    notifier = _get_notifier(
+        sample_comparison_no_change.head.commit.repository,
+        [CoverageCommentRequiredChanges.any_change.value],
+        mock_repo_provider,
+    )
+    notifier.decoration_type = decoration_type
+    notifier.repository.owner.plan_auto_activate = plan_auto_activate
+    assert (
+        NoAutoActivateMessageIfAutoActivateIsOff.check_condition(
+            notifier, sample_comparison_no_change
+        )
+        == expected
+    )
