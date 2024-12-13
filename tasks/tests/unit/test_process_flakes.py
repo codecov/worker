@@ -2,6 +2,7 @@ import datetime as dt
 from collections import defaultdict
 
 import time_machine
+from shared.django_apps.core.models import Commit
 from shared.django_apps.core.tests.factories import CommitFactory, RepositoryFactory
 from shared.django_apps.reports.models import (
     CommitReport,
@@ -10,6 +11,7 @@ from shared.django_apps.reports.models import (
     TestInstance,
 )
 from shared.django_apps.reports.tests.factories import (
+    DailyTestRollupFactory,
     FlakeFactory,
     TestFactory,
     TestInstanceFactory,
@@ -18,10 +20,10 @@ from shared.django_apps.reports.tests.factories import (
 
 from tasks.process_flakes import (
     ProcessFlakesTask,
-    generate_flake_dict,
+    create_flake,
+    fetch_curr_flakes,
     get_test_instances,
-    update_passed_flakes,
-    upsert_failed_flake,
+    update_flake,
 )
 
 
@@ -34,7 +36,7 @@ class RepoSimulator:
 
         self.test_map = defaultdict(lambda: TestFactory(id=self.test_count))
 
-    def create_commit(self):
+    def create_commit(self) -> Commit:
         c = CommitFactory(
             repository=self.repo, merged=False, branch=str(self.branch_number)
         )
@@ -44,8 +46,11 @@ class RepoSimulator:
         return c
 
     def add_test_instance(
-        self, c, outcome=TestInstance.Outcome.PASS.value, state="processed"
-    ):
+        self,
+        c: Commit,
+        outcome: str = TestInstance.Outcome.PASS.value,
+        state: str = "processed",
+    ) -> TestInstance:
         upload = UploadFactory(
             report__commit=c,
             report__report_type=CommitReport.ReportType.TEST_RESULTS.value,
@@ -114,17 +119,17 @@ class RepoSimulator:
 def test_generate_flake_dict(transactional_db):
     repo = RepositoryFactory()
 
-    flake_dict = generate_flake_dict(repo.repoid)
+    flake_dict = fetch_curr_flakes(repo.repoid)
 
     assert len(flake_dict) == 0
 
-    f = FlakeFactory(repository=repo, test__id="id", reduced_error__id=10)
+    f = FlakeFactory(repository=repo, test__id="id")
     f.save()
 
-    flake_dict = generate_flake_dict(repo.repoid)
+    flake_dict = fetch_curr_flakes(repo.repoid)
 
     assert len(flake_dict) == 1
-    assert ("id", 10) in flake_dict
+    assert "id" in flake_dict
 
 
 def test_get_test_instances_when_test_is_flaky(transactional_db):
@@ -201,7 +206,23 @@ def test_get_test_instances_when_instance_is_pass(transactional_db):
     assert len(tis) == 0
 
 
-def test_update_passed_flakes(transactional_db):
+def test_update_flake_pass(transactional_db):
+    rs = RepoSimulator()
+    c = rs.create_commit()
+    ti = rs.add_test_instance(c, outcome=TestInstance.Outcome.PASS.value)
+
+    f = FlakeFactory(test=ti.test, repository=rs.repo)
+    f.save()
+    assert f.count == 0
+    assert f.recent_passes_count == 0
+
+    update_flake(f, ti)
+
+    assert f.count == 1
+    assert f.recent_passes_count == 1
+
+
+def test_update_flake_fail(transactional_db):
     rs = RepoSimulator()
     c = rs.create_commit()
     ti = rs.add_test_instance(c, outcome=TestInstance.Outcome.FAILURE.value)
@@ -211,10 +232,11 @@ def test_update_passed_flakes(transactional_db):
     assert f.count == 0
     assert f.recent_passes_count == 0
 
-    update_passed_flakes(ti, f)
+    update_flake(f, ti)
 
     assert f.count == 1
-    assert f.recent_passes_count == 1
+    assert f.recent_passes_count == 0
+    assert f.fail_count == 1
 
 
 def test_upsert_failed_flakes(transactional_db):
@@ -226,12 +248,43 @@ def test_upsert_failed_flakes(transactional_db):
         commitid=commit.commitid, repoid=repo.repoid, branch="main"
     )
     ti.save()
-    test = TestFactory()
-    test.save()
-    f = FlakeFactory()
-    f.save()
 
-    upsert_failed_flake(ti, f, repo.repoid)
+    rollup = DailyTestRollupFactory(
+        repoid=repo.repoid,
+        test=ti.test,
+        branch="main",
+        date=dt.date.today(),
+        flaky_fail_count=0,
+    )
+    rollup.save()
+
+    f, r = create_flake(ti, repo.repoid)
+    assert f.count == 1
+    assert f.fail_count == 1
+    assert f.recent_passes_count == 0
+    assert f.test == ti.test
+
+    assert r is not None
+    assert r.flaky_fail_count == 1
+
+
+def test_upsert_failed_flakes_rollup_is_none(transactional_db):
+    repo = RepositoryFactory()
+    repo.save()
+    commit = CommitFactory()
+    commit.save()
+    ti = TestInstanceFactory(
+        commitid=commit.commitid, repoid=repo.repoid, branch="main"
+    )
+    ti.save()
+
+    f, r = create_flake(ti, repo.repoid)
+    assert f.count == 1
+    assert f.fail_count == 1
+    assert f.recent_passes_count == 0
+    assert f.test == ti.test
+
+    assert r is None
 
 
 def test_it_handles_only_passes(transactional_db):
@@ -255,9 +308,12 @@ def test_it_creates_flakes_from_processed_uploads(transactional_db):
     ProcessFlakesTask().run_impl(None, repo_id=rs.repo.repoid, commit_id=c1.commitid)
 
     assert len(Flake.objects.all()) == 1
-    assert Flake.objects.first().count == 1
-    assert Flake.objects.first().fail_count == 1
-    assert Flake.objects.first().start_date == dt.datetime.now(tz=dt.UTC)
+    flake = Flake.objects.first()
+
+    assert flake is not None
+    assert flake.count == 1
+    assert flake.fail_count == 1
+    assert flake.start_date == dt.datetime.now(tz=dt.UTC)
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
@@ -301,6 +357,8 @@ def test_it_processes_two_commits_separately(transactional_db):
 
     assert len(Flake.objects.all()) == 1
     flake = Flake.objects.first()
+
+    assert flake is not None
     assert flake.recent_passes_count == 0
     assert flake.count == 2
     assert flake.fail_count == 2
@@ -310,7 +368,7 @@ def test_it_processes_two_commits_separately(transactional_db):
 def test_it_creates_flakes_expires(transactional_db):
     with time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False) as traveller:
         rs = RepoSimulator()
-        commits = []
+        commits: list[str] = []
         c1 = rs.create_commit()
         rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
 
@@ -337,6 +395,8 @@ def test_it_creates_flakes_expires(transactional_db):
 
         assert len(Flake.objects.all()) == 1
         flake = Flake.objects.first()
+
+        assert flake is not None
         assert flake.recent_passes_count == 29
         assert flake.count == 30
         assert flake.fail_count == 1
@@ -354,6 +414,8 @@ def test_it_creates_flakes_expires(transactional_db):
 
         assert len(Flake.objects.all()) == 1
         flake = Flake.objects.first()
+
+        assert flake is not None
         assert flake.recent_passes_count == 30
         assert flake.count == 31
         assert flake.fail_count == 1
@@ -364,7 +426,6 @@ def test_it_creates_flakes_expires(transactional_db):
 def test_it_creates_rollups(transactional_db):
     with time_machine.travel("1970-1-1T00:00:00Z"):
         rs = RepoSimulator()
-        commits = []
         c1 = rs.create_commit()
         rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
         rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
