@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from asgiref.sync import async_to_sync
+from shared.reports.types import UploadType
+from shared.typings.torngit import AdditionalData
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
@@ -230,7 +232,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "queue_notify": True,
             }
 
-        repo_service = get_repo_provider_service(repo)
+        additional_data: AdditionalData = {"upload_type": UploadType.TEST_RESULTS}
+        repo_service = get_repo_provider_service(repo, additional_data=additional_data)
         pull = async_to_sync(fetch_and_update_pull_request_information_from_commit)(
             repo_service, commit, commit_yaml
         )

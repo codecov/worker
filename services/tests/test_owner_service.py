@@ -1,4 +1,6 @@
 from shared.rate_limits import gh_app_key_name, owner_key_name
+from shared.reports.types import UploadType
+from shared.typings.torngit import AdditionalData
 
 from database.models.core import (
     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -134,4 +136,31 @@ class TestOwnerServiceTestCase(object):
             "key": bot_token,
             "secret": None,
             "entity_name": owner_key_name(owner.bot.ownerid),
+        }
+
+    def test_get_owner_provider_service_additional_data(self, dbsession):
+        owner = OwnerFactory.create(
+            service="gitlab", unencrypted_oauth_token="testenll80qbqhofao65", bot=None
+        )
+        dbsession.add(owner)
+        dbsession.flush()
+        additional_data: AdditionalData = {"upload_type": UploadType.BUNDLE_ANALYSIS}
+        res = get_owner_provider_service(owner, additional_data=additional_data)
+        expected_data = {
+            "owner": {
+                "ownerid": owner.ownerid,
+                "service_id": owner.service_id,
+                "username": owner.username,
+            },
+            "repo": {},
+            "installation": None,
+            "fallback_installations": None,
+            "additional_data": {"upload_type": UploadType.BUNDLE_ANALYSIS},
+        }
+        assert res.service == "gitlab"
+        assert res.data == expected_data
+        assert res.token == {
+            "key": "testenll80qbqhofao65",
+            "secret": None,
+            "entity_name": owner_key_name(owner.ownerid),
         }
