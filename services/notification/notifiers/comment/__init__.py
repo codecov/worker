@@ -24,6 +24,7 @@ from services.notification.notifiers.comment.conditions import (
     ComparisonHasPull,
     HasEnoughBuilds,
     HasEnoughRequiredChanges,
+    NoAutoActivateMessageIfAutoActivateIsOff,
     NotifyCondition,
     PullHeadMatchesComparisonHead,
     PullRequestInProvider,
@@ -47,6 +48,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         PullHeadMatchesComparisonHead,
         HasEnoughBuilds,
         HasEnoughRequiredChanges,
+        NoAutoActivateMessageIfAutoActivateIsOff,
     ]
 
     def store_results(self, comparison: ComparisonProxy, result: NotificationResult):

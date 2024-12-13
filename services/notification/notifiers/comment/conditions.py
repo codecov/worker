@@ -27,12 +27,14 @@ class NotifyCondition(ABC):
 
     failure_explanation: str
 
+    @staticmethod
     @abstractmethod
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
         return True
 
+    @staticmethod
     def on_failure_side_effect(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> NotificationResult:
@@ -42,6 +44,7 @@ class NotifyCondition(ABC):
 class ComparisonHasPull(NotifyCondition):
     failure_explanation = "no_pull_request"
 
+    @staticmethod
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
@@ -51,6 +54,7 @@ class ComparisonHasPull(NotifyCondition):
 class PullRequestInProvider(NotifyCondition):
     failure_explanation = "pull_request_not_in_provider"
 
+    @staticmethod
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
@@ -63,6 +67,7 @@ class PullRequestInProvider(NotifyCondition):
 class PullRequestOpen(NotifyCondition):
     failure_explanation = "pull_request_closed"
 
+    @staticmethod
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
@@ -72,6 +77,7 @@ class PullRequestOpen(NotifyCondition):
 class PullHeadMatchesComparisonHead(NotifyCondition):
     failure_explanation = "pull_head_does_not_match"
 
+    @staticmethod
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
@@ -81,6 +87,7 @@ class PullHeadMatchesComparisonHead(NotifyCondition):
 class HasEnoughBuilds(NotifyCondition):
     failure_explanation = "not_enough_builds"
 
+    @staticmethod
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
@@ -92,16 +99,19 @@ class HasEnoughBuilds(NotifyCondition):
 class HasEnoughRequiredChanges(NotifyCondition):
     failure_explanation = "changes_required"
 
+    @staticmethod
     def _check_unexpected_changes(comparison: ComparisonProxy) -> bool:
         """Returns a bool that indicates wether there are unexpected changes"""
         return bool(comparison.get_changes())
 
+    @staticmethod
     def _check_coverage_change(comparison: ComparisonProxy) -> bool:
         """Returns a bool that indicates wether there is any change in coverage"""
         diff = comparison.get_diff()
         res = comparison.head.report.calculate_diff(diff)
         return res is not None and res["general"].lines > 0
 
+    @staticmethod
     def _check_any_change(comparison: ComparisonProxy) -> bool:
         unexpected_changes = HasEnoughRequiredChanges._check_unexpected_changes(
             comparison
@@ -109,6 +119,7 @@ class HasEnoughRequiredChanges(NotifyCondition):
         coverage_changes = HasEnoughRequiredChanges._check_coverage_change(comparison)
         return unexpected_changes or coverage_changes
 
+    @staticmethod
     def _check_coverage_drop(comparison: ComparisonProxy) -> bool:
         no_head_coverage = comparison.head.report.totals.coverage is None
         no_base_report = comparison.project_coverage_base.report is None
@@ -137,6 +148,7 @@ class HasEnoughRequiredChanges(NotifyCondition):
         # Need to take the project threshold into consideration
         return diff < 0 and abs(diff) >= (threshold + Decimal(0.01))
 
+    @staticmethod
     def _check_uncovered_patch(comparison: ComparisonProxy) -> bool:
         diff = comparison.get_diff(use_original_base=True)
         totals = comparison.head.report.apply_diff(diff)
@@ -150,6 +162,7 @@ class HasEnoughRequiredChanges(NotifyCondition):
             0.01
         )
 
+    @staticmethod
     def check_condition_OR_group(
         condition_group: CoverageCommentRequiredChangesORGroup,
         comparison: ComparisonProxy,
@@ -174,6 +187,7 @@ class HasEnoughRequiredChanges(NotifyCondition):
                 final_result |= cache_results[individual_condition]
         return final_result
 
+    @staticmethod
     def check_condition(
         notifier: AbstractBaseNotifier, comparison: ComparisonProxy
     ) -> bool:
@@ -194,4 +208,19 @@ class HasEnoughRequiredChanges(NotifyCondition):
         return all(
             HasEnoughRequiredChanges.check_condition_OR_group(or_group, comparison)
             for or_group in required_changes
+        )
+
+
+class NoAutoActivateMessageIfAutoActivateIsOff(NotifyCondition):
+    failure_explanation = "auto_activate_message_but_auto_activate_is_off"
+
+    @staticmethod
+    def check_condition(
+        notifier: AbstractBaseNotifier, comparison: ComparisonProxy
+    ) -> bool:
+        owner = notifier.repository.owner
+        # Return False ONLY if (owner.plan_auto_activate is False) and should_use_upgrade_message
+        # Checking if owner.plan_auto_activate is False so None will pass (tests)
+        return (owner.plan_auto_activate != False) or (
+            not notifier.should_use_upgrade_decoration()
         )
