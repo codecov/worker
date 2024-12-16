@@ -348,8 +348,9 @@ class ReducedError(CodecovBaseModel):
         return self.id_
 
 
-class Flake(CodecovBaseModel, MixinBaseClassNoExternalID):
+class Flake(CodecovBaseModel):
     __tablename__ = "reports_flake"
+    id_ = Column("id", types.BigInteger, primary_key=True)
     repoid = Column(types.Integer, ForeignKey("repos.repoid"))
     repository = relationship("Repository", backref=backref("flakes"))
 
@@ -366,6 +367,10 @@ class Flake(CodecovBaseModel, MixinBaseClassNoExternalID):
     fail_count = Column(types.Integer)
     start_date = Column(types.DateTime)
     end_date = Column(types.DateTime, nullable=True)
+
+    @property
+    def id(self):
+        return self.id_
 
 
 class DailyTestRollup(CodecovBaseModel, MixinBaseClassNoExternalID):
