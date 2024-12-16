@@ -59,7 +59,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
     def run_impl(
         self,
         db_session: Session,
-        chord_result: list[bool] | list[list[TAProcessorResult | list[Any]]],
+        chord_result: list[bool],
         *,
         repoid: int,
         commitid: str,
@@ -115,7 +115,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid: int,
         commitid: str,
         commit_yaml: UserYaml,
-        previous_result: list[bool] | list[list[TAProcessorResult | list[Any]]],
+        previous_result: list[bool],
         **kwargs,
     ):
         log.info("Running test results finishers", extra=self.extra_dict)
@@ -155,7 +155,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             db_session.add(totals)
             db_session.flush()
 
-        if not check_if_any_success(previous_result):
+        if not any(previous_result):
             # every processor errored, nothing to notify on
             queue_notify = False
 
@@ -343,18 +343,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             for flake in matching_flakes
         }
         return flaky_test_ids
-
-
-def check_if_any_success(
-    chord_result: list[bool] | list[list[TAProcessorResult | list[Any]]],
-) -> bool:
-    for result in chord_result:
-        if isinstance(result, list):
-            if any(isinstance(r, dict) and r["successful"] for r in result):
-                return True
-        elif isinstance(result, bool) and result:
-            return True
-    return False
 
 
 RegisteredTestResultsFinisherTask = celery_app.register_task(TestResultsFinisherTask())

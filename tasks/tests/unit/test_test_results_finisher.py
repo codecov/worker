@@ -339,7 +339,6 @@ def test_results_setup_no_instances(mocker, dbsession):
 class TestUploadTestFinisherTask(object):
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
-    @pytest.mark.parametrize("successful", [True, [{"successful": True}]])
     def test_upload_finisher_task_call(
         self,
         mocker,
@@ -362,7 +361,7 @@ class TestUploadTestFinisherTask(object):
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                successful,
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
