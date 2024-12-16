@@ -75,14 +75,18 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
             test_instances = get_test_instances(upload, flaky_tests)
             for test_instance in test_instances:
                 if test_instance.outcome == TestInstance.Outcome.PASS.value:
-                    flake = {**new_flakes, **curr_flakes}.get(test_instance.test_id)
+                    flake = new_flakes.get(test_instance.test_id) or curr_flakes.get(
+                        test_instance.test_id
+                    )
                     if flake is not None:
                         update_flake(flake, test_instance)
                 elif test_instance.outcome in (
                     TestInstance.Outcome.FAILURE.value,
                     TestInstance.Outcome.ERROR.value,
                 ):
-                    flake = {**new_flakes, **curr_flakes}.get(test_instance.test_id)
+                    flake = new_flakes.get(test_instance.test_id) or curr_flakes.get(
+                        test_instance.test_id
+                    )
                     if flake:
                         update_flake(flake, test_instance)
                     else:
