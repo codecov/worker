@@ -14,7 +14,9 @@ from helpers.token_refresh import get_token_refresh_callback
 log = logging.getLogger(__name__)
 
 
-def get_owner_provider_service(owner, *, ignore_installation=False):
+def get_owner_provider_service(
+    owner, *, ignore_installation=False, additional_data=None
+):
     _timeouts = [
         get_config("setup", "http", "timeouts", "connect", default=15),
         get_config("setup", "http", "timeouts", "receive", default=30),
@@ -23,12 +25,15 @@ def get_owner_provider_service(owner, *, ignore_installation=False):
     adapter_auth_info = get_adapter_auth_information(
         owner, ignore_installations=ignore_installation
     )
+    if additional_data is None:
+        additional_data = {}
     data = TorngitInstanceData(
         owner=OwnerInfo(
             service_id=owner.service_id, ownerid=owner.ownerid, username=owner.username
         ),
         installation=adapter_auth_info["selected_installation_info"],
         fallback_installations=adapter_auth_info["fallback_installations"],
+        additional_data=additional_data,
     )
 
     adapter_params = dict(
