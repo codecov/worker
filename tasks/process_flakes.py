@@ -35,23 +35,23 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         **kwargs: Any,
     ):
         """
-        this task wants to iterate through uploads for a given commit that have yet to be
-        "flake processed"
+        This task wants to iterate through uploads for a given commit that have yet to be
+        "flake processed".
 
-        for each of those uploads it wants to iterate through its test instances and
+        For each of those uploads it wants to iterate through its test instances and
         update existing flakes' count, recent_passes_count, fail_count, and end_date fields
-        depending on whether the test instance passed or failed
+        depending on whether the test instance passed or failed.
 
-        for each upload it wants to keep track of newly created flakes and keep those in a separate
+        For each upload it wants to keep track of newly created flakes and keep those in a separate
         collection than the existing flakes, so at the end it can bulk create the new flakes and
-        bulk update the existing flakes
+        bulk update the existing flakes.
 
-        it also wants to increment the flaky_fail_count of the relevant DailyTestRollup when it creates
-        a new flake so it keeps track of those changes and bulk updates those as well
+        It also wants to increment the flaky_fail_count of the relevant DailyTestRollup when it creates
+        a new flake so it keeps track of those changes and bulk updates those as well.
 
-        when it's done with an upload it merges the new flakes dictionary into the existing flakes dictionary
+        When it's done with an upload it merges the new flakes dictionary into the existing flakes dictionary
         and then clears the new flakes dictionary so the following upload considers the flakes created during the previous
-        iteration as existing
+        iteration as existing.
         """
         log.info(
             "Received process flakes task",
