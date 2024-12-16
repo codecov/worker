@@ -407,7 +407,6 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                         db_session,
                         repository,
                         pull.head,
-                        pull_dict["head"]["branch"],
                         current_yaml,
                     )
 
@@ -534,7 +533,6 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         db_session: sqlalchemy.orm.Session,
         repository: Repository,
         pull_head: str,
-        branch: str,
         current_yaml: UserYaml,
     ):
         if (
@@ -543,9 +541,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             > 0
         ):
             self.app.tasks[process_flakes_task_name].apply_async(
-                kwargs=dict(
-                    repo_id=repository.repoid, commit_id_list=[pull_head], branch=branch
-                )
+                kwargs=dict(repo_id=repository.repoid, commit_id=pull_head)
             )
 
     def trigger_ai_pr_review(self, enriched_pull: EnrichedPull, current_yaml: UserYaml):
