@@ -339,6 +339,7 @@ def test_results_setup_no_instances(mocker, dbsession):
 class TestUploadTestFinisherTask(object):
     @pytest.mark.integration
     @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.parametrize("successful", [True, [{"successful": True}]])
     def test_upload_finisher_task_call(
         self,
         mocker,
@@ -351,6 +352,7 @@ class TestUploadTestFinisherTask(object):
         test_results_mock_app,
         mock_repo_provider_comments,
         test_results_setup,
+        successful,
     ):
         mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
         mock_feature.check_value.return_value = False
@@ -360,7 +362,7 @@ class TestUploadTestFinisherTask(object):
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                successful,
             ],
             repoid=repoid,
             commitid=commit.commitid,
@@ -486,7 +488,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
@@ -541,9 +543,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": False}],
-            ],
+            [False],
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -627,7 +627,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
@@ -681,7 +681,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
@@ -807,7 +807,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
@@ -883,7 +883,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
@@ -972,7 +972,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
@@ -1032,9 +1032,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            [True],
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -1160,7 +1158,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         result = TestResultsFinisherTask().run_impl(
             dbsession,
             [
-                [{"successful": True}],
+                True,
             ],
             repoid=repoid,
             commitid=commit.commitid,
