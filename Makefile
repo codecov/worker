@@ -58,8 +58,8 @@ test.integration:
 
 
 update-requirements:
-	pip install pip-tools==7.4.1
-	pip-compile requirements.in
+	pip install uv==0.5.9
+	uv pip compile requirements.in -o requirements.txt
 
 
 lint.install:
