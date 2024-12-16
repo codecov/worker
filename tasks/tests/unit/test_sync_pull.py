@@ -139,8 +139,7 @@ def test_update_pull_commits_merged(
         apply_async.assert_called_once_with(
             kwargs=dict(
                 repo_id=repository.repoid,
-                commit_id_list=[head_commit.commitid],
-                branch="thing",
+                commit_id=head_commit.commitid,
             )
         )
     else:
@@ -550,15 +549,13 @@ def test_trigger_process_flakes(dbsession, mocker, flake_detection, repository):
         dbsession,
         repository,
         commit.commitid,
-        "main",
         current_yaml,
     )
     if flake_detection:
         apply_async.assert_called_once_with(
             kwargs=dict(
                 repo_id=repository.repoid,
-                commit_id_list=[commit.commitid],
-                branch="main",
+                commit_id=commit.commitid,
             )
         )
     else:
