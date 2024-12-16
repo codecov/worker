@@ -7,6 +7,7 @@ import pytest
 from freezegun import freeze_time
 from shared.encryption.oauth import get_encryptor_from_configuration
 from shared.rate_limits import gh_app_key_name, owner_key_name
+from shared.reports.types import UploadType
 from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import (
     TorngitClientError,
@@ -14,6 +15,7 @@ from shared.torngit.exceptions import (
     TorngitServerUnreachableError,
 )
 from shared.typings.torngit import (
+    AdditionalData,
     GithubInstallationInfo,
     OwnerInfo,
     RepoInfo,
@@ -83,6 +85,38 @@ def test_get_repo_provider_service_github(dbsession, repo):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
+    }
+    assert res.data == expected_data
+    assert repo.owner.service == "github"
+    assert res._on_token_refresh is not None
+    assert inspect.isawaitable(res._on_token_refresh(None))
+    assert res.token == {
+        "username": repo.owner.username,
+        "key": "testyftq3ovzkb3zmt823u3t04lkrt9w",
+        "secret": None,
+        "entity_name": owner_key_name(repo.owner.ownerid),
+    }
+
+
+def test_get_repo_provider_service_additional_data(dbsession, repo):
+    additional_data: AdditionalData = {"upload_type": UploadType.TEST_RESULTS}
+    res = get_repo_provider_service(repo, additional_data=additional_data)
+    expected_data = {
+        "owner": {
+            "ownerid": repo.owner.ownerid,
+            "service_id": repo.owner.service_id,
+            "username": repo.owner.username,
+        },
+        "repo": {
+            "name": "example-python",
+            "using_integration": False,
+            "service_id": repo.service_id,
+            "repoid": repo.repoid,
+        },
+        "installation": None,
+        "fallback_installations": None,
+        "additional_data": {"upload_type": UploadType.TEST_RESULTS},
     }
     assert res.data == expected_data
     assert repo.owner.service == "github"
@@ -146,6 +180,7 @@ def test_get_repo_provider_service_github_with_installations(dbsession, mocker, 
                 "pem_path": None,
             }
         ],
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert repo.owner.service == "github"
@@ -182,6 +217,7 @@ def test_get_repo_provider_service_bitbucket(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert repo.owner.service == "bitbucket"
@@ -217,6 +253,7 @@ def test_get_repo_provider_service_with_token_refresh_callback(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert res._on_token_refresh is not None
@@ -253,6 +290,7 @@ def test_get_repo_provider_service_repo_bot(dbsession, mock_configuration):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert res.token == {
@@ -309,6 +347,7 @@ def test_get_repo_provider_service_different_bot(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data["repo"] == expected_data["repo"]
     assert res.data == expected_data
@@ -347,6 +386,7 @@ def test_get_repo_provider_service_no_bot(dbsession):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data == expected_data
     assert res.token == {
@@ -1093,6 +1133,7 @@ async def test_get_repo_gh_no_integration(dbsession, mocker):
         },
         "installation": None,
         "fallback_installations": None,
+        "additional_data": {},
     }
     assert res.data["repo"] == expected_data["repo"]
     assert res.data == expected_data
