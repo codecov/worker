@@ -278,6 +278,7 @@ async def update_commit_from_provider_info(
             author_value=commit.author_id,
         ),
     )
+    db_session.commit()
 
 
 def get_or_create_author(
