@@ -3,6 +3,7 @@ from typing import Any
 
 from django.db import transaction as django_transaction
 from django.db.models import Q
+from redis.exceptions import LockError
 from shared.celery_config import process_flakes_task_name
 from shared.django_apps.reports.models import (
     CommitReport,
@@ -13,6 +14,7 @@ from shared.django_apps.reports.models import (
 )
 
 from app import celery_app
+from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -52,89 +54,113 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         When it's done with an upload it merges the new flakes dictionary into the existing flakes dictionary
         and then clears the new flakes dictionary so the following upload considers the flakes created during the previous
         iteration as existing.
+
+        The redis locking is to prevent mutliple instances of the task running at the same time for the same repo.
+        The locking scheme is set up such that no upload will be unprocessed. Before queuing up the process flakes task the
+        test results finisher and sync pulls tasks will set the flake_uploads key in redis for that repo.
         """
         log.info(
             "Received process flakes task",
             extra=dict(repoid=repo_id, commit=commit_id),
         )
 
-        uploads = ReportSession.objects.filter(
-            report__report_type=CommitReport.ReportType.TEST_RESULTS.value,
-            report__commit__commitid=commit_id,
-            state="processed",
-        ).all()
-
-        curr_flakes = fetch_curr_flakes(repo_id)
-        new_flakes: dict[str, Flake] = dict()
-
-        rollups_to_update: list[DailyTestRollup] = []
-
-        flaky_tests = list(curr_flakes.keys())
-
-        for upload in uploads:
-            test_instances = get_test_instances(upload, flaky_tests)
-            for test_instance in test_instances:
-                if test_instance.outcome == TestInstance.Outcome.PASS.value:
-                    flake = new_flakes.get(test_instance.test_id) or curr_flakes.get(
-                        test_instance.test_id
-                    )
-                    if flake is not None:
-                        update_flake(flake, test_instance)
-                elif test_instance.outcome in (
-                    TestInstance.Outcome.FAILURE.value,
-                    TestInstance.Outcome.ERROR.value,
-                ):
-                    flake = new_flakes.get(test_instance.test_id) or curr_flakes.get(
-                        test_instance.test_id
-                    )
-                    if flake:
-                        update_flake(flake, test_instance)
-                    else:
-                        flake, rollup = create_flake(test_instance, repo_id)
-
-                        new_flakes[test_instance.test_id] = flake
-
-                        if rollup:
-                            rollups_to_update.append(rollup)
-
-            if rollups_to_update:
-                DailyTestRollup.objects.bulk_update(
-                    rollups_to_update,
-                    ["flaky_fail_count"],
-                )
-
-            merge_flake_dict = {}
-
-            if new_flakes:
-                flakes_to_merge = Flake.objects.bulk_create(new_flakes.values())
-                merge_flake_dict: dict[str, Flake] = {
-                    flake.test_id: flake for flake in flakes_to_merge
-                }
-
-            Flake.objects.bulk_update(
-                curr_flakes.values(),
-                [
-                    "count",
-                    "fail_count",
-                    "recent_passes_count",
-                    "end_date",
-                ],
-            )
-
-            curr_flakes = {**merge_flake_dict, **curr_flakes}
-
-            new_flakes.clear()
-
-            upload.state = "flake_processed"
-            upload.save()
-            django_transaction.commit()
-
-        log.info(
-            "Successfully processed flakes",
-            extra=dict(repoid=repo_id, commit=commit_id),
-        )
+        redis_client = get_redis_connection()
+        lock_name = f"flake_lock:{repo_id}"
+        try:
+            with redis_client.lock(
+                lock_name, timeout=max(300, self.hard_time_limit_task), blocking=False
+            ):
+                while redis_client.get(f"flake_uploads:{repo_id}") is not None:
+                    redis_client.delete(f"flake_uploads:{repo_id}")
+                    run_impl_within_lock(repo_id, commit_id)
+        except LockError:
+            log.warning("Unable to acquire process flakeslock for key %s.", lock_name)
+            return {"successful": False}
 
         return {"successful": True}
+
+
+def run_impl_within_lock(
+    repo_id: int,
+    commit_id: str,
+):
+    uploads = ReportSession.objects.filter(
+        report__report_type=CommitReport.ReportType.TEST_RESULTS.value,
+        report__commit__commitid=commit_id,
+        state="processed",
+    ).all()
+
+    curr_flakes = fetch_curr_flakes(repo_id)
+    new_flakes: dict[str, Flake] = dict()
+
+    rollups_to_update: list[DailyTestRollup] = []
+
+    flaky_tests = list(curr_flakes.keys())
+
+    for upload in uploads:
+        test_instances = get_test_instances(upload, flaky_tests)
+        for test_instance in test_instances:
+            if test_instance.outcome == TestInstance.Outcome.PASS.value:
+                flake = new_flakes.get(test_instance.test_id) or curr_flakes.get(
+                    test_instance.test_id
+                )
+                if flake is not None:
+                    update_flake(flake, test_instance)
+            elif test_instance.outcome in (
+                TestInstance.Outcome.FAILURE.value,
+                TestInstance.Outcome.ERROR.value,
+            ):
+                flake = new_flakes.get(test_instance.test_id) or curr_flakes.get(
+                    test_instance.test_id
+                )
+                if flake:
+                    update_flake(flake, test_instance)
+                else:
+                    flake, rollup = create_flake(test_instance, repo_id)
+
+                    new_flakes[test_instance.test_id] = flake
+
+                    if rollup:
+                        rollups_to_update.append(rollup)
+
+        if rollups_to_update:
+            DailyTestRollup.objects.bulk_update(
+                rollups_to_update,
+                ["flaky_fail_count"],
+            )
+
+        merge_flake_dict = {}
+
+        if new_flakes:
+            flakes_to_merge = Flake.objects.bulk_create(new_flakes.values())
+            merge_flake_dict: dict[str, Flake] = {
+                flake.test_id: flake for flake in flakes_to_merge
+            }
+
+        Flake.objects.bulk_update(
+            curr_flakes.values(),
+            [
+                "count",
+                "fail_count",
+                "recent_passes_count",
+                "end_date",
+            ],
+        )
+
+        curr_flakes = {**merge_flake_dict, **curr_flakes}
+
+        new_flakes.clear()
+
+        upload.state = "flake_processed"
+        upload.save()
+        django_transaction.commit()
+
+    log.info(
+        "Successfully processed flakes",
+        extra=dict(repoid=repo_id, commit=commit_id),
+    )
+
+    return {"successful": True}
 
 
 def get_test_instances(
