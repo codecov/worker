@@ -3898,7 +3898,6 @@ class TestNewFooterSectionWriter(object):
             "",
             "[:umbrella: View full report in Codecov by Sentry](pull.link?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
-            ":warning: Impact Analysis from Codecov is deprecated and will be sunset on Jan 31 2025. [See more](https://docs.codecov.com/docs/impact-analysis)",
         ]
 
     def test_footer_section_writer_in_gitlab(self, mocker):
