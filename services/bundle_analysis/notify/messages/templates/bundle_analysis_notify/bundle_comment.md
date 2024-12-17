@@ -8,3 +8,4 @@ Bundle size has no change :white_check_mark:
 
 ℹ️ *Bundle size includes cached data from a previous commit
 {%endif%}{% endif %}
+{% if bundle_route_data %}{% include "bundle_analysis_notify/bundle_route_table.md" %}{% endif %}
