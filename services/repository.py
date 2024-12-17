@@ -15,7 +15,12 @@ from shared.torngit.exceptions import (
     TorngitError,
     TorngitObjectNotFoundError,
 )
-from shared.typings.torngit import OwnerInfo, RepoInfo, TorngitInstanceData
+from shared.typings.torngit import (
+    AdditionalData,
+    OwnerInfo,
+    RepoInfo,
+    TorngitInstanceData,
+)
 from shared.validation.exceptions import InvalidYamlException
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
@@ -39,12 +44,15 @@ merged_pull = re.compile(r".*Merged in [^\s]+ \(pull request \#(\d+)\).*").match
 def get_repo_provider_service(
     repository: Repository,
     installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    additional_data: AdditionalData = None,
 ) -> TorngitBaseAdapter:
     adapter_auth_info = get_adapter_auth_information(
         repository.owner,
         repository=repository,
         installation_name_to_use=installation_name_to_use,
     )
+    if additional_data is None:
+        additional_data = {}
     data = TorngitInstanceData(
         repo=RepoInfo(
             name=repository.name,
@@ -61,6 +69,7 @@ def get_repo_provider_service(
         ),
         installation=adapter_auth_info["selected_installation_info"],
         fallback_installations=adapter_auth_info["fallback_installations"],
+        additional_data=additional_data,
     )
 
     adapter_params = dict(

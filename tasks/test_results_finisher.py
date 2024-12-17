@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from asgiref.sync import async_to_sync
+from shared.reports.types import UploadType
+from shared.typings.torngit import AdditionalData
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
@@ -121,14 +123,14 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
         repo = commit.repository
 
-        if should_do_flaky_detection(repo, commit_yaml) and (
-            commit.merged is True or commit.branch == repo.branch
-        ):
-            self.app.tasks[process_flakes_task_name].apply_async(
-                kwargs=dict(
-                    repo_id=repoid, commit_id_list=[commit.commitid], branch=repo.branch
+        if should_do_flaky_detection(repo, commit_yaml):
+            if commit.merged is True or commit.branch == repo.branch:
+                self.app.tasks[process_flakes_task_name].apply_async(
+                    kwargs=dict(
+                        repo_id=repoid,
+                        commit_id=commit.commitid,
+                    )
                 )
-            )
 
         if commit.branch is not None:
             self.app.tasks[cache_test_rollups_task_name].apply_async(
@@ -230,7 +232,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                 "queue_notify": True,
             }
 
-        repo_service = get_repo_provider_service(repo)
+        additional_data: AdditionalData = {"upload_type": UploadType.TEST_RESULTS}
+        repo_service = get_repo_provider_service(repo, additional_data=additional_data)
         pull = async_to_sync(fetch_and_update_pull_request_information_from_commit)(
             repo_service, commit, commit_yaml
         )

@@ -8,3 +8,7 @@ CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER = Feature("carryforward_base_search_rang
 SYNC_PULL_USE_MERGE_COMMIT_SHA = Feature("sync_pull_use_merge_commit_sha")
 
 CHECKPOINT_ENABLED_REPOSITORIES = Feature("checkpoint_enabled_repositories")
+
+SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG = Feature(
+    "show_impact_analysis_deprecation_message"
+)

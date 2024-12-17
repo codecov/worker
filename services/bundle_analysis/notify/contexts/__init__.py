@@ -6,6 +6,7 @@ import sentry_sdk
 import shared.storage
 from shared.bundle_analysis import BundleAnalysisReport, BundleAnalysisReportLoader
 from shared.torngit.base import TorngitBaseAdapter
+from shared.typings.torngit import AdditionalData, UploadType
 from shared.validation.types import BundleThreshold
 from shared.yaml import UserYaml
 
@@ -79,9 +80,11 @@ class BaseBundleAnalysisNotificationContext:
 
     @cached_property
     def repository_service(self) -> TorngitBaseAdapter:
+        additional_data: AdditionalData = {"upload_type": UploadType.BUNDLE_ANALYSIS}
         return get_repo_provider_service(
             self.repository,
             installation_name_to_use=self.gh_app_installation_name,
+            additional_data=additional_data,
         )
 
     commit_report = NotificationContextField[CommitReport]()
