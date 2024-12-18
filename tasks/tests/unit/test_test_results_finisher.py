@@ -359,9 +359,7 @@ class TestUploadTestFinisherTask(object):
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -485,9 +483,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -541,9 +537,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": False}],
-            ],
+            False,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -626,9 +620,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -680,9 +672,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -806,9 +796,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -882,9 +870,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={
@@ -971,9 +957,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml=commit_yaml,
@@ -1031,9 +1015,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
@@ -1158,9 +1140,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         dbsession.flush()
         result = TestResultsFinisherTask().run_impl(
             dbsession,
-            [
-                [{"successful": True}],
-            ],
+            True,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml=commit_yaml,

@@ -65,16 +65,13 @@ class TestUploadTestProcessorTask(object):
         dbsession.flush()
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+        expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -154,13 +151,16 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
+
         print(caplog.text)
         assert "Error parsing file" in caplog.text
+        assert result == False
 
     @pytest.mark.integration
     def test_test_result_processor_task_delete_archive(
@@ -203,16 +203,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.flush()
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+        expected_result = True
 
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
@@ -276,12 +273,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.flush()
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [{"successful": False}]
+        expected_result = False
 
         assert expected_result == result
         assert (
@@ -345,16 +343,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+        expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -439,16 +434,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+        expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -527,16 +519,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
             result = TestResultsProcessorTask().run_impl(
                 dbsession,
+                previous_result=False,
                 repoid=repoid,
                 commitid=first_commit.commitid,
                 commit_yaml={"codecov": {"max_report_age": False}},
                 arguments_list=redis_queue,
             )
-            expected_result = [
-                {
-                    "successful": True,
-                }
-            ]
+            expected_result = True
 
             rollups = dbsession.query(DailyTestRollup).all()
 
@@ -586,16 +575,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
             result = TestResultsProcessorTask().run_impl(
                 dbsession,
+                previous_result=False,
                 repoid=repoid,
                 commitid=second_commit.commitid,
                 commit_yaml={"codecov": {"max_report_age": False}},
                 arguments_list=redis_queue,
             )
-            expected_result = [
-                {
-                    "successful": True,
-                }
-            ]
+            expected_result = True
 
             assert result == expected_result
 
@@ -696,16 +682,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.flush()
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+        expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         failures = (
@@ -779,12 +762,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.flush()
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [[]]
+        expected_result = True
 
         assert expected_result == result
 
@@ -842,16 +826,13 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.flush()
         result = TestResultsProcessorTask().run_impl(
             dbsession,
+            previous_result=False,
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
             arguments_list=redis_queue,
         )
-        expected_result = [
-            {
-                "successful": True,
-            }
-        ]
+        expected_result = True
 
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
