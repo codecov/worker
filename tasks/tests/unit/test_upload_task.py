@@ -370,7 +370,7 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        chord = mocker.patch("tasks.upload.chain")
+        chain = mocker.patch("tasks.upload.chain")
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
@@ -431,8 +431,7 @@ class TestUploadTaskIntegration(object):
 
         kwargs[_kwargs_key(TestResultsFlow)] = mocker.ANY
         notify_sig = test_results_finisher_task.signature(kwargs=kwargs)
-
-        chord.assert_called_with([processor_sig], notify_sig)
+        chain.assert_called_with(*[processor_sig, notify_sig])
 
     def test_upload_task_call_no_jobs(
         self,

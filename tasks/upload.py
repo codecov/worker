@@ -648,7 +648,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
     ):
-        processor_task_group = [
+        task_group = [
             test_results_processor_task.s(
                 repoid=commit.repoid,
                 commitid=commit.commitid,
@@ -665,10 +665,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             "commit_yaml": commit_yaml,
         }
         finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
-        return chain(
-            processor_task_group,
+        task_group.append(
             test_results_finisher_task.signature(kwargs=finisher_kwargs),
-        ).apply_async()
+        )
+        return chain(*task_group).apply_async()
 
     def possibly_carryforward_bundle_report(
         self,
