@@ -18,13 +18,15 @@ from shared.django_apps.reports.tests.factories import (
     UploadFactory,
 )
 
-from services.redis import get_redis_connection
-from tasks.process_flakes import (
-    ProcessFlakesTask,
+from services.processing.flake_processing import (
     create_flake,
     fetch_curr_flakes,
     get_test_instances,
     update_flake,
+)
+from services.redis import get_redis_connection
+from tasks.process_flakes import (
+    ProcessFlakesTask,
 )
 
 
