@@ -208,4 +208,6 @@ def test_log_context_populate_from_sqlalchemy_is_disabled(
         "owner_username": None,
         "owner_service": None,
         "sentry_trace_id": None,
+        "checkpoints_data": {},
+        "owner_plan": None,
     }
