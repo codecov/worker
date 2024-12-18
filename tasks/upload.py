@@ -665,7 +665,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             "commit_yaml": commit_yaml,
         }
         finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
-        return chord(
+        return chain(
             processor_task_group,
             test_results_finisher_task.signature(kwargs=finisher_kwargs),
         ).apply_async()
