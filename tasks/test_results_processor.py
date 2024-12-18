@@ -141,13 +141,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def run_impl(
         self,
         db_session,
+        previous_result: bool,
         *args,
         repoid: int,
         commitid: str,
         commit_yaml,
         arguments_list: list[UploadArguments],
         **kwargs,
-    ):
+    ) -> bool:
         log.info("Received upload test result processing task")
 
         commit_yaml = UserYaml(commit_yaml)
@@ -187,7 +188,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
             results.append(result)
 
-        return results
+        return previous_result or any(result.get("successful") for result in results)
 
     @sentry_sdk.trace
     def _bulk_write_tests_to_db(
@@ -411,8 +412,10 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         upload_id = upload.id
 
         log.info("Processing individual upload", extra=dict(upload_id=upload_id))
-        if upload.state == "processed" or upload.state == "has_failed":
-            return []
+        if upload.state == "processed":
+            return {"successful": True}
+        elif upload.state == "has_failed":
+            return {"successful": False}
 
         payload_bytes = archive_service.read_file(upload.storage_path)
         try:
@@ -424,7 +427,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
                 upload.state = "not parsed"
                 db_session.flush()
-                return []
+                return {"successful": False}
 
         parsing_results: list[ParsingInfo] = []
         network: list[str] | None = data.get("network_files")

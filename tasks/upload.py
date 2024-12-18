@@ -659,6 +659,8 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             for chunk in itertools.batched(argument_list, CHUNK_SIZE)
         ]
 
+        task_group[0].args = (False,)
+
         finisher_kwargs = {
             "repoid": commit.repoid,
             "commitid": commit.commitid,
