@@ -25,6 +25,7 @@ from database.models import (
     TestInstance,
     Upload,
 )
+from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
 from services.test_results import generate_flags_hash, generate_test_id
@@ -277,6 +278,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         # Upsert Tests
         if len(test_data) > 0:
+            metrics.gauge("test_results_processor.test_count", len(test_data))
             sorted_tests = sorted(
                 test_data.values(),
                 key=lambda x: str(x["id"]),
@@ -306,6 +308,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         # Save TestInstances
         if len(test_instance_data) > 0:
+            metrics.gauge(
+                "test_results_processor.test_instance_count", len(test_instance_data)
+            )
             self.save_test_instances(db_session, test_instance_data)
 
             log.info(
