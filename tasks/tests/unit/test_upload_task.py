@@ -6,6 +6,7 @@ from pathlib import Path
 import mock
 import pytest
 from celery.exceptions import Retry
+from mock import call
 from redis.exceptions import LockError
 from shared.reports.enums import UploadState, UploadType
 from shared.torngit import GitlabEnterprise
@@ -357,7 +358,7 @@ class TestUploadTaskIntegration(object):
                 "upload_pk": None,
             },
         )
-        chain.assert_called_with([processor_sig])
+        assert call([processor_sig]) in chain.mock_calls
 
     def test_upload_task_call_test_results(
         self,
@@ -369,7 +370,7 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        chord = mocker.patch("tasks.upload.chord")
+        chord = mocker.patch("tasks.upload.chain")
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
