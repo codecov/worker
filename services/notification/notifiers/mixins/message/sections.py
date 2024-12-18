@@ -9,10 +9,8 @@ from urllib.parse import urlencode
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
 
-from database.models import Repository
 from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
-from rollouts import SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG
 from services.comparison import ComparisonProxy
 from services.comparison.overlays import OverlayType
 from services.comparison.types import ReportUploadedCount
@@ -105,16 +103,6 @@ class NewFooterSectionWriter(BaseSectionWriter):
                     if repo_service == "github"
                     else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
                 )
-            )
-
-        # CAN BE REMOVED AFTER January 31st 2025
-        # Will only be shown to orgs specified in the feature flag override.
-        repo: Repository = comparison.head.commit.repository
-        if SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG.check_value(
-            identifier=repo.repoid, default=False
-        ):
-            yield (
-                ":warning: Impact Analysis from Codecov is deprecated and will be sunset on Jan 31 2025. [See more](https://docs.codecov.com/docs/impact-analysis)"
             )
 
 
