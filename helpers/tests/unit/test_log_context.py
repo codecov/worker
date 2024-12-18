@@ -187,3 +187,27 @@ def test_add_to_sentry(dbsession, mocker):
     expected_sentry_fields.pop("sentry_trace_id")
     expected_sentry_fields.pop("checkpoints_data")
     mock_set_tags.assert_called_with(expected_sentry_fields)
+
+
+def test_log_context_populate_from_sqlalchemy_is_disabled(
+    mock_configuration, dbsession
+):
+    mock_configuration.set_params({"setup": {"log_context": {"populate": False}}})
+    log_context = LogContext(task_name="foo", task_id="bar")
+    log_context.populate_from_sqlalchemy(dbsession)
+
+    assert log_context == LogContext(task_name="foo", task_id="bar")
+    assert log_context.as_dict() == {
+        "task_name": "foo",
+        "task_id": "bar",
+        "commit_id": None,
+        "commit_sha": None,
+        "repo_id": None,
+        "repo_name": None,
+        "owner_id": None,
+        "owner_username": None,
+        "owner_service": None,
+        "sentry_trace_id": None,
+        "checkpoints_data": {},
+        "owner_plan": None,
+    }

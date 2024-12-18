@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, field, replace
 
 import sentry_sdk
 from sentry_sdk import get_current_span
+from shared.config import get_config
 
 from database.models.core import Commit, Owner, Repository
 
@@ -51,7 +52,9 @@ class LogContext:
 
         Ignore exceptions; no need to fail a task for a missing context field.
         """
-        if self._populated_from_db:
+        if self._populated_from_db or not get_config(
+            "setup", "log_context", "populate", default=True
+        ):
             return
 
         try:
