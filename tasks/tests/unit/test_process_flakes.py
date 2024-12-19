@@ -18,12 +18,15 @@ from shared.django_apps.reports.tests.factories import (
     UploadFactory,
 )
 
-from tasks.process_flakes import (
-    ProcessFlakesTask,
+from services.processing.flake_processing import (
     create_flake,
     fetch_curr_flakes,
     get_test_instances,
     update_flake,
+)
+from services.redis import get_redis_connection
+from tasks.process_flakes import (
+    ProcessFlakesTask,
 )
 
 
@@ -34,7 +37,13 @@ class RepoSimulator:
         self.test_count = 0
         self.branch_number = 0
 
+        self.redis = get_redis_connection()
+
         self.test_map = defaultdict(lambda: TestFactory(id=self.test_count))
+
+    def run_task(self, repo_id: int, commit_id: str):
+        self.redis.set(f"flake_uploads:{self.repo.repoid}", 0)
+        ProcessFlakesTask().run_impl(None, repo_id=repo_id, commit_id=commit_id)
 
     def create_commit(self) -> Commit:
         c = CommitFactory(
@@ -293,7 +302,7 @@ def test_it_handles_only_passes(transactional_db):
     rs.add_test_instance(c1)
     rs.add_test_instance(c1)
 
-    ProcessFlakesTask().run_impl(None, repo_id=rs.repo.repoid, commit_id=c1.commitid)
+    rs.run_task(rs.repo.repoid, c1.commitid)
 
     assert len(Flake.objects.all()) == 0
 
@@ -305,7 +314,7 @@ def test_it_creates_flakes_from_processed_uploads(transactional_db):
     rs.add_test_instance(c1)
     rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
 
-    ProcessFlakesTask().run_impl(None, repo_id=rs.repo.repoid, commit_id=c1.commitid)
+    rs.run_task(rs.repo.repoid, c1.commitid)
 
     assert len(Flake.objects.all()) == 1
     flake = Flake.objects.first()
@@ -325,11 +334,7 @@ def test_it_does_not_create_flakes_from_flake_processed_uploads(transactional_db
         c1, outcome=TestInstance.Outcome.FAILURE.value, state="flake_processed"
     )
 
-    ProcessFlakesTask().run_impl(
-        None,
-        repo_id=rs.repo.repoid,
-        commit_id=c1.commitid,
-    )
+    rs.run_task(rs.repo.repoid, c1.commitid)
 
     assert len(Flake.objects.all()) == 0
 
@@ -340,20 +345,12 @@ def test_it_processes_two_commits_separately(transactional_db):
     c1 = rs.create_commit()
     rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
 
-    ProcessFlakesTask().run_impl(
-        None,
-        repo_id=rs.repo.repoid,
-        commit_id=c1.commitid,
-    )
+    rs.run_task(rs.repo.repoid, c1.commitid)
 
     c2 = rs.create_commit()
     rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
 
-    ProcessFlakesTask().run_impl(
-        None,
-        repo_id=rs.repo.repoid,
-        commit_id=c2.commitid,
-    )
+    rs.run_task(rs.repo.repoid, c2.commitid)
 
     assert len(Flake.objects.all()) == 1
     flake = Flake.objects.first()
@@ -372,11 +369,7 @@ def test_it_creates_flakes_expires(transactional_db):
         c1 = rs.create_commit()
         rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
 
-        ProcessFlakesTask().run_impl(
-            None,
-            repo_id=rs.repo.repoid,
-            commit_id=c1.commitid,
-        )
+        rs.run_task(rs.repo.repoid, c1.commitid)
 
         old_time = dt.datetime.now(dt.UTC)
         traveller.shift(dt.timedelta(seconds=100))
@@ -387,11 +380,7 @@ def test_it_creates_flakes_expires(transactional_db):
             rs.add_test_instance(c, outcome=TestInstance.Outcome.PASS.value)
             commits.append(c.commitid)
 
-            ProcessFlakesTask().run_impl(
-                None,
-                repo_id=rs.repo.repoid,
-                commit_id=c.commitid,
-            )
+            rs.run_task(rs.repo.repoid, c.commitid)
 
         assert len(Flake.objects.all()) == 1
         flake = Flake.objects.first()
@@ -406,11 +395,7 @@ def test_it_creates_flakes_expires(transactional_db):
         c = rs.create_commit()
         rs.add_test_instance(c, outcome=TestInstance.Outcome.PASS.value)
 
-        ProcessFlakesTask().run_impl(
-            None,
-            repo_id=rs.repo.repoid,
-            commit_id=c.commitid,
-        )
+        rs.run_task(rs.repo.repoid, c.commitid)
 
         assert len(Flake.objects.all()) == 1
         flake = Flake.objects.first()
@@ -430,22 +415,14 @@ def test_it_creates_rollups(transactional_db):
         rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
         rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
 
-        ProcessFlakesTask().run_impl(
-            None,
-            repo_id=rs.repo.repoid,
-            commit_id=c1.commitid,
-        )
+        rs.run_task(rs.repo.repoid, c1.commitid)
 
     with time_machine.travel("1970-1-2T00:00:00Z"):
         c2 = rs.create_commit()
         rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
         rs.add_test_instance(c2, outcome=TestInstance.Outcome.FAILURE.value)
 
-        ProcessFlakesTask().run_impl(
-            None,
-            repo_id=rs.repo.repoid,
-            commit_id=c2.commitid,
-        )
+        rs.run_task(rs.repo.repoid, c2.commitid)
 
         rollups = DailyTestRollup.objects.all().order_by("date")
 

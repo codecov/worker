@@ -540,6 +540,8 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             and db_session.query(Test).filter(Test.repoid == repository.repoid).count()
             > 0
         ):
+            redis_client = get_redis_connection()
+            redis_client.set(f"flake_uploads:{repository.repoid}", 0)
             self.app.tasks[process_flakes_task_name].apply_async(
                 kwargs=dict(repo_id=repository.repoid, commit_id=pull_head)
             )

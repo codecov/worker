@@ -16,6 +16,7 @@ from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.activation import activate_user
 from services.lock_manager import LockManager, LockRetry, LockType
+from services.redis import get_redis_connection
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
@@ -123,8 +124,11 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
         repo = commit.repository
 
+        redis_client = get_redis_connection()
+
         if should_do_flaky_detection(repo, commit_yaml):
             if commit.merged is True or commit.branch == repo.branch:
+                redis_client.set(f"flake_uploads:{repoid}", 0)
                 self.app.tasks[process_flakes_task_name].apply_async(
                     kwargs=dict(
                         repo_id=repoid,
