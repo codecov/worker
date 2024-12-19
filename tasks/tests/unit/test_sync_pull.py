@@ -72,11 +72,6 @@ def test_update_pull_commits_merged(
     mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
     mock_feature.check_value.return_value = True
 
-    if tests_exist:
-        t = TestFactory(repository=repository)
-        dbsession.add(t)
-        dbsession.flush()
-
     pull.state = "merged"
     pullid = pull.pullid
     base_commit.pullid = pullid
@@ -135,15 +130,12 @@ def test_update_pull_commits_merged(
         repository,
     )
 
-    if tests_exist:
-        apply_async.assert_called_once_with(
-            kwargs=dict(
-                repo_id=repository.repoid,
-                commit_id=head_commit.commitid,
-            )
+    apply_async.assert_called_once_with(
+        kwargs=dict(
+            repo_id=repository.repoid,
+            commit_id=head_commit.commitid,
         )
-    else:
-        apply_async.assert_not_called()
+    )
 
     assert res == {"merged_count": 2, "soft_deleted_count": 2}
     dbsession.refresh(first_commit)

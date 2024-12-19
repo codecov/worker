@@ -17,7 +17,7 @@ from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
-from database.models import Commit, Pull, Repository, Test
+from database.models import Commit, Pull, Repository
 from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
@@ -535,11 +535,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         pull_head: str,
         current_yaml: UserYaml,
     ):
-        if (
-            should_do_flaky_detection(repository, current_yaml)
-            and db_session.query(Test).filter(Test.repoid == repository.repoid).count()
-            > 0
-        ):
+        if should_do_flaky_detection(repository, current_yaml):
             redis_client = get_redis_connection()
             redis_client.set(f"flake_uploads:{repository.repoid}", 0)
             self.app.tasks[process_flakes_task_name].apply_async(
