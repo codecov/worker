@@ -195,6 +195,8 @@ mock==4.0.3
     # via -r requirements.in
 monotonic==1.5
     # via analytics-python
+msgpack==1.1.0
+    # via -r requirements.in
 multidict==6.1.0
     # via
     #   -r requirements.in
@@ -366,7 +368,7 @@ statsd==3.3.0
     # via -r requirements.in
 stripe==9.6.0
     # via -r requirements.in
-test-results-parser @ https://github.com/codecov/test-results-parser/archive/90be9f378fc4002e3bdd35264b458c313f490f59.tar.gz#egg=test-results-parser
+test-results-parser @ https://github.com/codecov/test-results-parser/archive/1117e755a36abbecf5a93f3cc3a5e94d918ef895.tar.gz#egg=test-results-parser
     # via -r requirements.in
 text-unidecode==1.3
     # via faker
