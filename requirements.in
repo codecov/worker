@@ -1,4 +1,4 @@
-https://github.com/codecov/test-results-parser/archive/c840502d1b4dd7d05b2efc2c1328affaf2acd27c.tar.gz#egg=test-results-parser
+https://github.com/codecov/test-results-parser/archive/90be9f378fc4002e3bdd35264b458c313f490f59.tar.gz#egg=test-results-parser
 https://github.com/codecov/shared/archive/2674ae99811767e63151590906691aed4c5ce1f9.tar.gz#egg=shared
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 asgiref>=3.7.2
