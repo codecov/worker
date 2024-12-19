@@ -3,13 +3,13 @@ import json
 from decimal import Decimal
 
 from shared.config import get_config
+from shared.timeseries.helpers import is_timeseries_enabled
 from shared.utils.ReportEncoder import ReportEncoder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import database.events  # noqa: F401
 from database.models.timeseries import TimeseriesBaseModel
-from helpers.timeseries import timeseries_enabled
 
 from .base import Base
 
@@ -44,7 +44,7 @@ class SessionFactory:
             json_serializer=json_dumps,
         )
 
-        if timeseries_enabled():
+        if is_timeseries_enabled():
             self.timeseries_engine = create_engine(
                 self.timeseries_database_url,
                 json_serializer=json_dumps,

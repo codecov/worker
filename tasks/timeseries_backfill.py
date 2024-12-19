@@ -9,12 +9,12 @@ from shared.celery_config import (
     timeseries_backfill_dataset_task_name,
     timeseries_save_commit_measurements_task_name,
 )
+from shared.timeseries.helpers import is_timeseries_enabled
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Commit, Repository
 from database.models.timeseries import Dataset
-from helpers.timeseries import timeseries_enabled
 from services.timeseries import backfill_batch_size, repository_commits_query
 from tasks.base import BaseCodecovTask
 
@@ -32,7 +32,7 @@ class TimeseriesBackfillCommitsTask(
         dataset_names: Iterable[str],
         **kwargs,
     ):
-        if not timeseries_enabled():
+        if not is_timeseries_enabled():
             log.warning("Timeseries not enabled")
             return {"successful": False}
 
@@ -69,7 +69,7 @@ class TimeseriesBackfillDatasetTask(
         batch_size: Optional[int] = None,
         **kwargs,
     ):
-        if not timeseries_enabled():
+        if not is_timeseries_enabled():
             log.warning("Timeseries not enabled")
             return {"successful": False}
 

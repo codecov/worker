@@ -105,7 +105,7 @@ class TestTimeseriesService(object):
     def test_insert_commit_measurement(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -140,7 +140,7 @@ class TestTimeseriesService(object):
         assert measurement.value == 60.0
 
     def test_save_commit_measurements_no_report(self, dbsession, repository, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=None,
@@ -167,7 +167,7 @@ class TestTimeseriesService(object):
     def test_update_commit_measurement(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -218,7 +218,7 @@ class TestTimeseriesService(object):
     def test_commit_measurement_insert_flags(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -291,7 +291,7 @@ class TestTimeseriesService(object):
     def test_commit_measurement_update_flags(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -390,7 +390,7 @@ class TestTimeseriesService(object):
     def test_commit_measurement_insert_components(
         self, dbsession, sample_report_for_components, repository, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(
@@ -575,7 +575,7 @@ class TestTimeseriesService(object):
     def test_commit_measurement_update_component(
         self, dbsession, sample_report_for_components, repository, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(
@@ -645,7 +645,7 @@ class TestTimeseriesService(object):
         assert measurement.value == 50.0
 
     def test_commit_measurement_no_datasets(self, dbsession, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
 
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -786,7 +786,7 @@ class TestTimeseriesService(object):
         assert batch_size == 100
 
     def test_delete_repository_data(self, dbsession, sample_report, repository, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -825,7 +825,7 @@ class TestTimeseriesService(object):
     def test_delete_repository_data_side_effects(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -901,7 +901,7 @@ class TestTimeseriesService(object):
                 == 16
             )
 
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(

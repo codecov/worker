@@ -2,11 +2,11 @@ import logging
 from typing import Optional
 
 from shared.celery_config import timeseries_delete_task_name
+from shared.timeseries.helpers import is_timeseries_enabled
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Repository
-from helpers.timeseries import timeseries_enabled
 from services.timeseries import delete_repository_data, delete_repository_measurements
 from tasks.base import BaseCodecovTask
 
@@ -24,7 +24,7 @@ class TimeseriesDeleteTask(BaseCodecovTask, name=timeseries_delete_task_name):
         measurement_id: Optional[str] = None,
         **kwargs,
     ):
-        if not timeseries_enabled():
+        if not is_timeseries_enabled():
             log.warning("Timeseries not enabled")
             return {"successful": False, "reason": "Timeseries not enabled"}
 

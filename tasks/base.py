@@ -8,6 +8,7 @@ from celery.worker.request import Request
 from django.db import transaction as django_transaction
 from shared.celery_router import route_tasks_based_on_user_plan
 from shared.metrics import Counter, Histogram
+from shared.timeseries.helpers import is_timeseries_enabled
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -22,7 +23,6 @@ from helpers.checkpoint_logger import from_kwargs as load_checkpoints_from_kwarg
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.log_context import LogContext, set_log_context
 from helpers.telemetry import TimeseriesTimer, log_simple_metric
-from helpers.timeseries import timeseries_enabled
 
 log = logging.getLogger("worker")
 
@@ -179,7 +179,7 @@ class BaseCodecovTask(celery_app.Task):
                 extra=dict(e=e),
             )
 
-        if timeseries_enabled():
+        if is_timeseries_enabled():
             try:
                 django_transaction.commit("timeseries")
             except Exception as e:
@@ -199,7 +199,7 @@ class BaseCodecovTask(celery_app.Task):
                 extra=dict(e=e),
             )
 
-        if timeseries_enabled():
+        if is_timeseries_enabled():
             try:
                 django_transaction.rollback("timeseries")
             except Exception as e:

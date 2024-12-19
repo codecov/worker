@@ -8,7 +8,7 @@ from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 
 def test_backfill_commits_run_impl(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
     mocked_app = mocker.patch.object(
         TimeseriesBackfillCommitsTask,
         "app",
@@ -62,7 +62,7 @@ def test_backfill_commits_run_impl(dbsession, mocker):
 
 
 def test_backfill_commits_run_impl_timeseries_not_enabled(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=False)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=False)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     task = TimeseriesBackfillCommitsTask()

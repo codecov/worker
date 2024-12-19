@@ -4,13 +4,14 @@ from typing import Any, Iterable, Mapping, Optional
 
 from shared.components import Component
 from shared.reports.readonly import ReadOnlyReport
+from shared.timeseries.helpers import is_timeseries_enabled
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from database.models import Commit, Dataset, Measurement, MeasurementName
 from database.models.core import Repository
 from database.models.reports import RepositoryFlag
-from helpers.timeseries import backfill_max_batch_size, timeseries_enabled
+from helpers.timeseries import backfill_max_batch_size
 from services.report import ReportService
 from services.yaml import get_repo_yaml
 
@@ -20,7 +21,7 @@ log = logging.getLogger(__name__)
 def save_commit_measurements(
     commit: Commit, dataset_names: Iterable[str] = None
 ) -> None:
-    if not timeseries_enabled():
+    if not is_timeseries_enabled():
         return
 
     if dataset_names is None:
