@@ -11,7 +11,7 @@ from tasks.timeseries_backfill import (
 
 
 def test_backfill_dataset_run_impl(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     repository = RepositoryFactory.create()
@@ -70,7 +70,7 @@ def test_backfill_dataset_run_impl(dbsession, mocker):
 
 
 def test_backfill_dataset_run_impl_invalid_dataset(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     repository = RepositoryFactory.create()
@@ -97,7 +97,7 @@ def test_backfill_dataset_run_impl_invalid_dataset(dbsession, mocker):
 
 
 def test_backfill_dataset_run_impl_invalid_repository(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     repository = RepositoryFactory.create()
@@ -124,7 +124,7 @@ def test_backfill_dataset_run_impl_invalid_repository(dbsession, mocker):
 
 
 def test_backfill_dataset_run_impl_invalid_start_date(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     repository = RepositoryFactory.create()
@@ -151,7 +151,7 @@ def test_backfill_dataset_run_impl_invalid_start_date(dbsession, mocker):
 
 
 def test_backfill_dataset_run_impl_invalid_end_date(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     repository = RepositoryFactory.create()
@@ -178,7 +178,7 @@ def test_backfill_dataset_run_impl_invalid_end_date(dbsession, mocker):
 
 
 def test_backfill_dataset_run_impl_timeseries_not_enabled(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=False)
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=False)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     task = TimeseriesBackfillDatasetTask()

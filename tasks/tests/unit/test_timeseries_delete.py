@@ -4,7 +4,7 @@ from tasks.timeseries_delete import TimeseriesDeleteTask
 
 
 def test_timeseries_delete_run_impl(dbsession, mocker):
-    mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_delete.is_timeseries_enabled", return_value=True)
     delete_repository_data = mocker.patch(
         "tasks.timeseries_delete.delete_repository_data"
     )
@@ -24,7 +24,7 @@ def test_timeseries_delete_run_impl(dbsession, mocker):
 
 
 def test_timeseries_delete_run_impl_invalid_repository(dbsession, mocker):
-    mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_delete.is_timeseries_enabled", return_value=True)
 
     task = TimeseriesDeleteTask()
     res = task.run_impl(
@@ -35,7 +35,7 @@ def test_timeseries_delete_run_impl_invalid_repository(dbsession, mocker):
 
 
 def test_timeseries_delete_run_impl_timeseries_not_enabled(dbsession, mocker):
-    mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=False)
+    mocker.patch("tasks.timeseries_delete.is_timeseries_enabled", return_value=False)
 
     repository = RepositoryFactory.create()
     dbsession.add(repository)
@@ -50,7 +50,7 @@ def test_timeseries_delete_run_impl_timeseries_not_enabled(dbsession, mocker):
 
 
 def test_timeseries_delete_measurements_only(dbsession, mocker):
-    mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_delete.is_timeseries_enabled", return_value=True)
     delete_repository_measurements = mocker.patch(
         "tasks.timeseries_delete.delete_repository_measurements"
     )
@@ -73,7 +73,7 @@ def test_timeseries_delete_measurements_only(dbsession, mocker):
 
 
 def test_timeseries_delete_measurements_only_unsuccessful(dbsession, mocker):
-    mocker.patch("tasks.timeseries_delete.timeseries_enabled", return_value=True)
+    mocker.patch("tasks.timeseries_delete.is_timeseries_enabled", return_value=True)
     delete_repository_measurements = mocker.patch(
         "tasks.timeseries_delete.delete_repository_measurements"
     )
