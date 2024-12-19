@@ -1,13 +1,9 @@
-import base64
-import json
-import zlib
 from datetime import date, datetime, timedelta, timezone
 from itertools import chain
 from pathlib import Path
 
 import pytest
 from shared.storage.exceptions import FileNotInStorageError
-from test_results_parser import Outcome
 from time_machine import travel
 
 from database.models import CommitReport, RepositoryFlag
@@ -16,7 +12,6 @@ from database.tests.factories import CommitFactory, UploadFactory
 from database.tests.factories.reports import FlakeFactory
 from services.test_results import generate_flags_hash, generate_test_id
 from tasks.test_results_processor import (
-    ParserError,
     TestResultsProcessorTask,
 )
 
@@ -74,9 +69,7 @@ class TestUploadTestProcessorTask(object):
         expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
-        failures = (
-            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
-        )
+        failures = dbsession.query(TestInstance).filter_by(outcome="failure").all()
 
         assert len(tests) == 4
         assert len(test_instances) == 4
@@ -103,7 +96,6 @@ E        +    where &lt;function Calculator.divide at 0x104c9eb90&gt; = Calculat
 
 api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></testsuite></testsuites>
 <<<<<< EOF
-
 """
         )
 
@@ -130,8 +122,8 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         redis_queue = [{"url": url, "upload_id": upload.id_}]
         mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
         mocker.patch(
-            "tasks.test_results_processor.parse_junit_xml",
-            side_effect=ParserError,
+            "tasks.test_results_processor.test_results_parser.parse_raw_upload",
+            side_effect=RuntimeError("Error parsing file"),
         )
 
         commit = CommitFactory.create(
@@ -213,9 +205,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
 
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
-        failures = (
-            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
-        )
+        failures = dbsession.query(TestInstance).filter_by(outcome="failure").all()
 
         assert result == expected_result
 
@@ -288,6 +278,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         )
 
     @pytest.mark.integration
+    @travel("2025-01-01T00:00:00Z", tick=False)
     def test_upload_processor_task_call_existing_test(
         self,
         mocker,
@@ -352,9 +343,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
-        failures = (
-            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
-        )
+        failures = dbsession.query(TestInstance).filter_by(outcome="failure").all()
 
         assert len(tests) == 4
         assert len(test_instances) == 4
@@ -443,11 +432,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
-        failures = (
-            dbsession.query(TestInstance)
-            .filter(TestInstance.outcome == str(Outcome.Failure))
-            .all()
-        )
+        failures = dbsession.query(TestInstance).filter_by(outcome="failure").all()
 
         test_flag_bridges = dbsession.query(TestFlagBridge).all()
 
@@ -691,9 +676,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         expected_result = True
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
-        failures = (
-            dbsession.query(TestInstance).filter_by(outcome=str(Outcome.Failure)).all()
-        )
+        failures = dbsession.query(TestInstance).filter_by(outcome="failure").all()
 
         assert len(tests) == 4
         assert len(test_instances) == 4
@@ -720,123 +703,3 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             b"""# path=codecov-demo/temp.junit.xml
 """
         )
-
-    @pytest.mark.integration
-    def test_upload_processor_task_call_already_processed(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        codecov_vcr,
-        mock_storage,
-        mock_redis,
-        celery_app,
-    ):
-        tests = dbsession.query(Test).all()
-        test_instances = dbsession.query(TestInstance).all()
-        assert len(tests) == 0
-        assert len(test_instances) == 0
-
-        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_test.json") as f:
-            content = f.read()
-            mock_storage.write_file("archive", url, content)
-        upload = UploadFactory.create(storage_path=url, state="processed")
-        dbsession.add(upload)
-        dbsession.flush()
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
-        mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
-
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-        current_report_row = CommitReport(commit_id=commit.id_)
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        result = TestResultsProcessorTask().run_impl(
-            dbsession,
-            previous_result=False,
-            repoid=upload.report.commit.repoid,
-            commitid=commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
-        )
-        expected_result = True
-
-        assert expected_result == result
-
-    @pytest.mark.integration
-    def test_upload_processor_task_call_already_processed_with_junit(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        codecov_vcr,
-        mock_storage,
-        mock_redis,
-        celery_app,
-    ):
-        tests = dbsession.query(Test).all()
-        test_instances = dbsession.query(TestInstance).all()
-        assert len(tests) == 0
-        assert len(test_instances) == 0
-
-        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        with open(here.parent.parent / "samples" / "sample_ta_file.xml") as f:
-            content = f.read()
-            compressed_and_base64_encoded = base64.b64encode(
-                zlib.compress(content.encode("utf-8"))
-            ).decode("utf-8")
-            thing = {
-                "test_results_files": [
-                    {
-                        "filename": "codecov-demo/temp.junit.xml",
-                        "format": "base64+compressed",
-                        "data": compressed_and_base64_encoded,
-                    }
-                ]
-            }
-            mock_storage.write_file("archive", url, json.dumps(thing))
-        upload = UploadFactory.create(storage_path=url)
-        dbsession.add(upload)
-        dbsession.flush()
-
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
-        mocker.patch.object(TestResultsProcessorTask, "app", celery_app)
-
-        commit = CommitFactory.create(
-            message="hello world",
-            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
-            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
-            repository__owner__username="joseph-sentry",
-            repository__owner__service="github",
-            repository__name="codecov-demo",
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-        current_report_row = CommitReport(commit_id=commit.id_)
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        result = TestResultsProcessorTask().run_impl(
-            dbsession,
-            previous_result=False,
-            repoid=upload.report.commit.repoid,
-            commitid=commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
-        )
-        expected_result = True
-
-        tests = dbsession.query(Test).all()
-        test_instances = dbsession.query(TestInstance).all()
-
-        assert expected_result == result
-        assert len(tests) == 4
-        assert len(test_instances) == 4

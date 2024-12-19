@@ -13,6 +13,7 @@ from database.enums import ReportType
 from database.models import (
     Commit,
     CommitReport,
+    Flake,
     Repository,
     RepositoryFlag,
     TestInstance,
@@ -410,3 +411,12 @@ def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
     )
     has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
     return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)
+
+
+def get_flake_set(db_session: Session, repoid: int) -> set[str]:
+    repo_flakes: list[Flake] = (
+        db_session.query(Flake.testid)
+        .filter(Flake.repoid == repoid, Flake.end_date.is_(None))
+        .all()
+    )
+    return {flake.testid for flake in repo_flakes}
