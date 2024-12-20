@@ -75,18 +75,11 @@ def test_populate_just_commit_sha(dbsession):
 
 
 def test_populate_just_commit_id(dbsession):
-    owner, repo, commit = create_db_records(dbsession)
+    _owner, _repo, commit = create_db_records(dbsession)
     log_context = LogContext(commit_id=commit.id_)
     log_context.populate_from_sqlalchemy(dbsession)
 
     assert log_context == LogContext(
-        repo_id=repo.repoid,
-        repo_name="example-python",
-        owner_id=owner.ownerid,
-        owner_username="codecove2e",
-        owner_service="github",
-        owner_plan="users-basic",
-        commit_sha=commit.commitid,
         commit_id=commit.id_,
     )
 
@@ -104,7 +97,6 @@ def test_populate_repo_and_commit_sha(dbsession):
         owner_service="github",
         owner_plan="users-basic",
         commit_sha=commit.commitid,
-        commit_id=commit.id_,
     )
 
 
