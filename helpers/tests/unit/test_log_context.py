@@ -75,18 +75,11 @@ def test_populate_just_commit_sha(dbsession):
 
 
 def test_populate_just_commit_id(dbsession):
-    owner, repo, commit = create_db_records(dbsession)
+    _owner, _repo, commit = create_db_records(dbsession)
     log_context = LogContext(commit_id=commit.id_)
     log_context.populate_from_sqlalchemy(dbsession)
 
     assert log_context == LogContext(
-        repo_id=repo.repoid,
-        repo_name="example-python",
-        owner_id=owner.ownerid,
-        owner_username="codecove2e",
-        owner_service="github",
-        owner_plan="users-basic",
-        commit_sha=commit.commitid,
         commit_id=commit.id_,
     )
 
@@ -104,7 +97,6 @@ def test_populate_repo_and_commit_sha(dbsession):
         owner_service="github",
         owner_plan="users-basic",
         commit_sha=commit.commitid,
-        commit_id=commit.id_,
     )
 
 
@@ -135,7 +127,9 @@ def test_set_and_get_log_context(dbsession):
 
 def test_as_dict(dbsession, mocker):
     owner, repo, commit = create_db_records(dbsession)
-    log_context = LogContext(commit_id=commit.id_, task_name="foo", task_id="bar")
+    log_context = LogContext(
+        commit_sha=commit.commitid, repo_id=repo.repoid, task_name="foo", task_id="bar"
+    )
     log_context.populate_from_sqlalchemy(dbsession)
 
     mock_span = mocker.Mock()
@@ -147,7 +141,7 @@ def test_as_dict(dbsession, mocker):
     assert log_context.as_dict() == {
         "task_name": "foo",
         "task_id": "bar",
-        "commit_id": commit.id_,
+        "commit_id": None,
         "commit_sha": commit.commitid,
         "repo_id": repo.repoid,
         "repo_name": repo.name,

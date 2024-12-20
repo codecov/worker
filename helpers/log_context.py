@@ -6,7 +6,7 @@ import sentry_sdk
 from sentry_sdk import get_current_span
 from shared.config import get_config
 
-from database.models.core import Commit, Owner, Repository
+from database.models.core import Owner, Repository
 
 log = logging.getLogger("log_context")
 
@@ -28,6 +28,11 @@ class LogContext:
     repo_name: str | None = None
     repo_id: int | None = None
     commit_sha: str | None = None
+
+    # TODO: begin populating this again or remove it
+    # we can populate this again if we reduce query load by passing the Commit,
+    # Owner, and Repository models we use to populate the log context into the
+    # various task implementations so they don't fetch the same models again
     commit_id: int | None = None
 
     checkpoints_data: dict = field(default_factory=lambda: {})
@@ -58,48 +63,13 @@ class LogContext:
             return
 
         try:
-            can_identify_commit = self.commit_id is not None or (
-                self.commit_sha is not None and self.repo_id is not None
-            )
+            # - commit_id (or commit_sha + repo_id) is enough to get everything else
+            #   - however, this slams the commit table and we rarely really need the
+            #     DB PK for a commit, so we don't do this.
+            # - repo_id is enough to get repo and owner
+            # - owner_id is just enough to get owner
 
-            # commit_id or (commit_sha + repo_id) is enough to get everything else
-            if can_identify_commit:
-                query = (
-                    dbsession.query(
-                        Commit.id_,
-                        Commit.commitid,
-                        Repository.repoid,
-                        Repository.name,
-                        Owner.ownerid,
-                        Owner.username,
-                        Owner.service,
-                        Owner.plan,
-                    )
-                    .join(Commit.repository)
-                    .join(Repository.owner)
-                )
-
-                if self.commit_id is not None:
-                    query = query.filter(Commit.id_ == self.commit_id)
-                else:
-                    query = query.filter(
-                        Commit.commitid == self.commit_sha,
-                        Commit.repoid == self.repo_id,
-                    )
-
-                (
-                    self.commit_id,
-                    self.commit_sha,
-                    self.repo_id,
-                    self.repo_name,
-                    self.owner_id,
-                    self.owner_username,
-                    self.owner_service,
-                    self.owner_plan,
-                ) = query.first()
-
-            # repo_id is enough to get repo and owner
-            elif self.repo_id:
+            if self.repo_id:
                 query = (
                     dbsession.query(
                         Repository.name,
@@ -120,7 +90,6 @@ class LogContext:
                     self.owner_plan,
                 ) = query.first()
 
-            # owner_id is just enough for owner
             elif self.owner_id:
                 query = dbsession.query(
                     Owner.username, Owner.service, Owner.plan
