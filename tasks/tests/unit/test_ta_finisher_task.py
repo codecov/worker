@@ -6,14 +6,11 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import msgpack
-from shared.storage import get_appropriate_storage_service
 
 from database.models import DailyTestRollup, Test, TestInstance
 from database.tests.factories import UploadFactory
 from services.redis import get_redis_connection
 from services.urls import services_short_dict
-from tasks.cache_test_rollups import CacheTestRollupsTask
-from tasks.process_flakes import ProcessFlakesTask
 from tasks.ta_finisher import TAFinisherTask
 from tasks.ta_processor import TAProcessorTask
 
@@ -71,9 +68,8 @@ def generate_junit_xml(
     return "\n".join(header)
 
 
-def test_test_analytics(dbsession, mocker, celery_app):
+def test_test_analytics(dbsession, mocker, mock_storage, celery_app):
     url = "literally/whatever"
-    storage_service = get_appropriate_storage_service(None)
 
     testruns = [
         {
@@ -88,7 +84,6 @@ def test_test_analytics(dbsession, mocker, celery_app):
     ]
 
     content: str = generate_junit_xml(testruns)
-    print(content)
     json_content: dict[str, Any] = {
         "test_results_files": [
             {
@@ -97,7 +92,7 @@ def test_test_analytics(dbsession, mocker, celery_app):
             }
         ],
     }
-    storage_service.write_file("archive", url, json.dumps(json_content).encode())
+    mock_storage.write_file("archive", url, json.dumps(json_content).encode())
     upload = UploadFactory.create(storage_path=url)
     dbsession.add(upload)
     dbsession.flush()
@@ -110,10 +105,11 @@ def test_test_analytics(dbsession, mocker, celery_app):
     mocker.patch.object(TAProcessorTask, "app", celery_app)
     mocker.patch.object(TAFinisherTask, "app", celery_app)
 
-    hello = celery_app.register_task(ProcessFlakesTask())
-    _ = celery_app.tasks[hello.name]
-    goodbye = celery_app.register_task(CacheTestRollupsTask())
-    _ = celery_app.tasks[goodbye.name]
+    celery_app.tasks = {
+        "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
+        "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
+    }
+
     a = AsyncMock()
     m = mocker.patch(
         "tasks.ta_finisher.get_repo_provider_service",
