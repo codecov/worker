@@ -252,72 +252,75 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         flaky_test_set = {flake.testid for flake in repo_flakes}
 
         for upload in uploads:
+            tests_to_write: dict[str, dict[str, Any]] = {}
+            test_instances_to_write: list[dict[str, Any]] = []
+            daily_totals: dict[str, DailyTotals] = dict()
+            test_flag_bridge_data: list[dict] = []
+
             repo_flag_ids = get_repo_flag_ids(db_session, repoid, upload.flag_names)
-            if upload.state == "processed":
-                msgpacked = redis_client.get(
-                    f"ta/intermediate/{repo.repoid}/{commitid}/{upload.id}"
-                )
-                m = unpackb(msgpacked)
+            intermediate_key = f"ta/intermediate/{repo.repoid}/{commitid}/{upload.id}"
+            msgpacked = redis_client.get(intermediate_key)
+            m = unpackb(msgpacked)
 
-                for msg in m:
-                    framework = msg["framework"]
-                    for testrun in msg["testruns"]:
-                        flags_hash = generate_flags_hash(upload.flag_names)
-                        test_id = generate_test_id(
-                            repoid,
-                            testrun["testsuite"],
-                            testrun["name"],
-                            flags_hash,
+            for msg in m:
+                framework = msg["framework"]
+                for testrun in msg["testruns"]:
+                    flags_hash = generate_flags_hash(upload.flag_names)
+                    test_id = generate_test_id(
+                        repoid,
+                        testrun["testsuite"],
+                        testrun["name"],
+                        flags_hash,
+                    )
+                    test = {
+                        "id": test_id,
+                        "repoid": repoid,
+                        "name": f"{testrun['classname']}\x1f{testrun['name']}",
+                        "testsuite": testrun["testsuite"],
+                        "flags_hash": flags_hash,
+                        "framework": framework,
+                        "filename": testrun["filename"],
+                        "computed_name": testrun["computed_name"],
+                    }
+                    tests_to_write[test_id] = test
+
+                    test_instance = {
+                        "test_id": test_id,
+                        "upload_id": upload.id,
+                        "duration_seconds": testrun["duration"],
+                        "outcome": testrun["outcome"],
+                        "failure_message": testrun["failure_message"],
+                        "commitid": commitid,
+                        "branch": commit.branch,
+                        "reduced_error_id": None,
+                        "repoid": repoid,
+                    }
+                    test_instances_to_write.append(test_instance)
+
+                    if repo_flag_ids:
+                        test_flag_bridge_data.extend(
+                            {"test_id": test_id, "flag_id": flag_id}
+                            for flag_id in repo_flag_ids
                         )
-                        test = {
-                            "id": test_id,
-                            "repoid": repoid,
-                            "name": f"{testrun['classname']}\x1f{testrun['name']}",
-                            "testsuite": testrun["testsuite"],
-                            "flags_hash": flags_hash,
-                            "framework": framework,
-                            "filename": testrun["filename"],
-                            "computed_name": testrun["computed_name"],
-                        }
-                        tests_to_write[test_id] = test
 
-                        test_instance = {
-                            "test_id": test_id,
-                            "upload_id": upload.id,
-                            "duration_seconds": testrun["duration"],
-                            "outcome": testrun["outcome"],
-                            "failure_message": testrun["failure_message"],
-                            "commitid": commitid,
-                            "branch": commit.branch,
-                            "reduced_error_id": None,
-                            "repoid": repoid,
-                        }
-                        test_instances_to_write.append(test_instance)
-
-                        if repo_flag_ids:
-                            test_flag_bridge_data.extend(
-                                {"test_id": test_id, "flag_id": flag_id}
-                                for flag_id in repo_flag_ids
-                            )
-
-                        if test["id"] in daily_totals:
-                            update_daily_totals(
-                                daily_totals,
-                                test["id"],
-                                testrun["duration"],
-                                testrun["outcome"],
-                            )
-                        else:
-                            create_daily_totals(
-                                daily_totals,
-                                test_id,
-                                repoid,
-                                testrun["duration"],
-                                testrun["outcome"],
-                                commit.branch,
-                                commitid,
-                                flaky_test_set,
-                            )
+                    if test["id"] in daily_totals:
+                        update_daily_totals(
+                            daily_totals,
+                            test["id"],
+                            testrun["duration"],
+                            testrun["outcome"],
+                        )
+                    else:
+                        create_daily_totals(
+                            daily_totals,
+                            test_id,
+                            repoid,
+                            testrun["duration"],
+                            testrun["outcome"],
+                            commit.branch,
+                            commitid,
+                            flaky_test_set,
+                        )
 
             # Upsert Tests
             if len(tests_to_write) > 0:
@@ -363,6 +366,8 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
 
             upload.state = "finished"
             db_session.commit()
+
+            redis_client.delete(intermediate_key)
 
         if should_do_flaky_detection(repo, commit_yaml):
             if commit.merged is True or commit.branch == repo.branch:
