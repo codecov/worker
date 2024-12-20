@@ -6,7 +6,7 @@ from pathlib import Path
 import mock
 import pytest
 from celery.exceptions import Retry
-from mock import call
+from mock import AsyncMock, call
 from redis.exceptions import LockError
 from shared.reports.enums import UploadState, UploadType
 from shared.torngit import GitlabEnterprise
@@ -453,6 +453,38 @@ class TestUploadTaskIntegration(object):
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
         mocker.patch.object(UploadTask, "app", celery_app)
 
+        mock_repo_provider_service = AsyncMock()
+        mock_repo_provider_service.get_commit.return_value = {
+            "author": {
+                "id": "123",
+                "username": "456",
+                "email": "789",
+                "name": "101",
+            },
+            "message": "hello world",
+            "parents": [],
+            "timestamp": str(datetime.now()),
+        }
+        mock_repo_provider_service.get_ancestors_tree.return_value = {"parents": []}
+        mock_repo_provider_service.get_pull_request.return_value = {
+            "head": {"branch": "main"},
+            "base": {},
+        }
+        mock_repo_provider_service.list_top_level_files.return_value = [
+            {"name": "codecov.yml", "path": "codecov.yml"}
+        ]
+        mock_repo_provider_service.get_source.return_value = {
+            "content": """
+            codecov:
+                max_report_age: 1y ago
+            """
+        }
+
+        mocker.patch(
+            "tasks.upload.get_repo_provider_service",
+            return_value=mock_repo_provider_service,
+        )
+        mocker.patch("tasks.upload.hasattr", return_value=False)
         commit = CommitFactory.create(
             message="",
             commitid="abf6d4df662c47e32460020ab14abf9303581429",
@@ -464,6 +496,7 @@ class TestUploadTaskIntegration(object):
             pullid=1,
             # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
             repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
+            branch="main",
         )
         dbsession.add(commit)
         dbsession.flush()
