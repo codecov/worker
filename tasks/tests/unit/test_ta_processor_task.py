@@ -40,7 +40,7 @@ class TestUploadTestProcessorTask(object):
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
+        argument = {"url": url, "upload_id": upload.id_}
         mocker.patch.object(TAProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -61,7 +61,7 @@ class TestUploadTestProcessorTask(object):
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            argument=argument,
         )
 
         assert result is True
@@ -164,7 +164,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
+        argument = {"url": url, "upload_id": upload.id_}
         mocker.patch.object(TAProcessorTask, "app", celery_app)
         mocker.patch(
             "tasks.ta_processor.parse_raw_upload",
@@ -191,7 +191,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            argument=argument,
         )
 
         assert result is False
@@ -216,7 +216,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
+        argument = {"url": url, "upload_id": upload.id_}
         mocker.patch.object(TAProcessorTask, "app", celery_app)
         mocker.patch.object(TAProcessorTask, "should_delete_archive", return_value=True)
 
@@ -239,7 +239,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            argument=argument,
         )
 
         assert result is True
@@ -266,7 +266,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url)
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
+        argument = {"url": url, "upload_id": upload.id_}
         mocker.patch.object(TAProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -288,7 +288,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            argument=argument,
         )
 
         assert result is True
@@ -328,7 +328,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         upload = UploadFactory.create(storage_path=url, state="processed")
         dbsession.add(upload)
         dbsession.flush()
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
+        argument = {"url": url, "upload_id": upload.id_}
         mocker.patch.object(TAProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -349,7 +349,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            argument=argument,
         )
 
         assert result is False
@@ -390,7 +390,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         dbsession.add(upload)
         dbsession.flush()
 
-        redis_queue = [{"url": url, "upload_id": upload.id_}]
+        argument = {"url": url, "upload_id": upload.id_}
         mocker.patch.object(TAProcessorTask, "app", celery_app)
 
         commit = CommitFactory.create(
@@ -411,7 +411,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             repoid=upload.report.commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
-            arguments_list=redis_queue,
+            argument=argument,
         )
 
         assert result is True

@@ -34,7 +34,7 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
         repoid: int,
         commitid: str,
         commit_yaml: dict[str, Any],
-        arguments_list: list[UploadArguments],
+        argument: UploadArguments,
         **kwargs,
     ) -> bool:
         log.info("Received TA processing task")
@@ -56,21 +56,18 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
         successful = False
 
         # process each report session's test information
-        for arguments in arguments_list:
-            upload = (
-                db_session.query(Upload).filter_by(id_=arguments["upload_id"]).first()
-            )
-            result = self.process_individual_upload(
-                db_session,
-                redis_client,
-                archive_service,
-                repository,
-                commitid,
-                upload,
-                should_delete_archive,
-            )
-            if result:
-                successful = True
+        upload = db_session.query(Upload).filter_by(id_=argument["upload_id"]).first()
+        result = self.process_individual_upload(
+            db_session,
+            redis_client,
+            archive_service,
+            repository,
+            commitid,
+            upload,
+            should_delete_archive,
+        )
+        if result:
+            successful = True
 
         return successful
 

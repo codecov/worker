@@ -105,7 +105,7 @@ def test_test_analytics(dbsession, mocker, celery_app):
     upload.report.report_type = "test_results"
     dbsession.flush()
 
-    redis_queue = [{"url": url, "upload_id": upload.id_}]
+    argument = {"url": url, "upload_id": upload.id_}
 
     mocker.patch.object(TAProcessorTask, "app", celery_app)
     mocker.patch.object(TAFinisherTask, "app", celery_app)
@@ -130,7 +130,7 @@ def test_test_analytics(dbsession, mocker, celery_app):
         repoid=upload.report.commit.repoid,
         commitid=upload.report.commit.commitid,
         commit_yaml={"codecov": {"max_report_age": False}},
-        arguments_list=redis_queue,
+        argument=argument,
     )
 
     assert result is True

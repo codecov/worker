@@ -521,15 +521,13 @@ class TestUploadTaskIntegration(object):
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            arguments_list=[
-                {
-                    "url": storage_path,
-                    "flags": [],
-                    "build_code": "some_random_build",
-                    "upload_id": upload.id,
-                    "upload_pk": upload.id,
-                }
-            ],
+            argument={
+                "url": storage_path,
+                "flags": [],
+                "build_code": "some_random_build",
+                "upload_id": upload.id,
+                "upload_pk": upload.id,
+            },
         )
         kwargs = dict(
             repoid=commit.repoid,
