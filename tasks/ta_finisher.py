@@ -232,16 +232,12 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             .filter(
                 CommitReport.commit_id == commit.id,
                 CommitReport.report_type == ReportType.TEST_RESULTS.value,
+                Upload.state == "v2_processed",
             )
             .all()
         )
 
         redis_client = get_redis_connection()
-
-        tests_to_write: dict[str, dict[str, Any]] = {}
-        test_instances_to_write: list[dict[str, Any]] = []
-        daily_totals: dict[str, DailyTotals] = dict()
-        test_flag_bridge_data: list[dict] = []
 
         repo_flakes: list[Flake] = (
             db_session.query(Flake.testid)
@@ -364,7 +360,7 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
                     extra=dict(upload_id=upload.id),
                 )
 
-            upload.state = "finished"
+            upload.state = "v2_finished"
             db_session.commit()
 
             redis_client.delete(intermediate_key)

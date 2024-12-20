@@ -65,7 +65,7 @@ class TestUploadTestProcessorTask(object):
         )
 
         assert result is True
-        assert upload.state == "processed"
+        assert upload.state == "v2_processed"
 
         redis = get_redis_connection()
         a = redis.get(
@@ -195,7 +195,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         )
 
         assert result is False
-        assert upload.state == "has_failed"
+        assert upload.state == "v2_failed"
 
     @pytest.mark.integration
     def test_ta_processor_task_delete_archive(
@@ -325,7 +325,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         with open(here.parent.parent / "samples" / "sample_test.json") as f:
             content = f.read()
             mock_storage.write_file("archive", url, content)
-        upload = UploadFactory.create(storage_path=url, state="processed")
+        upload = UploadFactory.create(storage_path=url, state="v2_processed")
         dbsession.add(upload)
         dbsession.flush()
         argument = {"url": url, "upload_id": upload.id_}
@@ -415,4 +415,4 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         )
 
         assert result is True
-        assert upload.state == "processed"
+        assert upload.state == "v2_processed"
