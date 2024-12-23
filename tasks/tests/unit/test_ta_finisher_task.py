@@ -110,15 +110,15 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app):
         "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
     }
 
-    a = AsyncMock()
-    m = mocker.patch(
+    mock_repo_provider_service = AsyncMock()
+    mocker.patch(
         "tasks.ta_finisher.get_repo_provider_service",
-        return_value=a,
+        return_value=mock_repo_provider_service,
     )
-    b = AsyncMock()
+    mock_pull_request_information = AsyncMock()
     mocker.patch(
         "tasks.ta_finisher.fetch_and_update_pull_request_information_from_commit",
-        return_value=b,
+        return_value=mock_pull_request_information,
     )
 
     result = TAProcessorTask().run_impl(
@@ -136,8 +136,8 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app):
     )
     assert redis_results is not None
 
-    whatever = msgpack.unpackb(redis_results)
-    assert whatever == [
+    unpacked_results = msgpack.unpackb(redis_results)
+    assert unpacked_results == [
         {
             "framework": None,
             "testruns": [
@@ -201,15 +201,15 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app):
     assert result["notify_succeeded"] is True
     assert result["queue_notify"] is False
 
-    a.edit_comment.assert_called_once()
+    mock_repo_provider_service.edit_comment.assert_called_once()
 
     short_form_service_name = services_short_dict.get(
         upload.report.commit.repository.owner.service
     )
 
-    a.edit_comment.assert_called_once_with(
-        b.database_pull.pullid,
-        b.database_pull.commentid,
+    mock_repo_provider_service.edit_comment.assert_called_once_with(
+        mock_pull_request_information.database_pull.pullid,
+        mock_pull_request_information.database_pull.commentid,
         f"""### :x: 2 Tests Failed:
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
