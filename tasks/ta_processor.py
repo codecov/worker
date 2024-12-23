@@ -12,6 +12,7 @@ from app import celery_app
 from database.models import (
     Repository,
     Upload,
+    UploadError,
 )
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
@@ -103,6 +104,12 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             )
             sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
             upload.state = "v2_failed"
+            new_upload_error = UploadError(
+                upload_id=upload.id,
+                error_code="Unsupported file format",
+                error_params={"error_message": str(exc)},
+            )
+            db_session.add(new_upload_error)
             db_session.commit()
             return False
         else:
