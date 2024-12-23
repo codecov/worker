@@ -18,6 +18,7 @@ from database.models import (
     Repository,
     TestResultReportTotals,
     Upload,
+    UploadError,
 )
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.notifier import NotifierResult
@@ -71,7 +72,7 @@ def get_uploads(db_session: Session, commit: Commit) -> dict[int, Upload]:
             .filter(
                 CommitReport.commit_id == commit.id,
                 CommitReport.report_type == ReportType.TEST_RESULTS.value,
-                Upload.state == "v2_processed",
+                Upload.state.in_(["v2_processed", "v2_failed"]),
             )
             .all()
         )
@@ -128,28 +129,22 @@ def get_totals(
 
 
 def handle_processor_fail(
-    totals: TestResultReportTotals, commit: Commit, commit_yaml: UserYaml
+    commit: Commit,
+    commit_yaml: UserYaml,
+    upload_errors: list[UploadError] | None = None,
 ) -> dict[str, bool]:
-    # every processor errored, nothing to notify on
-    queue_notify = False
-
-    # if error is None this whole process should be a noop
-    if totals.error is not None:
-        # make an attempt to make test results comment
-        notifier = TestResultsNotifier(commit, commit_yaml)
-        success, reason = notifier.error_comment()
-        if not success and reason == "torngit_error":
-            sentry_sdk.capture_message(
-                "Error posting error comment in test results finisher due to torngit error"
-            )
-
-        # also make attempt to make coverage comment
-        queue_notify = True
+    # make an attempt to make test results comment
+    notifier = TestResultsNotifier(commit, commit_yaml, errors=upload_errors)
+    success, reason = notifier.error_comment()
+    if not success and reason == "torngit_error":
+        sentry_sdk.capture_message(
+            "Error posting error comment in test results finisher due to torngit error"
+        )
 
     return {
         "notify_attempted": False,
         "notify_succeeded": False,
-        "queue_notify": queue_notify,
+        "queue_notify": True,
     }
 
 
@@ -285,14 +280,22 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
 
         totals = get_totals(commit_report, db_session)
+        uploads = get_uploads(db_session, commit)
+
+        upload_errors = (
+            db_session.query(UploadError)
+            .filter(UploadError.upload_id.in_(uploads.keys()))
+            .all()
+        )
+
+        print(upload_errors)
 
         if not any(previous_result):
-            return handle_processor_fail(totals, commit, commit_yaml)
+            return handle_processor_fail(commit, commit_yaml, upload_errors)
 
         repo = commit.repository
         branch = commit.branch
 
-        uploads = get_uploads(db_session, commit)
         flaky_test_set = get_flake_set(db_session, repoid)
 
         persist_intermediate_results(
@@ -354,7 +357,12 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             totals.failed, totals.passed, totals.skipped, failures, flaky_tests
         )
         notifier = TestResultsNotifier(
-            commit, commit_yaml, payload=payload, _pull=pull, _repo_service=repo_service
+            commit,
+            commit_yaml,
+            payload=payload,
+            _pull=pull,
+            _repo_service=repo_service,
+            errors=upload_errors,
         )
         notifier_result = notifier.notify()
         for upload in uploads.values():
