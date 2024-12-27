@@ -47,14 +47,11 @@ class TeamPlanWriter:
             lines.append(
                 "All modified and coverable lines are covered by tests :white_check_mark:"
             )
-
         hide_project_coverage = settings.get("hide_project_coverage", False)
         if hide_project_coverage:
-            if comparison.test_results_error():
+            if ta_error_msg := comparison.test_results_error():
                 lines.append("")
-                lines.append(
-                    ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
-                )
+                lines.append(ta_error_msg)
             elif comparison.all_tests_passed():
                 lines.append("")
                 lines.append(
