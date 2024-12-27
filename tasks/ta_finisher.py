@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.reports.types import UploadType
 from shared.typings.torngit import AdditionalData
@@ -35,6 +34,7 @@ from services.seats import ShouldActivateSeat, determine_seat_activation
 from services.ta_finishing import persist_intermediate_results
 from services.test_results import (
     FlakeInfo,
+    TACommentInDepthInfo,
     TestResultsNotificationFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
@@ -72,7 +72,7 @@ def get_uploads(db_session: Session, commit: Commit) -> dict[int, Upload]:
             .filter(
                 CommitReport.commit_id == commit.id,
                 CommitReport.report_type == ReportType.TEST_RESULTS.value,
-                Upload.state.in_(["v2_processed", "v2_failed"]),
+                Upload.state == "v2_processed",
             )
             .all()
         )
@@ -125,26 +125,6 @@ def get_totals(
         db_session.flush()
 
     return totals
-
-
-def handle_processor_fail(
-    commit: Commit,
-    commit_yaml: UserYaml,
-    upload_errors: list[UploadError] | None = None,
-) -> dict[str, bool]:
-    # make an attempt to make test results comment
-    notifier = TestResultsNotifier(commit, commit_yaml, errors=upload_errors)
-    success, reason = notifier.error_comment()
-    if not success and reason == "torngit_error":
-        sentry_sdk.capture_message(
-            "Error posting error comment in test results finisher due to torngit error"
-        )
-
-    return {
-        "notify_attempted": False,
-        "notify_succeeded": False,
-        "queue_notify": True,
-    }
 
 
 def populate_failures(
@@ -242,7 +222,6 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
                     repoid=repoid,
                     commitid=commitid,
                     commit_yaml=UserYaml.from_dict(commit_yaml),
-                    previous_result=chord_result,
                     **kwargs,
                 )
             if finisher_result["queue_notify"]:
@@ -265,7 +244,6 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         repoid: int,
         commitid: str,
         commit_yaml: UserYaml,
-        previous_result: list[bool],
         **kwargs,
     ):
         log.info("Running test results finishers", extra=self.extra_dict)
@@ -279,53 +257,51 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
 
         totals = get_totals(commit_report, db_session)
-        uploads = get_uploads(db_session, commit)
-
-        upload_errors = (
-            db_session.query(UploadError)
-            .filter(UploadError.upload_id.in_(uploads.keys()))
-            .all()
-        )
-
-        if not any(previous_result):
-            return handle_processor_fail(commit, commit_yaml, upload_errors)
+        uploads = get_uploads(
+            db_session, commit
+        )  # processed uploads that have yet to be persisted
 
         repo = commit.repository
         branch = commit.branch
 
         flaky_test_set = get_flake_set(db_session, repoid)
 
-        persist_intermediate_results(
-            db_session, repoid, commitid, branch, uploads, flaky_test_set
-        )
+        if len(uploads) > 0:
+            persist_intermediate_results(
+                db_session, repoid, commitid, branch, uploads, flaky_test_set
+            )
 
         test_summary = get_test_summary_for_commit(db_session, repoid, commitid)
         totals.failed = test_summary.get("error", 0) + test_summary.get("failure", 0)
         totals.skipped = test_summary.get("skip", 0)
         totals.passed = test_summary.get("pass", 0)
         db_session.flush()
-        if not totals.failed:
-            return {
-                "notify_attempted": False,
-                "notify_succeeded": False,
-                "queue_notify": True,
-            }
 
-        escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
-        shorten_paths = commit_yaml.read_yaml_field(
-            "test_analytics", "shorten_paths", _else=True
-        )
+        info = None
+        if totals.failed:
+            escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+            shorten_paths = commit_yaml.read_yaml_field(
+                "test_analytics", "shorten_paths", _else=True
+            )
 
-        failures = []
-        populate_failures(
-            failures,
-            db_session,
-            repoid,
-            commitid,
-            shorten_paths,
-            uploads,
-            escaper,
-        )
+            failures = []
+            populate_failures(
+                failures,
+                db_session,
+                repoid,
+                commitid,
+                shorten_paths,
+                uploads,
+                escaper,
+            )
+
+            flaky_tests = dict()
+            if should_do_flaky_detection(repo, commit_yaml):
+                flaky_tests = get_flaky_tests(db_session, repoid, failures)
+
+            failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
+
+            info = TACommentInDepthInfo(failures, flaky_tests)
 
         additional_data: AdditionalData = {"upload_type": UploadType.TEST_RESULTS}
         repo_service = get_repo_provider_service(repo, additional_data=additional_data)
@@ -340,13 +316,21 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             if seat_activation_result:
                 return seat_activation_result
 
-        flaky_tests = dict()
-        if should_do_flaky_detection(repo, commit_yaml):
-            flaky_tests = get_flaky_tests(db_session, repoid, failures)
+        upload_error = (
+            db_session.query(UploadError)
+            .filter(UploadError.upload_id.in_(uploads.keys()))
+            .first()
+        )
 
-        failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
+        if not (info or upload_error):
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": False,
+                "queue_notify": True,
+            }
+
         payload = TestResultsNotificationPayload(
-            totals.failed, totals.passed, totals.skipped, failures, flaky_tests
+            totals.failed, totals.passed, totals.skipped, info
         )
         notifier = TestResultsNotifier(
             commit,
@@ -354,7 +338,7 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             payload=payload,
             _pull=pull,
             _repo_service=repo_service,
-            errors=upload_errors,
+            error=upload_error,
         )
         notifier_result = notifier.notify()
         for upload in uploads.values():
@@ -373,7 +357,7 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         return {
             "notify_attempted": True,
             "notify_succeeded": success,
-            "queue_notify": False,
+            "queue_notify": not info,
         }
 
     def seat_activation(

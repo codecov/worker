@@ -136,12 +136,17 @@ class FlakeInfo:
 
 
 @dataclass
+class TACommentInDepthInfo:
+    failures: list[TestResultsNotificationFailure]
+    flaky_tests: dict[str, FlakeInfo]
+
+
+@dataclass
 class TestResultsNotificationPayload:
     failed: int
     passed: int
     skipped: int
-    failures: list[TestResultsNotificationFailure]
-    flaky_tests: dict[str, FlakeInfo]
+    info: TACommentInDepthInfo | None = None
 
 
 def wrap_in_details(summary: str, content: str):
@@ -237,12 +242,12 @@ def messagify_flake(
     return make_quoted(f"{test_name}\n{flake_rate_section}\n{stack_trace}")
 
 
-def specific_error_message(upload_errors: list[UploadError]) -> str:
-    title = f"### :x: {upload_errors[0].error_code}"
+def specific_error_message(upload_error: UploadError) -> str:
+    title = f"### :x: {upload_error.error_code}"
     description = "\n".join(
         [
-            f"Upload processing failed due to {upload_errors[0].error_code.lower()}. Please review the parser error message:",
-            f"`{upload_errors[0].error_params['error_message']}`",
+            f"Upload processing failed due to {upload_error.error_code.lower()}. Please review the parser error message:",
+            f"`{upload_error.error_params['error_message']}`",
             "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
         ]
     )
@@ -256,7 +261,7 @@ def specific_error_message(upload_errors: list[UploadError]) -> str:
 @dataclass
 class TestResultsNotifier(BaseNotifier):
     payload: TestResultsNotificationPayload | None = None
-    errors: list[UploadError] | None = None
+    error: UploadError | None = None
 
     def build_message(self) -> str:
         if self.payload is None:
@@ -264,57 +269,62 @@ class TestResultsNotifier(BaseNotifier):
 
         message = []
 
-        if self.errors is not None and len(self.errors) > 0:
-            message.append(specific_error_message(self.errors))
+        if self.error:
+            message.append(specific_error_message(self.error))
+
+        if self.error and self.payload.info:
             message.append("---")
 
-        message.append(f"### :x: {self.payload.failed} Tests Failed:")
+        if self.payload.info:
+            message.append(f"### :x: {self.payload.failed} Tests Failed:")
 
-        completed = self.payload.failed + self.payload.passed
+            completed = self.payload.failed + self.payload.passed
 
-        message += [
-            "| Tests completed | Failed | Passed | Skipped |",
-            "|---|---|---|---|",
-            f"| {completed} | {self.payload.failed} | {self.payload.passed} | {self.payload.skipped} |",
-        ]
-
-        failures = sorted(
-            (
-                failure
-                for failure in self.payload.failures
-                if failure.test_id not in self.payload.flaky_tests
-            ),
-            key=lambda x: (x.duration_seconds, x.display_name),
-        )
-        if failures:
-            failure_content = [f"{messagify_failure(failure)}" for failure in failures]
-
-            top_3_failed_section = wrap_in_details(
-                f"View the top {min(3, len(failures))} failed tests by shortest run time",
-                "\n".join(failure_content),
-            )
-
-            message.append(top_3_failed_section)
-
-        flaky_failures = [
-            failure
-            for failure in self.payload.failures
-            if failure.test_id in self.payload.flaky_tests
-        ]
-        if flaky_failures:
-            flake_content = [
-                f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id])}"
-                for flaky_failure in flaky_failures
+            message += [
+                "| Tests completed | Failed | Passed | Skipped |",
+                "|---|---|---|---|",
+                f"| {completed} | {self.payload.failed} | {self.payload.passed} | {self.payload.skipped} |",
             ]
 
-            flaky_section = wrap_in_details(
-                f"View the full list of {len(flaky_failures)} :snowflake: flaky tests",
-                "\n".join(flake_content),
+            failures = sorted(
+                (
+                    failure
+                    for failure in self.payload.info.failures
+                    if failure.test_id not in self.payload.info.flaky_tests
+                ),
+                key=lambda x: (x.duration_seconds, x.display_name),
             )
+            if failures:
+                failure_content = [
+                    f"{messagify_failure(failure)}" for failure in failures
+                ]
 
-            message.append(flaky_section)
+                top_3_failed_section = wrap_in_details(
+                    f"View the top {min(3, len(failures))} failed tests by shortest run time",
+                    "\n".join(failure_content),
+                )
 
-        message.append(generate_view_test_analytics_line(self.commit))
+                message.append(top_3_failed_section)
+
+            flaky_failures = [
+                failure
+                for failure in self.payload.info.failures
+                if failure.test_id in self.payload.info.flaky_tests
+            ]
+            if flaky_failures:
+                flake_content = [
+                    f"{messagify_flake(flaky_failure, self.payload.info.flaky_tests[flaky_failure.test_id])}"
+                    for flaky_failure in flaky_failures
+                ]
+
+                flaky_section = wrap_in_details(
+                    f"View the full list of {len(flaky_failures)} :snowflake: flaky tests",
+                    "\n".join(flake_content),
+                )
+
+                message.append(flaky_section)
+
+            message.append(generate_view_test_analytics_line(self.commit))
         return "\n".join(message)
 
     def error_comment(self):
@@ -324,12 +334,10 @@ class TestResultsNotifier(BaseNotifier):
         """
         message: str
 
-        if self.errors is None:
+        if self.error is None:
             message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
         else:
-            if len(self.errors) == 0:
-                raise ValueError("No errors passed to error_comment method")
-            message = specific_error_message(self.errors)
+            message = specific_error_message(self.error)
 
         pull = self.get_pull()
         if pull is None:

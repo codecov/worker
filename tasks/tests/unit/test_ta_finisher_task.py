@@ -377,8 +377,8 @@ def test_test_analytics_error_comment(
         commit_yaml={"codecov": {"max_report_age": False}},
     )
 
-    assert result["notify_attempted"] is False
-    assert result["notify_succeeded"] is False
+    assert result["notify_attempted"] is True
+    assert result["notify_succeeded"] is True
     assert result["queue_notify"] is True
 
     mock_repo_provider_service.edit_comment.assert_called_once()

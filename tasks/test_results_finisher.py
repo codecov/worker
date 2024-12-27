@@ -24,6 +24,7 @@ from services.repository import (
 from services.seats import ShouldActivateSeat, determine_seat_activation
 from services.test_results import (
     FlakeInfo,
+    TACommentInDepthInfo,
     TestResultsNotificationFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
@@ -288,8 +289,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             flaky_tests = self.get_flaky_tests(db_session, repoid, failures)
 
         failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
+        info = TACommentInDepthInfo(failures, flaky_tests)
         payload = TestResultsNotificationPayload(
-            failed_tests, passed_tests, skipped_tests, failures, flaky_tests
+            failed_tests, passed_tests, skipped_tests, info
         )
         notifier = TestResultsNotifier(
             commit, commit_yaml, payload=payload, _pull=pull, _repo_service=repo_service

@@ -12,6 +12,7 @@ from database.tests.factories import (
 from helpers.notifier import NotifierResult
 from services.test_results import (
     FlakeInfo,
+    TACommentInDepthInfo,
     TestResultsNotificationFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
@@ -114,7 +115,8 @@ def test_build_message():
         1.0,
         "https://example.com/build_url",
     )
-    payload = TestResultsNotificationPayload(1, 2, 3, [fail], dict())
+    info = TACommentInDepthInfo(failures=[fail], flaky_tests={})
+    payload = TestResultsNotificationPayload(1, 2, 3, info)
     commit = CommitFactory(branch="thing/thing")
     tn = TestResultsNotifier(commit, None, None, None, payload)
     res = tn.build_message()
@@ -161,10 +163,9 @@ def test_build_message_with_flake():
         1.0,
         "https://example.com/build_url",
     )
-
-    payload = TestResultsNotificationPayload(
-        1, 2, 3, [fail], {test_id: FlakeInfo(1, 3)}
-    )
+    flaky_test = FlakeInfo(1, 3)
+    info = TACommentInDepthInfo(failures=[fail], flaky_tests={test_id: flaky_test})
+    payload = TestResultsNotificationPayload(1, 2, 3, info)
     commit = CommitFactory(branch="test_branch")
     tn = TestResultsNotifier(commit, None, None, None, payload)
     res = tn.build_message()
@@ -296,7 +297,7 @@ def test_specific_error_message(mocker):
             "error_message": "Error parsing JUnit XML in test.xml at 4:32: ParserError: No name found"
         },
     )
-    tn = TestResultsNotifier(CommitFactory(), None, errors=[error])
+    tn = TestResultsNotifier(CommitFactory(), None, error=error)
     result = tn.error_comment()
     expected = """### :x: Unsupported file format
 
