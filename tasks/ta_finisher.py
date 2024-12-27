@@ -10,7 +10,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
+from database.enums import FlakeSymptomType, ReportType
 from database.models import (
     Commit,
     CommitReport,
@@ -121,7 +121,6 @@ def get_totals(
         totals.passed = 0
         totals.skipped = 0
         totals.failed = 0
-        totals.error = str(TestResultsProcessingError.NO_SUCCESS)
         db_session.add(totals)
         db_session.flush()
 
@@ -288,8 +287,6 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             .all()
         )
 
-        print(upload_errors)
-
         if not any(previous_result):
             return handle_processor_fail(commit, commit_yaml, upload_errors)
 
@@ -301,11 +298,6 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         persist_intermediate_results(
             db_session, repoid, commitid, branch, uploads, flaky_test_set
         )
-
-        # if we succeed once, error should be None for this commit forever
-        if totals.error is not None:
-            totals.error = None
-            db_session.flush()
 
         test_summary = get_test_summary_for_commit(db_session, repoid, commitid)
         totals.failed = test_summary.get("error", 0) + test_summary.get("failure", 0)
