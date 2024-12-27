@@ -519,3 +519,67 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
     rollups = dbsession.query(DailyTestRollup).all()
     assert len(rollups) == 1
+
+
+def test_ta_file_not_found(
+    dbsession,
+    mocker,
+    mock_storage,
+    celery_app,
+    mock_repo_provider_service,
+    mock_pull_request_information,
+    generate_junit,
+):
+    mocker.patch.object(TAProcessorTask, "app", celery_app)
+    mocker.patch.object(TAFinisherTask, "app", celery_app)
+
+    commit = CommitFactory.create()
+
+    upload = generate_junit(raw="a", commit=commit)
+    upload.storage_path = "placeholder"
+    dbsession.flush()
+
+    argument = {"url": "placeholder", "upload_id": upload.id_}
+    result = TAProcessorTask().run_impl(
+        dbsession,
+        repoid=upload.report.commit.repoid,
+        commitid=upload.report.commit.commitid,
+        commit_yaml={"codecov": {"max_report_age": False}},
+        argument=argument,
+    )
+    assert result is False
+
+    result = TAFinisherTask().run_impl(
+        dbsession,
+        chord_result=[result],
+        repoid=upload.report.commit.repoid,
+        commitid=upload.report.commit.commitid,
+        commit_yaml={"codecov": {"max_report_age": False}},
+    )
+
+    assert result["notify_attempted"] is True
+    assert result["notify_succeeded"] is True
+    assert result["queue_notify"] is True
+
+    short_form_service_name = services_short_dict.get(
+        upload.report.commit.repository.owner.service
+    )
+
+    mock_repo_provider_service.edit_comment.assert_called_once()
+    mock_repo_provider_service.edit_comment.assert_called_once_with(
+        mock_pull_request_information.database_pull.pullid,
+        mock_pull_request_information.database_pull.commentid,
+        """### :x: File not found
+
+> No result to display due to the CLI not being able to find the file.
+> Please ensure the file contains `junit` in the name and automated file search is enabled,
+> or the desired file specified by the `file` and `search_dir` arguments of the CLI.
+""",
+    )
+
+    tests = dbsession.query(Test).all()
+    assert len(tests) == 0
+    test_instances = dbsession.query(TestInstance).all()
+    assert len(test_instances) == 0
+    rollups = dbsession.query(DailyTestRollup).all()
+    assert len(rollups) == 0

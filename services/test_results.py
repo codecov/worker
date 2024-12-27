@@ -244,13 +244,24 @@ def messagify_flake(
 
 def specific_error_message(upload_error: UploadError) -> str:
     title = f"### :x: {upload_error.error_code}"
-    description = "\n".join(
-        [
-            f"Upload processing failed due to {upload_error.error_code.lower()}. Please review the parser error message:",
-            f"`{upload_error.error_params['error_message']}`",
-            "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
-        ]
-    )
+    if upload_error.error_code == "Unsupported file format":
+        description = "\n".join(
+            [
+                "Upload processing failed due to unsupported file format. Please review the parser error message:",
+                f"`{upload_error.error_params['error_message']}`",
+                "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
+            ]
+        )
+    elif upload_error.error_code == "File not found":
+        description = "\n".join(
+            [
+                "No result to display due to the CLI not being able to find the file.",
+                "Please ensure the file contains `junit` in the name and automated file search is enabled,",
+                "or the desired file specified by the `file` and `search_dir` arguments of the CLI.",
+            ]
+        )
+    else:
+        raise ValueError("Unrecognized error code")
     message = [
         title,
         make_quoted(description),

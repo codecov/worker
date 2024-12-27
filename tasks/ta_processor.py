@@ -89,6 +89,17 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             # don't need to process again because the intermediate result should already be in redis
             return False
 
+        if upload.storage_path == "placeholder":
+            upload.state = "v2_processed"
+            new_upload_error = UploadError(
+                upload_id=upload.id,
+                error_code="File not found",
+                error_params={},
+            )
+            db_session.add(new_upload_error)
+            db_session.commit()
+            return False
+
         payload_bytes = archive_service.read_file(upload.storage_path)
 
         try:
