@@ -18,7 +18,6 @@ from shared.utils.sessions import Session
 from shared.validation.types import CoverageCommentRequiredChanges
 from shared.yaml import UserYaml
 
-from database.enums import TestResultsProcessingError
 from database.models.core import Commit, GithubAppInstallation, Pull, Repository
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
@@ -3724,7 +3723,7 @@ class TestNewHeaderSectionWriter(object):
     ):
         sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
-            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+            test_results_error=":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         )
         writer = HeaderSectionWriter(
             mocker.MagicMock(),
@@ -3812,7 +3811,7 @@ class TestNewHeaderSectionWriter(object):
     ):
         sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
-            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+            test_results_error=":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         )
         writer = HeaderSectionWriter(
             mocker.MagicMock(),
@@ -4651,7 +4650,7 @@ class TestCommentNotifierInNewLayout(object):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         sample_comparison_coverage_carriedforward.context = ComparisonContext(
             all_tests_passed=False,
-            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+            test_results_error=":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         )
         comparison = sample_comparison_coverage_carriedforward
         comparison.repository_service.service = "github"

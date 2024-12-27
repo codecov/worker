@@ -9,7 +9,7 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.enums import FlakeSymptomType, ReportType, TestResultsProcessingError
+from database.enums import FlakeSymptomType, ReportType
 from database.models import Commit, Flake, TestResultReportTotals
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.notifier import NotifierResult
@@ -151,7 +151,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             totals.passed = 0
             totals.skipped = 0
             totals.failed = 0
-            totals.error = str(TestResultsProcessingError.NO_SUCCESS)
+            totals.error = "failure"
             db_session.add(totals)
             db_session.flush()
 
