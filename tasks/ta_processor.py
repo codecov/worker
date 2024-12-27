@@ -84,7 +84,8 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
         upload_id = upload.id
 
         log.info("Processing individual upload", extra=dict(upload_id=upload_id))
-        if upload.state == "v2_processed" or upload.state == "v2_failed":
+        if upload.state == "v2_processed":
+            # don't need to process again because the intermediate result should already be in redis
             return False
 
         payload_bytes = archive_service.read_file(upload.storage_path)
@@ -102,7 +103,7 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
                 ),
             )
             sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
-            upload.state = "v2_failed"
+            upload.state = "v2_processed"
             db_session.commit()
             return False
         else:

@@ -87,7 +87,7 @@ def persist_intermediate_results(
             if len(test_instances_to_write) > 0:
                 save_test_instances(db_session, test_instances_to_write)
 
-        upload.state = "v2_finished"
+        upload.state = "v2_persisted"
         db_session.commit()
 
         redis_client.delete(intermediate_key)

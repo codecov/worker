@@ -195,7 +195,7 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
         )
 
         assert result is False
-        assert upload.state == "v2_failed"
+        assert upload.state == "v2_processed"
 
     @pytest.mark.integration
     def test_ta_processor_task_delete_archive(

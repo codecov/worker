@@ -299,8 +299,6 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             db_session, repoid, commitid, branch, uploads, flaky_test_set
         )
 
-        queue_optional_tasks(repo, commit, commit_yaml, branch)
-
         # if we succeed once, error should be None for this commit forever
         if totals.error is not None:
             totals.error = None
@@ -359,6 +357,12 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             commit, commit_yaml, payload=payload, _pull=pull, _repo_service=repo_service
         )
         notifier_result = notifier.notify()
+        for upload in uploads.values():
+            upload.state = "v2_finished"
+        db_session.commit()
+
+        queue_optional_tasks(repo, commit, commit_yaml, branch)
+
         success = True if notifier_result is NotifierResult.COMMENT_POSTED else False
         TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
 
