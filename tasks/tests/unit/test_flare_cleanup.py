@@ -78,8 +78,7 @@ class TestFlareCleanupTask(object):
         mock_logs.assert_has_calls(
             [
                 call("Starting FlareCleanupTask"),
-                call("FlareCleanupTask cleared 1 _flares"),
-                call("FlareCleanupTask will clear 1 Archive flares"),
+                call("FlareCleanupTask cleared 1 database flares"),
                 call("FlareCleanupTask cleared 1 Archive flares"),
             ]
         )
@@ -120,8 +119,7 @@ class TestFlareCleanupTask(object):
         mock_logs.assert_has_calls(
             [
                 call("Starting FlareCleanupTask"),
-                call("FlareCleanupTask cleared 0 _flares"),
-                call("FlareCleanupTask will clear 0 Archive flares"),
+                call("FlareCleanupTask cleared 0 database flares"),
                 call("FlareCleanupTask cleared 0 Archive flares"),
             ]
         )

@@ -25,9 +25,11 @@ class FlareCleanupTask(CodecovCronTask, name=flare_cleanup_task_name):
     def get_min_seconds_interval_between_executions(cls):
         return 72000  # 20h
 
-    def run_cron_task(self, db_session, *args, **kwargs):
-        # for any Pull that is not OPEN, clear the flare field(s)
-        non_open_pulls = Pull.objects.exclude(state=PullStates.OPEN.value)
+    def run_cron_task(self, db_session, batch_size=1000, limit=10000, *args, **kwargs):
+        # for any Pull that is not OPEN, clear the flare field(s), targeting older data
+        non_open_pulls = Pull.objects.exclude(state=PullStates.OPEN.value).order_by(
+            "updatestamp"
+        )
 
         log.info("Starting FlareCleanupTask")
 
@@ -35,28 +37,61 @@ class FlareCleanupTask(CodecovCronTask, name=flare_cleanup_task_name):
         non_open_pulls_with_flare_in_db = non_open_pulls.filter(
             _flare__isnull=False
         ).exclude(_flare={})
-        # single query, objs are not loaded into memory, does not call .save(), does not refresh updatestamp
-        n_updated = non_open_pulls_with_flare_in_db.update(_flare=None)
-        log.info(f"FlareCleanupTask cleared {n_updated} _flares")
+
+        # Process in batches using an offset
+        total_updated = 0
+        offset = 0
+        while offset < limit:
+            batch = non_open_pulls_with_flare_in_db.values_list("id", flat=True)[
+                offset : offset + batch_size
+            ]
+            if not batch:
+                break
+            n_updated = non_open_pulls_with_flare_in_db.filter(id__in=batch).update(
+                _flare=None
+            )
+            total_updated += n_updated
+            offset += batch_size
+
+        log.info(f"FlareCleanupTask cleared {total_updated} database flares")
 
         # clear in Archive
         non_open_pulls_with_flare_in_archive = non_open_pulls.filter(
             _flare_storage_path__isnull=False
-        ).select_related("repository")
-        log.info(
-            f"FlareCleanupTask will clear {non_open_pulls_with_flare_in_archive.count()} Archive flares"
-        )
-        # single query, loads all pulls and repos in qset into memory, deletes file in Archive 1 by 1
-        for pull in non_open_pulls_with_flare_in_archive:
-            archive_service = ArchiveService(repository=pull.repository)
-            archive_service.delete_file(pull._flare_storage_path)
-
-        # single query, objs are not loaded into memory, does not call .save(), does not refresh updatestamp
-        n_updated = non_open_pulls_with_flare_in_archive.update(
-            _flare_storage_path=None
         )
 
-        log.info(f"FlareCleanupTask cleared {n_updated} Archive flares")
+        # Process archive deletions in batches using an offset
+        total_updated = 0
+        offset = 0
+        while offset < limit:
+            batch = non_open_pulls_with_flare_in_archive.values_list("id", flat=True)[
+                offset : offset + batch_size
+            ]
+            if not batch:
+                break
+            flare_paths_from_batch = Pull.objects.filter(id__in=batch).values_list(
+                "_flare_storage_path", flat=True
+            )
+            try:
+                archive_service = ArchiveService(repository=None)
+                archive_service.delete_files(flare_paths_from_batch)
+            except Exception as e:
+                # if something fails with deleting from archive, leave the _flare_storage_path on the pull object.
+                # only delete _flare_storage_path if the deletion from archive was successful.
+                log.error(f"FlareCleanupTask failed to delete archive files: {e}")
+                continue
+
+            # Update the _flare_storage_path field for successfully processed pulls
+            n_updated = Pull.objects.filter(id__in=batch).update(
+                _flare_storage_path=None
+            )
+            total_updated += n_updated
+            offset += batch_size
+
+        log.info(f"FlareCleanupTask cleared {total_updated} Archive flares")
+
+    def manual_run(self, db_session=None, limit=1000, *args, **kwargs):
+        self.run_cron_task(db_session, limit=limit, *args, **kwargs)
 
 
 RegisteredFlareCleanupTask = celery_app.register_task(FlareCleanupTask())
