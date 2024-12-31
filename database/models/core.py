@@ -447,7 +447,6 @@ class Pull(CodecovBaseModel):
     commentid = Column(types.Text)
     bundle_analysis_commentid = Column(types.Text)
     diff = Column(postgresql.JSON)
-    flare = Column(postgresql.JSON)
     author_id = Column("author", types.Integer, ForeignKey("owners.ownerid"))
     behind_by = Column(types.Integer)
     behind_by_commit = Column(types.Text)
@@ -455,6 +454,22 @@ class Pull(CodecovBaseModel):
     author = relationship(Owner)
     repository = relationship(
         Repository, backref=backref("pulls", cascade="delete", lazy="dynamic")
+    )
+
+    def should_write_to_storage(self) -> bool:
+        if self.repository is None or self.repository.owner is None:
+            return False
+        is_codecov_repo = self.repository.owner.username == "codecov"
+        return should_write_data_to_storage_config_check(
+            master_switch_key="pull_flare",
+            is_codecov_repo=is_codecov_repo,
+            repoid=self.repository.repoid,
+        )
+
+    _flare = Column("flare", postgresql.JSON)
+    _flare_storage_path = Column("flare_storage_path", types.Text, nullable=True)
+    flare = ArchiveField(
+        should_write_to_storage_fn=should_write_to_storage, default_value_class=dict
     )
 
     __table_args__ = (Index("pulls_repoid_pullid", "repoid", "pullid", unique=True),)
@@ -503,16 +518,6 @@ class Pull(CodecovBaseModel):
     def id(self):
         return self.id_
 
-    def should_write_to_storage(self) -> bool:
-        if self.repository is None or self.repository.owner is None:
-            return False
-        is_codecov_repo = self.repository.owner.username == "codecov"
-        return should_write_data_to_storage_config_check(
-            master_switch_key="pull_flare",
-            is_codecov_repo=is_codecov_repo,
-            repoid=self.repository.repoid,
-        )
-
     @cached_property
     def is_first_coverage_pull(self):
         """
@@ -535,12 +540,6 @@ class Pull(CodecovBaseModel):
         if first_pull_with_coverage:
             return first_pull_with_coverage.id_ == self.id_
         return True
-
-    _flare = Column("flare", postgresql.JSON)
-    _flare_storage_path = Column("flare_storage_path", types.Text, nullable=True)
-    flare = ArchiveField(
-        should_write_to_storage_fn=should_write_to_storage, default_value_class=dict
-    )
 
 
 class CommitNotification(CodecovBaseModel):
