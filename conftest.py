@@ -277,6 +277,18 @@ def mock_storage(mocker):
 
 
 @pytest.fixture
+def mock_archive_storage(mocker):
+    m = mocker.patch("shared.api_archive.archive.StorageService")
+    use_archive = mocker.patch(
+        "shared.django_apps.core.models.should_write_data_to_storage_config_check"
+    )
+    use_archive.return_value = True
+    storage_server = MemoryStorageService({})
+    m.return_value = storage_server
+    return storage_server
+
+
+@pytest.fixture
 def mock_smtp(mocker):
     m = mocker.patch("services.smtp.SMTPService")
     smtp_server = mocker.MagicMock()

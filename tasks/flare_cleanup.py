@@ -38,12 +38,13 @@ class FlareCleanupTask(CodecovCronTask, name=flare_cleanup_task_name):
             _flare__isnull=False
         ).exclude(_flare={})
 
-        # Process in batches using an offset
+        # Process in batches
         total_updated = 0
-        offset = 0
-        while offset < limit:
+        start = 0
+        while start < limit:
+            stop = start + batch_size if start + batch_size < limit else limit
             batch = non_open_pulls_with_flare_in_db.values_list("id", flat=True)[
-                offset : offset + batch_size
+                start:stop
             ]
             if not batch:
                 break
@@ -51,7 +52,7 @@ class FlareCleanupTask(CodecovCronTask, name=flare_cleanup_task_name):
                 _flare=None
             )
             total_updated += n_updated
-            offset += batch_size
+            start = stop
 
         log.info(f"FlareCleanupTask cleared {total_updated} database flares")
 
@@ -60,12 +61,13 @@ class FlareCleanupTask(CodecovCronTask, name=flare_cleanup_task_name):
             _flare_storage_path__isnull=False
         )
 
-        # Process archive deletions in batches using an offset
+        # Process archive deletions in batches
         total_updated = 0
-        offset = 0
-        while offset < limit:
+        start = 0
+        while start < limit:
+            stop = start + batch_size if start + batch_size < limit else limit
             batch = non_open_pulls_with_flare_in_archive.values_list("id", flat=True)[
-                offset : offset + batch_size
+                start:stop
             ]
             if not batch:
                 break
@@ -86,7 +88,7 @@ class FlareCleanupTask(CodecovCronTask, name=flare_cleanup_task_name):
                 _flare_storage_path=None
             )
             total_updated += n_updated
-            offset += batch_size
+            start = stop
 
         log.info(f"FlareCleanupTask cleared {total_updated} Archive flares")
 
