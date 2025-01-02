@@ -380,7 +380,7 @@ class Commit(CodecovBaseModel):
     def get_commitid(self):
         return self.commitid
 
-    def should_write_to_storage(self) -> bool:
+    def should_write_to_storage(self: object) -> bool:
         if self.repository is None or self.repository.owner is None:
             return False
         is_codecov_repo = self.repository.owner.username == "codecov"
@@ -456,7 +456,7 @@ class Pull(CodecovBaseModel):
         Repository, backref=backref("pulls", cascade="delete", lazy="dynamic")
     )
 
-    def should_write_to_storage(self) -> bool:
+    def should_write_to_storage(self: object) -> bool:
         if self.repository is None or self.repository.owner is None:
             return False
         is_codecov_repo = self.repository.owner.username == "codecov"
