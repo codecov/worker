@@ -243,8 +243,6 @@ class ReportService(BaseReportService):
             private_repo=repository.private,
             report_type=commit_report.report_type,
         )
-        db_session = upload.get_db_session()
-        db_session.commit()
 
         return upload
 
