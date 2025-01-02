@@ -1,3 +1,5 @@
+from pathlib import PurePosixPath, PureWindowsPath
+
 from shared.yaml import UserYaml
 
 from services.path_fixer import PathFixer, invert_pattern
@@ -127,6 +129,32 @@ class TestBasePathAwarePathFixer(object):
             base_aware_pf("__init__.py", bases_to_try=("/home/travis/build/project",))
             == "project/__init__.py"
         )
+
+    def test_basepath_does_not_resolve_empty_paths(self):
+        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
+        pf = PathFixer.init_from_user_yaml({}, toc, [])
+        coverage_file = "/some/coverage.xml"
+        base_aware_pf = pf.get_relative_path_aware_pathfixer(coverage_file)
+
+        assert base_aware_pf("") is None
+
+    def test_basepath_with_win_and_posix_paths(self):
+        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
+        pf = PathFixer.init_from_user_yaml({}, toc, [])
+
+        posix_coverage_file_path = "/posix_base_path/coverage.xml"
+        posix_base_aware_pf = pf.get_relative_path_aware_pathfixer(
+            posix_coverage_file_path
+        )
+        assert posix_base_aware_pf.base_path == [PurePosixPath("/posix_base_path")]
+
+        windows_coverage_file_path = "C:\\windows_base_path\\coverage.xml"
+        windows_base_aware_pf = pf.get_relative_path_aware_pathfixer(
+            windows_coverage_file_path
+        )
+        assert windows_base_aware_pf.base_path == [
+            PureWindowsPath("C:\\windows_base_path")
+        ]
 
 
 def test_ambiguous_paths():

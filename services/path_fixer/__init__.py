@@ -1,6 +1,6 @@
 import logging
 import os.path
-from pathlib import PurePath
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Sequence
 
 import sentry_sdk
@@ -126,7 +126,19 @@ class BasePathAwarePathFixer(PathFixer):
         # base_path argument is the file path after the "# path=" in the report containing report location, if provided.
         # to get the base path we use, strip the coverage report from the path to get the base path
         # e.g.: "path/to/coverage.xml" --> "path/to/"
-        self.base_path = [PurePath(base_path).parent] if base_path is not None else []
+
+        self.base_path = []
+
+        if base_path:
+            # We want to use a `PurePath`, but we have to handle both Windows
+            # and POSIX paths. The cleanest way to do that is:
+            # - start by assuming it's a Windows path
+            # - if it doesn't have a drive letter like C:\, convert to POSIX
+            pure_path = PureWindowsPath(base_path)
+            if not pure_path.drive:
+                pure_path = PurePosixPath(pure_path.as_posix())
+
+            self.base_path = [pure_path.parent]
 
     def _try_fix_path(self, path: str, bases_to_try: Sequence[str]) -> str | None:
         original_path_fixer_result = self.original_path_fixer(path)
@@ -153,6 +165,8 @@ class BasePathAwarePathFixer(PathFixer):
     def __call__(
         self, path: str, bases_to_try: Sequence[str] | None = None
     ) -> str | None:
+        if not path:
+            return None
         bases_to_try = bases_to_try or tuple()
         key = (path, bases_to_try)
 

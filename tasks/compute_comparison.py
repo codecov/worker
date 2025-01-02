@@ -68,6 +68,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         # Because we have a HEAD report and a base commit to get the diff from
         patch_totals = comparison_proxy.get_patch_totals()
         comparison.patch_totals = minimal_totals(patch_totals)
+        db_session.commit()
 
         if not comparison_proxy.has_project_coverage_base_report():
             comparison.error = CompareCommitError.missing_base_report.value
@@ -96,6 +97,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         path = self.store_results(comparison, impacted_files)
 
         comparison.report_storage_path = path
+        db_session.commit()
 
         comparison.state = CompareCommitState.processed.value
         log.info("Computing comparison successful", extra=log_extra)
