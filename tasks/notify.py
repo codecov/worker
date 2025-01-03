@@ -26,7 +26,13 @@ from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.enums import CommitErrorTypes, Decoration, NotificationState, ReportType
-from database.models import Commit, Pull
+from database.models import (
+    Commit,
+    CommitReport,
+    Pull,
+    TestResultReportTotals,
+    UploadError,
+)
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, CompareCommit
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.clock import get_seconds_to_next_hour
@@ -59,6 +65,8 @@ from tasks.base import BaseCodecovTask
 from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME
 
 log = logging.getLogger(__name__)
+
+GENERIC_TA_ERROR_MSG = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
 
 
 class NotifyTask(BaseCodecovTask, name=notify_task_name):
@@ -398,6 +406,11 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                     current_yaml=current_yaml.to_dict(),
                 ),
             )
+
+            all_tests_passed, ta_error_msg = get_ta_relevant_context(
+                db_session, test_result_commit_report
+            )
+
             notifications = self.submit_third_party_notifications(
                 current_yaml,
                 base_commit,
@@ -407,17 +420,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 enriched_pull,
                 repository_service,
                 empty_upload,
-                all_tests_passed=(
-                    test_result_commit_report is not None
-                    and test_result_commit_report.test_result_totals is not None
-                    and test_result_commit_report.test_result_totals.error is None
-                    and test_result_commit_report.test_result_totals.failed == 0
-                ),
-                test_results_error=(
-                    test_result_commit_report is not None
-                    and test_result_commit_report.test_result_totals is not None
-                    and test_result_commit_report.test_result_totals.error
-                ),
+                all_tests_passed=all_tests_passed,
+                test_results_error=ta_error_msg,
                 installation_name_to_use=installation_name_to_use,
                 gh_is_using_codecov_commenter=self.is_using_codecov_commenter(
                     repository_service
@@ -582,10 +586,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         enriched_pull: EnrichedPull,
         repository_service: TorngitBaseAdapter,
         empty_upload=None,
-        # It's only true if the test_result processing is setup
-        # And all tests indeed passed
         all_tests_passed: bool = False,
-        test_results_error: bool = False,
+        test_results_error: str | None = None,
         installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
         gh_is_using_codecov_commenter: bool = False,
         gitlab_extra_shas_to_notify: set[str] | None = None,
@@ -887,3 +889,37 @@ def get_repo_provider_service_for_specific_commit(
         **data,
     )
     return _get_repo_provider_service_instance(repository.service, adapter_params)
+
+
+def get_ta_relevant_context(
+    db_session: Session, ta_commit_report: CommitReport | None
+) -> tuple[bool, str | None]:
+    all_tests_passed: bool = False
+    ta_error_msg: str | None = None
+
+    if ta_commit_report:
+        test_result_uploads = [upload.id for upload in ta_commit_report.uploads]
+        upload_error = (
+            db_session.query(UploadError)
+            .filter(UploadError.upload_id.in_(test_result_uploads))
+            .first()
+        )
+
+        totals: TestResultReportTotals | None = ta_commit_report.test_result_totals
+
+        if upload_error:
+            ta_error_msg = upload_error.error_params["error_message"]
+        elif totals and totals.error:
+            # this branch covers old behavior of setting the error on the totals
+            # TODO: remove this in the future
+            ta_error_msg = GENERIC_TA_ERROR_MSG
+        else:
+            ta_error_msg = None
+
+        all_tests_passed = False
+        if totals:
+            no_error = ta_error_msg is None
+            no_test_failures = totals.failed == 0
+            all_tests_passed = no_error and no_test_failures
+
+    return all_tests_passed, ta_error_msg

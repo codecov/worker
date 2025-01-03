@@ -30,6 +30,8 @@ from services.yaml.reader import get_components_from_yaml, round_number
 
 log = logging.getLogger(__name__)
 
+ALL_TESTS_PASSED_MSG = ":white_check_mark: All tests successful. No failed tests found."
+
 
 def get_section_class_from_layout_name(layout_name):
     if layout_name.startswith("flag"):
@@ -108,14 +110,12 @@ class NewFooterSectionWriter(BaseSectionWriter):
 
 class HeaderSectionWriter(BaseSectionWriter):
     def _possibly_include_test_result_setup_confirmation(self, comparison):
-        if comparison.test_results_error():
+        if ta_error_msg := comparison.test_results_error():
             yield ("")
-            yield (
-                ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
-            )
+            yield (ta_error_msg)
         elif comparison.all_tests_passed():
             yield ""
-            yield (":white_check_mark: All tests successful. No failed tests found.")
+            yield (ALL_TESTS_PASSED_MSG)
 
     def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml

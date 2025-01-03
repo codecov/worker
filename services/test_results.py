@@ -17,6 +17,7 @@ from database.models import (
     RepositoryFlag,
     TestInstance,
     Upload,
+    UploadError,
 )
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_TEST_DETECTION
@@ -236,15 +237,38 @@ def messagify_flake(
     return make_quoted(f"{test_name}\n{flake_rate_section}\n{stack_trace}")
 
 
+def specific_error_message(upload_errors: list[UploadError]) -> str:
+    title = f"### :x: {upload_errors[0].error_code}"
+    description = "\n".join(
+        [
+            f"Upload processing failed due to {upload_errors[0].error_code.lower()}. Please review the parser error message:",
+            f"`{upload_errors[0].error_params['error_message']}`",
+            "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
+        ]
+    )
+    message = [
+        title,
+        make_quoted(description),
+    ]
+    return "\n".join(message)
+
+
 @dataclass
 class TestResultsNotifier(BaseNotifier):
     payload: TestResultsNotificationPayload | None = None
+    errors: list[UploadError] | None = None
 
     def build_message(self) -> str:
         if self.payload is None:
             raise ValueError("Payload passed to notifier is None, cannot build message")
 
-        message = [f"### :x: {self.payload.failed} Tests Failed:"]
+        message = []
+
+        if self.errors is not None and len(self.errors) > 0:
+            message.append(specific_error_message(self.errors))
+            message.append("---")
+
+        message.append(f"### :x: {self.payload.failed} Tests Failed:")
 
         completed = self.payload.failed + self.payload.passed
 
@@ -294,14 +318,26 @@ class TestResultsNotifier(BaseNotifier):
         return "\n".join(message)
 
     def error_comment(self):
+        """
+        This method assumes that the list is not empty, so
+        if the list is empty, we raise an error.
+        """
+        message: str
+
+        if self.errors is None:
+            message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
+        else:
+            if len(self.errors) == 0:
+                raise ValueError("No errors passed to error_comment method")
+            message = specific_error_message(self.errors)
+
         pull = self.get_pull()
         if pull is None:
             return False, "no_pull"
 
-        message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
-
         sent_to_provider = self.send_to_provider(pull, message)
-        if sent_to_provider == False:
+
+        if sent_to_provider is False:
             return (False, "torngit_error")
 
         return (True, "comment_posted")
