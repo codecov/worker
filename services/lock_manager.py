@@ -17,6 +17,7 @@ class LockType(Enum):
     BUNDLE_ANALYSIS_PROCESSING = "bundle_analysis_processing"
     BUNDLE_ANALYSIS_NOTIFY = "bundle_analysis_notify"
     NOTIFICATION = "notify"
+    NOTIFICATION_ORCHESTRATOR = "notification_orchestrator"
     # TODO: port existing task locking to use `LockManager`
 
 
