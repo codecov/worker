@@ -40,7 +40,6 @@ from tasks.upload_processor import MAX_RETRIES, UPLOAD_PROCESSING_LOCK_NAME
 log = logging.getLogger(__name__)
 
 
-
 class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
     """This is the third task of the series of tasks designed to process an `upload` made
     by the user
@@ -131,9 +130,11 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     "commitid": commitid,
                     "commit_yaml": commit_yaml.to_dict(),
                     "processing_results": processing_results,
-                    "report_code": report_code
+                    "report_code": report_code,
                 }
-                notification_orchestrator_kwargs = UploadFlow.save_to_kwargs(notification_orchestrator_kwargs)
+                notification_orchestrator_kwargs = UploadFlow.save_to_kwargs(
+                    notification_orchestrator_kwargs
+                )
                 # TODO: add log to add the notification orchestrator task
                 self.app.tasks[notification_orchestrator_task_name].apply_async(
                     kwargs=notification_orchestrator_kwargs
@@ -171,6 +172,7 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
             redis_connection.hdel("badge", ("%s:%s" % (key, (commit.branch))).lower())
             if commit.branch == repository.branch:
                 redis_connection.hdel("badge", ("%s:" % key).lower())
+
 
 def get_report_lock(repoid: int, commitid: str, hard_time_limit: int) -> Lock:
     lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
@@ -246,13 +248,13 @@ def load_commit_diff(commit: Commit, task_name: str | None = None) -> dict | Non
             commit,
             error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
         )
-
         log.warning(
             "Could not apply diff to report because there is no valid bot found for that repo",
             exc_info=True,
         )
 
     return None
+
 
 RegisteredUploadTask = celery_app.register_task(UploadFinisherTask())
 upload_finisher_task = celery_app.tasks[RegisteredUploadTask.name]

@@ -43,7 +43,6 @@ from services.decoration import determine_decoration_details
 from services.github import get_github_app_for_commit, set_github_app_for_commit
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.notification import NotificationService
-from services.redis import Redis, get_redis_connection
 from services.report import ReportService
 from services.repository import (
     EnrichedPull,
@@ -53,7 +52,6 @@ from services.repository import (
 )
 from services.yaml import get_current_yaml, read_yaml_field
 from tasks.base import BaseCodecovTask
-from tasks.upload_processor import UPLOAD_PROCESSING_LOCK_NAME
 
 log = logging.getLogger(__name__)
 
@@ -71,21 +69,6 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         empty_upload=None,
         **kwargs,
     ):
-        redis_connection = get_redis_connection()
-        if self.has_upcoming_notifies_according_to_redis(
-            redis_connection, repoid, commitid
-        ):
-            log.info(
-                "Not notifying because there are seemingly other jobs being processed yet",
-                extra=dict(repoid=repoid, commitid=commitid),
-            )
-            self.log_checkpoint(UploadFlow.SKIPPING_NOTIFICATION)
-            return {
-                "notified": False,
-                "notifications": None,
-                "reason": "has_other_notifies_coming",
-            }
-
         lock_manager = LockManager(
             repoid=repoid,
             commitid=commitid,
@@ -199,7 +182,7 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             }
 
         # ASK: this installation/bot related logic impedes notification if unavailable, but it
-        # seems correct for it to be part of the notifier task, thoughts? 
+        # seems correct for it to be part of the notifier task, thoughts?
         try:
             installation_name_to_use = get_installation_name_for_owner_for_task(
                 self.name, commit.repository.owner
@@ -218,90 +201,10 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             self.log_checkpoint(UploadFlow.NOTIF_NO_VALID_INTEGRATION)
             return {"notified": False, "notifications": None, "reason": "no_valid_bot"}
 
-        # except NoConfiguredAppsAvailable as exp:
-        #     # Maybe we have apps that are suspended. We can't communicate with github.
-        #     log.warning(
-        #         "We can't find an app to communicate with GitHub. Not notifying.",
-        #         extra=dict(
-        #             repoid=repoid,
-        #             commit=commitid,
-        #             apps_available=exp.apps_count,
-        #             apps_suspended=exp.suspended_count,
-        #         ),
-        #     )
-        #     self.log_checkpoint(UploadFlow.NOTIF_NO_APP_INSTALLATION)
-        #     return {
-        #         "notified": False,
-        #         "notifications": None,
-        #         "reason": "no_valid_github_app_found",
-        #     }
-
         if current_yaml is None:
             current_yaml = async_to_sync(get_current_yaml)(commit, repository_service)
         else:
             current_yaml = UserYaml.from_dict(current_yaml)
-
-        # try:
-        #     ci_results = self.fetch_and_update_whether_ci_passed(
-        #         repository_service, commit, current_yaml
-        #     )
-        # except TorngitClientError as ex:
-        #     log.info(
-        #         "Unable to fetch CI results due to a client problem. Not notifying user",
-        #         extra=dict(repoid=commit.repoid, commit=commit.commitid, code=ex.code),
-        #     )
-        #     self.log_checkpoint(UploadFlow.NOTIF_GIT_CLIENT_ERROR)
-        #     return {
-        #         "notified": False,
-        #         "notifications": None,
-        #         "reason": "not_able_fetch_ci_result",
-        #     }
-        # except TorngitServerFailureError:
-        #     log.info(
-        #         "Unable to fetch CI results due to server issues. Not notifying user",
-        #         extra=dict(repoid=commit.repoid, commit=commit.commitid),
-        #     )
-        #     self.log_checkpoint(UploadFlow.NOTIF_GIT_SERVICE_ERROR)
-        #     return {
-        #         "notified": False,
-        #         "notifications": None,
-        #         "reason": "server_issues_ci_result",
-        #     }
-        # if self.should_wait_longer(current_yaml, commit, ci_results):
-        #     log.info(
-        #         "Not sending notifications yet because we are waiting for CI to finish",
-        #         extra=dict(repoid=commit.repoid, commit=commit.commitid),
-        #     )
-        #     ghapp_default_installations = list(
-        #         filter(
-        #             lambda obj: obj.name == installation_name_to_use
-        #             and obj.is_configured(),
-        #             commit.repository.owner.github_app_installations or [],
-        #         )
-        #     )
-        #     rely_on_webhook_ghapp = ghapp_default_installations != [] and any(
-        #         obj.is_repo_covered_by_integration(commit.repository)
-        #         for obj in ghapp_default_installations
-        #     )
-        #     rely_on_webhook_legacy = commit.repository.using_integration
-        #     if (
-        #         rely_on_webhook_ghapp
-        #         or rely_on_webhook_legacy
-        #         or commit.repository.hookid
-        #     ):
-        #         # rely on the webhook, but still retry in case we miss the webhook
-        #         max_retries = 5
-        #         countdown = (60 * 3) * 2**self.request.retries
-        #     else:
-        #         max_retries = 10
-        #         countdown = 15 * 2**self.request.retries
-        #     return self._attempt_retry(
-        #         max_retries=max_retries,
-        #         countdown=countdown,
-        #         current_yaml=current_yaml,
-        #         commit=commit,
-        #         **kwargs,
-        #     )
 
         report_service = ReportService(
             current_yaml, gh_app_installation_name=installation_name_to_use
@@ -414,13 +317,6 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
         )
         db_session.commit()
         return {"notified": True, "notifications": notifications}
-        # else:
-        #     log.info(
-        #         "Not sending notifications at all",
-        #         extra=dict(commit=commit.commitid, repoid=commit.repoid),
-        #     )
-        #     self.log_checkpoint(UploadFlow.SKIPPING_NOTIFICATION)
-        #     return {"notified": False, "notifications": None}
 
     def is_using_codecov_commenter(
         self, repository_service: TorngitBaseAdapter
@@ -437,27 +333,6 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
             and repository_service.get_token_by_type(TokenType.comment)
             == commenter_bot_token
         )
-
-    def has_upcoming_notifies_according_to_redis(
-        self, redis_connection: Redis, repoid: int, commitid: str
-    ) -> bool:
-        """Checks whether there are any jobs processing according to Redis right now and,
-            therefore, whether more up-to-date notifications will come after this anyway
-
-            It's very important to have this code be conservative against saying
-                there are upcoming notifies already. The point of this code is to
-                avoid extra notifications for efficiency purposes, but it is better
-                to send extra notifications than to lack notifications
-
-        Args:
-            redis_connection (Redis): The redis connection we check against
-            repoid (int): The repoid of the commit
-            commitid (str): The commitid of the commit
-        """
-        upload_processing_lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
-        if redis_connection.get(upload_processing_lock_name):
-            return True
-        return False
 
     @sentry_sdk.trace
     def save_patch_totals(self, comparison: ComparisonProxy) -> None:
