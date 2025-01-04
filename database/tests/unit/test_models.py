@@ -191,6 +191,48 @@ class TestOwnerModel(object):
         assert tokens_not_required_owner.onboarding_completed is True
         assert tokens_not_required_owner.upload_token_required_for_public_repos is False
 
+    def test_root_organization(self, dbsession):
+        gitlab_root_group = OwnerFactory.create(
+            username="root_group",
+            service="gitlab",
+            plan="users-pr-inappm",
+        )
+        dbsession.add(gitlab_root_group)
+        gitlab_middle_group = OwnerFactory.create(
+            username="mid_group",
+            service="gitlab",
+            parent_service_id=gitlab_root_group.service_id,
+            root_parent_service_id=None,
+        )
+        dbsession.add(gitlab_middle_group)
+        gitlab_subgroup = OwnerFactory.create(
+            username="subgroup",
+            service="gitlab",
+            parent_service_id=gitlab_middle_group.service_id,
+            root_parent_service_id=None,
+        )
+        dbsession.add(gitlab_subgroup)
+        github_org = OwnerFactory.create(
+            username="gh",
+            service="github",
+        )
+        dbsession.add(github_org)
+        dbsession.flush()
+
+        assert gitlab_root_group.root_organization is None
+        assert gitlab_root_group.root_parent_service_id is None
+
+        assert gitlab_middle_group.root_organization == gitlab_root_group
+        assert (
+            gitlab_middle_group.root_parent_service_id == gitlab_root_group.service_id
+        )
+
+        assert gitlab_subgroup.root_organization == gitlab_root_group
+        assert gitlab_subgroup.root_parent_service_id == gitlab_root_group.service_id
+
+        assert github_org.root_organization is None
+        assert github_org.root_parent_service_id is None
+
 
 class TestAccountModels(object):
     def test_create_account(self, dbsession):
