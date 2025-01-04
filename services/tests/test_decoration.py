@@ -97,6 +97,8 @@ def gitlab_root_group(dbsession):
         unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
         plan="users-pr-inappm",
         plan_activated_users=[],
+        plan_auto_activate=False,
+        plan_user_count=3,
     )
     dbsession.add(root_group)
     dbsession.flush()
@@ -104,13 +106,31 @@ def gitlab_root_group(dbsession):
 
 
 @pytest.fixture
-def gitlab_enriched_pull_subgroup(dbsession, gitlab_root_group):
+def gitlab_middle_group(dbsession, gitlab_root_group):
+    mid_group = OwnerFactory.create(
+        username="mid_group",
+        service="gitlab",
+        unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi4",
+        plan="users-pr-inappy",
+        plan_activated_users=[],
+        parent_service_id=gitlab_root_group.service_id,
+        plan_auto_activate=True,
+    )
+    dbsession.add(mid_group)
+    dbsession.flush()
+    return mid_group
+
+
+@pytest.fixture
+def gitlab_enriched_pull_subgroup(dbsession, gitlab_middle_group):
     subgroup = OwnerFactory.create(
         username="subgroup",
         service="gitlab",
         unencrypted_oauth_token="testtlxuu2kfef3km1fbecdlmnb2nvpikvmoadi3",
         plan=None,
-        parent_service_id=gitlab_root_group.service_id,
+        parent_service_id=gitlab_middle_group.service_id,
+        plan_activated_users=[],
+        plan_auto_activate=True,
     )
     dbsession.add(subgroup)
     dbsession.flush()
@@ -779,9 +799,10 @@ class TestDecorationServiceGitLabTestCase(object):
         gitlab_enriched_pull_subgroup,
         with_sql_functions,
     ):
-        gitlab_root_group.plan_user_count = 3
-        gitlab_root_group.plan_activated_users = []
         gitlab_root_group.plan_auto_activate = False
+        # setting on child group should not matter, uses setting from root
+        child_group = gitlab_enriched_pull_subgroup.database_pull.repository.owner
+        child_group.plan_auto_activate = True
 
         pr_author = OwnerFactory.create(
             username=gitlab_enriched_pull_subgroup.provider_pull["author"]["username"],
@@ -797,13 +818,23 @@ class TestDecorationServiceGitLabTestCase(object):
         assert decoration_details.decoration_type == Decoration.upgrade
         assert decoration_details.reason == "User must be manually activated"
         assert decoration_details.should_attempt_author_auto_activation is False
+        assert decoration_details.activation_org_ownerid is None
+        assert decoration_details.activation_author_ownerid is None
 
+        # allow auto-activate on root
+        gitlab_root_group.plan_auto_activate = True
+        # setting on child group should not matter, uses setting from root
+        child_group.plan_auto_activate = False
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
+        dbsession.commit()
+
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be activated"
+        assert decoration_details.should_attempt_author_auto_activation is True
+        assert decoration_details.activation_org_ownerid == gitlab_root_group.ownerid
+        assert decoration_details.activation_author_ownerid == pr_author.ownerid
+        # activation hasn't happened yet
         assert pr_author.ownerid not in gitlab_root_group.plan_activated_users
-        # shouldn't be in subgroup plan_activated_users either
-        assert (
-            pr_author.ownerid
-            not in gitlab_enriched_pull_subgroup.database_pull.repository.owner.plan_activated_users
-        )
 
     def test_get_decoration_type_pr_author_already_active_subgroup(
         self,
@@ -820,7 +851,6 @@ class TestDecorationServiceGitLabTestCase(object):
         )
         dbsession.add(pr_author)
         dbsession.flush()
-        gitlab_root_group.plan_user_count = 3
         gitlab_root_group.plan_activated_users = [pr_author.ownerid]
         gitlab_root_group.plan_auto_activate = False
         dbsession.flush()
@@ -831,6 +861,8 @@ class TestDecorationServiceGitLabTestCase(object):
         assert decoration_details.decoration_type == Decoration.standard
         assert decoration_details.reason == "User is currently activated"
         assert decoration_details.should_attempt_author_auto_activation is False
+        assert decoration_details.activation_org_ownerid is None
+        assert decoration_details.activation_author_ownerid is None
 
     def test_get_decoration_type_should_attempt_pr_author_auto_activation(
         self,
@@ -860,7 +892,7 @@ class TestDecorationServiceGitLabTestCase(object):
         assert decoration_details.should_attempt_author_auto_activation is True
         assert decoration_details.activation_org_ownerid == gitlab_root_group.ownerid
         assert decoration_details.activation_author_ownerid == pr_author.ownerid
-        # activation hasnt happened yet
+        # activation hasn't happened yet
         assert pr_author.ownerid not in gitlab_root_group.plan_activated_users
 
     def test_get_decoration_type_owner_activated_users_null(
@@ -923,3 +955,47 @@ class TestDecorationServiceGitLabTestCase(object):
         uploads_used = determine_uploads_used(plan_service=plan_service)
 
         assert uploads_used == 0
+
+    def test_author_is_activated_on_subgroup_not_root(
+        self, dbsession, gitlab_root_group, gitlab_enriched_pull_subgroup
+    ):
+        pr_author = OwnerFactory.create(
+            username=gitlab_enriched_pull_subgroup.provider_pull["author"]["username"],
+            service="gitlab",
+            service_id=gitlab_enriched_pull_subgroup.provider_pull["author"]["id"],
+        )
+        dbsession.add(pr_author)
+        dbsession.flush()
+
+        # user is activated on subgroup but not root group and root group does not auto activate
+        gitlab_root_group.plan_auto_activate = False
+        child_group = gitlab_enriched_pull_subgroup.database_pull.repository.owner
+        child_group.plan_auto_activate = False
+        child_group.plan_activated_users = [pr_author.ownerid]
+        dbsession.flush()
+
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
+        dbsession.commit()
+
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be manually activated"
+        assert decoration_details.should_attempt_author_auto_activation is False
+        assert decoration_details.activation_org_ownerid is None
+        assert decoration_details.activation_author_ownerid is None
+
+        assert pr_author.ownerid not in gitlab_root_group.plan_activated_users
+        assert (
+            pr_author.ownerid
+            in gitlab_enriched_pull_subgroup.database_pull.repository.owner.plan_activated_users
+        )
+
+        # allow auto-activate on root for user to get non-blocking decoration
+        gitlab_root_group.plan_auto_activate = True
+        decoration_details = determine_decoration_details(gitlab_enriched_pull_subgroup)
+        dbsession.commit()
+
+        assert decoration_details.decoration_type == Decoration.upgrade
+        assert decoration_details.reason == "User must be activated"
+        assert decoration_details.should_attempt_author_auto_activation is True
+        assert decoration_details.activation_org_ownerid == gitlab_root_group.ownerid
+        assert decoration_details.activation_author_ownerid == pr_author.ownerid

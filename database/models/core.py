@@ -105,6 +105,7 @@ class Owner(CodecovBaseModel):
     avatar_url = Column(types.Text, server_default=FetchedValue())
     updatestamp = Column(types.DateTime, server_default=FetchedValue())
     parent_service_id = Column(types.Text, server_default=FetchedValue())
+    root_parent_service_id = Column(types.Text, nullable=True)
     plan_provider = Column(types.Text, server_default=FetchedValue())
     trial_start_date = Column(types.DateTime, server_default=FetchedValue())
     trial_end_date = Column(types.DateTime, server_default=FetchedValue())
@@ -155,6 +156,37 @@ class Owner(CodecovBaseModel):
     @property
     def slug(self):
         return self.username
+
+    @property
+    def root_organization(self):
+        """
+        Find the root organization of Gitlab OwnerOrg, by using the root_parent_service_id
+        if it exists, otherwise iterating through the parents and cache it in root_parent_service_id
+        """
+        db_session = self.get_db_session()
+        if self.root_parent_service_id:
+            return self._get_owner_by_service_id(
+                db_session, self.root_parent_service_id
+            )
+
+        root = None
+        if self.service == "gitlab" and self.parent_service_id:
+            root = self
+            while root.parent_service_id is not None:
+                root = self._get_owner_by_service_id(db_session, root.parent_service_id)
+            self.root_parent_service_id = root.service_id
+            db_session.commit()
+        return root
+
+    def _get_owner_by_service_id(self, db_session, service_id):
+        """
+        Helper method to fetch an Owner by service_id.
+        """
+        return (
+            db_session.query(Owner)
+            .filter_by(service_id=service_id, service=self.service)
+            .one_or_none()
+        )
 
     def __repr__(self):
         return f"Owner<{self.ownerid}@service<{self.service}>>"
