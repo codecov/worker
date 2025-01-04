@@ -6,6 +6,7 @@ from typing import List
 from urllib.parse import parse_qs, quote_plus, urlencode, urlparse, urlunparse
 
 from shared.config import get_config
+from shared.django_apps.codecov_auth.models import Service
 
 from database.models import Commit, Pull, Repository
 from services.license import requires_license
@@ -55,6 +56,16 @@ def get_dashboard_base_url() -> str:
         return configured_dashboard_url or configured_base_url
     else:
         return configured_dashboard_url or "https://app.codecov.io"
+
+
+def _get_username_for_url(repository: Repository) -> str:
+    username = repository.owner.username
+    if repository.owner.service == Service.GITLAB.value:
+        # if GL, direct url to root org not subgroup
+        root_org = repository.owner.root_organization
+        if root_org is not None:
+            username = root_org.username
+    return username
 
 
 def get_commit_url(commit: Commit) -> str:
@@ -162,11 +173,12 @@ def get_org_account_url(pull: Pull) -> str:
 
 def get_members_url(pull: Pull) -> str:
     repository = pull.repository
+    username = _get_username_for_url(repository=repository)
     if not requires_license():
         return SiteUrls.members_url.get_url(
             dashboard_base_url=get_dashboard_base_url(),
             service_short=services_short_dict.get(repository.service),
-            username=repository.owner.username,
+            username=username,
         )
     else:
         return SiteUrls.members_url_self_hosted.get_url(
@@ -178,10 +190,11 @@ def get_members_url(pull: Pull) -> str:
 
 def get_plan_url(pull: Pull) -> str:
     repository = pull.repository
+    username = _get_username_for_url(repository=repository)
     return SiteUrls.plan_url.get_url(
         dashboard_base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
-        username=repository.owner.username,
+        username=username,
     )
 
 
