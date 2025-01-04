@@ -3,6 +3,7 @@ import string
 import uuid
 from datetime import datetime
 from functools import cached_property
+from typing import Optional
 
 from shared.plan.constants import PlanName
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
@@ -154,11 +155,11 @@ class Owner(CodecovBaseModel):
     )
 
     @property
-    def slug(self):
+    def slug(self: "Owner") -> str:
         return self.username
 
     @property
-    def root_organization(self):
+    def root_organization(self: "Owner") -> Optional["Owner"]:
         """
         Find the root organization of Gitlab OwnerOrg, by using the root_parent_service_id
         if it exists, otherwise iterating through the parents and cache it in root_parent_service_id
@@ -178,17 +179,19 @@ class Owner(CodecovBaseModel):
             db_session.commit()
         return root
 
-    def _get_owner_by_service_id(self, db_session, service_id):
+    def _get_owner_by_service_id(
+        self: "Owner", db_session: Session, service_id: str
+    ) -> "Owner":
         """
         Helper method to fetch an Owner by service_id.
         """
         return (
             db_session.query(Owner)
             .filter_by(service_id=service_id, service=self.service)
-            .one_or_none()
+            .one()
         )
 
-    def __repr__(self):
+    def __repr__(self: "Owner") -> str:
         return f"Owner<{self.ownerid}@service<{self.service}>>"
 
 
