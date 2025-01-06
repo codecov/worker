@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+message Sample {
+    optional string timestamp = 1;
+    optional string id = 2;
+    optional string name = 3;
+}
+

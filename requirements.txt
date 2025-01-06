@@ -79,6 +79,10 @@ coverage==7.5.0
     #   pytest-cov
 cryptography==43.0.1
     # via shared
+deprecated==1.2.15
+    # via
+    #   opentelemetry-api
+    #   opentelemetry-semantic-conventions
 distlib==0.3.7
     # via virtualenv
 distro==1.8.0
@@ -109,18 +113,29 @@ freezegun==1.5.0
     # via pytest-freezegun
 google-api-core==2.23.0
     # via
+    #   google-cloud-bigquery
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
     #   google-cloud-pubsub
     #   google-cloud-storage
 google-auth==2.36.0
     # via
     #   google-api-core
+    #   google-cloud-bigquery
+    #   google-cloud-bigquery-storage
     #   google-cloud-core
+    #   google-cloud-pubsub
     #   google-cloud-storage
     #   shared
-google-cloud-core==2.3.3
-    # via google-cloud-storage
-google-cloud-pubsub==2.18.4
+google-cloud-bigquery==3.27.0
+    # via -r requirements.in
+google-cloud-bigquery-storage==2.27.0
+    # via -r requirements.in
+google-cloud-core==2.4.1
+    # via
+    #   google-cloud-bigquery
+    #   google-cloud-storage
+google-cloud-pubsub==2.27.1
     # via
     #   -r requirements.in
     #   shared
@@ -133,13 +148,15 @@ google-crc32c==1.1.2
     #   google-cloud-storage
     #   google-resumable-media
 google-resumable-media==2.7.2
-    # via google-cloud-storage
-googleapis-common-protos==1.59.1
+    # via
+    #   google-cloud-bigquery
+    #   google-cloud-storage
+googleapis-common-protos==1.66.0
     # via
     #   google-api-core
     #   grpc-google-iam-v1
     #   grpcio-status
-grpc-google-iam-v1==0.12.6
+grpc-google-iam-v1==0.14.0
     # via google-cloud-pubsub
 grpcio==1.68.1
     # via
@@ -173,6 +190,8 @@ idna==3.7
     #   yarl
 ijson==3.2.3
     # via shared
+importlib-metadata==8.5.0
+    # via opentelemetry-api
 iniconfig==1.1.1
     # via pytest
 jinja2==3.1.4
@@ -205,12 +224,23 @@ oauthlib==3.1.0
     # via shared
 openai==1.2.4
     # via -r requirements.in
+opentelemetry-api==1.29.0
+    # via
+    #   google-cloud-pubsub
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-sdk==1.29.0
+    # via google-cloud-pubsub
+opentelemetry-semantic-conventions==0.50b0
+    # via opentelemetry-sdk
 orjson==3.10.11
     # via
     #   -r requirements.in
     #   shared
 packaging==24.1
-    # via pytest
+    # via
+    #   google-cloud-bigquery
+    #   pytest
 platformdirs==3.11.0
     # via virtualenv
 pluggy==1.5.0
@@ -229,10 +259,13 @@ proto-plus==1.25.0
     # via
     #   -r requirements.in
     #   google-api-core
+    #   google-cloud-bigquery-storage
     #   google-cloud-pubsub
-protobuf==4.24.3
+protobuf==5.29.2
     # via
+    #   -r requirements.in
     #   google-api-core
+    #   google-cloud-bigquery-storage
     #   google-cloud-pubsub
     #   googleapis-common-protos
     #   grpc-google-iam-v1
@@ -292,6 +325,7 @@ python-dateutil==2.9.0.post0
     #   django-postgres-extra
     #   faker
     #   freezegun
+    #   google-cloud-bigquery
     #   time-machine
 python-json-logger==0.1.11
     # via -r requirements.in
@@ -319,6 +353,7 @@ requests==2.32.3
     #   -r requirements.in
     #   analytics-python
     #   google-api-core
+    #   google-cloud-bigquery
     #   google-cloud-storage
     #   shared
     #   stripe
@@ -379,6 +414,7 @@ tqdm==4.66.1
 typing-extensions==4.12.2
     # via
     #   openai
+    #   opentelemetry-sdk
     #   pydantic
     #   pydantic-core
     #   stripe
@@ -403,9 +439,13 @@ virtualenv==20.24.5
 wcwidth==0.2.5
     # via prompt-toolkit
 wrapt==1.16.0
-    # via vcrpy
+    # via
+    #   deprecated
+    #   vcrpy
 yarl==1.9.4
     # via vcrpy
+zipp==3.21.0
+    # via importlib-metadata
 zstandard==0.23.0
     # via
     #   -r requirements.in

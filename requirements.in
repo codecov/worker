@@ -12,6 +12,8 @@ coverage
 Django>=4.2.16
 django-postgres-extra>=2.0.8
 factory-boy
+google-cloud-bigquery>=3.27.0
+google-cloud-bigquery-storage>=2.27.0
 google-cloud-pubsub
 google-cloud-storage>=2.10.0
 grpcio>=1.66.2
@@ -26,6 +28,7 @@ pre-commit
 polars==1.12.0
 proto-plus>=1.25.0
 psycopg2>=2.9.10
+protobuf>=5.29.2`
 pydantic>=2.9.0
 PyJWT>=2.4.0
 pytest
