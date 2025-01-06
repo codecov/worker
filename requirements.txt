@@ -336,7 +336,7 @@ sentry-sdk==2.13.0
     #   shared
 setuptools==75.6.0
     # via nodeenv
-shared @ https://github.com/codecov/shared/archive/2674ae99811767e63151590906691aed4c5ce1f9.tar.gz#egg=shared
+shared @ https://github.com/codecov/shared/archive/efe48352e172f658c21465371453dcefc98f6793.tar.gz#egg=shared
     # via -r requirements.in
 six==1.16.0
     # via
@@ -364,7 +364,7 @@ sqlparse==0.5.0
     # via django
 statsd==3.3.0
     # via -r requirements.in
-stripe==9.6.0
+stripe==11.4.1
     # via -r requirements.in
 test-results-parser @ https://github.com/codecov/test-results-parser/archive/996ecb2aaf7767bf4c2944c75835c1ee1eb2b566.tar.gz#egg=test-results-parser
     # via -r requirements.in
