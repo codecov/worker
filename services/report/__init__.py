@@ -18,7 +18,6 @@ from shared.reports.resources import Report
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitError
 from shared.upload.constants import UploadErrorCode
-from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session as DbSession
@@ -226,24 +225,6 @@ class ReportService(BaseReportService):
     ) -> Upload:
         upload = super().create_report_upload(arguments, commit_report)
         self._attach_flags_to_upload(upload, arguments["flags"])
-
-        # Insert entry in user measurements table only
-        # for reports with coverage type
-        commit = commit_report.commit
-        repository = commit.repository
-        owner = repository.owner
-
-        insert_coverage_measurement(
-            owner_id=owner.ownerid,
-            repo_id=repository.repoid,
-            commit_id=commit.id,
-            upload_id=upload.id,
-            # CLI precreates the upload in API so this defaults to Legacy
-            uploader_used=UploaderType.LEGACY.value,
-            private_repo=repository.private,
-            report_type=commit_report.report_type,
-        )
-
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: list[str]):
