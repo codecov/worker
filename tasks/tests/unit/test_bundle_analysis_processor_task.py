@@ -922,7 +922,7 @@ def test_bundle_analysis_processor_task_cache_config_saved(
     bundle_load_mock_save.return_value = None
 
     bundle_config_mock = mocker.patch(
-        "shared.django_apps.bundle_analysis.service.bundle_analysis.BundleAnalysisCacheConfigService.update_cache_option"
+        "shared.django_apps.bundle_analysis.service.bundle_analysis.BundleAnalysisCacheConfigService.create_cache_option"
     )
 
     commit = CommitFactory.create(state="pending")
