@@ -10,7 +10,6 @@ from shared.celery_config import (
     notification_orchestrator_task_name,
     notify_task_name,
     pulls_task_name,
-    status_set_error_task_name,
 )
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from shared.yaml import UserYaml
@@ -500,17 +499,11 @@ class NotificationOrchestratorTask(
             commit_yaml, ("codecov", "require_ci_to_pass"), True
         )
         if require_ci_to_pass and ci_results is False:
-            self.app.tasks[status_set_error_task_name].apply_async(
-                args=None,
-                kwargs=dict(
-                    repoid=commit.repoid, commitid=commit.commitid, message="CI failed."
-                ),
-            )
             log.info(
                 "Not sending notifications because CI failed", extra=log_extra_dict
             )
             return ShouldCallNotifyResponse(
-                notification_result=ShouldCallNotifyResult.DO_NOT_NOTIFY,
+                notification_result=ShouldCallNotifyResult.NOTIFY_ERROR,
                 reason="has_require_ci_to_pass_yaml_setting_and_no_ci_results",
                 message="Not sending notifications because CI failed",
             )
