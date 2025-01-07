@@ -6,15 +6,13 @@ from functools import partial
 
 from django.db.models import Model
 from django.db.models.query import Q, QuerySet
-from shared.api_archive.storage import StorageService
-from shared.config import get_config
 from shared.django_apps.core.models import Commit, Pull
 from shared.django_apps.reports.models import CommitReport, ReportDetails, ReportSession
 
 from services.archive import ArchiveService, MinioEndpoints
 from services.cleanup.utils import CleanupContext
 
-MANUAL_QUERY_BATCHSIZE = 1_000
+MANUAL_QUERY_CHUNKSIZE = 2_500
 DELETE_FILES_BATCHSIZE = 50
 
 
@@ -28,6 +26,7 @@ class FakeRepository:
 
 def cleanup_files_batched(context: CleanupContext, paths: list[str]) -> int:
     cleaned_files = 0
+
     # TODO: maybe reuse the executor across calls?
     with ThreadPoolExecutor() as e:
         for batched_paths in itertools.batched(paths, DELETE_FILES_BATCHSIZE):
@@ -44,91 +43,99 @@ def cleanup_archivefield(
     model_field_name = f"_{field_name}_storage_path"
 
     # delete `None` `field_name`s right away
-    cleaned_models, _ = query.filter(**{f"{model_field_name}__isnull": True}).delete()
-
-    # query for a non-`None` `field_name`
-    storage_query = query.filter(**{f"{model_field_name}__isnull": False}).order_by(
-        "id"
+    cleaned_models = query.filter(**{f"{model_field_name}__isnull": True})._raw_delete(
+        query.db
     )
 
-    # and then delete all those files from storage, using batched queries
-    cleaned_files = 0
+    # and then delete all non-`None` `field_name`s:
+    storage_query = query.filter(**{f"{model_field_name}__isnull": False})
+    res = cleanup_with_storage_field(context, model_field_name, storage_query)
 
-    while True:
-        storage_paths = storage_query.values_list(model_field_name, flat=True)[
-            :MANUAL_QUERY_BATCHSIZE
-        ]
-        cleaned_this_batch = cleanup_files_batched(context, storage_paths)
-        cleaned_files += cleaned_this_batch
-
-        cleaned_this_batch, _ = storage_query[:MANUAL_QUERY_BATCHSIZE].delete()
-
-        if cleaned_this_batch == 0 or cleaned_this_batch == MANUAL_QUERY_BATCHSIZE:
-            break
-
+    cleaned_models += res[0]
+    cleaned_files = res[1]
     return (cleaned_models, cleaned_files)
 
 
 def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> tuple[int, int]:
-    coverage_reports = query.filter(
-        Q(report_type=None) | Q(report_type="coverage")
-    ).values_list(
-        "code",
-        "commit__commitid",
-        "repository__repoid",
-        "repository__owner__service",
-        "repository__service_id",
+    coverage_reports = (
+        query.filter(Q(report_type=None) | Q(report_type="coverage"))
+        .values_list(
+            "code",
+            "commit__commitid",
+            "repository__repoid",
+            "repository__owner__service",
+            "repository__service_id",
+        )
+        .order_by("id")
     )
 
-    storage = StorageService()
-    bucket = get_config("services", "minio", "bucket", default="archive")
-    repo_hashes: dict[int, str] = {}
+    cleaned_models = 0
     cleaned_files = 0
-    # TODO: figure out a way to run the deletes in batches
-    # TODO: possibly fan out the batches to a thread pool, as the storage requests are IO-bound
-    # TODO: do a limit / range query to avoid loading *all* the paths into memory at once
-    for (
-        report_code,
-        commit_sha,
-        repoid,
-        repo_service,
-        repo_service_id,
-    ) in coverage_reports:
-        if repoid not in repo_hashes:
-            fake_repo = FakeRepository(
-                repoid=repoid, service=repo_service, service_id=repo_service_id
+    repo_hashes: dict[int, str] = {}
+
+    while True:
+        reports = coverage_reports[:MANUAL_QUERY_CHUNKSIZE]
+        if len(reports) == 0:
+            break
+
+        storage_paths: list[str] = []
+        for (
+            report_code,
+            commit_sha,
+            repoid,
+            repo_service,
+            repo_service_id,
+        ) in coverage_reports:
+            if repoid not in repo_hashes:
+                fake_repo = FakeRepository(
+                    repoid=repoid, service=repo_service, service_id=repo_service_id
+                )
+                repo_hashes[repoid] = ArchiveService.get_archive_hash(fake_repo)
+            repo_hash = repo_hashes[repoid]
+
+            chunks_file_name = report_code if report_code is not None else "chunks"
+            path = MinioEndpoints.chunks.get_path(
+                version="v4",
+                repo_hash=repo_hash,
+                commitid=commit_sha,
+                chunks_file_name=chunks_file_name,
             )
-            repo_hashes[repoid] = ArchiveService.get_archive_hash(fake_repo)
-        repo_hash = repo_hashes[repoid]
+            storage_paths.append(path)
 
-        chunks_file_name = report_code if report_code is not None else "chunks"
-        path = MinioEndpoints.chunks.get_path(
-            version="v4",
-            repo_hash=repo_hash,
-            commitid=commit_sha,
-            chunks_file_name=chunks_file_name,
-        )
-        storage.delete_file(bucket, path)
-        cleaned_files += 1
-
-    cleaned_models, _ = query.delete()
+        cleaned_files += cleanup_files_batched(context, storage_paths)
+        cleaned_models += query.filter(
+            id__in=coverage_reports[:MANUAL_QUERY_CHUNKSIZE]
+        )._raw_delete(query.db)
 
     return (cleaned_models, cleaned_files)
 
 
 def cleanup_upload(context: CleanupContext, query: QuerySet) -> tuple[int, int]:
-    storage_query = query.values_list("storage_path", flat=True)
+    return cleanup_with_storage_field(context, "storage_path", query)
 
-    storage = StorageService()
-    bucket = get_config("services", "minio", "bucket", default="archive")
+
+def cleanup_with_storage_field(
+    context: CleanupContext,
+    path_field: str,
+    query: QuerySet,
+) -> tuple[int, int]:
+    cleaned_models = 0
     cleaned_files = 0
-    # TODO: possibly fan out the batches to a thread pool, as the storage requests are IO-bound
-    # TODO: do a limit / range query to avoid loading *all* the paths into memory at once
-    for batched_paths in itertools.batched(storage_query, DELETE_FILES_BATCHSIZE):
-        storage.delete_files(bucket, batched_paths)
-        cleaned_files += len(batched_paths)
 
-    cleaned_models, _ = query.delete()
+    # delete all those files from storage, using chunks based on the `id` column
+    storage_query = query.order_by("id")
+
+    while True:
+        storage_paths = storage_query.values_list(path_field, flat=True)[
+            :MANUAL_QUERY_CHUNKSIZE
+        ]
+        if len(storage_paths) == 0:
+            break
+
+        cleaned_files += cleanup_files_batched(context, storage_paths)
+        cleaned_models += query.filter(
+            id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
+        )._raw_delete(query.db)
 
     return (cleaned_models, cleaned_files)
 

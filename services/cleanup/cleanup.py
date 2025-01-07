@@ -28,7 +28,6 @@ def run_cleanup(query: QuerySet) -> tuple[int, int]:
             cleaned_files += res[1]
 
         else:
-            deleted, _ = query.delete()
-            cleaned_models += deleted
+            cleaned_models += query._raw_delete(query.db)
 
     return (cleaned_models, cleaned_files)
