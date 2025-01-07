@@ -163,7 +163,7 @@ def setup_mocks(
 
 
 @pytest.mark.integration
-@pytest.mark.django_db
+@pytest.mark.django_db(databases={"default"}, transaction=True)
 def test_full_upload(
     dbsession: DbSession,
     mocker,
@@ -369,7 +369,7 @@ end_of_record
 
 
 @pytest.mark.integration
-@pytest.mark.django_db()
+@pytest.mark.django_db(databases={"default"}, transaction=True)
 def test_full_carryforward(
     dbsession: DbSession,
     mocker,

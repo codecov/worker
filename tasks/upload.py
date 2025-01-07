@@ -9,8 +9,8 @@ import orjson
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery import chain, chord
-from django.utils import timezone
 from django.db import transaction as django_transaction
+from django.utils import timezone
 from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
@@ -527,7 +527,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             argument_list.append(arguments)
 
         # Bulk insert coverage measurements
-        self._bulk_insert_coverage_measurements(measurements=measurements)
+        if measurements:
+            print("test - I am here!", measurements)
+            self._bulk_insert_coverage_measurements(measurements=measurements)
 
         if argument_list:
             db_session.commit()
@@ -561,7 +563,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
         return {"was_setup": was_setup, "was_updated": was_updated}
 
-    def _bulk_insert_coverage_measurements(measurements: list[UserMeasurement]):
+    def _bulk_insert_coverage_measurements(self, measurements: list[UserMeasurement]):
         bulk_insert_coverage_measurements(measurements=measurements)
         django_transaction.commit()
 
