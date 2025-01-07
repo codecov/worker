@@ -9,12 +9,16 @@ import orjson
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery import chain, chord
+from django.db import transaction as django_transaction
+from django.utils import timezone
 from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
+from shared.django_apps.user_measurements.models import UserMeasurement
 from shared.metrics import Histogram
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
+from shared.upload.utils import UploaderType, bulk_insert_coverage_measurements
 from shared.yaml import UserYaml
 from shared.yaml.user_yaml import OwnerContext
 from sqlalchemy.orm import Session
@@ -494,15 +498,38 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             self.retry(countdown=60, kwargs=upload_context.kwargs_for_retry(kwargs))
 
         argument_list: list[UploadArguments] = []
+        # Measurements insertion performance
+        measurements = []
+        created_at = timezone.now()
+
         for arguments in upload_context.arguments_list():
             arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" not in arguments:
                 upload = report_service.create_report_upload(arguments, commit_report)
                 arguments["upload_id"] = upload.id_
+                # Adding measurements to array to later add in bulk
+                measurements.append(
+                    UserMeasurement(
+                        owner_id=repository.owner.ownerid,
+                        repo_id=repository.repoid,
+                        commit_id=commit.id,
+                        upload_id=upload.id,
+                        # CLI precreates the upload in API so this defaults to Legacy
+                        uploader_used=UploaderType.LEGACY.value,
+                        private_repo=repository.private,
+                        report_type=commit_report.report_type,
+                        created_at=created_at,
+                    )
+                )
 
             # TODO(swatinem): eventually migrate from `upload_pk` to `upload_id`:
             arguments["upload_pk"] = arguments["upload_id"]
             argument_list.append(arguments)
+
+        # Bulk insert coverage measurements
+        if measurements:
+            print("test - I am here!", measurements)
+            self._bulk_insert_coverage_measurements(measurements=measurements)
 
         if argument_list:
             db_session.commit()
@@ -535,6 +562,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 extra=upload_context.log_extra(),
             )
         return {"was_setup": was_setup, "was_updated": was_updated}
+
+    def _bulk_insert_coverage_measurements(self, measurements: list[UserMeasurement]):
+        bulk_insert_coverage_measurements(measurements=measurements)
+        django_transaction.commit()
 
     def schedule_task(
         self,

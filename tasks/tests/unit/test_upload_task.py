@@ -124,7 +124,7 @@ def clear_log_context(mocker):
 
 @pytest.mark.integration
 class TestUploadTaskIntegration(object):
-    @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_call(
         self,
         mocker,
@@ -225,6 +225,7 @@ class TestUploadTaskIntegration(object):
         ]
         mock_checkpoint_submit.assert_has_calls(calls)
 
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_call_bundle_analysis(
         self,
         mocker,
@@ -294,6 +295,7 @@ class TestUploadTaskIntegration(object):
         )
         chain.assert_called_with([processor_sig, notify_sig])
 
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_call_bundle_analysis_no_upload(
         self,
         mocker,
@@ -360,6 +362,7 @@ class TestUploadTaskIntegration(object):
         )
         assert call([processor_sig]) in chain.mock_calls
 
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_call_test_results(
         self,
         mocker,
@@ -469,7 +472,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_upload_processing_delay_not_enough_delay(
         self,
         mocker,
@@ -520,7 +523,7 @@ class TestUploadTaskIntegration(object):
         assert redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         assert not mock_possibly_update_commit_from_provider_info.called
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_upload_processing_delay_enough_delay(
         self,
         mocker,
@@ -572,7 +575,7 @@ class TestUploadTaskIntegration(object):
         assert not redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         mocked_chord.assert_called_with([mocker.ANY, mocker.ANY], mocker.ANY)
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_upload_processing_delay_upload_is_none(
         self,
         mocker,
@@ -619,7 +622,7 @@ class TestUploadTaskIntegration(object):
         assert not redis.exists(f"uploads/{commit.repoid}/{commit.commitid}")
         mocked_chord.assert_called_with([mocker.ANY, mocker.ANY], mocker.ANY)
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_call_multiple_processors(
         self,
         mocker,
@@ -758,7 +761,7 @@ class TestUploadTaskIntegration(object):
             timeout=300,
         )
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_no_bot(
         self,
         mocker,
@@ -825,7 +828,7 @@ class TestUploadTaskIntegration(object):
         )
         assert not mocked_fetch_yaml.called
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_bot_no_permissions(
         self,
         mocker,
@@ -893,7 +896,7 @@ class TestUploadTaskIntegration(object):
         )
         assert not mocked_fetch_yaml.called
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_bot_unauthorized(
         self,
         mocker,
