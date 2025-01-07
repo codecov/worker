@@ -49,7 +49,7 @@ SELECT * FROM sample_data
 
 
 @pytest.mark.skip(reason="This test requires being run using actual working creds")
-def test_bigquery_service(codecov_vcr):
+def test_bigquery_service():
     bigquery_service = BigQueryService(gcp_config)
 
     results = bigquery_service.query(sql)
@@ -64,7 +64,7 @@ def test_bigquery_service(codecov_vcr):
 
 
 @pytest.mark.skip(reason="This test requires being run using actual working creds")
-def test_bigquery_service_polars(codecov_vcr):
+def test_bigquery_service_polars():
     bigquery_service = BigQueryService(gcp_config)
 
     results = bigquery_service.query_polars(
