@@ -79,6 +79,7 @@ class TestOwnerServiceTestCase(object):
         assert res.data == expected_data
         assert res.token == {
             "key": "integration_token",
+            "username": "installation_1500",
             "entity_name": gh_app_key_name(
                 installation_id=installation.installation_id, app_id=None
             ),
