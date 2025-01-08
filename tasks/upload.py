@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from typing import Optional
+from typing import Dict, Optional
 
 import orjson
 import sentry_sdk
@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
-from database.models import Commit, CommitReport
+from database.models import Commit, CommitReport, RepositoryFlag
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -498,15 +498,24 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             self.retry(countdown=60, kwargs=upload_context.kwargs_for_retry(kwargs))
 
         argument_list: list[UploadArguments] = []
+
         # Measurements insertion performance
         measurements = []
         created_at = timezone.now()
+
+        # Bulk fetch or create flags
+        all_flags_in_uploads = self._bulk_fetch_or_create_all_uploads_flags(
+            db_session=db_session, upload_context=upload_context, repoid=repoid
+        )
 
         for arguments in upload_context.arguments_list():
             arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" not in arguments:
                 upload = report_service.create_report_upload(arguments, commit_report)
                 arguments["upload_id"] = upload.id_
+                # Attach flags to the upload, later to be committed
+                flag_names = arguments["flags"]
+                upload.flags = [all_flags_in_uploads.get(name) for name in flag_names]
                 # Adding measurements to array to later add in bulk
                 measurements.append(
                     UserMeasurement(
@@ -528,7 +537,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         # Bulk insert coverage measurements
         if measurements:
-            print("test - I am here!", measurements)
             self._bulk_insert_coverage_measurements(measurements=measurements)
 
         if argument_list:
@@ -566,6 +574,49 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
     def _bulk_insert_coverage_measurements(self, measurements: list[UserMeasurement]):
         bulk_insert_coverage_measurements(measurements=measurements)
         django_transaction.commit()
+
+    def _bulk_fetch_or_create_all_uploads_flags(
+        self, db_session: Session, upload_context: UploadContext, repoid: int
+    ) -> Dict[str, RepositoryFlag] | dict:
+        """
+        This function bulk fetches and bulk creates missing RepositoryFlag records
+        and returns a dictionary with flag names and their RepositoryFlag object
+        to be attached with their respective uploads
+        """
+        # Bulk query existing flags from DB
+        all_flag_names = set()
+        for arguments in upload_context.arguments_list():
+            if argument_flags := arguments.get("flags"):
+                all_flag_names.update(argument_flags)
+
+        if not all_flag_names:
+            return {}
+        existing_flags = (
+            db_session.query(RepositoryFlag)
+            .filter(
+                RepositoryFlag.repository_id == repoid,
+                RepositoryFlag.flag_name.in_(all_flag_names),
+            )
+            .all()
+        )
+        # Handy helper flags dict
+        existing_flags_dict = {flag.flag_name: flag for flag in existing_flags}
+
+        # Bulk add missing flags to DB
+        missing_flag_names = all_flag_names - set(existing_flags_dict.keys())
+        missing_flags = [
+            RepositoryFlag(repository_id=repoid, flag_name=name)
+            for name in missing_flag_names
+        ]
+
+        if missing_flags:
+            db_session.bulk_save_objects(missing_flags)
+            db_session.commit()
+
+            for flag in missing_flags:
+                existing_flags_dict[flag.flag_name] = flag
+
+        return existing_flags_dict
 
     def schedule_task(
         self,

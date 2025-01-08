@@ -224,7 +224,6 @@ class ReportService(BaseReportService):
         self, arguments: UploadArguments, commit_report: CommitReport
     ) -> Upload:
         upload = super().create_report_upload(arguments, commit_report)
-        self._attach_flags_to_upload(upload, arguments["flags"])
         return upload
 
     def _attach_flags_to_upload(self, upload: Upload, flag_names: list[str]):
