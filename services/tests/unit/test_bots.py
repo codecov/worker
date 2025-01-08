@@ -117,7 +117,11 @@ class TestGettingAdapterAuthInformation(object):
                 dbsession, with_bot=False, ghapp_installations=installations
             )
             expected = AdapterAuthInformation(
-                token=Token(key="installation_token_1200_200", entity_name="200_1200"),
+                token=Token(
+                    key="installation_token_1200_200",
+                    entity_name="200_1200",
+                    username="installation_1200",
+                ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
                     id=installations[0].id,
@@ -184,6 +188,7 @@ class TestGettingAdapterAuthInformation(object):
                     entity_name=gh_app_key_name(
                         installation_id=owner.integration_id, app_id=None
                     ),
+                    username="installation_1500",
                 ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(installation_id=1500),
@@ -220,7 +225,11 @@ class TestGettingAdapterAuthInformation(object):
                 dbsession, with_bot=False, ghapp_installations=installations
             )
             expected = AdapterAuthInformation(
-                token=Token(key="installation_token_1200_200", entity_name="200_1200"),
+                token=Token(
+                    key="installation_token_1200_200",
+                    entity_name="200_1200",
+                    username="installation_1200",
+                ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
                     id=installations[0].id,
@@ -261,7 +270,11 @@ class TestGettingAdapterAuthInformation(object):
                 dbsession, with_bot=False, ghapp_installations=installations
             )
             expected = AdapterAuthInformation(
-                token=Token(key="installation_token_1300_300", entity_name="300_1300"),
+                token=Token(
+                    key="installation_token_1300_300",
+                    entity_name="300_1300",
+                    username="installation_1300",
+                ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
                     id=installations[1].id,
@@ -458,7 +471,11 @@ class TestGettingAdapterAuthInformation(object):
                 ghapp_installations=installations,
             )
             expected = AdapterAuthInformation(
-                token=Token(key="installation_token_1200_200", entity_name="200_1200"),
+                token=Token(
+                    key="installation_token_1200_200",
+                    entity_name="200_1200",
+                    username="installation_1200",
+                ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
                     id=installations[0].id,
@@ -487,6 +504,7 @@ class TestGettingAdapterAuthInformation(object):
             expected = AdapterAuthInformation(
                 token=Token(
                     key="installation_token_1500_None",
+                    username="installation_1500",
                     entity_name=gh_app_key_name(
                         installation_id=repo.owner.integration_id, app_id=None
                     ),
@@ -529,7 +547,11 @@ class TestGettingAdapterAuthInformation(object):
                 ghapp_installations=installations,
             )
             expected = AdapterAuthInformation(
-                token=Token(key="installation_token_1200_200", entity_name="200_1200"),
+                token=Token(
+                    key="installation_token_1200_200",
+                    entity_name="200_1200",
+                    username="installation_1200",
+                ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
                     id=installations[0].id,
@@ -573,7 +595,11 @@ class TestGettingAdapterAuthInformation(object):
                 ghapp_installations=installations,
             )
             expected = AdapterAuthInformation(
-                token=Token(key="installation_token_1300_300", entity_name="300_1300"),
+                token=Token(
+                    key="installation_token_1300_300",
+                    entity_name="300_1300",
+                    username="installation_1300",
+                ),
                 token_owner=None,
                 selected_installation_info=GithubInstallationInfo(
                     id=installations[1].id,
@@ -616,17 +642,24 @@ class TestGettingAdapterAuthInformation(object):
             },
         )
         expected = AdapterAuthInformation(
-            token=Token(key="tokenless_bot_token", entity_name="tokenless_bot"),
+            token=Token(
+                key="tokenless_bot_token",
+                entity_name="tokenless",
+            ),
             token_owner=None,
             selected_installation_info=None,
             fallback_installations=None,
             token_type_mapping={
                 TokenType.comment: Token(key="commenter_bot_token"),
-                TokenType.read: Token(key="reader_bot_token"),
+                TokenType.read: Token(
+                    key="reader_bot_token",
+                    entity_name="read",
+                ),
                 TokenType.admin: None,
                 TokenType.status: Token(key="status_bot_token"),
                 TokenType.tokenless: Token(
-                    key="tokenless_bot_token", entity_name="tokenless_bot"
+                    key="tokenless_bot_token",
+                    entity_name="tokenless",
                 ),
                 TokenType.pull: None,
                 TokenType.commit: None,

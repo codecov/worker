@@ -248,11 +248,12 @@ pyasn1-modules==0.2.8
     # via google-auth
 pycparser==2.20
     # via cffi
-pydantic==2.10.3
+pydantic==2.10.4
     # via
     #   -r requirements.in
     #   openai
-pydantic-core==2.27.1
+    #   shared
+pydantic-core==2.27.2
     # via pydantic
 pyjwt==2.10.0
     # via
@@ -334,9 +335,9 @@ sentry-sdk==2.13.0
     # via
     #   -r requirements.in
     #   shared
-setuptools==75.6.0
+setuptools==75.7.0
     # via nodeenv
-shared @ https://github.com/codecov/shared/archive/b186b3c89fe16a4f9512cf160f39cfd262ba2eb8.tar.gz#egg=shared
+shared @ https://github.com/codecov/shared/archive/609e56d2aa30b26d44cddaba0e1ebd79ba954ac9.tar.gz#egg=shared
     # via -r requirements.in
 six==1.16.0
     # via

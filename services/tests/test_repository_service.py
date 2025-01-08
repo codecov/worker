@@ -187,6 +187,7 @@ def test_get_repo_provider_service_github_with_installations(dbsession, mocker, 
     assert res._on_token_refresh is None
     assert res.token == {
         "key": "installation_token",
+        "username": "installation_1300",
         "entity_name": gh_app_key_name(
             installation_id=installation_1.installation_id,
             app_id=installation_1.app_id,
