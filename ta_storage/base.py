@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any
+
+from test_results_parser import Testrun
 
 from database.models.reports import Upload
 
@@ -8,11 +9,12 @@ class TADriver(ABC):
     @abstractmethod
     def write_testruns(
         self,
+        timestamp: int,
         repo_id: int,
-        commit_id: str,
-        branch: str,
+        commit_sha: str,
+        branch_name: str,
         upload: Upload,
         framework: str | None,
-        testruns: list[dict[str, Any]],
+        testruns: list[Testrun],
     ):
         pass

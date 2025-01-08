@@ -20,7 +20,7 @@ _sym_db = _symbol_database.Default()
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n\x10ta_testrun.proto"\xcd\x02\n\x07TestRun\x12\x11\n\ttimestamp\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclassname\x18\x03 \x01(\t\x12\x11\n\ttestsuite\x18\x04 \x01(\t\x12\x15\n\rcomputed_name\x18\x05 \x01(\t\x12!\n\x07outcome\x18\x06 \x01(\x0e\x32\x10.TestRun.Outcome\x12\x17\n\x0f\x66\x61ilure_message\x18\x07 \x01(\t\x12\x10\n\x08\x64uration\x18\x08 \x01(\x02\x12\x0e\n\x06repoid\x18\n \x01(\x03\x12\x12\n\ncommit_sha\x18\x0b \x01(\t\x12\x0e\n\x06\x62ranch\x18\x0c \x01(\t\x12\r\n\x05\x66lags\x18\r \x03(\t\x12\x10\n\x08\x66ilename\x18\x0e \x01(\t\x12\x11\n\tframework\x18\x0f \x01(\t".\n\x07Outcome\x12\n\n\x06PASSED\x10\x00\x12\n\n\x06\x46\x41ILED\x10\x01\x12\x0b\n\x07SKIPPED\x10\x02'
+    b'\n\x10ta_testrun.proto"\xda\x02\n\x07TestRun\x12\x11\n\ttimestamp\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\tclassname\x18\x03 \x01(\t\x12\x11\n\ttestsuite\x18\x04 \x01(\t\x12\x15\n\rcomputed_name\x18\x05 \x01(\t\x12!\n\x07outcome\x18\x06 \x01(\x0e\x32\x10.TestRun.Outcome\x12\x17\n\x0f\x66\x61ilure_message\x18\x07 \x01(\t\x12\x18\n\x10\x64uration_seconds\x18\x08 \x01(\x02\x12\x0e\n\x06repoid\x18\n \x01(\x03\x12\x12\n\ncommit_sha\x18\x0b \x01(\t\x12\x13\n\x0b\x62ranch_name\x18\x0c \x01(\t\x12\r\n\x05\x66lags\x18\r \x03(\t\x12\x10\n\x08\x66ilename\x18\x0e \x01(\t\x12\x11\n\tframework\x18\x0f \x01(\t".\n\x07Outcome\x12\n\n\x06PASSED\x10\x00\x12\n\n\x06\x46\x41ILED\x10\x01\x12\x0b\n\x07SKIPPED\x10\x02'
 )
 
 _globals = globals()
@@ -29,7 +29,7 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "ta_testrun_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
     DESCRIPTOR._loaded_options = None
     _globals["_TESTRUN"]._serialized_start = 21
-    _globals["_TESTRUN"]._serialized_end = 354
-    _globals["_TESTRUN_OUTCOME"]._serialized_start = 308
-    _globals["_TESTRUN_OUTCOME"]._serialized_end = 354
+    _globals["_TESTRUN"]._serialized_end = 367
+    _globals["_TESTRUN_OUTCOME"]._serialized_start = 321
+    _globals["_TESTRUN_OUTCOME"]._serialized_end = 367
 # @@protoc_insertion_point(module_scope)

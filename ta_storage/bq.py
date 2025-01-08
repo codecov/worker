@@ -1,6 +1,8 @@
-from typing import Any, cast
+from datetime import datetime
+from typing import Literal, TypedDict, cast
 
 from shared.config import get_config
+from test_results_parser import Testrun
 
 import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from database.models.reports import Upload
@@ -16,51 +18,68 @@ TESTRUN_TABLE_NAME: str = cast(
 )
 
 
-def outcome_to_int(outcome: str) -> int:
+def outcome_to_int(
+    outcome: Literal["pass", "skip", "failure", "error"],
+) -> ta_testrun_pb2.TestRun.Outcome:
     match outcome:
         case "pass":
-            return 0
+            return ta_testrun_pb2.TestRun.Outcome.PASSED
         case "skip":
-            return 2
+            return ta_testrun_pb2.TestRun.Outcome.SKIPPED
         case "failure" | "error":
-            return 1
+            return ta_testrun_pb2.TestRun.Outcome.FAILED
         case _:
             raise ValueError(f"Invalid outcome: {outcome}")
+
+
+class TransformedTestrun(TypedDict):
+    name: str
+    classname: str
+    testsuite: str
+    computed_name: str
+    outcome: int
+    failure_message: str
+    duration: float
+    filename: str
 
 
 class BQDriver(TADriver):
     def write_testruns(
         self,
+        timestamp: int | None,
         repo_id: int,
-        commit_id: str,
-        branch: str,
+        commit_sha: str,
+        branch_name: str,
         upload: Upload,
         framework: str | None,
-        testruns: list[dict[str, Any]],
+        testruns: list[Testrun],
     ):
         bq_service = get_bigquery_service()
 
-        testruns = [
-            {k: v for k, v in testrun.items() if k != "build_url"}
-            for testrun in testruns
-        ]
-
-        for testrun in testruns:
-            testrun["outcome"] = outcome_to_int(testrun["outcome"])
+        if timestamp is None:
+            timestamp = int(datetime.now().timestamp() * 1000000)
 
         flag_names = upload.flag_names
-
         testruns_pb: list[bytes] = []
-        for testrun in testruns:
+
+        for t in testruns:
             test_run = ta_testrun_pb2.TestRun(
+                timestamp=timestamp,
                 repoid=repo_id,
-                commit_sha=commit_id,
-                framework=framework or "",
-                branch=branch,
+                commit_sha=commit_sha,
+                framework=framework,
+                branch_name=branch_name,
                 flags=list(flag_names),
-                **testrun,
+                classname=t["classname"],
+                name=t["name"],
+                testsuite=t["testsuite"],
+                computed_name=t["computed_name"],
+                outcome=outcome_to_int(t["outcome"]),
+                failure_message=t["failure_message"],
+                duration_seconds=t["duration"],
+                filename=t["filename"],
             )
-            print(test_run)
             testruns_pb.append(test_run.SerializeToString())
+        flag_names = upload.flag_names
 
         bq_service.write(DATASET_NAME, TESTRUN_TABLE_NAME, ta_testrun_pb2, testruns_pb)

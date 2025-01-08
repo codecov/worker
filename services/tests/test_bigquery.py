@@ -4,7 +4,7 @@ from datetime import datetime
 import polars as pl
 import pytest
 
-import generated_proto.sample.sample_pb2 as sample_pb2
+import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from services.bigquery import BigQueryService
 
 fake_private_key = """-----BEGIN RSA PRIVATE KEY-----
@@ -55,12 +55,12 @@ def test_bigquery_service():
     results = bigquery_service.query(sql)
 
     assert len(results) == 2
-    assert set([row["timestamp"] for row in results]) == {
+    assert {row["timestamp"] for row in results} == {
         datetime.fromisoformat("2025-01-01T00:00:00Z"),
         datetime.fromisoformat("2024-12-30T00:00:00Z"),
     }
-    assert set([row["name"] for row in results]) == {"name", "name2"}
-    assert set([row["id"] for row in results]) == {1, 2}
+    assert {row["name"] for row in results} == {"name", "name2"}
+    assert {row["id"] for row in results} == {1, 2}
 
 
 @pytest.mark.skip(reason="This test requires being run using actual working creds")
@@ -78,33 +78,51 @@ def test_bigquery_service_polars():
     )
 
     assert len(results) == 2
-    assert set(results["timestamp"].to_list()) == {
+    assert {x for x in results["timestamp"].to_list()} == {
         datetime.fromisoformat("2025-01-01T00:00:00Z"),
         datetime.fromisoformat("2024-12-30T00:00:00Z"),
     }
-    assert set(results["name"].to_list()) == {"name", "name2"}
-    assert set(results["id"].to_list()) == {1, 2}
+    assert {x for x in results["name"].to_list()} == {"name", "name2"}
+    assert {x for x in results["id"].to_list()} == {1, 2}
 
 
 # this test should only be run manually when making changes to the way we write to bigquery
 # the reason it's not automated is because vcrpy does not seem to work with the gRPC requests
 @pytest.mark.skip(reason="This test requires being run using actual working creds")
 def test_bigquery_service_write():
-    table_name = "codecov-dev.test_dataset.sample_table"
+    table_name = "codecov-dev.test_dataset.testruns"
     bigquery_service = BigQueryService(gcp_config)
 
     bigquery_service.query(f"TRUNCATE TABLE `{table_name}`")
 
     data = [
-        sample_pb2.Sample(
-            timestamp="2025-01-01T00:00:00Z",
-            id="1",
+        ta_testrun_pb2.TestRun(
+            timestamp=int(
+                datetime.fromisoformat("2025-01-01T00:00:00.000000Z").timestamp()
+                * 1000000
+            ),
             name="name",
+            classname="classname",
+            testsuite="testsuite",
+            computed_name="computed_name",
+            outcome=ta_testrun_pb2.TestRun.Outcome.PASSED,
+            failure_message="failure_message",
+            duration_seconds=1.0,
+            filename="filename",
         ),
-        sample_pb2.Sample(
-            timestamp="2024-12-30T00:00:00Z",
-            id="2",
+        ta_testrun_pb2.TestRun(
+            timestamp=int(
+                datetime.fromisoformat("2024-12-30T00:00:00.000000Z").timestamp()
+                * 1000000
+            ),
             name="name2",
+            classname="classname2",
+            testsuite="testsuite2",
+            computed_name="computed_name2",
+            outcome=ta_testrun_pb2.TestRun.Outcome.FAILED,
+            failure_message="failure_message2",
+            duration_seconds=2.0,
+            filename="filename2",
         ),
     ]
 
@@ -112,8 +130,8 @@ def test_bigquery_service_write():
 
     bigquery_service.write(
         "test_dataset",
-        "test_table",
-        sample_pb2,
+        "testruns",
+        ta_testrun_pb2,
         serialized_data,
     )
 
@@ -121,10 +139,10 @@ def test_bigquery_service_write():
 
     assert len(results) == 2
 
-    assert set([row["timestamp"] for row in results]) == set(
+    assert {row["timestamp"] for row in results} == set(
         [
             datetime.fromisoformat("2025-01-01T00:00:00Z"),
             datetime.fromisoformat("2024-12-30T00:00:00Z"),
         ]
     )
-    assert set([row["name"] for row in results]) == set(["name", "name2"])
+    assert {row["name"] for row in results} == set(["name", "name2"])

@@ -1,6 +1,8 @@
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from test_results_parser import Testrun
 
 import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from database.tests.factories import RepositoryFlagFactory, UploadFactory
@@ -36,7 +38,7 @@ def test_bigquery_driver(dbsession, mock_bigquery_service):
     upload.flags.append(repo_flag_2)
     dbsession.flush()
 
-    test_data = [
+    test_data: list[Testrun] = [
         {
             "name": "test_name",
             "classname": "test_class",
@@ -61,7 +63,10 @@ def test_bigquery_driver(dbsession, mock_bigquery_service):
         },
     ]
 
+    timestamp = int(datetime.now().timestamp() * 1000000)
+
     bq.write_testruns(
+        timestamp,
         upload.report.commit.repoid,
         upload.report.commit.commitid,
         upload.report.commit.branch,
@@ -77,10 +82,11 @@ def test_bigquery_driver(dbsession, mock_bigquery_service):
         ta_testrun_pb2,
         [
             ta_testrun_pb2.TestRun(
+                timestamp=timestamp,
                 name="test_name",
                 classname="test_class",
                 testsuite="test_suite",
-                duration=100.0,
+                duration_seconds=100.0,
                 outcome=ta_testrun_pb2.TestRun.Outcome.PASSED,
                 filename="test_file",
                 computed_name="test_computed_name",
@@ -88,14 +94,15 @@ def test_bigquery_driver(dbsession, mock_bigquery_service):
                 repoid=upload.report.commit.repoid,
                 commit_sha=upload.report.commit.commitid,
                 framework="pytest",
-                branch=upload.report.commit.branch,
+                branch_name=upload.report.commit.branch,
                 flags=["flag1", "flag2"],
             ).SerializeToString(),
             ta_testrun_pb2.TestRun(
+                timestamp=timestamp,
                 name="test_name2",
                 classname="test_class2",
                 testsuite="test_suite2",
-                duration=100.0,
+                duration_seconds=100.0,
                 outcome=ta_testrun_pb2.TestRun.Outcome.FAILED,
                 filename="test_file2",
                 computed_name="test_computed_name2",
@@ -103,7 +110,7 @@ def test_bigquery_driver(dbsession, mock_bigquery_service):
                 repoid=upload.report.commit.repoid,
                 commit_sha=upload.report.commit.commitid,
                 framework="pytest",
-                branch=upload.report.commit.branch,
+                branch_name=upload.report.commit.branch,
                 flags=["flag1", "flag2"],
             ).SerializeToString(),
         ],

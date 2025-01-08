@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from typing import Any, Literal, TypedDict
 
-from msgpack import unpackb
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
+from test_results_parser import Testrun
 
 from database.models import (
     DailyTestRollup,
@@ -13,7 +13,6 @@ from database.models import (
     TestInstance,
     Upload,
 )
-from services.redis import get_redis_connection
 from services.test_results import generate_flags_hash, generate_test_id
 from ta_storage.base import TADriver
 
@@ -31,67 +30,6 @@ class DailyTotals(TypedDict):
     commits_where_fail: list[str]
     last_duration_seconds: float
     avg_duration_seconds: float
-
-
-def persist_intermediate_results(
-    db_session: Session,
-    repoid: int,
-    commitid: str,
-    branch: str | None,
-    uploads: dict[int, Upload],
-    flaky_test_set: set[str],
-) -> None:
-    tests_to_write: dict[str, dict[str, Any]] = {}
-    test_instances_to_write: list[dict[str, Any]] = []
-    daily_totals: dict[str, DailyTotals] = dict()
-    test_flag_bridge_data: list[dict] = []
-
-    for upload in uploads.values():
-        redis_client = get_redis_connection()
-
-        intermediate_key = f"ta/intermediate/{repoid}/{commitid}/{upload.id}"
-        msgpacked_intermediate_result = redis_client.get(intermediate_key)
-        if msgpacked_intermediate_result is None:
-            continue
-
-        intermediate_result = unpackb(msgpacked_intermediate_result)
-
-        repo_flag_ids = get_repo_flag_ids(db_session, repoid, upload.flag_names)
-
-        for parsed_junit in intermediate_result:
-            framework = parsed_junit["framework"]
-            for testrun in parsed_junit["testruns"]:
-                modify_structures(
-                    tests_to_write,
-                    test_instances_to_write,
-                    test_flag_bridge_data,
-                    daily_totals,
-                    testrun,
-                    upload,
-                    repoid,
-                    branch,
-                    commitid,
-                    repo_flag_ids,
-                    flaky_test_set,
-                    framework,
-                )
-
-            if len(tests_to_write) > 0:
-                save_tests(db_session, tests_to_write)
-
-            if len(test_flag_bridge_data) > 0:
-                save_test_flag_bridges(db_session, test_flag_bridge_data)
-
-            if len(daily_totals) > 0:
-                save_daily_test_rollups(db_session, daily_totals)
-
-            if len(test_instances_to_write) > 0:
-                save_test_instances(db_session, test_instances_to_write)
-
-        upload.state = "v2_persisted"
-        db_session.commit()
-
-        redis_client.delete(intermediate_key)
 
 
 def get_repo_flag_ids(db_session: Session, repoid: int, flags: list[str]) -> set[int]:
@@ -113,14 +51,14 @@ def modify_structures(
     test_instances_to_write: list[dict[str, Any]],
     test_flag_bridge_data: list[dict],
     daily_totals: dict[str, DailyTotals],
-    testrun: dict[str, Any],
+    testrun: Testrun,
     upload: Upload,
     repoid: int,
     branch: str | None,
-    commitid: str,
+    commit_sha: str,
     repo_flag_ids: set[int],
     flaky_test_set: set[str],
-    framework: str,
+    framework: str | None,
 ):
     flags_hash = generate_flags_hash(upload.flag_names)
     test_id = generate_test_id(
@@ -134,7 +72,7 @@ def modify_structures(
     tests_to_write[test_id] = test
 
     test_instance = generate_test_instance_dict(
-        test_id, upload, testrun, commitid, branch, repoid
+        test_id, upload, testrun, commit_sha, branch, repoid
     )
     test_instances_to_write.append(test_instance)
 
@@ -158,7 +96,7 @@ def modify_structures(
             testrun["duration"],
             testrun["outcome"],
             branch,
-            commitid,
+            commit_sha,
             flaky_test_set,
         )
 
@@ -166,9 +104,9 @@ def modify_structures(
 def generate_test_dict(
     test_id: str,
     repoid: int,
-    testrun: dict[str, Any],
+    testrun: Testrun,
     flags_hash: str,
-    framework: str,
+    framework: str | None,
 ) -> dict[str, Any]:
     return {
         "id": test_id,
@@ -185,8 +123,8 @@ def generate_test_dict(
 def generate_test_instance_dict(
     test_id: str,
     upload: Upload,
-    testrun: dict[str, Any],
-    commitid: str,
+    testrun: Testrun,
+    commit_sha: str,
     branch: str | None,
     repoid: int,
 ) -> dict[str, Any]:
@@ -196,7 +134,7 @@ def generate_test_instance_dict(
         "duration_seconds": testrun["duration"],
         "outcome": testrun["outcome"],
         "failure_message": testrun["failure_message"],
-        "commitid": commitid,
+        "commitid": commit_sha,
         "branch": branch,
         "reduced_error_id": None,
         "repoid": repoid,
@@ -206,7 +144,7 @@ def generate_test_instance_dict(
 def update_daily_totals(
     daily_totals: dict,
     test_id: str,
-    duration_seconds: float,
+    duration_seconds: float | None,
     outcome: Literal["pass", "failure", "error", "skip"],
 ):
     daily_totals[test_id]["last_duration_seconds"] = duration_seconds
@@ -216,11 +154,22 @@ def update_daily_totals(
     # (old_avg * num of values used to compute old avg) + new value
     # -------------------------------------------------------------
     #          num of values used to compute old avg + 1
-    daily_totals[test_id]["avg_duration_seconds"] = (
-        daily_totals[test_id]["avg_duration_seconds"]
-        * (daily_totals[test_id]["pass_count"] + daily_totals[test_id]["fail_count"])
-        + duration_seconds
-    ) / (daily_totals[test_id]["pass_count"] + daily_totals[test_id]["fail_count"] + 1)
+    if (
+        duration_seconds is not None
+        and daily_totals[test_id]["avg_duration_seconds"] is not None
+    ):
+        daily_totals[test_id]["avg_duration_seconds"] = (
+            daily_totals[test_id]["avg_duration_seconds"]
+            * (
+                daily_totals[test_id]["pass_count"]
+                + daily_totals[test_id]["fail_count"]
+            )
+            + duration_seconds
+        ) / (
+            daily_totals[test_id]["pass_count"]
+            + daily_totals[test_id]["fail_count"]
+            + 1
+        )
 
     if outcome == "pass":
         daily_totals[test_id]["pass_count"] += 1
@@ -234,10 +183,10 @@ def create_daily_totals(
     daily_totals: dict,
     test_id: str,
     repoid: int,
-    duration_seconds: float,
+    duration_seconds: float | None,
     outcome: Literal["pass", "failure", "error", "skip"],
     branch: str | None,
-    commitid: str,
+    commit_sha: str,
     flaky_test_set: set[str],
 ):
     daily_totals[test_id] = {
@@ -254,7 +203,7 @@ def create_daily_totals(
         "branch": branch,
         "date": date.today(),
         "latest_run": datetime.now(),
-        "commits_where_fail": [commitid]
+        "commits_where_fail": [commit_sha]
         if (outcome == "failure" or outcome == "error")
         else [],
     }
@@ -335,12 +284,13 @@ class PGDriver(TADriver):
 
     def write_testruns(
         self,
+        timestamp: int | None,
         repo_id: int,
-        commit_id: str,
-        branch: str,
+        commit_sha: str,
+        branch_name: str,
         upload: Upload,
         framework: str | None,
-        testruns: list[dict[str, Any]],
+        testruns: list[Testrun],
     ):
         tests_to_write: dict[str, dict[str, Any]] = {}
         test_instances_to_write: list[dict[str, Any]] = []
@@ -358,15 +308,14 @@ class PGDriver(TADriver):
                 testrun,
                 upload,
                 repo_id,
-                branch,
-                commit_id,
+                branch_name,
+                commit_sha,
                 repo_flag_ids,
                 self.flaky_test_set,
                 framework,
             )
 
         if len(tests_to_write) > 0:
-            print(tests_to_write)
             save_tests(self.db_session, tests_to_write)
 
         if len(test_flag_bridge_data) > 0:

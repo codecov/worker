@@ -25,6 +25,7 @@ def test_pg_driver(dbsession):
     dbsession.flush()
 
     pg.write_testruns(
+        None,
         upload.report.commit.repoid,
         upload.report.commit.id,
         upload.report.commit.branch,
@@ -36,7 +37,7 @@ def test_pg_driver(dbsession):
                 "classname": "test_class",
                 "testsuite": "test_suite",
                 "duration": 100.0,
-                "outcome": "passed",
+                "outcome": "pass",
                 "build_url": "https://example.com/build/123",
                 "filename": "test_file",
                 "computed_name": "test_computed_name",
@@ -47,7 +48,7 @@ def test_pg_driver(dbsession):
                 "classname": "test_class2",
                 "testsuite": "test_suite2",
                 "duration": 100.0,
-                "outcome": "failed",
+                "outcome": "failure",
                 "build_url": "https://example.com/build/123",
                 "filename": "test_file2",
                 "computed_name": "test_computed_name2",
