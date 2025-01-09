@@ -1,0 +1,30 @@
+syntax = "proto2";
+
+message TestRun {
+    optional int64 timestamp = 1;
+    optional string name = 2;
+    optional string classname = 3;
+    optional string testsuite = 4;
+    optional string computed_name = 5;
+
+    enum Outcome {
+        PASSED = 0;
+        FAILED = 1;
+        SKIPPED = 2;
+    }
+
+    optional Outcome outcome = 6;
+
+    optional string failure_message = 7;
+    optional float duration_seconds = 8;
+
+    optional int64 repoid = 10;
+    optional string commit_sha = 11;
+
+    optional string branch_name = 12;
+
+    repeated string flags = 13;
+
+    optional string filename = 14;
+    optional string framework = 15;
+}
