@@ -2109,7 +2109,12 @@ class TestPatchStatusNotifier(object):
             repository_service=mock_repo_provider,
         )
         expected_result = {
-            "message": "66.67% of diff hit (target 70.00%)",
+            "message": (
+                "Your project check has failed because the HEAD coverage of 66.67% "
+                "is below your specified target of 70.00%. "
+                "Please ensure the HEAD coverage is above your "
+                "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
+            ),
             "state": "failure",
         }
         result = notifier.build_payload(sample_comparison)
@@ -2128,7 +2133,12 @@ class TestPatchStatusNotifier(object):
             repository_service=mock_repo_provider,
         )
         expected_result = {
-            "message": "66.67% of diff hit (target 57.00%)",
+            "message": (
+                "Your project check has failed because the HEAD coverage of 66.67% "
+                "is below your specified target of 57.00%. "
+                "Please ensure the HEAD coverage is above your "
+                "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
+            ),
             "state": "success",
         }
         result = notifier.build_payload(sample_comparison)

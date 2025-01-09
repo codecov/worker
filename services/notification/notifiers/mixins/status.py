@@ -23,11 +23,13 @@ class StatusPatchMixin(object):
             threshold = Decimal("0.0")
 
         target_coverage: Decimal | None
+        user_has_custom_target: bool = False
         totals = comparison.get_patch_totals()
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
             target_coverage = Decimal(
                 str(self.notifier_yaml_settings.get("target")).replace("%", "")
             )
+            user_has_custom_target = True
         else:
             target_coverage = (
                 Decimal(comparison.project_coverage_base.report.totals.coverage)
@@ -42,22 +44,28 @@ class StatusPatchMixin(object):
                 message = "No report found to compare against"
             else:
                 state = "success" if coverage >= target_coverage else "failure"
+                coverage_str = round_number(self.current_yaml, coverage)
+                target_str = round_number(self.current_yaml, target_coverage)
+
                 if (
                     state == "failure"
                     and threshold is not None
                     and coverage >= (target_coverage - threshold)
                 ):
                     state = "success"
-                    coverage_str = round_number(self.current_yaml, coverage)
                     threshold_str = round_number(self.current_yaml, threshold)
-                    target_str = round_number(self.current_yaml, target_coverage)
                     message = f"{coverage_str}% of diff hit (within {threshold_str}% threshold of {target_str}%)"
-
                 else:
-                    coverage_str = round_number(self.current_yaml, coverage)
-                    target_str = round_number(self.current_yaml, target_coverage)
-                    message = f"{coverage_str}% of diff hit (target {target_str}%)"
-            return (state, message)
+                    if user_has_custom_target:
+                        message = (
+                            f"Your project check has failed because the HEAD coverage of {coverage_str}% "
+                            f"is below your specified target of {target_str}%. "
+                            f"Please ensure the HEAD coverage is above your "
+                            f"[target](https://docs.codecov.com/docs/commit-status#target) coverage."
+                        )
+                    else:
+                        message = f"{coverage_str}% of diff hit (target {target_str}%)"
+            return state, message
         if comparison.project_coverage_base.commit:
             description = "Coverage not affected when comparing {0}...{1}".format(
                 comparison.project_coverage_base.commit.commitid[:7],
@@ -65,7 +73,7 @@ class StatusPatchMixin(object):
             )
         else:
             description = "Coverage not affected"
-        return ("success", description)
+        return "success", description
 
 
 class StatusChangesMixin(object):

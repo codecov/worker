@@ -778,11 +778,17 @@ class TestPatchChecksNotifier(object):
             current_yaml=UserYaml({}),
             repository_service=mock_repo_provider,
         )
+        expected_message = (
+            "Your project check has failed because the HEAD coverage of 66.67% "
+            "is below your specified target of 70.00%. "
+            "Please ensure the HEAD coverage is above your "
+            "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
+        )
         expected_result = {
             "state": "failure",
             "output": {
-                "title": "66.67% of diff hit (target 70.00%)",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 70.00%)",
+                "title": expected_message,
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n{expected_message}",
             },
         }
         result = notifier.build_payload(sample_comparison)
