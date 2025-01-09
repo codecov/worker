@@ -8,12 +8,8 @@ from django.db.models import Model
 from django.db.models.query import QuerySet
 from shared.bundle_analysis import StoragePaths
 from shared.django_apps.core.models import Commit, Pull
-from shared.django_apps.reports.models import (
-    CommitReport,
-    CompareCommit,
-    ReportDetails,
-    ReportSession,
-)
+from shared.django_apps.reports.models import CommitReport, CompareCommit, ReportDetails
+from shared.django_apps.reports.models import ReportSession as Upload
 
 from services.archive import ArchiveService, MinioEndpoints
 from services.cleanup.utils import CleanupContext
@@ -162,7 +158,7 @@ MANUAL_CLEANUP: dict[
     Pull: partial(cleanup_archivefield, "flare"),
     ReportDetails: partial(cleanup_archivefield, "files_array"),
     CommitReport: cleanup_commitreport,
-    ReportSession: partial(cleanup_with_storage_field, "storage_path"),
+    Upload: partial(cleanup_with_storage_field, "storage_path"),
     CompareCommit: partial(cleanup_with_storage_field, "report_storage_path"),
     # TODO: figure out any other models which have files in storage that are not `ArchiveField`
     # TODO: TA is also storing files in GCS
