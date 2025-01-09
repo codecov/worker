@@ -35,7 +35,7 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
             element = file
             while element.getparent().tag == "{https://www.bullseye.com/covxml}folder":
                 element = element.getparent()
-                filepath = f'{element.attrib.get("name")}/{filepath}'
+                filepath = f"{element.attrib.get('name')}/{filepath}"
             filepath += file.attrib.get("name")
 
             _file = report_builder_session.create_coverage_file(filepath)

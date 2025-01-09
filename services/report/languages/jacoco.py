@@ -101,9 +101,9 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
             _file = report_builder_session.create_coverage_file(
                 filename, do_fix_path=False
             )
-            assert (
-                _file is not None
-            ), "`create_coverage_file` with pre-fixed path is infallible"
+            assert _file is not None, (
+                "`create_coverage_file` with pre-fixed path is infallible"
+            )
 
             for line in source.iter("line"):
                 attr = line.attrib

@@ -83,9 +83,9 @@ class ArchiveField:
 
     def __set_name__(self, owner, name):
         # Validate that the owner class has the methods we need
-        assert issubclass(
-            owner, ArchiveFieldInterface
-        ), "Missing some required methods to use AchiveField"
+        assert issubclass(owner, ArchiveFieldInterface), (
+            "Missing some required methods to use AchiveField"
+        )
         self.public_name = name
         self.db_field_name = "_" + name
         self.archive_field_name = "_" + name + "_storage_path"

@@ -79,7 +79,7 @@ class MessageMixin(object):
         self._possibly_write_install_app(comparison, write)
 
         # Write Header
-        write(f'## [Codecov]({links["pull"]}?dropdown=coverage&src=pr&el=h1) Report')
+        write(f"## [Codecov]({links['pull']}?dropdown=coverage&src=pr&el=h1) Report")
 
         repo = comparison.head.commit.repository
         owner: Owner = repo.owner

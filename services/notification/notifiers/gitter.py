@@ -12,7 +12,7 @@ class GitterNotifier(RequestsYamlBasedNotifier):
     # TODO (Thiago): Fix base message
     BASE_MESSAGE = " ".join(
         [
-            "Coverage " "{comparison_string}on `{head_branch}` is `{head_totals_c}%`",
+            "Coverage {comparison_string}on `{head_branch}` is `{head_totals_c}%`",
             "via {head_url}",
         ]
     )

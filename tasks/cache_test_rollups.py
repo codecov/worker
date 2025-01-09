@@ -165,7 +165,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                     "interval_start": f"{interval_start} days",
                     # SQL `BETWEEN` syntax is equivalent to `<= end`, with an inclusive end date,
                     # thats why we do a `+1` here:
-                    "interval_end": f"{interval_end+1 if interval_end else 0} days",
+                    "interval_end": f"{interval_end + 1 if interval_end else 0} days",
                 }
 
                 cursor.execute(ROLLUP_QUERY, query_params)

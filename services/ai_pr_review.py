@@ -89,7 +89,7 @@ class Diff:
         [line_id] (where line_id is just a unique integer)
         """
         return "\n".join(
-            [f"[{i+1}] {line}" for i, line in enumerate(self._diff.split("\n"))]
+            [f"[{i + 1}] {line}" for i, line in enumerate(self._diff.split("\n"))]
         )
 
     def line_info(self, line_id: int) -> LineInfo:

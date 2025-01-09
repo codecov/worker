@@ -592,7 +592,6 @@ class TestSyncReposTaskUnit(object):
         assert user.permission == []  # there were no private repos
         for repo in repos:
             assert repo.using_integration is True
-        ghapp.repository_service_ids = ["159089634" "164948070" "213786132" "555555555"]
 
     @respx.mock
     @reuse_cassette(
