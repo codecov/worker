@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import orjson
 import sentry_sdk
@@ -143,7 +143,7 @@ class UploadContext:
             report_code=self.report_code,
         )
 
-    def arguments_list(self):
+    def arguments_list(self) -> List[dict]:
         """
         Retrieves a list of arguments from redis, parses them
         and feeds them to the processing code.
@@ -157,9 +157,10 @@ class UploadContext:
         """
         uploads_list_key = self.upload_location
         log.debug("Fetching arguments from redis %s", uploads_list_key)
+        results = []
         while arguments := self.redis_connection.lpop(uploads_list_key, count=50):
-            for arg in arguments:
-                yield orjson.loads(arg)
+            results.extend([orjson.loads(arg) for arg in arguments])
+        return results
 
     def normalize_arguments(self, commit: Commit, arguments: UploadArguments):
         """
@@ -503,12 +504,14 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         measurements = []
         created_at = timezone.now()
 
+        arguments_list = upload_context.arguments_list()
+
         # Bulk fetch or create flags
         all_flags_in_uploads = self._bulk_fetch_or_create_all_uploads_flags(
-            db_session=db_session, upload_context=upload_context, repoid=repoid
+            db_session=db_session, arguments_list=arguments_list, repoid=repoid
         )
 
-        for arguments in upload_context.arguments_list():
+        for arguments in arguments_list:
             arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" not in arguments:
                 upload = report_service.create_report_upload(arguments, commit_report)
@@ -576,7 +579,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         django_transaction.commit()
 
     def _bulk_fetch_or_create_all_uploads_flags(
-        self, db_session: Session, upload_context: UploadContext, repoid: int
+        self, db_session: Session, arguments_list: List[UploadArguments], repoid: int
     ) -> Dict[str, RepositoryFlag] | dict:
         """
         This function bulk fetches and bulk creates missing RepositoryFlag records
@@ -585,7 +588,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         """
         # Bulk query existing flags from DB
         all_flag_names = set()
-        for arguments in upload_context.arguments_list():
+        for arguments in arguments_list:
             if argument_flags := arguments.get("flags"):
                 all_flag_names.update(argument_flags)
 

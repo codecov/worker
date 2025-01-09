@@ -790,6 +790,7 @@ class ReportService(BaseReportService):
             )
             db_session.add(upload)
             db_session.flush()
+            # TODO: We should leverage the _bulk_fetch_or_create_all_uploads_flags function instead
             self._attach_flags_to_upload(upload, session.flags if session.flags else [])
             if session.totals is not None:
                 upload_totals = UploadLevelTotals(upload_id=upload.id_)
