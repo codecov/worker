@@ -518,7 +518,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 arguments["upload_id"] = upload.id_
                 # Attach flags to the upload, later to be committed
                 flag_names = arguments["flags"]
-                upload.flags = [all_flags_in_uploads.get(name) for name in flag_names]
+                flag_intersection = [
+                    all_flags_in_uploads.get(name)
+                    for name in flag_names
+                    if all_flags_in_uploads.get(name) is not None
+                ]
+                if flag_intersection:
+                    upload.flags = flag_intersection
                 # Adding measurements to array to later add in bulk
                 measurements.append(
                     UserMeasurement(
@@ -590,10 +596,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         all_flag_names = set()
         for arguments in arguments_list:
             if argument_flags := arguments.get("flags"):
-                all_flag_names.update(argument_flags)
+                all_flag_names.add(argument_flags)
 
         if not all_flag_names:
             return {}
+
         existing_flags = (
             db_session.query(RepositoryFlag)
             .filter(
@@ -613,7 +620,11 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         ]
 
         if missing_flags:
-            db_session.bulk_save_objects(missing_flags)
+            # We should do the upload batching before the flags cause
+            # uploads create a relationship with flags. If they are already
+            # inserted in the DB, the relationship will create a new one. Instead,
+            # we should first create the upload and then connect the flags to it.
+            # db_session.bulk_save_objects(missing_flags)
             db_session.commit()
 
             for flag in missing_flags:
