@@ -42,9 +42,9 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
 
         # check that repo is in beta
         redis_connection = get_redis_connection()
-        assert redis_connection.sismember(
-            "beta.pending", repoid
-        ), "Pending disabled. Please request to be in beta."
+        assert redis_connection.sismember("beta.pending", repoid), (
+            "Pending disabled. Please request to be in beta."
+        )
 
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -69,17 +69,17 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
                                 context,
                                 ("/" + key if key != "default" else ""),
                             )
-                            assert match(
-                                config.get("branches"), branch or ""
-                            ), "Ignore setting pending status on branch"
+                            assert match(config.get("branches"), branch or ""), (
+                                "Ignore setting pending status on branch"
+                            )
                             assert (
                                 on_a_pull_request
                                 if config.get("only_pulls", False)
                                 else True
                             ), "Set pending only on pulls"
-                            assert config.get(
-                                "set_pending", True
-                            ), "Pending status disabled in YAML"
+                            assert config.get("set_pending", True), (
+                                "Pending status disabled in YAML"
+                            )
                             assert title not in statuses, "Pending status already set"
 
                             async_to_sync(repo_service.set_commit_status)(
