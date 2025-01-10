@@ -32,7 +32,7 @@ class ProfilingCommit(CodecovBaseModel, MixinBaseClass):
 
 class ProfilingUpload(CodecovBaseModel, MixinBaseClass):
     __tablename__ = "profiling_profilingupload"
-    raw_upload_location = Column(types.Text)
+    raw_upload_location = Column(types.Text, nullable=False)
     profiling_commit_id = Column(
         types.BigInteger, ForeignKey("profiling_profilingcommit.id")
     )
