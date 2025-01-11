@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
-from database.models import Commit, CommitReport
+from database.models import Commit, CommitReport, RepositoryFlag, Upload
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -499,15 +499,23 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         argument_list: list[UploadArguments] = []
         # Measurements insertion performance
-        measurements = []
+        measurements: list[UserMeasurement] = []
         created_at = timezone.now()
+        # Uploads insertion performance
+        uploads_to_create: list[Upload] = []
+        # Upload_flag helper dict for flag bulk insertion
+        upload_flag_map: dict[Upload, list | str | None] = {}
 
         for arguments in upload_context.arguments_list():
             arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" not in arguments:
                 upload = report_service.create_report_upload(arguments, commit_report)
                 arguments["upload_id"] = upload.id_
-                # Adding measurements to array to later add in bulk
+                # Adding uploads to list to later add in bulk
+                uploads_to_create.append(upload)
+                # Add upload to helper dict
+                upload_flag_map[upload] = arguments.get("flags", [])
+                # Adding measurements to list to later add in bulk
                 measurements.append(
                     UserMeasurement(
                         owner_id=repository.owner.ownerid,
@@ -526,9 +534,16 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             arguments["upload_pk"] = arguments["upload_id"]
             argument_list.append(arguments)
 
+        # Bulk insert uploads
+        db_session.bulk_save_objects(uploads_to_create)
+        db_session.commit()
+
+        self._bulk_possibly_insert_flags(
+            db_session=db_session, repoid=repoid, upload_flag_map=upload_flag_map
+        )
+
         # Bulk insert coverage measurements
         if measurements:
-            print("test - I am here!", measurements)
             self._bulk_insert_coverage_measurements(measurements=measurements)
 
         if argument_list:
@@ -562,6 +577,53 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 extra=upload_context.log_extra(),
             )
         return {"was_setup": was_setup, "was_updated": was_updated}
+
+    def _bulk_possibly_insert_flags(
+        self,
+        db_session: Session,
+        repoid: int,
+        upload_flag_map: dict[Upload, list | str | None] = {},
+    ):
+        """
+        This function possibly inserts flags in bulk for a Repository if these
+        don't exist already
+        """
+        flags_to_create: list[RepositoryFlag] = []
+
+        # Fetch all RepositoryFlags per repo
+        existing_flags = self._fetch_all_repo_flags(
+            db_session=db_session, repoid=repoid
+        )
+
+        # Loops through upload_flag_map dict, possibly creates flags and maps them to their uploads
+        for upload, flag_names in upload_flag_map.items():
+            repo_flags = existing_flags.get(repoid, {})
+            upload_flags = []
+
+            for flag_name in flag_names:
+                if flag_name not in repo_flags:
+                    flag = RepositoryFlag(repository_id=repoid, flag_name=flag_name)
+                    flags_to_create.append(flag)
+                    repo_flags[flag_name] = flag
+
+                upload_flags.append(repo_flags[flag_name])
+
+            upload.flags = upload_flags
+
+        # Bulk insert new flags
+        if flags_to_create:
+            db_session.bulk_save_objects(flags_to_create)
+
+        db_session.commit()
+
+    def _fetch_all_repo_flags(
+        self, db_session: Session, repoid: int
+    ) -> Optional[dict[str, RepositoryFlag] | dict]:
+        """
+        Fetches all flags on a repository
+        """
+        flags = db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
+        return {flag.flag_name: flag for flag in flags}
 
     def _bulk_insert_coverage_measurements(self, measurements: list[UserMeasurement]):
         bulk_insert_coverage_measurements(measurements=measurements)
