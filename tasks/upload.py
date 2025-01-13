@@ -588,31 +588,39 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         This function possibly inserts flags in bulk for a Repository if these
         don't exist already
         """
-        flags_to_create: list[RepositoryFlag] = []
-
         # Fetch all RepositoryFlags per repo
         existing_flags = self._fetch_all_repo_flags(
             db_session=db_session, repoid=repoid
         )
 
+        # Prepare new flags and map relationships
+        flags_to_create: list[RepositoryFlag] = []
+        upload_flag_links = {}
+
         # Loops through upload_flag_map dict, possibly creates flags and maps them to their uploads
         for upload, flag_names in upload_flag_map.items():
-            repo_flags = existing_flags.get(repoid, {})
             upload_flags = []
 
             for flag_name in flag_names:
-                if flag_name not in repo_flags:
+                # Check for existing flag, create if missing
+                flag = existing_flags.get(flag_name)
+                if not flag:
                     flag = RepositoryFlag(repository_id=repoid, flag_name=flag_name)
                     flags_to_create.append(flag)
-                    repo_flags[flag_name] = flag
+                    existing_flags[flag_name] = flag
 
-                upload_flags.append(repo_flags[flag_name])
+                upload_flags.append(flag)
 
-            upload.flags = upload_flags
+            # Save the relationship mapping without causing additional queries
+            upload_flag_links[upload] = upload_flags
 
-        # Bulk insert new flags
         if flags_to_create:
-            db_session.bulk_save_objects(flags_to_create)
+            db_session.add_all(flags_to_create)
+            db_session.commit()
+
+        # Assign flags to uploads
+        for upload, upload_flags in upload_flag_links.items():
+            upload.flags.extend(upload_flags)
 
         db_session.commit()
 
@@ -623,7 +631,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         Fetches all flags on a repository
         """
         flags = db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
-        return {flag.flag_name: flag for flag in flags}
+        return {flag.flag_name: flag for flag in flags} if flags else {}
 
     def _bulk_insert_coverage_measurements(self, measurements: list[UserMeasurement]):
         bulk_insert_coverage_measurements(measurements=measurements)
