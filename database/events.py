@@ -1,7 +1,9 @@
 import json
 import logging
 
+from django.conf import settings
 from google.cloud import pubsub_v1
+from helpers.environment import is_enterprise
 from shared.config import get_config
 from sqlalchemy import event, inspect
 
@@ -11,10 +13,21 @@ _pubsub_publisher = None
 
 log = logging.getLogger(__name__)
 
+def _is_pubsub_enabled():
+    try:
+        return get_config(
+            "setup", "shelter", "enabled", default=False if is_enterprise() else True
+        )
+    except Exception as e:
+        log.warning(
+            "Failed to get shelter pubsub enabled config", extra=dict(error=str(e))
+        )
+        return False
+
 
 def _get_pubsub_publisher():
     global _pubsub_publisher
-    if not _pubsub_publisher:
+    if not _pubsub_publisher and _is_pubsub_enabled():
         _pubsub_publisher = pubsub_v1.PublisherClient()
     return _pubsub_publisher
 
@@ -25,7 +38,7 @@ def _sync_repo(repository: Repository):
         pubsub_project_id = get_config("setup", "shelter", "pubsub_project_id")
         pubsub_topic_id = get_config("setup", "shelter", "sync_repo_topic_id")
 
-        if pubsub_project_id and pubsub_topic_id:
+        if _is_pubsub_enabled() and pubsub_project_id and pubsub_topic_id:
             publisher = _get_pubsub_publisher()
             topic_path = publisher.topic_path(pubsub_project_id, pubsub_topic_id)
             publisher.publish(

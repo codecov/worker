@@ -14,6 +14,7 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
                 "shelter": {
                     "pubsub_project_id": "test-project-id",
                     "sync_repo_topic_id": "test-topic-id",
+                    "enabled": True,
                 }
             }
         }
@@ -53,3 +54,29 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
         "projects/test-project-id/topics/test-topic-id",
         b'{"type": "repo", "sync": "one", "id": 91728376}',
     )
+
+def test_repo_sync_when_shelter_disabled(dbsession, mock_configuration, mocker):
+    # this prevents the pubsub SDK from trying to load credentials
+    os.environ["PUBSUB_EMULATOR_HOST"] = "localhost"
+
+    mock_configuration.set_params(
+        {
+            "setup": {
+                "shelter": {
+                    "pubsub_project_id": "test-project-id",
+                    "sync_repo_topic_id": "test-topic-id",
+                    "enabled": False,
+                }
+            }
+        }
+    )
+
+    publish = mocker.patch("google.cloud.pubsub_v1.PublisherClient.publish")
+
+    # Create new repo with shelter disabled
+    repo = RepositoryFactory(repoid=91728377, name="test-789")
+    dbsession.add(repo)
+    dbsession.commit()
+
+    # Verify no publish was called when shelter is disabled
+    publish.assert_not_called()
