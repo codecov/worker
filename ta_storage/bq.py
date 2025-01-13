@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, TypedDict, cast
+from typing import Literal, cast
 
 import test_results_parser
 from shared.config import get_config
@@ -32,17 +32,6 @@ def outcome_to_int(
             return ta_testrun_pb2.TestRun.Outcome.FAILED
         case _:
             raise ValueError(f"Invalid outcome: {outcome}")
-
-
-class TransformedTestrun(TypedDict):
-    name: str
-    classname: str
-    testsuite: str
-    computed_name: str
-    outcome: int
-    failure_message: str
-    duration: float
-    filename: str
 
 
 class BQDriver(TADriver):
