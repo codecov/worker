@@ -107,7 +107,7 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
             repoid,
             repo_service,
             repo_service_id,
-        ) in coverage_reports:
+        ) in reports:
             if repoid not in repo_hashes:
                 fake_repo = FakeRepository(
                     repoid=repoid, service=repo_service, service_id=repo_service_id
@@ -142,7 +142,7 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
 
         cleaned_files += cleanup_files_batched(context, storage_paths)
         cleaned_models += query.filter(
-            id__in=coverage_reports[:MANUAL_QUERY_CHUNKSIZE]
+            id__in=query.order_by("id")[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
 
     return CleanupResult(cleaned_models, cleaned_files)
