@@ -642,12 +642,15 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         self,
         db_session: Session,
         repoid: int,
-        upload_flag_map: dict[Upload, list | str | None] = {},
+        upload_flag_map: dict[Upload, list | str | None] = None,
     ):
         """
         This function possibly inserts flags in bulk for a Repository if these
         don't exist already
         """
+        if upload_flag_map is None:
+            upload_flag_map = {}
+
         # Fetch all RepositoryFlags per repo
         existing_flags = self._fetch_all_repo_flags(
             db_session=db_session, repoid=repoid
