@@ -216,10 +216,9 @@ def _should_debounce_processing(upload_context: UploadContext) -> Optional[float
 
 
 class CreateUploadResponse(TypedDict):
-    argument_list: list[UploadArguments] | list
-    measurements_list: list[UserMeasurement] | list
-    uploads_list: list[Upload] | list
-    upload_flag_map: dict[Upload, list | str | None] | dict
+    argument_list: list[UploadArguments]
+    measurements_list: list[UserMeasurement]
+    upload_flag_map: dict[Upload, list | str | None]
 
 
 class UploadTask(BaseCodecovTask, name=upload_task_name):
@@ -561,6 +560,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         # Possibly batch insert uploads
         create_upload_res = self._possibly_create_uploads_to_insert(
+            db_session=db_session,
             commit=commit,
             repository=repository,
             commit_report=commit_report,
@@ -568,17 +568,13 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             report_service=report_service,
         )
 
-        # Bulk insert uploads
-        if upload_list := create_upload_res["uploads_list"]:
-            db_session.bulk_save_objects(upload_list)
-            db_session.commit()
-
-            if uploads_flag_map := create_upload_res["upload_flag_map"]:
-                self._bulk_insert_flags(
-                    db_session=db_session,
-                    repoid=repository.repoid,
-                    upload_flag_map=uploads_flag_map,
-                )
+        # Bulk insert flags
+        if uploads_flag_map := create_upload_res["upload_flag_map"]:
+            self._bulk_insert_flags(
+                db_session=db_session,
+                repoid=repository.repoid,
+                upload_flag_map=uploads_flag_map,
+            )
 
         # Bulk insert coverage measurements
         if measurements := create_upload_res["measurements_list"]:
@@ -588,6 +584,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def _possibly_create_uploads_to_insert(
         self,
+        db_session: Session,
         commit: Commit,
         repository: Repository,
         upload_context: UploadContext,
@@ -602,7 +599,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         created_at = timezone.now()
 
         # List + helper mapping to track possible upload + flags to insert later
-        uploads_list: list[Upload] = []
         upload_flag_map: dict[Upload, list | str | None] = {}
 
         for arguments in upload_context.arguments_list():
@@ -611,7 +607,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 upload = report_service.create_report_upload(arguments, commit_report)
                 arguments["upload_id"] = upload.id_
                 # Adds objects to insert later in bulk
-                uploads_list.append(upload)
                 upload_flag_map[upload] = arguments.get("flags", [])
                 measurements_list.append(
                     UserMeasurement(
@@ -631,10 +626,10 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             arguments["upload_pk"] = arguments["upload_id"]
             argument_list.append(arguments)
 
+        db_session.commit()
         return CreateUploadResponse(
             argument_list=argument_list,
             measurements_list=measurements_list,
-            uploads_list=uploads_list,
             upload_flag_map=upload_flag_map,
         )
 
@@ -683,7 +678,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         # Assign flags to uploads
         for upload, upload_flags in upload_flag_links.items():
-            upload.flags.extend(upload_flags)
+            upload.flags = upload_flags
 
         db_session.commit()
 
