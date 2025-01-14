@@ -13,6 +13,9 @@ class StatusState(Enum):
     failure = "failure"
 
 
+custom_target_helper_text = "Your project check has failed because the patch coverage is below the target coverage. You can increase the patch coverage or adjust the [target](https://docs.codecov.com/docs/commit-status#target) coverage."
+
+
 class StatusPatchMixin(object):
     def _get_threshold(self) -> Decimal:
         """
@@ -29,7 +32,7 @@ class StatusPatchMixin(object):
 
     def _get_target(
         self, comparison: ComparisonProxy | FilteredComparison
-    ) -> Decimal | None:
+    ) -> tuple[Decimal | None, bool]:
         """
         Target can be configured by user, default is auto, which is the coverage level from the base report.
         Target will be None if no report is found to compare against.
@@ -39,6 +42,7 @@ class StatusPatchMixin(object):
             target_coverage = Decimal(
                 str(self.notifier_yaml_settings.get("target")).replace("%", "")
             )
+            is_custom_target = True
         else:
             target_coverage = (
                 Decimal(comparison.project_coverage_base.report.totals.coverage)
@@ -46,13 +50,14 @@ class StatusPatchMixin(object):
                 and comparison.project_coverage_base.report.totals.coverage is not None
                 else None
             )
-        return target_coverage
+            is_custom_target = False
+        return target_coverage, is_custom_target
 
     def get_patch_status(
         self, comparison: ComparisonProxy | FilteredComparison
     ) -> tuple[str, str]:
         threshold = self._get_threshold()
-        target_coverage = self._get_target(comparison)
+        target_coverage, is_custom_target = self._get_target(comparison)
         totals = comparison.get_patch_totals()
 
         # coverage affected
@@ -84,6 +89,8 @@ class StatusPatchMixin(object):
                     message = (
                         f"{coverage_rounded}% of diff hit (target {target_rounded}%)"
                     )
+                if state == StatusState.failure.value and is_custom_target:
+                    message = message + " - " + custom_target_helper_text
             return state, message
 
         # coverage not affected
@@ -420,6 +427,8 @@ class StatusProjectMixin(object):
             # use rounded numbers for messages
             target_rounded = round_number(self.current_yaml, target_coverage)
             message = f"{head_coverage_rounded}% (target {target_rounded}%)"
+            if state == StatusState.failure.value:
+                message = message + " - " + custom_target_helper_text
             return state, message
 
         # use rounded numbers for messages

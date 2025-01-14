@@ -15,6 +15,7 @@ from shared.plan.constants import TEAM_PLAN_REPRESENTATIONS
 from shared.torngit.base import TorngitBaseAdapter
 from shared.yaml import UserYaml
 
+from database.enums import notification_type_status_or_checks
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner, Repository
 from services.comparison import ComparisonProxy
 from services.decoration import Decoration
@@ -36,6 +37,10 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from services.notification.notifiers.codecov_slack_app import CodecovSlackAppNotifier
+from services.notification.notifiers.mixins.status import (
+    StatusState,
+    custom_target_helper_text,
+)
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_components_from_yaml
 
@@ -254,15 +259,64 @@ class NotificationService(object):
                 repoid=comparison.head.commit.repoid,
             ),
         )
-        results = [
-            self.notify_individual_notifier(notifier, comparison)
+
+        results = []
+        add_custom_target_helper_text_to_pr_comment = False
+        notifiers_to_notify = [
+            notifier
             for notifier in self.get_notifiers_instances()
             if notifier.is_enabled()
+        ]
+
+        status_or_checks_notifiers = [
+            notifier
+            for notifier in notifiers_to_notify
+            if notifier.notification_type in notification_type_status_or_checks
+        ]
+
+        all_other_notifiers = [
+            notifier
+            for notifier in notifiers_to_notify
+            if notifier.notification_type not in notification_type_status_or_checks
+        ]
+
+        if status_or_checks_notifiers and all_other_notifiers:
+            # if the status/check fails, sometimes we want to add helper text to the message of the other notifications,
+            # to better surface that the status/check failed.
+            # so if there are status_and_checks_notifiers and all_other_notifiers, do the status_and_checks_notifiers first,
+            # look at the results of the checks, if any failed AND they are the type we have helper text for,
+            # add that text onto the other notifiers messages.
+            status_or_checks_results = [
+                self.notify_individual_notifier(notifier, comparison)
+                for notifier in status_or_checks_notifiers
+            ]
+
+            for result in status_or_checks_results:
+                notification_result = result["result"]
+                if (
+                    notification_result is not None
+                    and notification_result.data_sent.get("state")
+                    == StatusState.failure.value
+                ):
+                    if custom_target_helper_text in notification_result.data_sent.get(
+                        "message"
+                    ):
+                        add_custom_target_helper_text_to_pr_comment = True
+            results = results + status_or_checks_results
+
+        results = results + [
+            self.notify_individual_notifier(
+                notifier, comparison, add_custom_target_helper_text_to_pr_comment
+            )
+            for notifier in all_other_notifiers
         ]
         return results
 
     def notify_individual_notifier(
-        self, notifier: AbstractBaseNotifier, comparison: ComparisonProxy
+        self,
+        notifier: AbstractBaseNotifier,
+        comparison: ComparisonProxy,
+        add_custom_target_helper_text_to_pr_comment: bool = False,
     ) -> IndividualResult:
         commit = comparison.head.commit
         base_commit = comparison.project_coverage_base.commit
@@ -283,7 +337,9 @@ class NotificationService(object):
             notifier=notifier.name, title=notifier.title, result=None
         )
         try:
-            res = notifier.notify(comparison)
+            res = notifier.notify(
+                comparison, add_custom_target_helper_text_to_pr_comment
+            )
             individual_result["result"] = res
 
             notifier.store_results(comparison, res)
