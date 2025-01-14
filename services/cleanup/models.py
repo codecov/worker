@@ -148,9 +148,6 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
     return CleanupResult(cleaned_models, cleaned_files)
 
 
-# "v1/repos/{repo_key}/{report_key}/bundle_report.sqlite"
-
-
 # All the models that need custom python code for deletions so a bulk `DELETE` query does not work.
 MANUAL_CLEANUP: dict[
     type[Model], Callable[[CleanupContext, QuerySet], CleanupResult]

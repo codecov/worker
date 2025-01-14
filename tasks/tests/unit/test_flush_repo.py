@@ -25,11 +25,11 @@ from tasks.flush_repo import FlushRepoTask
 
 
 @pytest.mark.django_db
-def test_flush_repo_nothing(dbsession, mock_storage):
+def test_flush_repo_nothing(mock_storage):
     repo = RepositoryFactory()
 
     task = FlushRepoTask()
-    res = task.run_impl(dbsession, repoid=repo.repoid)
+    res = task.run_impl({}, repoid=repo.repoid)
 
     assert res == CleanupSummary(
         CleanupResult(1),
@@ -40,7 +40,7 @@ def test_flush_repo_nothing(dbsession, mock_storage):
 
 
 @pytest.mark.django_db
-def test_flush_repo_few_of_each_only_db_objects(dbsession, mock_storage):
+def test_flush_repo_few_of_each_only_db_objects(mock_storage):
     repo = RepositoryFactory()
     flag = RepositoryFlagFactory(repository=repo)
 
@@ -67,7 +67,7 @@ def test_flush_repo_few_of_each_only_db_objects(dbsession, mock_storage):
         BranchFactory(repository=repo)
 
     task = FlushRepoTask()
-    res = task.run_impl(dbsession, repoid=repo.repoid)
+    res = task.run_impl({}, repoid=repo.repoid)
 
     assert res == CleanupSummary(
         CleanupResult(24 + 16 + 4 + 4 + 18 + 1 + 1),
@@ -84,7 +84,7 @@ def test_flush_repo_few_of_each_only_db_objects(dbsession, mock_storage):
 
 
 @pytest.mark.django_db
-def test_flush_repo_little_bit_of_everything(dbsession, mocker, mock_storage):
+def test_flush_repo_little_bit_of_everything(mocker, mock_storage):
     repo = RepositoryFactory()
     mocker.patch("services.cleanup.utils.StorageService")
     archive_service = ArchiveService(repo)
@@ -109,7 +109,7 @@ def test_flush_repo_little_bit_of_everything(dbsession, mocker, mock_storage):
     assert len(archive) == 16
 
     task = FlushRepoTask()
-    res = task.run_impl(dbsession, repoid=repo.repoid)
+    res = task.run_impl({}, repoid=repo.repoid)
 
     assert res == CleanupSummary(
         CleanupResult(24 + 8 + 8 + 18 + 1 + 8, 16),
