@@ -19,14 +19,7 @@ GCS_BUCKET_NAME = get_config("services", "minio", "bucket", default="codecov")
 
 # Application definition
 INSTALLED_APPS = [
-    "shared.django_apps.legacy_migrations",
-    "shared.django_apps.codecov_auth",
-    "shared.django_apps.core",
-    "shared.django_apps.reports",
-    "shared.django_apps.pg_telemetry",
-    "shared.django_apps.rollouts",
-    "shared.django_apps.user_measurements",
-    "shared.django_apps.bundle_analysis",
+    # dependencies
     "psqlextra",
     # Needed to install legacy migrations
     "django.contrib.admin",
@@ -34,6 +27,19 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.messages",
     "django.contrib.sessions",
+    # Shared apps:
+    "shared.django_apps.legacy_migrations",
+    "shared.django_apps.pg_telemetry",
+    "shared.django_apps.rollouts",
+    "shared.django_apps.user_measurements",
+    "shared.django_apps.bundle_analysis",
+    "shared.django_apps.codecov_auth",
+    "shared.django_apps.compare",
+    "shared.django_apps.core",
+    "shared.django_apps.labelanalysis",
+    "shared.django_apps.profiling",
+    "shared.django_apps.reports",
+    "shared.django_apps.staticanalysis",
 ]
 
 TELEMETRY_VANILLA_DB = "default"
