@@ -7,12 +7,13 @@ from functools import partial
 from django.db.models import Model
 from django.db.models.query import QuerySet
 from shared.bundle_analysis import StoragePaths
+from shared.django_apps.compare.models import CommitComparison
 from shared.django_apps.core.models import Commit, Pull
-from shared.django_apps.reports.models import CommitReport, CompareCommit, ReportDetails
+from shared.django_apps.reports.models import CommitReport, ReportDetails
 from shared.django_apps.reports.models import ReportSession as Upload
 
 from services.archive import ArchiveService, MinioEndpoints
-from services.cleanup.utils import CleanupContext
+from services.cleanup.utils import CleanupContext, CleanupResult
 
 MANUAL_QUERY_CHUNKSIZE = 2_500
 DELETE_FILES_BATCHSIZE = 50
@@ -24,7 +25,7 @@ def cleanup_files_batched(context: CleanupContext, paths: list[str]) -> int:
     # TODO: maybe reuse the executor across calls?
     with ThreadPoolExecutor() as e:
         for batched_paths in itertools.batched(paths, DELETE_FILES_BATCHSIZE):
-            e.submit(context.storage.delete_files, context.bucket, batched_paths)
+            e.submit(context.storage.delete_files, context.bucket, list(batched_paths))
 
         cleaned_files += len(batched_paths)
 
@@ -35,7 +36,7 @@ def cleanup_with_storage_field(
     path_field: str,
     context: CleanupContext,
     query: QuerySet,
-) -> tuple[int, int]:
+) -> CleanupResult:
     cleaned_files = 0
 
     # delete `None` `path_field`s right away
@@ -58,12 +59,12 @@ def cleanup_with_storage_field(
             id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
 
-    return (cleaned_models, cleaned_files)
+    return CleanupResult(cleaned_models, cleaned_files)
 
 
 def cleanup_archivefield(
     field_name: str, context: CleanupContext, query: QuerySet
-) -> tuple[int, int]:
+) -> CleanupResult:
     model_field_name = f"_{field_name}_storage_path"
 
     return cleanup_with_storage_field(model_field_name, context, query)
@@ -77,15 +78,15 @@ class FakeRepository:
     service_id: str
 
 
-def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> tuple[int, int]:
+def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupResult:
     coverage_reports = query.values_list(
         "report_type",
         "code",
         "external_id",
         "commit__commitid",
-        "repository__repoid",
-        "repository__owner__service",
-        "repository__service_id",
+        "commit__repository__repoid",
+        "commit__repository__author__service",
+        "commit__repository__service_id",
     ).order_by("id")
 
     cleaned_models = 0
@@ -144,7 +145,7 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> tuple[int,
             id__in=coverage_reports[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
 
-    return (cleaned_models, cleaned_files)
+    return CleanupResult(cleaned_models, cleaned_files)
 
 
 # "v1/repos/{repo_key}/{report_key}/bundle_report.sqlite"
@@ -152,14 +153,14 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> tuple[int,
 
 # All the models that need custom python code for deletions so a bulk `DELETE` query does not work.
 MANUAL_CLEANUP: dict[
-    type[Model], Callable[[CleanupContext, QuerySet], tuple[int, int]]
+    type[Model], Callable[[CleanupContext, QuerySet], CleanupResult]
 ] = {
     Commit: partial(cleanup_archivefield, "report"),
     Pull: partial(cleanup_archivefield, "flare"),
     ReportDetails: partial(cleanup_archivefield, "files_array"),
     CommitReport: cleanup_commitreport,
     Upload: partial(cleanup_with_storage_field, "storage_path"),
-    CompareCommit: partial(cleanup_with_storage_field, "report_storage_path"),
+    CommitComparison: partial(cleanup_with_storage_field, "report_storage_path"),
     # TODO: figure out any other models which have files in storage that are not `ArchiveField`
     # TODO: TA is also storing files in GCS
     # TODO: profiling, label analysis and static analysis also needs porting to django

@@ -1,3 +1,6 @@
+import dataclasses
+
+from django.db.models import Model
 from shared.api_archive.storage import StorageService
 from shared.config import get_config
 
@@ -9,3 +12,15 @@ class CleanupContext:
     def __init__(self):
         self.storage = StorageService()
         self.bucket = get_config("services", "minio", "bucket", default="archive")
+
+
+@dataclasses.dataclass
+class CleanupResult:
+    cleaned_models: int
+    cleaned_files: int = 0
+
+
+@dataclasses.dataclass
+class CleanupSummary:
+    totals: CleanupResult
+    summary: dict[type[Model], CleanupResult]

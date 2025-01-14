@@ -20,6 +20,7 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
 
     def process_model(model: type[Model], query: QuerySet):
         if model in querysets:
+            querysets[model] = querysets[model] | query
             return
         querysets[model] = query
 
