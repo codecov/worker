@@ -1,7 +1,6 @@
 import json
 import logging
 
-from django.conf import settings
 from google.cloud import pubsub_v1
 from helpers.environment import is_enterprise
 from shared.config import get_config
@@ -12,6 +11,7 @@ from database.models.core import Repository
 _pubsub_publisher = None
 
 log = logging.getLogger(__name__)
+
 
 def _is_pubsub_enabled():
     try:
