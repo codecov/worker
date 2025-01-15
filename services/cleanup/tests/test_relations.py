@@ -22,4 +22,4 @@ def test_builds_relation_graph(snapshot):
 
     # if you change any of the model relations, this snapshot will most likely change.
     # in that case, feel free to update this using `pytest --insta update`.
-    assert snapshot() == queries
+    assert queries == snapshot()

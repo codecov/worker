@@ -19,23 +19,13 @@ WHERE "branches"."repoid" IN
 -- FlagComparison
 DELETE
 FROM "compare_flagcomparison"
-WHERE ("compare_flagcomparison"."commit_comparison_id" IN
-         (SELECT W0."id"
-          FROM "compare_commitcomparison" W0
-          WHERE W0."base_commit_id" IN
-              (SELECT V0."id"
-               FROM "commits" V0
-               WHERE V0."repoid" IN
-                   (SELECT U0."repoid"
-                    FROM "repos" U0
-                    WHERE U0."repoid" = %s)))
-       OR "compare_flagcomparison"."repositoryflag_id" IN
-         (SELECT V0."id"
-          FROM "reports_repositoryflag" V0
-          WHERE V0."repository_id" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s)))
+WHERE "compare_flagcomparison"."repositoryflag_id" IN
+    (SELECT V0."id"
+     FROM "reports_repositoryflag" V0
+     WHERE V0."repository_id" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."repoid" = %s))
 
 
 -- ComponentComparison
@@ -44,13 +34,20 @@ FROM "compare_componentcomparison"
 WHERE "compare_componentcomparison"."commit_comparison_id" IN
     (SELECT W0."id"
      FROM "compare_commitcomparison" W0
-     WHERE W0."base_commit_id" IN
-         (SELECT V0."id"
-          FROM "commits" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s)))
+     WHERE (W0."base_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."repoid" = %s))
+            OR W0."compare_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."repoid" = %s))))
 
 
 -- CommitNotification
@@ -83,13 +80,20 @@ FROM "labelanalysis_labelanalysisprocessingerror"
 WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" IN
     (SELECT W0."id"
      FROM "labelanalysis_labelanalysisrequest" W0
-     WHERE W0."base_commit_id" IN
-         (SELECT V0."id"
-          FROM "commits" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s)))
+     WHERE (W0."base_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."repoid" = %s))
+            OR W0."head_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."repoid" = %s))))
 
 
 -- ReportResults
@@ -158,26 +162,13 @@ WHERE "reports_uploaderror"."upload_id" IN
 -- UploadFlagMembership
 DELETE
 FROM "reports_uploadflagmembership"
-WHERE ("reports_uploadflagmembership"."upload_id" IN
-         (SELECT X0."id"
-          FROM "reports_upload" X0
-          WHERE X0."report_id" IN
-              (SELECT W0."id"
-               FROM "reports_commitreport" W0
-               WHERE W0."commit_id" IN
-                   (SELECT V0."id"
-                    FROM "commits" V0
-                    WHERE V0."repoid" IN
-                        (SELECT U0."repoid"
-                         FROM "repos" U0
-                         WHERE U0."repoid" = %s))))
-       OR "reports_uploadflagmembership"."flag_id" IN
-         (SELECT V0."id"
-          FROM "reports_repositoryflag" V0
-          WHERE V0."repository_id" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s)))
+WHERE "reports_uploadflagmembership"."flag_id" IN
+    (SELECT V0."id"
+     FROM "reports_repositoryflag" V0
+     WHERE V0."repository_id" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."repoid" = %s))
 
 
 -- UploadLevelTotals
@@ -201,33 +192,13 @@ WHERE "reports_uploadleveltotals"."upload_id" IN
 -- TestInstance
 DELETE
 FROM "reports_testinstance"
-WHERE ("reports_testinstance"."upload_id" IN
-         (SELECT X0."id"
-          FROM "reports_upload" X0
-          WHERE X0."report_id" IN
-              (SELECT W0."id"
-               FROM "reports_commitreport" W0
-               WHERE W0."commit_id" IN
-                   (SELECT V0."id"
-                    FROM "commits" V0
-                    WHERE V0."repoid" IN
-                        (SELECT U0."repoid"
-                         FROM "repos" U0
-                         WHERE U0."repoid" = %s))))
-       OR "reports_testinstance"."test_id" IN
-         (SELECT V0."id"
-          FROM "reports_test" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s))
-       OR "reports_testinstance"."reduced_error_id" IN
-         (SELECT V0."id"
-          FROM "reports_reducederror" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s)))
+WHERE "reports_testinstance"."test_id" IN
+    (SELECT V0."id"
+     FROM "reports_test" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."repoid" = %s))
 
 
 -- TestResultReportTotals
@@ -248,23 +219,13 @@ WHERE "reports_testresultreporttotals"."report_id" IN
 -- StaticAnalysisSuiteFilepath
 DELETE
 FROM "staticanalysis_staticanalysissuitefilepath"
-WHERE ("staticanalysis_staticanalysissuitefilepath"."analysis_suite_id" IN
-         (SELECT W0."id"
-          FROM "staticanalysis_staticanalysissuite" W0
-          WHERE W0."commit_id" IN
-              (SELECT V0."id"
-               FROM "commits" V0
-               WHERE V0."repoid" IN
-                   (SELECT U0."repoid"
-                    FROM "repos" U0
-                    WHERE U0."repoid" = %s)))
-       OR "staticanalysis_staticanalysissuitefilepath"."file_snapshot_id" IN
-         (SELECT V0."id"
-          FROM "staticanalysis_staticanalysissinglefilesnapshot" V0
-          WHERE V0."repository_id" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s)))
+WHERE "staticanalysis_staticanalysissuitefilepath"."file_snapshot_id" IN
+    (SELECT V0."id"
+     FROM "staticanalysis_staticanalysissinglefilesnapshot" V0
+     WHERE V0."repository_id" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."repoid" = %s))
 
 
 -- Pull
@@ -291,43 +252,22 @@ WHERE "profiling_profilingupload"."profiling_commit_id" IN
 -- TestFlagBridge
 DELETE
 FROM "reports_test_results_flag_bridge"
-WHERE ("reports_test_results_flag_bridge"."flag_id" IN
-         (SELECT V0."id"
-          FROM "reports_repositoryflag" V0
-          WHERE V0."repository_id" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s))
-       OR "reports_test_results_flag_bridge"."test_id" IN
-         (SELECT V0."id"
-          FROM "reports_test" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s)))
+WHERE "reports_test_results_flag_bridge"."test_id" IN
+    (SELECT V0."id"
+     FROM "reports_test" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."repoid" = %s))
 
 
 -- Flake
 DELETE
 FROM "reports_flake"
-WHERE ("reports_flake"."testid" IN
-         (SELECT V0."id"
-          FROM "reports_test" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s))
-       OR "reports_flake"."reduced_error_id" IN
-         (SELECT V0."id"
-          FROM "reports_reducederror" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."repoid" = %s))
-       OR "reports_flake"."repoid" IN
-         (SELECT U0."repoid"
-          FROM "repos" U0
-          WHERE U0."repoid" = %s))
+WHERE "reports_flake"."repoid" IN
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."repoid" = %s)
 
 
 -- DailyTestRollup

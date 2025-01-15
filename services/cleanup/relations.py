@@ -1,9 +1,18 @@
-# from pprint import pprint
-
+import dataclasses
+from collections import defaultdict
 from graphlib import TopologicalSorter
 
-from django.db.models import Model
+from django.db.models import Model, Q
 from django.db.models.query import QuerySet
+
+
+@dataclasses.dataclass
+class Node:
+    edges: dict[type[Model], list[str]] = dataclasses.field(
+        default_factory=lambda: defaultdict(list)
+    )
+    queryset: QuerySet = dataclasses.field(default_factory=Q)
+    depth: int = 9999
 
 
 def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
@@ -15,15 +24,12 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
 
     The returned list is in topological sorting order, so related models are always sorted before models they depend on.
     """
+    nodes: dict[type[Model], Node] = defaultdict(Node)
     graph: TopologicalSorter[type[Model]] = TopologicalSorter()
-    querysets: dict[type[Model], QuerySet] = {}
 
-    def process_model(model: type[Model], query: QuerySet):
-        if model in querysets:
-            querysets[model] = querysets[model] | query
+    def process_model(model: type[Model]):
+        if model in nodes:
             return
-        querysets[model] = query
-
         if not (meta := model._meta):
             return
 
@@ -47,11 +53,10 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
 
                 related_model = actual_field.model
                 related_model_field = actual_field.name
-                related_query = related_model.objects.filter(
-                    **{f"{related_model_field}__in": query}
-                )
+
                 graph.add(model, related_model)
-                process_model(related_model, related_query)
+                nodes[model].edges[related_model].append(related_model_field)
+                process_model(related_model)
 
             elif field.many_to_many:
                 if not hasattr(field, "through"):
@@ -65,14 +70,32 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
                         continue
 
                     related_model_field = actual_field.name
-                    related_query = related_model.objects.filter(
-                        **{f"{related_model_field}__in": query}
-                    )
+
                     graph.add(model, related_model)
-                    process_model(related_model, related_query)
+                    nodes[model].edges[related_model].append(related_model_field)
+                    process_model(related_model)
 
-                # pprint(vars(field.through._meta))
+    process_model(query.model)
 
-    process_model(query.model, query)
+    # the topological sort yields models in the order we want to run deletions
+    sorted_models = list(graph.static_order())
 
-    return [(model, querysets[model]) for model in graph.static_order()]
+    # but for actually building the querysets, we prefer the order from root to leafs
+    nodes[query.model].queryset = query
+    nodes[query.model].depth = 0
+    for model in reversed(sorted_models):
+        node = nodes[model]
+        depth = node.depth + 1
+
+        for related_model, related_fields in node.edges.items():
+            related_node = nodes[related_model]
+
+            if depth < related_node.depth:
+                filter = Q()
+                for field in related_fields:
+                    filter = filter | Q(**{f"{field}__in": node.queryset})
+
+                related_node.queryset = related_model.objects.filter(filter)
+                related_node.depth = depth
+
+    return [(model, nodes[model].queryset) for model in sorted_models]
