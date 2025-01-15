@@ -5,7 +5,6 @@ import pytest
 from mock import AsyncMock
 from shared.billing import BillingPlan
 from shared.torngit.exceptions import TorngitClientError
-from test_results_parser import Outcome
 
 from database.enums import ReportType
 from database.models import (
@@ -177,7 +176,7 @@ def test_results_setup(mocker, dbsession):
     test_instances = [
         TestInstance(
             test_id=test_id1,
-            outcome=str(Outcome.Failure),
+            outcome="failure",
             failure_message="This should not be in the comment, it will get overwritten by the last test instance",
             duration_seconds=1.0,
             upload_id=uploads[0].id,
@@ -186,7 +185,7 @@ def test_results_setup(mocker, dbsession):
         ),
         TestInstance(
             test_id=test_id2,
-            outcome=str(Outcome.Failure),
+            outcome="failure",
             failure_message="Shared \n\n\n\n <pre> ````````\n \r\n\r\n | test | test | test </pre>failure message",
             duration_seconds=2.0,
             upload_id=uploads[1].id,
@@ -195,7 +194,7 @@ def test_results_setup(mocker, dbsession):
         ),
         TestInstance(
             test_id=test_id3,
-            outcome=str(Outcome.Failure),
+            outcome="failure",
             failure_message="Shared \n\n\n\n <pre> \n  ````````  \n \r\n\r\n | test | test | test </pre>failure message",
             duration_seconds=3.0,
             upload_id=uploads[2].id,
@@ -204,7 +203,7 @@ def test_results_setup(mocker, dbsession):
         ),
         TestInstance(
             test_id=test_id1,
-            outcome=str(Outcome.Failure),
+            outcome="failure",
             failure_message="<pre>Fourth \r\n\r\n</pre> | test  | instance |",
             duration_seconds=4.0,
             upload_id=uploads[3].id,
@@ -213,7 +212,7 @@ def test_results_setup(mocker, dbsession):
         ),
         TestInstance(
             test_id=test_id4,
-            outcome=str(Outcome.Failure),
+            outcome="failure",
             failure_message=None,
             duration_seconds=5.0,
             upload_id=uploads[3].id,
@@ -478,7 +477,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         repoid, commit, _, test_instances = test_results_setup
 
         for instance in test_instances:
-            instance.outcome = str(Outcome.Pass)
+            instance.outcome = "pass"
         dbsession.flush()
 
         result = TestResultsFinisherTask().run_impl(

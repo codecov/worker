@@ -22,8 +22,9 @@ def process_flake_for_repo_commit(
 ):
     uploads = ReportSession.objects.filter(
         report__report_type=CommitReport.ReportType.TEST_RESULTS.value,
+        report__commit__repository__repoid=repo_id,
         report__commit__commitid=commit_id,
-        state="processed",
+        state__in=["processed", "v2_finished"],
     ).all()
 
     curr_flakes = fetch_curr_flakes(repo_id)

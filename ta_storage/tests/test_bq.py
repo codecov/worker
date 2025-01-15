@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from test_results_parser import Testrun
+import test_results_parser
 
 import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from database.tests.factories import RepositoryFlagFactory, UploadFactory
@@ -38,7 +40,7 @@ def test_bigquery_driver(dbsession, mock_bigquery_service):
     upload.flags.append(repo_flag_2)
     dbsession.flush()
 
-    test_data: list[Testrun] = [
+    test_data: list[test_results_parser.Testrun] = [
         {
             "name": "test_name",
             "classname": "test_class",

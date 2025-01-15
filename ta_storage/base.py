@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
-from test_results_parser import Testrun
+import test_results_parser
 
 from database.models.reports import Upload
 
@@ -15,6 +17,6 @@ class TADriver(ABC):
         branch_name: str,
         upload: Upload,
         framework: str | None,
-        testruns: list[Testrun],
+        testruns: list[test_results_parser.Testrun],
     ):
         pass

@@ -301,6 +301,7 @@ pytest==8.1.1
     #   pytest-cov
     #   pytest-django
     #   pytest-freezegun
+    #   pytest-insta
     #   pytest-mock
     #   pytest-sqlalchemy
 pytest-asyncio==0.14.0
@@ -312,6 +313,8 @@ pytest-cov==5.0.0
 pytest-django==4.7.0
     # via -r requirements.in
 pytest-freezegun==0.4.2
+    # via -r requirements.in
+pytest-insta==0.3.0
     # via -r requirements.in
 pytest-mock==1.13.0
     # via -r requirements.in
@@ -402,7 +405,7 @@ statsd==3.3.0
     # via -r requirements.in
 stripe==11.4.1
     # via -r requirements.in
-test-results-parser @ https://github.com/codecov/test-results-parser/archive/996ecb2aaf7767bf4c2944c75835c1ee1eb2b566.tar.gz#egg=test-results-parser
+test-results-parser @ https://github.com/codecov/test-results-parser/archive/190bbc8a911099749928e13d5fe57f6027ca1e74.tar.gz#egg=test-results-parser
     # via -r requirements.in
 text-unidecode==1.3
     # via faker
@@ -442,6 +445,7 @@ wcwidth==0.2.5
 wrapt==1.16.0
     # via
     #   deprecated
+    #   pytest-insta
     #   vcrpy
 yarl==1.9.4
     # via vcrpy
