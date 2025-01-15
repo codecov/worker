@@ -2,8 +2,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
-from shared.billing import is_pr_billing_plan
-from sqlalchemy import func
+from shared.plan.service import PlanService
 from sqlalchemy.orm import Session
 
 from database.models import Owner
@@ -58,19 +57,13 @@ def determine_seat_activation(pull: EnrichedPull) -> SeatActivationInfo:
     org = db_pull.repository.owner
 
     db_session: Session = db_pull.get_db_session()
-    if org.service == "gitlab" and org.parent_service_id:
-        # need to get root group so we can check plan info
-        (gl_root_group,) = db_session.query(
-            func.public.get_gitlab_root_group(org.ownerid)
-        ).first()
 
-        org = (
-            db_session.query(Owner)
-            .filter(Owner.ownerid == gl_root_group.get("ownerid"))
-            .first()
-        )
+    # do not access plan directly - only through PlanService
+    org_plan = PlanService(current_org=org)
+    # use the org that has the plan - for GL this is the root_org rather than the repository.owner org
+    org = org_plan.current_org
 
-    if not is_pr_billing_plan(org.plan):
+    if not org_plan.is_pr_billing_plan:
         return SeatActivationInfo(reason="no_pr_billing_plan")
 
     pr_author = (

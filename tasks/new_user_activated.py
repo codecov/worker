@@ -2,9 +2,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Iterator
 
-from shared.billing import is_pr_billing_plan
 from shared.celery_config import new_user_activated_task_name, notify_task_name
-from sqlalchemy import func
+from shared.plan.service import PlanService
 
 from app import celery_app
 from database.enums import Decoration
@@ -85,20 +84,10 @@ class NewUserActivatedTask(BaseCodecovTask, name=new_user_activated_task_name):
             log.info("Org not found", extra=dict(org_ownerid=ownerid))
             return False
 
-        if owner.service == "gitlab" and owner.parent_service_id:
-            # need to get root group so we can check plan info
-            (gl_root_group,) = db_session.query(
-                func.public.get_gitlab_root_group(ownerid)
-            ).first()
+        # do not access plan directly - only through PlanService
+        plan = PlanService(current_org=owner)
 
-            root_group = (
-                db_session.query(Owner)
-                .filter(Owner.ownerid == gl_root_group.get("ownerid"))
-                .first()
-            )
-            return is_pr_billing_plan(root_group.plan)
-
-        return is_pr_billing_plan(owner.plan)
+        return plan.is_pr_billing_plan
 
     @metrics.timer("worker.task.new_user_activated.get_pulls_authored_by_user")
     def get_pulls_authored_by_user(
