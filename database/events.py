@@ -8,7 +8,6 @@ from sqlalchemy import event, inspect
 from database.models.core import Repository
 from helpers.environment import is_enterprise
 
-
 _pubsub_publisher = None
 
 log = logging.getLogger(__name__)

@@ -55,6 +55,7 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
         b'{"type": "repo", "sync": "one", "id": 91728376}',
     )
 
+
 def test_repo_sync_when_shelter_disabled(dbsession, mock_configuration, mocker):
     # this prevents the pubsub SDK from trying to load credentials
     os.environ["PUBSUB_EMULATOR_HOST"] = "localhost"
