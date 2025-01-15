@@ -213,9 +213,9 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app, snapshot):
     ]
 
     assert snapshot("json") == {
-        "tests": tests,
-        "test_instances": test_instances,
-        "rollups": rollups,
+        "tests": sorted(tests, key=lambda x: x["name"]),
+        "test_instances": sorted(test_instances, key=lambda x: x["test_id"]),
+        "rollups": sorted(rollups, key=lambda x: x["test_id"]),
     }
 
     result = TAFinisherTask().run_impl(

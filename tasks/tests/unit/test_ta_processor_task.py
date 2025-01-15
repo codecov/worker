@@ -44,6 +44,10 @@ class TestUploadTestProcessorTask(object):
         mock_bigquery_service,
         snapshot,
     ):
+        mock_configuration.set_params(
+            mock_configuration.params | {"services": {"bigquery": {"enabled": True}}}
+        )
+
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         assert len(tests) == 0
@@ -137,9 +141,9 @@ class TestUploadTestProcessorTask(object):
         ]
 
         assert snapshot("json") == {
-            "tests": tests,
-            "test_instances": test_instances,
-            "rollups": rollups,
+            "tests": sorted(tests, key=lambda x: x["name"]),
+            "test_instances": sorted(test_instances, key=lambda x: x["test_id"]),
+            "rollups": sorted(rollups, key=lambda x: x["test_id"]),
         }
         assert snapshot("bin") == mock_storage.read_file("archive", url)
 
@@ -158,7 +162,7 @@ class TestUploadTestProcessorTask(object):
             )
             for testrun_bytes in mock_bigquery_service.mock_calls[0][1][3]
         ]
-        assert snapshot("json") == testruns
+        assert snapshot("json") == sorted(testruns, key=lambda x: x["name"])
 
     @pytest.mark.integration
     def test_ta_processor_task_error_parsing_file(
@@ -317,9 +321,9 @@ class TestUploadTestProcessorTask(object):
         rollups = dbsession.query(DailyTestRollup).all()
 
         assert snapshot("json") == {
-            "tests": tests,
-            "test_instances": test_instances,
-            "rollups": rollups,
+            "tests": sorted(tests, key=lambda x: x["name"]),
+            "test_instances": sorted(test_instances, key=lambda x: x["test_id"]),
+            "rollups": sorted(rollups, key=lambda x: x["test_id"]),
         }
 
     @pytest.mark.integration
