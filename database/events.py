@@ -6,10 +6,17 @@ from shared.config import get_config
 from sqlalchemy import event, inspect
 
 from database.models.core import Repository
+from helpers.environment import is_enterprise
 
 _pubsub_publisher = None
 
 log = logging.getLogger(__name__)
+
+
+def _is_shelter_enabled():
+    return get_config(
+        "setup", "shelter", "enabled", default=False if is_enterprise() else True
+    )
 
 
 def _get_pubsub_publisher():
@@ -45,12 +52,22 @@ def _sync_repo(repository: Repository):
 
 @event.listens_for(Repository, "after_insert")
 def after_insert_repo(mapper, connection, target: Repository):
+    if not _is_shelter_enabled():
+        log.debug("Shelter is not enabled, skipping after_insert signal")
+        return
+
+    # Send to shelter service
     log.info("After insert signal", extra=dict(repoid=target.repoid))
     _sync_repo(target)
 
 
 @event.listens_for(Repository, "after_update")
 def after_update_repo(mapper, connection, target: Repository):
+    if not _is_shelter_enabled():
+        log.debug("Shelter is not enabled, skipping after_update signal")
+        return
+
+    # Send to shelter service
     state = inspect(target)
 
     for attr in state.attrs:
