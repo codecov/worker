@@ -17,7 +17,7 @@ class StaticAnalysisSingleFileSnapshot(CodecovBaseModel, MixinBaseClass):
     repository_id = Column(types.Integer, ForeignKey("repos.repoid"))
     file_hash = Column(UUID, nullable=False)
     content_location = Column(types.Text, nullable=False)
-    state_id = Column(types.Integer)
+    state_id = Column(types.Integer, nullable=False)
     # relationships
     repository = relationship("Repository")
 

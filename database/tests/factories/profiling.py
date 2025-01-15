@@ -14,6 +14,7 @@ class ProfilingCommitFactory(factory.Factory):
 
 class ProfilingUploadFactory(factory.Factory):
     profiling_commit = factory.SubFactory(ProfilingCommitFactory)
+    raw_upload_location = factory.Faker("url")
 
     class Meta:
         model = ProfilingUpload
