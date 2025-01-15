@@ -2,11 +2,12 @@ import json
 import logging
 
 from google.cloud import pubsub_v1
-from helpers.environment import is_enterprise
 from shared.config import get_config
 from sqlalchemy import event, inspect
 
 from database.models.core import Repository
+from helpers.environment import is_enterprise
+
 
 _pubsub_publisher = None
 
@@ -21,7 +22,7 @@ def _is_shelter_enabled():
 
 def _get_pubsub_publisher():
     global _pubsub_publisher
-    if not _pubsub_publisher and _is_shelter_enabled():
+    if not _pubsub_publisher:
         _pubsub_publisher = pubsub_v1.PublisherClient()
     return _pubsub_publisher
 
@@ -32,7 +33,7 @@ def _sync_repo(repository: Repository):
         pubsub_project_id = get_config("setup", "shelter", "pubsub_project_id")
         pubsub_topic_id = get_config("setup", "shelter", "sync_repo_topic_id")
 
-        if _is_shelter_enabled() and pubsub_project_id and pubsub_topic_id:
+        if pubsub_project_id and pubsub_topic_id:
             publisher = _get_pubsub_publisher()
             topic_path = publisher.topic_path(pubsub_project_id, pubsub_topic_id)
             publisher.publish(
@@ -52,12 +53,22 @@ def _sync_repo(repository: Repository):
 
 @event.listens_for(Repository, "after_insert")
 def after_insert_repo(mapper, connection, target: Repository):
+    if not _is_shelter_enabled():
+        log.debug("Shelter is not enabled, skipping after_insert signal")
+        return
+
+    # Send to shelter service
     log.info("After insert signal", extra=dict(repoid=target.repoid))
     _sync_repo(target)
 
 
 @event.listens_for(Repository, "after_update")
 def after_update_repo(mapper, connection, target: Repository):
+    if not _is_shelter_enabled():
+        log.debug("Shelter is not enabled, skipping after_update signal")
+        return
+
+    # Send to shelter service
     state = inspect(target)
 
     for attr in state.attrs:
