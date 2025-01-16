@@ -1,18 +1,35 @@
+from typing import Any, TypedDict
+
 from database.enums import Notification
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.checks.base import ChecksNotifier
-from services.notification.notifiers.mixins.status import StatusPatchMixin
+from services.notification.notifiers.mixins.status import StatusPatchMixin, StatusState
 from services.yaml import read_yaml_field
+
+
+class CheckOutput(TypedDict):
+    title: str
+    summary: str
+    annotations: list[Any]
+
+
+class CheckResult(TypedDict):
+    state: StatusState
+    output: CheckOutput
+    included_helper_text: dict[str, str]
 
 
 class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
     context = "patch"
+    notification_type_display_name = "check"
 
     @property
     def notification_type(self) -> Notification:
         return Notification.checks_patch
 
-    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
+    def build_payload(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> CheckResult:
         """
         This method build the paylod of the patch github checks.
 
@@ -21,17 +38,23 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
         """
         if self.is_empty_upload():
             state, message = self.get_status_check_for_empty_upload()
-            return {
-                "state": state,
-                "output": {
-                    "title": "Empty Upload",
-                    "summary": message,
-                },
-            }
-        state, message = self.get_patch_status(comparison)
+            result = CheckResult(
+                state=state,
+                output=CheckOutput(
+                    title="Empty Upload",
+                    summary=message,
+                    annotations=[],
+                ),
+                included_helper_text={},
+            )
+            return result
+        status_result = self.get_patch_status(
+            comparison, notification_type=self.notification_type_display_name
+        )
         codecov_link = self.get_codecov_pr_link(comparison)
 
-        title = message
+        title = status_result["message"]
+        message = status_result["message"]
 
         should_use_upgrade = self.should_use_upgrade_decoration()
         if should_use_upgrade:
@@ -54,23 +77,27 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
             or should_use_upgrade
             or should_annotate is False
         ):
-            return {
-                "state": state,
-                "output": {
-                    "title": f"{title}",
-                    "summary": "\n\n".join([codecov_link, message]),
-                },
-            }
+            result = CheckResult(
+                state=status_result["state"],
+                output=CheckOutput(
+                    title=title,
+                    summary="\n\n".join([codecov_link, message]),
+                    annotations=[],
+                ),
+                included_helper_text=status_result["included_helper_text"],
+            )
+            return result
         diff = comparison.get_diff(use_original_base=True)
         #  TODO: Look into why the apply diff in get_patch_status is not saving state at this point
         comparison.head.report.apply_diff(diff)
         annotations = self.create_annotations(comparison, diff)
-
-        return {
-            "state": state,
-            "output": {
-                "title": f"{title}",
-                "summary": "\n\n".join([codecov_link, message]),
-                "annotations": annotations,
-            },
-        }
+        result = CheckResult(
+            state=status_result["state"],
+            output=CheckOutput(
+                title=title,
+                summary="\n\n".join([codecov_link, message]),
+                annotations=annotations,
+            ),
+            included_helper_text=status_result["included_helper_text"],
+        )
+        return result
