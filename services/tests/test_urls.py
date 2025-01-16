@@ -1,4 +1,5 @@
-from services.urls import append_tracking_params_to_urls
+from database.tests.factories import OwnerFactory, PullFactory, RepositoryFactory
+from services.urls import append_tracking_params_to_urls, get_members_url, get_plan_url
 
 
 def test_append_tracking_params_to_urls():
@@ -29,3 +30,60 @@ def test_append_tracking_params_to_urls():
     ]
 
     assert result == expected_result
+
+
+class TestURLs(object):
+    def test_gitlab_url_username_swap(self, dbsession):
+        base_for_member_url = "https://app.codecov.io/members/"
+        base_for_plan_url = "https://app.codecov.io/plan/"
+
+        github_org = OwnerFactory.create(
+            service="github",
+            username="gh",
+        )
+        dbsession.add(github_org)
+        r = RepositoryFactory.create(owner=github_org)
+        dbsession.add(r)
+        gh_pull = PullFactory.create(repository=r)
+        dbsession.add(gh_pull)
+        dbsession.flush()
+        member_url = get_members_url(gh_pull)
+        assert member_url == base_for_member_url + "gh/gh"
+
+        gitlab_root_org = OwnerFactory.create(service="gitlab", username="gl_root")
+        dbsession.add(gitlab_root_org)
+        r = RepositoryFactory.create(owner=gitlab_root_org)
+        dbsession.add(r)
+        gl_root_pull = PullFactory.create(repository=r)
+        dbsession.add(gl_root_pull)
+        dbsession.flush()
+        plan_url = get_plan_url(gl_root_pull)
+        assert plan_url == base_for_plan_url + "gl/gl_root"
+
+        gitlab_mid_org = OwnerFactory.create(
+            service="gitlab",
+            username="gl_mid",
+            parent_service_id=gitlab_root_org.service_id,
+        )
+        dbsession.add(gitlab_mid_org)
+        r = RepositoryFactory.create(owner=gitlab_mid_org)
+        dbsession.add(r)
+        gl_mid_pull = PullFactory.create(repository=r)
+        dbsession.add(gl_mid_pull)
+        dbsession.flush()
+        member_url = get_members_url(gl_mid_pull)
+        assert member_url == base_for_member_url + "gl/gl_root"
+
+        gitlab_sub_org = OwnerFactory.create(
+            service="gitlab",
+            username="gl_child",
+            parent_service_id=gitlab_mid_org.service_id,
+        )
+        dbsession.add(gitlab_sub_org)
+        r = RepositoryFactory.create(owner=gitlab_sub_org)
+        dbsession.add(r)
+        gl_child_pull = PullFactory.create(repository=r)
+        dbsession.add(gl_child_pull)
+        dbsession.flush()
+        plan_url = get_plan_url(gl_child_pull)
+        assert plan_url == base_for_plan_url + "gl/gl_root"

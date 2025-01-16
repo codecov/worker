@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import factory
 from factory import Factory
+from shared.plan.constants import PlanName
 
 from database import enums, models
 from services.encryption import encryptor
@@ -49,6 +50,7 @@ class OwnerFactory(Factory):
     trial_status = enums.TrialStatus.NOT_STARTED.value
     trial_fired_by = None
     upload_token_required_for_public_repos = False
+    plan = PlanName.BASIC_PLAN_NAME.value
 
     oauth_token = factory.LazyAttribute(
         lambda o: encrypt_oauth_token(o.unencrypted_oauth_token)
