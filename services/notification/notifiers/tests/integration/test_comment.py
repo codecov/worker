@@ -3,7 +3,6 @@ from unittest.mock import PropertyMock
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 
-from database.enums import TestResultsProcessingError
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
@@ -413,7 +412,7 @@ class TestCommentNotifierIntegration(object):
     ):
         sample_comparison.context = ComparisonContext(
             all_tests_passed=False,
-            test_results_error=TestResultsProcessingError.NO_SUCCESS,
+            test_results_error=":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
         )
         mock_configuration._params["setup"] = {
             "codecov_url": None,

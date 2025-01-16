@@ -298,3 +298,12 @@ class ConstantsFactory(Factory):
 
     key = ""
     value = ""
+
+
+class UploadErrorFactory(Factory):
+    class Meta:
+        model = models.UploadError
+
+    report_upload = factory.SubFactory(UploadFactory)
+    error_code = "error"
+    error_params = {"error_message": "error message"}
