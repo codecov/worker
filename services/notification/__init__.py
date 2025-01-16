@@ -335,9 +335,7 @@ class NotificationService(object):
             notifier=notifier.name, title=notifier.title, result=None
         )
         try:
-            res = notifier.notify(
-                comparison, add_custom_target_helper_text_to_pr_comment
-            )
+            res = notifier.notify(comparison)
             individual_result["result"] = res
 
             notifier.store_results(comparison, res)
