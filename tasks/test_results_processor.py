@@ -402,6 +402,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     commitid=upload.report.commit_id,
                     uploadid=upload.id,
                     parser_err_msg=str(exc),
+                    upload_state=upload.state,
                 ),
             )
             sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
