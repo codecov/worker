@@ -11,10 +11,12 @@ from time_machine import travel
 from database.models import DailyTestRollup, Test, TestInstance
 from database.tests.factories import (
     CommitFactory,
+    PullFactory,
     ReportFactory,
     RepositoryFactory,
     UploadFactory,
 )
+from services.repository import EnrichedPull
 from services.seats import SeatActivationInfo
 from services.urls import services_short_dict
 from tasks.ta_finisher import TAFinisherTask
@@ -29,6 +31,19 @@ def mock_bigquery_service():
         service = MagicMock()
         mock.return_value = service
         yield service
+
+
+@pytest.fixture
+def mock_repo_provider_comments(mocker):
+    m = mocker.MagicMock(
+        edit_comment=AsyncMock(return_value=True),
+        post_comment=AsyncMock(return_value={"id": 1}),
+    )
+    _ = mocker.patch(
+        "tasks.ta_finisher.get_repo_provider_service",
+        return_value=m,
+    )
+    return m
 
 
 def generate_junit_xml(
@@ -83,7 +98,14 @@ def generate_junit_xml(
 
 
 @travel("2025-01-01T00:00:00Z", tick=False)
-def test_test_analytics(dbsession, mocker, mock_storage, celery_app, snapshot):
+def test_test_analytics(
+    dbsession,
+    mocker,
+    mock_storage,
+    celery_app,
+    snapshot,
+    mock_repo_provider_comments,
+):
     url = "literally/whatever"
 
     testruns = [
@@ -145,15 +167,18 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app, snapshot):
         "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
     }
 
-    mock_repo_provider_service = AsyncMock()
-    mocker.patch(
-        "tasks.ta_finisher.get_repo_provider_service",
-        return_value=mock_repo_provider_service,
+    pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+    dbsession.add(pull)
+    dbsession.flush()
+
+    enriched_pull = EnrichedPull(
+        database_pull=pull,
+        provider_pull={},
     )
-    mock_pull_request_information = AsyncMock()
-    mocker.patch(
+
+    _ = mocker.patch(
         "tasks.ta_finisher.fetch_and_update_pull_request_information_from_commit",
-        return_value=mock_pull_request_information,
+        return_value=enriched_pull,
     )
     mocker.patch(
         "tasks.ta_finisher.determine_seat_activation",
@@ -235,15 +260,14 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app, snapshot):
     assert result["notify_succeeded"] is True
     assert result["queue_notify"] is False
 
-    mock_repo_provider_service.edit_comment.assert_called_once()
+    mock_repo_provider_comments.post_comment.assert_called_once()
 
     short_form_service_name = services_short_dict.get(
         upload.report.commit.repository.owner.service
     )
 
-    mock_repo_provider_service.edit_comment.assert_called_once_with(
-        mock_pull_request_information.database_pull.pullid,
-        mock_pull_request_information.database_pull.commentid,
+    mock_repo_provider_comments.post_comment.assert_called_once_with(
+        pull.pullid,
         f"""### :x: 2 Tests Failed:
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
