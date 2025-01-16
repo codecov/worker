@@ -70,7 +70,7 @@ def get_uploads(db_session: Session, commit: Commit) -> dict[int, Upload]:
             .filter(
                 CommitReport.commit_id == commit.id,
                 CommitReport.report_type == ReportType.TEST_RESULTS.value,
-                Upload.state == "v2_processed",
+                Upload.state.in_(["v2_processed", "v2_finished"]),
             )
             .all()
         )

@@ -111,7 +111,10 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
         else:
             flaky_test_set = get_flake_set(db_session, upload.report.commit.repoid)
             pg = PGDriver(db_session, flaky_test_set)
-            bq = BQDriver()
+            bq_enabled = False
+            if get_config("services", "bigquery", "enabled", default=False):
+                bq = BQDriver()
+                bq_enabled = True
 
             for parsing_info in parsing_infos:
                 framework = parsing_info["framework"]
@@ -126,15 +129,16 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
                     testruns,
                 )
 
-                bq.write_testruns(
-                    None,
-                    repoid,
-                    commitid,
-                    branch,
-                    upload,
-                    framework,
-                    testruns,
-                )
+                if bq_enabled:
+                    bq.write_testruns(
+                        None,
+                        repoid,
+                        commitid,
+                        branch,
+                        upload,
+                        framework,
+                        testruns,
+                    )
 
             upload.state = "v2_processed"
             db_session.commit()

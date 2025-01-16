@@ -63,14 +63,18 @@ def modify_structures(
     framework: str | None,
 ):
     flags_hash = generate_flags_hash(upload.flag_names)
+
+    test_name = f"{testrun['classname']}\x1f{testrun['name']}"
     test_id = generate_test_id(
         repoid,
         testrun["testsuite"],
-        testrun["name"],
+        test_name,
         flags_hash,
     )
 
-    test = generate_test_dict(test_id, repoid, testrun, flags_hash, framework)
+    test = generate_test_dict(
+        test_id, test_name, repoid, testrun, flags_hash, framework
+    )
     tests_to_write[test_id] = test
 
     test_instance = generate_test_instance_dict(
@@ -83,10 +87,10 @@ def modify_structures(
             {"test_id": test_id, "flag_id": flag_id} for flag_id in repo_flag_ids
         )
 
-    if test["id"] in daily_totals:
+    if test_id in daily_totals:
         update_daily_totals(
             daily_totals,
-            test["id"],
+            test_id,
             testrun["duration"],
             testrun["outcome"],
         )
@@ -105,6 +109,7 @@ def modify_structures(
 
 def generate_test_dict(
     test_id: str,
+    test_name: str,
     repoid: int,
     testrun: test_results_parser.Testrun,
     flags_hash: str,
@@ -113,7 +118,7 @@ def generate_test_dict(
     return {
         "id": test_id,
         "repoid": repoid,
-        "name": f"{testrun['classname']}\x1f{testrun['name']}",
+        "name": test_name,
         "testsuite": testrun["testsuite"],
         "flags_hash": flags_hash,
         "framework": framework,
