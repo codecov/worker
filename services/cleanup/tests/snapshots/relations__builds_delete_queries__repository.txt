@@ -1,3 +1,21 @@
+-- TestInstance
+DELETE
+FROM "reports_testinstance"
+WHERE "reports_testinstance"."repoid" IN
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."repoid" = %s)
+
+
+-- DailyTestRollup
+DELETE
+FROM "reports_dailytestrollups"
+WHERE "reports_dailytestrollups"."repoid" IN
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."repoid" = %s)
+
+
 -- RepositoryToken
 DELETE
 FROM "codecov_auth_repositorytoken"
@@ -189,18 +207,6 @@ WHERE "reports_uploadleveltotals"."upload_id" IN
                     WHERE U0."repoid" = %s))))
 
 
--- TestInstance
-DELETE
-FROM "reports_testinstance"
-WHERE "reports_testinstance"."test_id" IN
-    (SELECT V0."id"
-     FROM "reports_test" V0
-     WHERE V0."repoid" IN
-         (SELECT U0."repoid"
-          FROM "repos" U0
-          WHERE U0."repoid" = %s))
-
-
 -- TestResultReportTotals
 DELETE
 FROM "reports_testresultreporttotals"
@@ -268,18 +274,6 @@ WHERE "reports_flake"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
      WHERE U0."repoid" = %s)
-
-
--- DailyTestRollup
-DELETE
-FROM "reports_dailytestrollups"
-WHERE "reports_dailytestrollups"."test_id" IN
-    (SELECT V0."id"
-     FROM "reports_test" V0
-     WHERE V0."repoid" IN
-         (SELECT U0."repoid"
-          FROM "repos" U0
-          WHERE U0."repoid" = %s))
 
 
 -- LastCacheRollupDate
@@ -383,19 +377,19 @@ WHERE "reports_repositoryflag"."repository_id" IN
      WHERE U0."repoid" = %s)
 
 
--- ReducedError
+-- Test
 DELETE
-FROM "reports_reducederror"
-WHERE "reports_reducederror"."repoid" IN
+FROM "reports_test"
+WHERE "reports_test"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
      WHERE U0."repoid" = %s)
 
 
--- Test
+-- ReducedError
 DELETE
-FROM "reports_test"
-WHERE "reports_test"."repoid" IN
+FROM "reports_reducederror"
+WHERE "reports_reducederror"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
      WHERE U0."repoid" = %s)

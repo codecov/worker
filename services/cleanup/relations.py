@@ -4,16 +4,24 @@ from graphlib import TopologicalSorter
 
 from django.db.models import Model, Q
 from django.db.models.query import QuerySet
-from shared.django_apps.codecov_auth.models import Owner
+from shared.django_apps.codecov_auth.models import Owner, OwnerProfile
 from shared.django_apps.core.models import Commit, Pull, Repository
+from shared.django_apps.reports.models import DailyTestRollup, TestInstance
 
 # Relations referencing 0 through field 1 of model 2:
 IGNORE_RELATIONS: set[tuple[type[Model], str, type[Model]]] = {
+    (Owner, "default_org", OwnerProfile),
     (Owner, "bot", Owner),
     (Owner, "bot", Repository),
     (Owner, "author", Commit),
     (Owner, "author", Pull),
     (Repository, "forkid", Repository),
+}
+
+# Relations which have no proper foreign key:
+UNDOCUMENTED_RELATIONS: set[tuple[type[Model], str, type[Model]]] = {
+    (Repository, "repoid", TestInstance),
+    (Repository, "repoid", DailyTestRollup),
 }
 
 
@@ -51,6 +59,14 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
             process_model(related_model)
 
     def process_model(model: type[Model]):
+        for (
+            referenced_model,
+            related_model_field,
+            related_model,
+        ) in UNDOCUMENTED_RELATIONS:
+            if referenced_model == model:
+                process_relation(model, related_model_field, related_model)
+
         if not (meta := model._meta):
             return
 

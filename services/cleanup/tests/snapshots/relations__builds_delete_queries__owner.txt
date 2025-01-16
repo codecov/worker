@@ -44,14 +44,10 @@ WHERE "codecov_auth_organizationleveltoken"."ownerid" IN
 -- OwnerProfile
 DELETE
 FROM "codecov_auth_ownerprofile"
-WHERE ("codecov_auth_ownerprofile"."owner_id" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s)
-       OR "codecov_auth_ownerprofile"."default_org_id" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+WHERE "codecov_auth_ownerprofile"."owner_id" IN
+    (SELECT U0."ownerid"
+     FROM "owners" U0
+     WHERE U0."ownerid" = %s)
 
 
 -- Session
@@ -70,6 +66,30 @@ WHERE "codecov_auth_usertoken"."ownerid" IN
     (SELECT U0."ownerid"
      FROM "owners" U0
      WHERE U0."ownerid" = %s)
+
+
+-- TestInstance
+DELETE
+FROM "reports_testinstance"
+WHERE "reports_testinstance"."repoid" IN
+    (SELECT V0."repoid"
+     FROM "repos" V0
+     WHERE V0."ownerid" IN
+         (SELECT U0."ownerid"
+          FROM "owners" U0
+          WHERE U0."ownerid" = %s))
+
+
+-- DailyTestRollup
+DELETE
+FROM "reports_dailytestrollups"
+WHERE "reports_dailytestrollups"."repoid" IN
+    (SELECT V0."repoid"
+     FROM "repos" V0
+     WHERE V0."ownerid" IN
+         (SELECT U0."ownerid"
+          FROM "owners" U0
+          WHERE U0."ownerid" = %s))
 
 
 -- RepositoryToken
@@ -293,21 +313,6 @@ WHERE "reports_uploadleveltotals"."upload_id" IN
                          WHERE U0."ownerid" = %s)))))
 
 
--- TestInstance
-DELETE
-FROM "reports_testinstance"
-WHERE "reports_testinstance"."test_id" IN
-    (SELECT W0."id"
-     FROM "reports_test" W0
-     WHERE W0."repoid" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
-
-
 -- TestResultReportTotals
 DELETE
 FROM "reports_testresultreporttotals"
@@ -393,21 +398,6 @@ WHERE "reports_flake"."repoid" IN
          (SELECT U0."ownerid"
           FROM "owners" U0
           WHERE U0."ownerid" = %s))
-
-
--- DailyTestRollup
-DELETE
-FROM "reports_dailytestrollups"
-WHERE "reports_dailytestrollups"."test_id" IN
-    (SELECT W0."id"
-     FROM "reports_test" W0
-     WHERE W0."repoid" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
 
 
 -- LastCacheRollupDate
@@ -550,10 +540,10 @@ WHERE "reports_repositoryflag"."repository_id" IN
           WHERE U0."ownerid" = %s))
 
 
--- ReducedError
+-- Test
 DELETE
-FROM "reports_reducederror"
-WHERE "reports_reducederror"."repoid" IN
+FROM "reports_test"
+WHERE "reports_test"."repoid" IN
     (SELECT V0."repoid"
      FROM "repos" V0
      WHERE V0."ownerid" IN
@@ -562,10 +552,10 @@ WHERE "reports_reducederror"."repoid" IN
           WHERE U0."ownerid" = %s))
 
 
--- Test
+-- ReducedError
 DELETE
-FROM "reports_test"
-WHERE "reports_test"."repoid" IN
+FROM "reports_reducederror"
+WHERE "reports_reducederror"."repoid" IN
     (SELECT V0."repoid"
      FROM "repos" V0
      WHERE V0."ownerid" IN

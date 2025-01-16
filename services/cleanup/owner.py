@@ -2,7 +2,7 @@ import logging
 
 from django.db import transaction
 from django.db.models import Q
-from shared.django_apps.codecov_auth.models import Owner
+from shared.django_apps.codecov_auth.models import Owner, OwnerProfile
 from shared.django_apps.core.models import Commit, Pull, Repository
 
 from services.cleanup.cleanup import run_cleanup
@@ -30,6 +30,7 @@ def clear_owner_references(owner_id: int):
     This clears the `ownerid` from various DB arrays where it is being referenced.
     """
 
+    OwnerProfile.objects.filter(default_org=owner_id).update(default_org=None)
     Owner.objects.filter(bot=owner_id).update(bot=None)
     Repository.objects.filter(bot=owner_id).update(bot=None)
     Commit.objects.filter(author=owner_id).update(author=None)
