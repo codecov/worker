@@ -15,7 +15,7 @@ from shared.django_apps.reports.models import ReportSession as Upload
 from services.archive import ArchiveService, MinioEndpoints
 from services.cleanup.utils import CleanupContext, CleanupResult
 
-MANUAL_QUERY_CHUNKSIZE = 2_500
+MANUAL_QUERY_CHUNKSIZE = 5_000
 DELETE_FILES_BATCHSIZE = 50
 
 

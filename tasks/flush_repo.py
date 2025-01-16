@@ -1,11 +1,7 @@
 import logging
 
-import sentry_sdk
-from shared.django_apps.core.models import Repository
-
 from app import celery_app
-from database.engine import Session
-from services.cleanup.cleanup import run_cleanup
+from services.cleanup.repository import cleanup_repo
 from services.cleanup.utils import CleanupSummary
 from tasks.base import BaseCodecovTask
 
@@ -13,16 +9,11 @@ log = logging.getLogger(__name__)
 
 
 class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
-    @sentry_sdk.trace
-    def run_impl(
-        self, _db_session: Session, *, repoid: int, **kwargs
-    ) -> CleanupSummary:
-        log.info("Deleting repo contents", extra={"repoid": repoid})
-        repo_query = Repository.objects.filter(repoid=repoid)
+    acks_late = True  # retry the task when the worker dies for whatever reason
+    max_retries = None  # aka, no limit on retries
 
-        summary = run_cleanup(repo_query)
-        log.info("Deletion finished", extra={"repoid": repoid, "summary": summary})
-        return summary
+    def run_impl(self, _db_session, repoid: int) -> CleanupSummary:
+        return cleanup_repo(repoid)
 
 
 FlushRepo = celery_app.register_task(FlushRepoTask())

@@ -1,8 +1,12 @@
+import logging
+
 from django.db.models.query import QuerySet
 
 from services.cleanup.models import MANUAL_CLEANUP
 from services.cleanup.relations import build_relation_graph
 from services.cleanup.utils import CleanupContext, CleanupResult, CleanupSummary
+
+log = logging.getLogger(__name__)
 
 
 def run_cleanup(
@@ -32,6 +36,15 @@ def run_cleanup(
 
         if result.cleaned_models > 0 or result.cleaned_files > 0:
             summary[model] = result
+
+            log.info(
+                f"Finished cleaning up {model.__name__}",
+                extra={
+                    "cleaned_models": result.cleaned_models,
+                    "cleaned_files": result.cleaned_files,
+                },
+            )
+
         cleaned_models += result.cleaned_models
         cleaned_files += result.cleaned_files
 
