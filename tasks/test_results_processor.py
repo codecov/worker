@@ -432,6 +432,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         result = self.parse_file(payload_bytes, upload)
         if result is None:
             upload.state = "has_failed"
+            db_session.commit()
             return {"successful": False}
 
         parsing_results, readable_files = result
