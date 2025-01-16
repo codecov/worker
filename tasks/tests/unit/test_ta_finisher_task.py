@@ -15,6 +15,7 @@ from database.tests.factories import (
     RepositoryFactory,
     UploadFactory,
 )
+from services.seats import SeatActivationInfo
 from services.urls import services_short_dict
 from tasks.ta_finisher import TAFinisherTask
 from tasks.ta_processor import TAProcessorTask
@@ -154,6 +155,10 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app, snapshot):
         "tasks.ta_finisher.fetch_and_update_pull_request_information_from_commit",
         return_value=mock_pull_request_information,
     )
+    mocker.patch(
+        "tasks.ta_finisher.determine_seat_activation",
+        return_value=SeatActivationInfo(reason="public_repo"),
+    )
 
     result = TAProcessorTask().run_impl(
         dbsession,
@@ -213,9 +218,9 @@ def test_test_analytics(dbsession, mocker, mock_storage, celery_app, snapshot):
     ]
 
     assert snapshot("json") == {
-        "tests": tests,
-        "test_instances": test_instances,
-        "rollups": rollups,
+        "tests": sorted(tests, key=lambda x: x["name"]),
+        "test_instances": sorted(test_instances, key=lambda x: x["test_id"]),
+        "rollups": sorted(rollups, key=lambda x: x["test_id"]),
     }
 
     result = TAFinisherTask().run_impl(

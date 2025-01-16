@@ -5,7 +5,7 @@ from shared.config import PATCH_CENTRIC_DEFAULT_CONFIG
 from shared.yaml import UserYaml
 
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from database.tests.factories.core import CommitFactory
+from database.tests.factories.core import CommitFactory, PullFactory
 from services.bundle_analysis.comparison import ComparisonLoader
 from services.bundle_analysis.notify.conftest import (
     get_commit_pair,
@@ -20,6 +20,7 @@ from services.bundle_analysis.notify.contexts import (
 from services.bundle_analysis.notify.contexts.comment import (
     BundleAnalysisPRCommentContextBuilder,
 )
+from services.repository import EnrichedPull
 from services.seats import SeatActivationInfo, ShouldActivateSeat
 
 
@@ -305,7 +306,7 @@ class TestBundleAnalysisPRCommentNotificationContext:
         )
 
     def test_initialize_from_context(self, dbsession, mocker):
-        head_commit, _ = get_commit_pair(dbsession)
+        head_commit, base_commit = get_commit_pair(dbsession)
         user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
             head_commit, user_yaml, GITHUB_APP_INSTALLATION_DEFAULT_NAME
@@ -313,7 +314,19 @@ class TestBundleAnalysisPRCommentNotificationContext:
         context = builder.get_result()
         context.commit_report = MagicMock(name="fake_commit_report")
         context.bundle_analysis_report = MagicMock(name="fake_bundle_analysis_report")
-        context.pull = MagicMock(name="fake_pull")
+
+        pull = PullFactory(
+            repository=base_commit.repository,
+            head=head_commit.commitid,
+            base=base_commit.commitid,
+            compared_to=base_commit.commitid,
+        )
+        dbsession.add(pull)
+        dbsession.commit()
+        context.pull = EnrichedPull(
+            database_pull=pull,
+            provider_pull={},
+        )
 
         other_builder = BundleAnalysisPRCommentContextBuilder().initialize_from_context(
             user_yaml, context
@@ -327,7 +340,9 @@ class TestBundleAnalysisPRCommentNotificationContext:
         with pytest.raises(ContextNotLoadedError):
             other_context.bundle_analysis_comparison
 
-        fake_comparison = MagicMock(name="fake_comparison", percentage_delta=10.0)
+        fake_comparison = MagicMock(
+            name="fake_comparison", percentage_delta=10.0, total_size_delta=10.0
+        )
         mocker.patch.object(
             ComparisonLoader, "get_comparison", return_value=fake_comparison
         )
