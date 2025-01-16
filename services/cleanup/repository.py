@@ -78,6 +78,7 @@ def start_repo_cleanup(repo_id: int) -> tuple[bool, int]:
         )
 
         # The equivalent of `SET NULL`:
+        # TODO: maybe turn this into a `MANUAL_CLEANUP`?
         Repository.objects.filter(forkid=repo_id).update(forkid=None)
 
         return (True, shadow_owner.ownerid)

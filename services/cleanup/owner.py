@@ -24,6 +24,7 @@ def cleanup_owner(owner_id: int) -> CleanupSummary:
     return summary
 
 
+# TODO: maybe turn this into a `MANUAL_CLEANUP`?
 def clear_owner_references(owner_id: int):
     """
     This clears the `ownerid` from various DB arrays where it is being referenced.

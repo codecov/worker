@@ -4,6 +4,17 @@ from graphlib import TopologicalSorter
 
 from django.db.models import Model, Q
 from django.db.models.query import QuerySet
+from shared.django_apps.codecov_auth.models import Owner
+from shared.django_apps.core.models import Commit, Pull, Repository
+
+# Relations referencing 0 through field 1 of model 2:
+IGNORE_RELATIONS: set[tuple[type[Model], str, type[Model]]] = {
+    (Owner, "bot", Owner),
+    (Owner, "bot", Repository),
+    (Owner, "author", Commit),
+    (Owner, "author", Pull),
+    (Repository, "forkid", Repository),
+}
 
 
 @dataclasses.dataclass
@@ -27,9 +38,19 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
     nodes: dict[type[Model], Node] = defaultdict(Node)
     graph: TopologicalSorter[type[Model]] = TopologicalSorter()
 
-    def process_model(model: type[Model]):
-        if model in nodes:
+    def process_relation(
+        model: type[Model], related_model_field: str, related_model: type[Model]
+    ):
+        if (model, related_model_field, related_model) in IGNORE_RELATIONS:
             return
+
+        graph.add(model, related_model)
+        nodes[model].edges[related_model].append(related_model_field)
+
+        if related_model not in nodes:
+            process_model(related_model)
+
+    def process_model(model: type[Model]):
         if not (meta := model._meta):
             return
 
@@ -53,10 +74,7 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
 
                 related_model = actual_field.model
                 related_model_field = actual_field.name
-
-                graph.add(model, related_model)
-                nodes[model].edges[related_model].append(related_model_field)
-                process_model(related_model)
+                process_relation(model, related_model_field, related_model)
 
             elif field.many_to_many:
                 if not hasattr(field, "through"):
@@ -70,10 +88,7 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
                         continue
 
                     related_model_field = actual_field.name
-
-                    graph.add(model, related_model)
-                    nodes[model].edges[related_model].append(related_model_field)
-                    process_model(related_model)
+                    process_relation(model, related_model_field, related_model)
 
     process_model(query.model)
 
