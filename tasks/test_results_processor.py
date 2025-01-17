@@ -402,6 +402,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     commitid=upload.report.commit_id,
                     uploadid=upload.id,
                     parser_err_msg=str(exc),
+                    upload_state=upload.state,
                 ),
             )
             sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
@@ -432,6 +433,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         result = self.parse_file(payload_bytes, upload)
         if result is None:
             upload.state = "has_failed"
+            db_session.commit()
             return {"successful": False}
 
         parsing_results, readable_files = result
