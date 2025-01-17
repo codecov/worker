@@ -24,6 +24,7 @@ from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.activation import activate_user
 from services.lock_manager import LockManager, LockRetry, LockType
+from services.redis import get_redis_connection
 from services.repository import (
     EnrichedPull,
     TorngitBaseAdapter,
@@ -83,8 +84,11 @@ def queue_optional_tasks(
     commit_yaml: UserYaml,
     branch: str | None,
 ):
+    redis_client = get_redis_connection()
+
     if should_do_flaky_detection(repo, commit_yaml):
         if commit.merged is True or branch == repo.branch:
+            redis_client.set(f"flake_uploads:{repo.repoid}", 0)
             process_flakes_task_sig = process_flakes_task.s(
                 repo_id=repo.repoid,
                 commit_id=commit.commitid,
