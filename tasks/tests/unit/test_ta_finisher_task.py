@@ -136,6 +136,7 @@ def test_test_analytics(
         owner__username="joseph-sentry",
         owner__service="github",
         name="codecov-demo",
+        branch="main",
     )
     dbsession.add(repo)
     dbsession.flush()
@@ -162,10 +163,15 @@ def test_test_analytics(
     mocker.patch.object(TAProcessorTask, "app", celery_app)
     mocker.patch.object(TAFinisherTask, "app", celery_app)
 
-    celery_app.tasks = {
-        "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
-        "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
-    }
+    mock_flakes_sig = mocker.MagicMock()
+    mock_flakes_sig.apply_async.return_value = None
+    mock_flakes_task = mocker.patch("tasks.ta_finisher.ta_process_flakes_task")
+    mock_flakes_task.s.return_value = mock_flakes_sig
+
+    mock_cache_sig = mocker.MagicMock()
+    mock_cache_sig.apply_async.return_value = None
+    mock_cache_task = mocker.patch("tasks.ta_finisher.ta_cache_analytics_task")
+    mock_cache_task.s.return_value = mock_cache_sig
 
     pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
     dbsession.add(pull)
@@ -256,11 +262,28 @@ def test_test_analytics(
         commit_yaml={"codecov": {"max_report_age": False}},
     )
 
-    assert result["notify_attempted"] is True
-    assert result["notify_succeeded"] is True
-    assert result["queue_notify"] is False
+    expected_result = {
+        "notify_attempted": True,
+        "notify_succeeded": True,
+        "queue_notify": False,
+    }
+
+    assert result == expected_result
 
     mock_repo_provider_comments.post_comment.assert_called_once()
+
+    # Verify task signatures were called correctly
+    mock_flakes_task.s.assert_called_once_with(
+        repo_id=repo.repoid,
+        commit_id=commit.commitid,
+    )
+    mock_flakes_sig.apply_async.assert_called_once()
+
+    mock_cache_task.s.assert_called_once_with(
+        repoid=repo.repoid,
+        branch=commit.branch,
+    )
+    mock_cache_sig.apply_async.assert_called_once()
 
     short_form_service_name = services_short_dict.get(
         upload.report.commit.repository.owner.service
@@ -276,7 +299,7 @@ def test_test_analytics(
 
 > 
 > ```python
-> tests.test_parsers.TestParsers test_divide
+> hello_world.tests.test_parsers.TestParsers.test_divide
 > ```
 > 
 > <details><summary>Stack Traces | 0.001s run time</summary>
@@ -291,7 +314,7 @@ def test_test_analytics(
 
 > 
 > ```python
-> tests.test_parsers.TestParsers test_subtract
+> hello_world.tests.test_parsers.TestParsers.test_subtract
 > ```
 > 
 > <details><summary>Stack Traces | 0.004s run time</summary>
