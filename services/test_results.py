@@ -341,8 +341,7 @@ class TestResultsNotifier(BaseNotifier):
 
     def error_comment(self):
         """
-        This method assumes that the list is not empty, so
-        if the list is empty, we raise an error.
+        This is no longer used in the new TA finisher task, but this is what used to display the error comment
         """
         message: str
 

@@ -266,14 +266,14 @@ class ComparisonProxy(object):
     def all_tests_passed(self) -> bool:
         if self.context:
             return self.context.all_tests_passed or False
-        else:
-            return False
+
+        return False
 
     def test_results_error(self) -> str | None:
         if self.context:
             return self.context.test_results_error
-        else:
-            return None
+
+        return None
 
     def get_existing_statuses(self):
         if self._existing_statuses is None:

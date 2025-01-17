@@ -14,6 +14,9 @@ from services.notification.notifiers.mixins.message.helpers import (
     escape_markdown,
     make_patch_only_metrics,
 )
+from services.notification.notifiers.mixins.message.sections import (
+    ALL_TESTS_PASSED_MSG,
+)
 
 log = logging.getLogger(__name__)
 
@@ -55,9 +58,7 @@ class TeamPlanWriter:
                 lines.append(ta_error_msg)
             elif comparison.all_tests_passed():
                 lines.append("")
-                lines.append(
-                    ":white_check_mark: All tests successful. No failed tests found."
-                )
+                lines.append(ALL_TESTS_PASSED_MSG)
         return lines
 
     def middle_lines(
