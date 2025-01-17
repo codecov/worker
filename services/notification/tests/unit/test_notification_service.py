@@ -1,11 +1,12 @@
 import os
 from asyncio import CancelledError
 from asyncio import TimeoutError as AsyncioTimeoutError
+from unittest.mock import patch
 
 import mock
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
-from shared.plan.constants import PlanName
+from shared.plan.constants import PlanName, TierName
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.torngit.status import Status
 from shared.yaml import UserYaml
@@ -16,6 +17,7 @@ from database.models.core import (
     GithubAppInstallation,
 )
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from database.tests.factories.core import PlanFactory, TierFactory
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.notification import NotificationService
@@ -103,9 +105,13 @@ class TestNotificationService(object):
             ),
         ],
     )
+    @patch("services.notification.Plan.objects.get")
     def test_should_use_checks_notifier_deprecated_flow(
-        self, repo_data, outcome, dbsession
+        self, plan_objects_get, repo_data, outcome, dbsession
     ):
+        plan = PlanFactory.create()
+        plan_objects_get.return_value = plan
+
         repository = RepositoryFactory.create(**repo_data)
         current_yaml = {"github_checks": True}
         assert repository.owner.github_app_installations == []
@@ -115,7 +121,12 @@ class TestNotificationService(object):
             == outcome
         )
 
-    def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
+    @patch("services.notification.Plan.objects.get")
+    def test_should_use_checks_notifier_ghapp_all_repos_covered(
+        self, plan_objects_get, dbsession
+    ):
+        plan = PlanFactory.create()
+        plan_objects_get.return_value = plan
         repository = RepositoryFactory.create(owner__service="github")
         ghapp_installation = GithubAppInstallation(
             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -133,9 +144,19 @@ class TestNotificationService(object):
             == True
         )
 
-    def test_use_checks_notifier_for_team_plan(self, dbsession):
+    @patch("services.notification.Plan.objects.get")
+    def test_use_checks_notifier_for_team_plan(
+        self,
+        plan_objects_get,
+        dbsession,
+    ):
+        tier = TierFactory.create(
+            tier_name=TierName.TEAM.value,
+        )
+        plan = PlanFactory.create(tier=tier, name=PlanName.TEAM_MONTHLY.value)
+        plan_objects_get.return_value = plan
         repository = RepositoryFactory.create(
-            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+            owner__service="github", owner__plan=plan.name
         )
         ghapp_installation = GithubAppInstallation(
             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -161,9 +182,16 @@ class TestNotificationService(object):
             == True
         )
 
-    def test_use_status_notifier_for_team_plan(self, dbsession):
+    @patch("services.notification.Plan.objects.get")
+    def test_use_status_notifier_for_team_plan(self, plan_objects_get, dbsession):
+        tier = TierFactory.create(
+            tier_name=TierName.TEAM.value,
+        )
+        plan = PlanFactory.create(tier=tier, name=PlanName.TEAM_MONTHLY.value)
+        plan_objects_get.return_value = plan
+
         repository = RepositoryFactory.create(
-            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+            owner__service="github", owner__plan=plan.name
         )
         ghapp_installation = GithubAppInstallation(
             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -189,9 +217,15 @@ class TestNotificationService(object):
             == True
         )
 
-    def test_use_status_notifier_for_non_team_plan(self, dbsession):
+    @patch("services.notification.Plan.objects.get")
+    def test_use_status_notifier_for_non_team_plan(self, plan_objects_get, dbsession):
+        tier = TierFactory.create(
+            tier_name=TierName.PRO.value,
+        )
+        plan = PlanFactory.create(tier=tier, name=PlanName.CODECOV_PRO_MONTHLY.value)
+        plan_objects_get.return_value = plan
         repository = RepositoryFactory.create(
-            owner__service="github", owner__plan=PlanName.CODECOV_PRO_MONTHLY.value
+            owner__service="github", owner__plan=plan.name
         )
         ghapp_installation = GithubAppInstallation(
             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
@@ -221,9 +255,12 @@ class TestNotificationService(object):
         "gh_installation_name",
         [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
     )
+    @patch("services.notification.Plan.objects.get")
     def test_should_use_checks_notifier_ghapp_some_repos_covered(
-        self, dbsession, gh_installation_name
+        self, plan_objects_get, dbsession, gh_installation_name
     ):
+        plan = PlanFactory.create()
+        plan_objects_get.return_value = plan
         repository = RepositoryFactory.create(owner__service="github")
         other_repo_same_owner = RepositoryFactory.create(owner=repository.owner)
         ghapp_installation = GithubAppInstallation(
@@ -281,9 +318,12 @@ class TestNotificationService(object):
         assert instance.site_settings == ["slack.com"]
         assert instance.current_yaml == current_yaml
 
+    @patch("services.notification.Plan.objects.get")
     def test_get_notifiers_instances_checks(
-        self, dbsession, mock_configuration, mocker
+        self, plan_objects_get, dbsession, mock_configuration, mocker
     ):
+        plan = PlanFactory.create()
+        plan_objects_get.return_value = plan
         repository = RepositoryFactory.create(
             owner__integration_id=123,
             owner__service="github",
@@ -310,9 +350,12 @@ class TestNotificationService(object):
             "codecov-slack-app",
         ]
 
+    @patch("services.notification.Plan.objects.get")
     def test_get_notifiers_instances_slack_app_false(
-        self, dbsession, mock_configuration, mocker
+        self, plan_objects_get, dbsession, mock_configuration, mocker
     ):
+        plan = PlanFactory.create()
+        plan_objects_get.return_value = plan
         mocker.patch("services.notification.get_config", return_value=False)
         repository = RepositoryFactory.create(
             owner__integration_id=123,
@@ -343,9 +386,17 @@ class TestNotificationService(object):
         "gh_installation_name",
         [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
     )
+    @patch("services.notification.Plan.objects.get")
     def test_get_notifiers_instances_checks_percentage_whitelist(
-        self, dbsession, mock_configuration, mocker, gh_installation_name
+        self,
+        plan_objects_get,
+        dbsession,
+        mock_configuration,
+        mocker,
+        gh_installation_name,
     ):
+        plan = PlanFactory.create()
+        plan_objects_get.return_value = plan
         repository = RepositoryFactory.create(
             owner__integration_id=123,
             owner__service="github",

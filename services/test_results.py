@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import Sequence
 
-from shared.plan.constants import FREE_PLAN_REPRESENTATIONS, TEAM_PLAN_REPRESENTATIONS
+from shared.django_apps.codecov_auth.models import Plan
+from shared.plan.constants import TierName
 from shared.yaml import UserYaml
 from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import joinedload
@@ -395,10 +396,13 @@ def get_test_summary_for_commit(
 
 
 def not_private_and_free_or_team(repo: Repository):
+    plan = Plan.objects.get(name=repo.owner.plan)
     return not (
         repo.private
-        and repo.owner.plan
-        in {**FREE_PLAN_REPRESENTATIONS, **TEAM_PLAN_REPRESENTATIONS}
+        and (
+            plan.tier.tier_name != TierName.FREE.value
+            and plan.tier.tier_name != TierName.TEAM.value
+        )
     )
 
 

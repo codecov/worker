@@ -10,6 +10,7 @@ from typing import Iterator, List, TypedDict
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
+from shared.django_apps.codecov_auth.models import Plan
 from shared.helpers.yaml import default_if_true
 from shared.plan.constants import TierName
 from shared.torngit.base import TorngitBaseAdapter
@@ -66,11 +67,10 @@ class NotificationService(object):
     def _should_use_status_notifier(self, status_type: StatusType) -> bool:
         owner: Owner = self.repository.owner
 
+        plan = Plan.objects.get(name=owner.plan)
+
         if (
-            owner.plan
-            in Plan.objects.filter(tier=TierName.TEAM.value).values_list(
-                "name", flat=True
-            )
+            plan.tier.tier_name == TierName.TEAM.value
             and status_type != StatusType.PATCH.value
         ):
             return False
@@ -86,11 +86,10 @@ class NotificationService(object):
         if owner.service not in ["github", "github_enterprise"]:
             return False
 
+        plan = Plan.objects.get(name=owner.plan)
+
         if (
-            owner.plan
-            in Plan.objects.filter(tier=TierName.TEAM.value).values_list(
-                "name", flat=True
-            )
+            plan.tier.tier_name == TierName.TEAM.value
             and status_type != StatusType.PATCH.value
         ):
             return False
