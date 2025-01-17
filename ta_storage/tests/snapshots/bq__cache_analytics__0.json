@@ -1,0 +1,40 @@
+{
+  "name": [
+    "test_something"
+  ],
+  "classname": [
+    "TestClass"
+  ],
+  "testsuite": [
+    "test_suite"
+  ],
+  "computed_name": [
+    "TestClass.test_something"
+  ],
+  "flags": [
+    [
+      "unit"
+    ]
+  ],
+  "avg_duration": [
+    1.5
+  ],
+  "fail_count": [
+    2
+  ],
+  "flaky_fail_count": [
+    1
+  ],
+  "pass_count": [
+    10
+  ],
+  "skip_count": [
+    1
+  ],
+  "commits_where_fail": [
+    2
+  ],
+  "last_duration": [
+    1.2
+  ]
+}

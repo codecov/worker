@@ -1,4 +1,8 @@
+import logging
+
 import mmh3
+
+log = logging.getLogger(__name__)
 
 
 def calc_test_id(name: str, classname: str, testsuite: str) -> bytes:
@@ -13,6 +17,8 @@ def calc_test_id(name: str, classname: str, testsuite: str) -> bytes:
 
 def calc_flags_hash(flags: list[str]) -> bytes | None:
     flags_str = " ".join(sorted(flags))  # we know that flags cannot contain spaces
+    if not flags:
+        return None
 
     # returns a tuple of two int64 values
     # we only need the first one

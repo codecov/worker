@@ -11,7 +11,6 @@
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
     "framework": "Pytest",
     "upload_id": "1",
-    "flags_hash": "AAAAAAAAAAA=",
     "test_id": "S/K2VdzrrehI4hnoZNsPVg=="
   },
   {
@@ -27,7 +26,6 @@
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
     "framework": "Pytest",
     "upload_id": "1",
-    "flags_hash": "AAAAAAAAAAA=",
     "test_id": "CVU2jNUNOkOrl6/lJdK0nw=="
   },
   {
@@ -42,7 +40,6 @@
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
     "framework": "Pytest",
     "upload_id": "1",
-    "flags_hash": "AAAAAAAAAAA=",
     "test_id": "UDBibp0NWEToP72TpCn1xg=="
   },
   {
@@ -57,7 +54,6 @@
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
     "framework": "Pytest",
     "upload_id": "1",
-    "flags_hash": "AAAAAAAAAAA=",
     "test_id": "VE2yD2IYxdSbTvGB6XCJPA=="
   }
 ]

@@ -1,0 +1,45 @@
+
+        WITH 
+        
+ranked_data AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY
+                name,
+                classname,
+                testsuite,
+                flags_hash
+            ORDER BY timestamp DESC
+        ) AS row_num
+    FROM
+        `test-project.test-dataset.test-table`
+    WHERE
+        repoid = @repoid
+        AND commit_sha = @commit_sha
+)
+,
+        
+latest_instances AS (
+    SELECT
+        *
+    FROM
+        ranked_data
+    WHERE
+        row_num = 1
+)
+
+        
+SELECT
+    computed_name,
+    failure_message,
+    test_id,
+    flags_hash,
+    duration_seconds,
+    upload_id
+FROM
+    latest_instances
+WHERE
+    outcome = 1
+
+        

@@ -1,0 +1,51 @@
+
+        WITH 
+        
+ranked_data AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY
+                name,
+                classname,
+                testsuite,
+                flags_hash
+            ORDER BY timestamp DESC
+        ) AS row_num
+    FROM
+        `test-project.test-dataset.test-table`
+    WHERE
+        repoid = @repoid
+        AND commit_sha = @commit_sha
+)
+,
+        
+latest_instances AS (
+    SELECT
+        *
+    FROM
+        ranked_data
+    WHERE
+        row_num = 1
+)
+
+        
+SELECT
+    *
+FROM (
+    SELECT
+        commit_sha,
+        outcome
+    FROM
+        latest_instances
+) PIVOT (
+    COUNT(*) AS ct
+    FOR outcome IN (
+        0 as passed,
+        1 as failed,
+        2 as skipped,
+        3 as flaky_failed
+    )
+)
+
+        
