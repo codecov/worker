@@ -17,7 +17,6 @@ from database.models import (
 from django_scaffold import settings
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
-from services.test_results import get_flake_set
 from services.yaml import read_yaml_field
 from ta_storage.bq import BQDriver
 from ta_storage.pg import PGDriver
@@ -128,9 +127,8 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             db_session.commit()
             return False
         else:
-            flaky_test_set = get_flake_set(db_session, upload.report.commit.repoid)
-
-            pg = PGDriver(repoid, db_session, flaky_test_set)
+            # the flaky test set will be generated in the first call to write_testruns
+            pg = PGDriver(repoid, db_session)
             if settings.BIGQUERY_WRITE_ENABLED:
                 bq = BQDriver(repoid)
 
