@@ -1,4 +1,5 @@
 import pytest
+from shared.bundle_analysis import StoragePaths
 from shared.django_apps.compare.models import CommitComparison, FlagComparison
 from shared.django_apps.compare.tests.factories import (
     CommitComparisonFactory,
@@ -86,7 +87,6 @@ def test_flush_repo_few_of_each_only_db_objects(mock_storage):
 @pytest.mark.django_db
 def test_flush_repo_little_bit_of_everything(mocker, mock_storage):
     repo = RepositoryFactory()
-    mocker.patch("services.cleanup.utils.StorageService")
     archive_service = ArchiveService(repo)
 
     for i in range(8):
@@ -96,8 +96,20 @@ def test_flush_repo_little_bit_of_everything(mocker, mock_storage):
         commit_report = CommitReportFactory(commit=commit)
         upload = UploadFactory(report=commit_report, storage_path=f"upload{i}")
 
-        archive_service.write_chunks(commit.commitid, f"chunksdata{i}")
-        archive_service.write_file(upload.storage_path, f"uploaddata{i}")
+        archive_service.write_chunks(commit.commitid, f"chunks_data{i}")
+        archive_service.write_file(upload.storage_path, f"upload_data{i}")
+
+        ba_report = CommitReportFactory(commit=commit, report_type="bundle_analysis")
+        ba_upload = UploadFactory(report=ba_report, storage_path=f"ba_upload{i}")
+        ba_report_path = StoragePaths.bundle_report.path(
+            repo_key=archive_service.storage_hash, report_key=ba_report.external_id
+        )
+        archive_service.storage.write_file(
+            "bundle-analysis", ba_report_path, f"ba_report_data{i}"
+        )
+        archive_service.storage.write_file(
+            "bundle-analysis", ba_upload.storage_path, f"ba_upload_data{i}"
+        )
 
     for i in range(17):
         PullFactory(repository=repo, pullid=i + 100)
@@ -106,20 +118,23 @@ def test_flush_repo_little_bit_of_everything(mocker, mock_storage):
         BranchFactory(repository=repo)
 
     archive = mock_storage.storage["archive"]
+    ba_archive = mock_storage.storage["bundle-analysis"]
     assert len(archive) == 16
+    assert len(ba_archive) == 16
 
     task = FlushRepoTask()
     res = task.run_impl({}, repoid=repo.repoid)
 
     assert res == CleanupSummary(
-        CleanupResult(24 + 8 + 8 + 18 + 1 + 8, 16),
+        CleanupResult(24 + 8 + 16 + 18 + 1 + 16, 16 + 16),
         {
             Branch: CleanupResult(24),
             Commit: CleanupResult(8),
-            CommitReport: CleanupResult(8, 8),
+            CommitReport: CleanupResult(16, 16),
             Pull: CleanupResult(18),
             Repository: CleanupResult(1),
-            Upload: CleanupResult(8, 8),
+            Upload: CleanupResult(16, 16),
         },
     )
     assert len(archive) == 0
+    assert len(ba_archive) == 0

@@ -1,5 +1,6 @@
 import dataclasses
 import itertools
+from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -9,8 +10,10 @@ from django.db.models.query import QuerySet
 from shared.bundle_analysis import StoragePaths
 from shared.django_apps.compare.models import CommitComparison
 from shared.django_apps.core.models import Commit, Pull
+from shared.django_apps.profiling.models import ProfilingUpload
 from shared.django_apps.reports.models import CommitReport, ReportDetails
 from shared.django_apps.reports.models import ReportSession as Upload
+from shared.django_apps.staticanalysis.models import StaticAnalysisSingleFileSnapshot
 
 from services.archive import ArchiveService, MinioEndpoints
 from services.cleanup.utils import CleanupContext, CleanupResult
@@ -19,15 +22,17 @@ MANUAL_QUERY_CHUNKSIZE = 5_000
 DELETE_FILES_BATCHSIZE = 50
 
 
-def cleanup_files_batched(context: CleanupContext, paths: list[str]) -> int:
+def cleanup_files_batched(
+    context: CleanupContext, buckets_paths: dict[str, list[str]]
+) -> int:
     cleaned_files = 0
 
     # TODO: maybe reuse the executor across calls?
     with ThreadPoolExecutor() as e:
-        for batched_paths in itertools.batched(paths, DELETE_FILES_BATCHSIZE):
-            e.submit(context.storage.delete_files, context.bucket, list(batched_paths))
-
-        cleaned_files += len(batched_paths)
+        for bucket, paths in buckets_paths.items():
+            for batched_paths in itertools.batched(paths, DELETE_FILES_BATCHSIZE):
+                e.submit(context.storage.delete_files, bucket, list(batched_paths))
+            cleaned_files += len(paths)
 
     return cleaned_files
 
@@ -54,7 +59,9 @@ def cleanup_with_storage_field(
         if len(storage_paths) == 0:
             break
 
-        cleaned_files += cleanup_files_batched(context, storage_paths)
+        cleaned_files += cleanup_files_batched(
+            context, {context.default_bucket: storage_paths}
+        )
         cleaned_models += query.filter(
             id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
@@ -98,7 +105,7 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
         if len(reports) == 0:
             break
 
-        storage_paths: list[str] = []
+        buckets_paths: dict[str, list[str]] = defaultdict(list)
         for (
             report_type,
             report_code,
@@ -118,31 +125,58 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
             # depending on the `report_type`, we have:
             # - a `chunks` file for coverage
             # - a `bundle_report.sqlite` for BA
-            match report_type:
-                case "bundle_analysis":
-                    path = StoragePaths.bundle_report.path(
-                        repo_key=repo_hash, report_key=external_id
-                    )
-                    # TODO: bundle analysis lives in a different bucket I believe?
-                    storage_paths.append(path)
-                case "test_results":
-                    # TODO:
-                    pass
-                case _:  # coverage
-                    chunks_file_name = (
-                        report_code if report_code is not None else "chunks"
-                    )
-                    path = MinioEndpoints.chunks.get_path(
-                        version="v4",
-                        repo_hash=repo_hash,
-                        commitid=commit_sha,
-                        chunks_file_name=chunks_file_name,
-                    )
-                    storage_paths.append(path)
+            if report_type == "bundle_analysis":
+                path = StoragePaths.bundle_report.path(
+                    repo_key=repo_hash, report_key=external_id
+                )
+                buckets_paths[context.bundleanalysis_bucket].append(path)
+            elif report_type == "test_results":
+                # TA has cached rollups, but those are based on `Branch`
+                pass
+            else:
+                chunks_file_name = report_code if report_code is not None else "chunks"
+                path = MinioEndpoints.chunks.get_path(
+                    version="v4",
+                    repo_hash=repo_hash,
+                    commitid=commit_sha,
+                    chunks_file_name=chunks_file_name,
+                )
+                buckets_paths[context.default_bucket].append(path)
 
-        cleaned_files += cleanup_files_batched(context, storage_paths)
+        cleaned_files += cleanup_files_batched(context, buckets_paths)
         cleaned_models += query.filter(
             id__in=query.order_by("id")[:MANUAL_QUERY_CHUNKSIZE]
+        )._raw_delete(query.db)
+
+    return CleanupResult(cleaned_models, cleaned_files)
+
+
+def cleanup_upload(context: CleanupContext, query: QuerySet) -> CleanupResult:
+    cleaned_files = 0
+
+    # delete `None` `storage_path`s right away
+    cleaned_models = query.filter(storage_path__isnull=True)._raw_delete(query.db)
+
+    # delete all those files from storage, using chunks based on the `id` column
+    storage_query = query.filter(storage_path__isnull=False).order_by("id")
+
+    while True:
+        uploads = storage_query.values_list("report__report_type", "storage_path")[
+            :MANUAL_QUERY_CHUNKSIZE
+        ]
+        if len(uploads) == 0:
+            break
+
+        buckets_paths: dict[str, list[str]] = defaultdict(list)
+        for report_type, storage_path in uploads:
+            if report_type == "bundle_analysis":
+                buckets_paths[context.bundleanalysis_bucket].append(storage_path)
+            else:
+                buckets_paths[context.default_bucket].append(storage_path)
+
+        cleaned_files += cleanup_files_batched(context, buckets_paths)
+        cleaned_models += query.filter(
+            id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
 
     return CleanupResult(cleaned_models, cleaned_files)
@@ -156,9 +190,10 @@ MANUAL_CLEANUP: dict[
     Pull: partial(cleanup_archivefield, "flare"),
     ReportDetails: partial(cleanup_archivefield, "files_array"),
     CommitReport: cleanup_commitreport,
-    Upload: partial(cleanup_with_storage_field, "storage_path"),
+    Upload: cleanup_upload,
     CommitComparison: partial(cleanup_with_storage_field, "report_storage_path"),
-    # TODO: figure out any other models which have files in storage that are not `ArchiveField`
-    # TODO: TA is also storing files in GCS
-    # TODO: profiling, label analysis and static analysis also needs porting to django
+    ProfilingUpload: partial(cleanup_with_storage_field, "raw_upload_location"),
+    StaticAnalysisSingleFileSnapshot: partial(
+        cleanup_with_storage_field, "content_location"
+    ),
 }
