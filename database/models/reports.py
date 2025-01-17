@@ -331,6 +331,9 @@ class TestResultReportTotals(CodecovBaseModel, MixinBaseClass):
     passed = Column(types.Integer)
     skipped = Column(types.Integer)
     failed = Column(types.Integer)
+
+    # this field is no longer used in the new ta_finisher task
+    # TODO: thus, it will be removed in the future
     error = Column(types.String(100), nullable=True)
 
 
