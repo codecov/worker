@@ -21,7 +21,7 @@ def cleanup_repo(repo_id: int) -> CleanupSummary:
 
     repo_query = Repository.objects.filter(repoid=repo_id)
     summary = run_cleanup(repo_query)
-    Owner.filter(ownerid=owner_id).delete()
+    Owner.objects.filter(ownerid=owner_id).delete()
 
     log.info(
         "Repository cleanup finished", extra={"repoid": repo_id, "summary": summary}
@@ -55,7 +55,8 @@ def start_repo_cleanup(repo_id: int) -> tuple[bool, int]:
             owner_service_id,
         ) = Repository.objects.values_list(
             "deleted",
-            "author__owneridauthor__name",
+            "author__ownerid",
+            "author__name",
             "author__username",
             "author__service",
             "author__service_id",
@@ -67,7 +68,11 @@ def start_repo_cleanup(repo_id: int) -> tuple[bool, int]:
         # We mark the repository as "scheduled for deletion" by setting the `deleted`
         # flag, moving it to a new shadow owner, and clearing some tokens.
         shadow_owner = Owner.objects.create(
-            service=owner_service, service_id=owner_service_id
+            # `Owner` is unique across service/id, and both are non-NULL,
+            # so we cannot duplicate the values just like that, so lets change up the `service_id`
+            # a bit. We need the `Repository.service_id` for further `ArchiveService` deletions.
+            service=owner_service,
+            service_id=f"☠️{owner_service_id}☠️",
         )
         new_token = uuid4().hex
         Repository.objects.filter(repoid=repo_id).update(
@@ -79,6 +84,6 @@ def start_repo_cleanup(repo_id: int) -> tuple[bool, int]:
 
         # The equivalent of `SET NULL`:
         # TODO: maybe turn this into a `MANUAL_CLEANUP`?
-        Repository.objects.filter(forkid=repo_id).update(forkid=None)
+        Repository.objects.filter(fork=repo_id).update(fork=None)
 
         return (True, shadow_owner.ownerid)
