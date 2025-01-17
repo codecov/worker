@@ -31,6 +31,7 @@ from database.models import (
     CommitReport,
     Pull,
     TestResultReportTotals,
+    Upload,
     UploadError,
 )
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, CompareCommit
@@ -898,10 +899,14 @@ def get_ta_relevant_context(
     ta_error_msg: str | None = None
 
     if ta_commit_report:
-        test_result_uploads = [upload.id for upload in ta_commit_report.uploads]
+        ta_upload_ids = (
+            db_session.query(Upload.id_)
+            .filter(Upload.report_id == ta_commit_report.id_)
+            .subquery()
+        )
         upload_error = (
             db_session.query(UploadError)
-            .filter(UploadError.upload_id.in_(test_result_uploads))
+            .filter(UploadError.upload_id.in_(ta_upload_ids))
             .first()
         )
 
