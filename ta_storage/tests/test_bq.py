@@ -1,19 +1,27 @@
-from __future__ import annotations
+from datetime import datetime, timezone
+from unittest.mock import ANY, MagicMock, patch
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
-
+import polars as pl
 import pytest
 import test_results_parser
-import time_machine
+from google.cloud.bigquery import (
+    ArrayQueryParameter,
+    ScalarQueryParameter,
+    StructQueryParameterType,
+)
+from google.protobuf.json_format import MessageToDict
+from shared.django_apps.reports.tests.factories import (
+    UploadFactory,
+)
+from shared.django_apps.test_analytics.models import Flake
+from time_machine import travel
 
 import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
-from database.tests.factories import RepositoryFlagFactory, UploadFactory
 from ta_storage.bq import BQDriver
 from ta_storage.utils import calc_flags_hash, calc_test_id
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_bigquery_service():
     with patch("ta_storage.bq.get_bigquery_service") as mock:
         service = MagicMock()
@@ -21,465 +29,353 @@ def mock_bigquery_service():
         yield service
 
 
-def test_bigquery_driver(dbsession, mock_bigquery_service):
-    bq = BQDriver()
+@pytest.fixture()
+def mock_config(mock_configuration):
+    mock_configuration._params["services"]["gcp"] = {
+        "project_id": "test-project",
+    }
+    mock_configuration._params["services"]["bigquery"] = {
+        "dataset_name": "test-dataset",
+        "testrun_table_name": "test-table",
+    }
 
-    upload = UploadFactory()
-    dbsession.add(upload)
-    dbsession.flush()
 
-    repo_flag_1 = RepositoryFlagFactory(
-        repository=upload.report.commit.repository, flag_name="flag1"
+def read_table(mock_storage, bucket: str, storage_path: str):
+    decompressed_table: bytes = mock_storage.read_file(bucket, storage_path)
+    return pl.read_ipc(decompressed_table)
+
+
+@pytest.mark.django_db(transaction=True, databases=["test_analytics"])
+def test_write_testruns(mock_bigquery_service, mock_config, snapshot):
+    driver = BQDriver(repo_id=1)
+    timestamp = int(
+        datetime.fromisoformat("2025-01-01T00:00:00Z").timestamp() * 1000000
     )
-    repo_flag_2 = RepositoryFlagFactory(
-        repository=upload.report.commit.repository, flag_name="flag2"
-    )
-    dbsession.add(repo_flag_1)
-    dbsession.add(repo_flag_2)
-    dbsession.flush()
 
-    upload.flags.append(repo_flag_1)
-    upload.flags.append(repo_flag_2)
-    dbsession.flush()
-
-    test_data: list[test_results_parser.Testrun] = [
+    testruns: list[test_results_parser.Testrun] = [
         {
-            "name": "test_name",
-            "classname": "test_class",
+            "name": "test_something",
+            "classname": "TestClass",
             "testsuite": "test_suite",
-            "duration": 100.0,
+            "computed_name": "TestClass.test_something",
             "outcome": "pass",
-            "build_url": "https://example.com/build/123",
-            "filename": "test_file",
-            "computed_name": "test_computed_name",
             "failure_message": None,
-        },
-        {
-            "name": "test_name2",
-            "classname": "test_class2",
-            "testsuite": "test_suite2",
-            "duration": 100.0,
-            "outcome": "failure",
-            "build_url": "https://example.com/build/123",
-            "filename": "test_file2",
-            "computed_name": "test_computed_name2",
-            "failure_message": "test_failure_message",
-        },
-    ]
-
-    timestamp = int(datetime.now().timestamp() * 1000000)
-
-    bq.write_testruns(
-        timestamp,
-        upload.report.commit.repoid,
-        upload.report.commit.commitid,
-        upload.report.commit.branch,
-        upload,
-        "pytest",
-        test_data,
-    )
-
-    flags_hash = calc_flags_hash(upload.flag_names)
-
-    # Verify the BigQuery service was called correctly
-    mock_bigquery_service.write.assert_called_once_with(
-        bq.dataset_name,
-        bq.testrun_table_name,
-        ta_testrun_pb2,
-        [
-            ta_testrun_pb2.TestRun(
-                timestamp=timestamp,
-                name="test_name",
-                classname="test_class",
-                testsuite="test_suite",
-                duration_seconds=100.0,
-                outcome=ta_testrun_pb2.TestRun.Outcome.PASSED,
-                filename="test_file",
-                computed_name="test_computed_name",
-                failure_message=None,
-                repoid=upload.report.commit.repoid,
-                commit_sha=upload.report.commit.commitid,
-                framework="pytest",
-                branch_name=upload.report.commit.branch,
-                flags=["flag1", "flag2"],
-                upload_id=upload.id_,
-                flags_hash=flags_hash,
-                test_id=calc_test_id("test_name", "test_class", "test_suite"),
-            ).SerializeToString(),
-            ta_testrun_pb2.TestRun(
-                timestamp=timestamp,
-                name="test_name2",
-                classname="test_class2",
-                testsuite="test_suite2",
-                duration_seconds=100.0,
-                outcome=ta_testrun_pb2.TestRun.Outcome.FAILED,
-                filename="test_file2",
-                computed_name="test_computed_name2",
-                failure_message="test_failure_message",
-                repoid=upload.report.commit.repoid,
-                commit_sha=upload.report.commit.commitid,
-                framework="pytest",
-                branch_name=upload.report.commit.branch,
-                flags=["flag1", "flag2"],
-                upload_id=upload.id_,
-                flags_hash=flags_hash,
-                test_id=calc_test_id("test_name2", "test_class2", "test_suite2"),
-            ).SerializeToString(),
-        ],
-    )
-
-
-def populate_pr_comment_testruns(bq: BQDriver):
-    testruns = []
-
-    for i in range(3):
-        upload = UploadFactory()
-        upload.report.commit.commitid = "abcde"
-        upload.report.commit.branch = "feature_branch"
-        upload.report.commit.repoid = 2
-        upload.flags.append(RepositoryFlagFactory(flag_name=f"flag_{i}"))
-
-        for j in range(3):
-            name = f"test_{j}"
-            classname = f"class_{j}"
-            testsuite = "suite_feature"
-
-            testrun: test_results_parser.Testrun = {
-                "name": name,
-                "classname": classname,
-                "testsuite": testsuite,
-                "duration": float(j % 5),
-                "outcome": "pass" if j % 2 == 0 else "failure",
-                "filename": None,
-                "computed_name": f"pr_computed_name_{j}",
-                "failure_message": None if j % 2 == 0 else "hi",
-                "build_url": None,
-            }
-
-            testruns.append(testrun)
-
-        bq.write_testruns(
-            None, 2, "abcde", "feature_branch", upload, "pytest", testruns
-        )
-
-
-@pytest.mark.skip(reason="need creds")
-def test_bq_pr_comment():
-    bq = BQDriver()
-
-    if (
-        bq.bq_service.query(
-            "select * from `test_dataset.testruns` where repoid = 2 limit 1"
-        )
-        == []
-    ):
-        populate_pr_comment_testruns(bq)
-
-    pr_agg = bq.pr_comment_agg(repoid=2, commit_sha="abcde")
-    assert pr_agg == [
-        {
-            "commit_sha": "abcde",
-            "ct_passed": 6,
-            "ct_failed": 3,
-            "ct_skipped": 0,
-            "ct_flaky_failed": 0,
+            "duration": 1.5,
+            "filename": "test_file.py",
+            "build_url": None,
         }
     ]
 
-    pr_fail = bq.pr_comment_fail(repoid=2, commit_sha="abcde")
-    assert len(pr_fail) == 3
-    assert {t["computed_name"] for t in pr_fail} == {
-        "pr_computed_name_1",
-    }
-    assert {t["failure_message"] for t in pr_fail} == {"hi"}
-    assert {tuple(t["flags"]) for t in pr_fail} == {
-        ("flag_1",),
-        ("flag_2",),
-        ("flag_0",),
-    }
-
-
-def populate_testruns_for_upload_testruns(dbsession, bq: BQDriver):
-    testruns = []
-
-    upload = UploadFactory()
-    upload.id_ = 1
-    dbsession.add(upload)
-    dbsession.flush()
-
-    testruns: list[test_results_parser.Testrun] = [
-        {  # this test is flaky failure
-            "name": "test_0",
-            "classname": "class_0",
-            "testsuite": "suite_upload",
-            "duration": 0.0,
-            "outcome": "failure",
-            "filename": None,
-            "computed_name": "upload_computed_name_0",
-            "failure_message": None,
-            "build_url": None,
-        },
-        {  # this test is just a failure
-            "name": "test_1",
-            "classname": "class_1",
-            "testsuite": "suite_upload",
-            "duration": 0.0,
-            "outcome": "failure",
-            "filename": None,
-            "computed_name": "upload_computed_name_1",
-            "failure_message": None,
-            "build_url": None,
-        },
-        {  # this test is a pass but also flaky
-            "name": "test_2",
-            "classname": "class_2",
-            "testsuite": "suite_upload",
-            "duration": 0.0,
-            "outcome": "pass",
-            "filename": None,
-            "computed_name": "upload_computed_name_2",
-            "failure_message": None,
-            "build_url": None,
-        },
-        {  # this test should be ignored
-            "name": "test_3",
-            "classname": "class_3",
-            "testsuite": "suite_upload",
-            "duration": 0.0,
-            "outcome": "pass",
-            "filename": None,
-            "computed_name": "upload_computed_name_3",
-            "failure_message": None,
-            "build_url": None,
-        },
-    ]
-
-    bq.write_testruns(None, 3, "abcde", "feature_branch", upload, "pytest", testruns)
-
-
-@pytest.mark.skip(reason="need creds")
-def test_bq_testruns_for_upload(dbsession):
-    bq = BQDriver(
-        {
-            calc_test_id("test_0", "class_0", "suite_upload"),
-            calc_test_id("test_2", "class_2", "suite_upload"),
-        }
-    )
-
-    if (
-        bq.bq_service.query(
-            "select * from `test_dataset.testruns` where repoid = 3 limit 1"
-        )
-        == []
-    ):
-        populate_testruns_for_upload_testruns(dbsession, bq)
-
-    testruns_for_upload = bq.testruns_for_upload(
+    driver.write_testruns(
+        timestamp=timestamp,
+        commit_sha="abc123",
+        branch_name="main",
         upload_id=1,
-        test_ids=[
-            calc_test_id("test_0", "class_0", "suite_upload"),
-            calc_test_id("test_2", "class_2", "suite_upload"),
-        ],
+        flag_names=["unit"],
+        framework="pytest",
+        testruns=testruns,
     )
 
-    assert {t["test_id"] for t in testruns_for_upload} == {
-        calc_test_id("test_0", "class_0", "suite_upload"),
-        calc_test_id("test_2", "class_2", "suite_upload"),
-        calc_test_id("test_1", "class_1", "suite_upload"),
+    mock_bigquery_service.write.assert_called_once_with(
+        "test-dataset", "test-table", ta_testrun_pb2, ANY
+    )
+
+    testruns_written = [
+        MessageToDict(
+            ta_testrun_pb2.TestRun.FromString(testrun_bytes),
+            preserving_proto_field_name=True,
+        )
+        for testrun_bytes in mock_bigquery_service.mock_calls[0][1][3]
+    ]
+    assert snapshot("json") == sorted(testruns_written, key=lambda x: x["name"])
+
+
+@pytest.mark.django_db(transaction=True, databases=["test_analytics"])
+def test_write_testruns_with_flake(mock_bigquery_service, mock_config, snapshot):
+    driver = BQDriver(repo_id=1)
+    timestamp = int(
+        datetime.fromisoformat("2025-01-01T00:00:00Z").timestamp() * 1000000
+    )
+
+    flake = Flake.objects.create(
+        repoid=1,
+        test_id=calc_test_id("test_suite", "TestClass", "test_something"),
+        flags_id=calc_flags_hash(["unit"]),
+        fail_count=1,
+        count=1,
+        recent_passes_count=1,
+        start_date=datetime.now(timezone.utc),
+    )
+    flake.save()
+
+    testruns: list[test_results_parser.Testrun] = [
+        {
+            "name": "test_something",
+            "classname": "TestClass",
+            "testsuite": "test_suite",
+            "computed_name": "TestClass.test_something",
+            "outcome": "failure",
+            "failure_message": "assertion failed",
+            "duration": 1.5,
+            "filename": "test_file.py",
+            "build_url": None,
+        }
+    ]
+
+    driver.write_testruns(
+        timestamp=timestamp,
+        commit_sha="abc123",
+        branch_name="main",
+        upload_id=1,
+        flag_names=["unit"],
+        framework="pytest",
+        testruns=testruns,
+    )
+
+    mock_bigquery_service.write.assert_called_once_with(
+        "test-dataset", "test-table", ta_testrun_pb2, ANY
+    )
+
+    testruns_written = [
+        MessageToDict(
+            ta_testrun_pb2.TestRun.FromString(testrun_bytes),
+            preserving_proto_field_name=True,
+        )
+        for testrun_bytes in mock_bigquery_service.mock_calls[0][1][3]
+    ]
+    assert snapshot("json") == sorted(testruns_written, key=lambda x: x["name"])
+
+
+def test_pr_comment_agg(mock_bigquery_service, mock_config, snapshot):
+    driver = BQDriver(repo_id=1)
+    mock_bigquery_service.query.return_value = [
+        {
+            "commit_sha": "abc123",
+            "passed": 10,
+            "failed": 2,
+            "skipped": 1,
+            "flaky_failed": 1,
+        }
+    ]
+
+    result = driver.pr_comment_agg("abc123")
+
+    mock_bigquery_service.query.assert_called_once()
+    query, params = mock_bigquery_service.query.call_args[0]
+    assert snapshot("txt") == query
+    assert params == [
+        ScalarQueryParameter("repoid", "INT64", 1),
+        ScalarQueryParameter("commit_sha", "STRING", "abc123"),
+    ]
+    assert snapshot("json") == result
+
+
+def test_pr_comment_fail(mock_bigquery_service, mock_config, snapshot):
+    driver = BQDriver(repo_id=1)
+    mock_bigquery_service.query.return_value = [
+        {
+            "computed_name": "TestClass.test_something",
+            "failure_message": "assertion failed",
+            "test_id": b"test_id",
+            "flags_hash": b"flags_hash",
+            "duration_seconds": 1.5,
+            "upload_id": 1,
+        }
+    ]
+
+    result = driver.pr_comment_fail("abc123")
+
+    # Verify the query parameters
+    mock_bigquery_service.query.assert_called_once()
+    query, params = mock_bigquery_service.query.call_args[0]
+    assert snapshot("txt") == query
+    assert params == [
+        ScalarQueryParameter("repoid", "INT64", 1),
+        ScalarQueryParameter("commit_sha", "STRING", "abc123"),
+    ]
+    result[0]["id"] = [result[0]["id"][0].hex(), result[0]["id"][1].hex()]
+    assert snapshot("json") == result
+
+
+@travel("2025-01-01T00:00:00Z", tick=False)
+@pytest.mark.django_db(transaction=True, databases=["default", "test_analytics"])
+def test_write_flakes(mock_bigquery_service, mock_config, snapshot):
+    driver = BQDriver(repo_id=1)
+
+    upload = UploadFactory.create()
+    upload.save()
+
+    mock_bigquery_service.query.return_value = [
+        {
+            "branch_name": "main",
+            "timestamp": int(datetime.now().timestamp() * 1000000),
+            "outcome": ta_testrun_pb2.TestRun.Outcome.FAILED,
+            "test_id": b"test_id",
+            "flags_hash": b"flags_hash",
+        }
+    ]
+
+    driver.write_flakes([upload])
+
+    mock_bigquery_service.query.assert_called_once()
+    query, params = mock_bigquery_service.query.call_args[0]
+    assert snapshot("txt") == query
+    assert params == [
+        ScalarQueryParameter("upload_id", "INT64", upload.id),
+        ArrayQueryParameter(
+            "flake_ids",
+            StructQueryParameterType(
+                ScalarQueryParameter("test_id", "STRING", "test_id"),
+                ScalarQueryParameter("flags_id", "STRING", "flags_id"),
+            ),
+            [],
+        ),
+    ]
+
+    flakes = Flake.objects.all()
+    flake_data = [
+        {
+            "repoid": flake.repoid,
+            "test_id": flake.test_id.hex(),
+            "fail_count": flake.fail_count,
+            "count": flake.count,
+            "recent_passes_count": flake.recent_passes_count,
+            "start_date": flake.start_date.isoformat() if flake.start_date else None,
+            "end_date": flake.end_date.isoformat() if flake.end_date else None,
+            "flags_id": flake.flags_id.hex() if flake.flags_id else None,
+        }
+        for flake in flakes
+    ]
+    assert snapshot("json") == sorted(flake_data, key=lambda x: x["test_id"])
+
+
+def test_analytics(mock_bigquery_service, mock_config, snapshot):
+    driver = BQDriver(repo_id=1)
+
+    _ = driver.analytics(1, 30, 0)
+    query, params = mock_bigquery_service.query.call_args[0]
+    assert snapshot("txt") == query
+    assert params == [
+        ScalarQueryParameter("repoid", "INT64", 1),
+        ScalarQueryParameter("interval_start", "INT64", 30),
+        ScalarQueryParameter("interval_end", "INT64", 0),
+    ]
+
+
+def test_analytics_with_branch(mock_bigquery_service, mock_config, snapshot):
+    driver = BQDriver(repo_id=1)
+
+    _ = driver.analytics(1, 30, 0, "main")
+    query, params = mock_bigquery_service.query.call_args[0]
+    assert snapshot("txt") == query
+    assert params == [
+        ScalarQueryParameter("repoid", "INT64", 1),
+        ScalarQueryParameter("interval_start", "INT64", 30),
+        ScalarQueryParameter("interval_end", "INT64", 0),
+        ScalarQueryParameter("branch", "STRING", "main"),
+    ]
+
+
+@travel("2025-01-01T00:00:00Z", tick=False)
+def test_cache_analytics(mock_bigquery_service, mock_config, mock_storage, snapshot):
+    driver = BQDriver(repo_id=1)
+
+    # Mock the analytics query result with datetime
+    mock_bigquery_service.query.return_value = [
+        {
+            "name": "test_something",
+            "classname": "TestClass",
+            "testsuite": "test_suite",
+            "computed_name": "TestClass.test_something",
+            "flags": ["unit"],
+            "avg_duration": 1.5,
+            "fail_count": 2,
+            "flaky_fail_count": 1,
+            "pass_count": 10,
+            "skip_count": 1,
+            "commits_where_fail": 2,
+            "last_duration": 1.2,
+            "updated_at": datetime.fromisoformat("2025-01-01T00:00:00+00:00"),
+        }
+    ]
+
+    buckets = ["bucket1", "bucket2"]
+    branch = "main"
+    driver.cache_analytics(buckets, branch)
+
+    assert mock_bigquery_service.query.call_count == 6
+
+    expected_intervals = [
+        (1, None),
+        (2, 1),
+        (7, None),
+        (14, 7),
+        (30, None),
+        (60, 30),
+    ]
+
+    expected_dict = {
+        "name": [],
+        "classname": [],
+        "testsuite": [],
+        "computed_name": [],
+        "flags": [],
+        "avg_duration": [],
+        "fail_count": [],
+        "flaky_fail_count": [],
+        "pass_count": [],
+        "skip_count": [],
+        "commits_where_fail": [],
+        "last_duration": [],
     }
 
-    assert {t["outcome"] for t in testruns_for_upload} == {3, 1, 0}
+    table_dicts = []
+    for bucket in buckets:
+        for interval_start, interval_end in expected_intervals:
+            storage_key = (
+                f"ta_rollups/{driver.repo_id}/{branch}/{interval_start}"
+                if interval_end is None
+                else f"ta_rollups/{driver.repo_id}/{branch}/{interval_start}_{interval_end}"
+            )
+            table = read_table(mock_storage, bucket, storage_key)
+            table_dict = table.to_dict(as_series=False)
+            table_dicts.append(table_dict)
 
+    assert snapshot("json") == {
+        "name": table_dicts[0]["name"],
+        "classname": table_dicts[0]["classname"],
+        "testsuite": table_dicts[0]["testsuite"],
+        "computed_name": table_dicts[0]["computed_name"],
+        "flags": table_dicts[0]["flags"],
+        "avg_duration": table_dicts[0]["avg_duration"],
+        "fail_count": table_dicts[0]["fail_count"],
+        "flaky_fail_count": table_dicts[0]["flaky_fail_count"],
+        "pass_count": table_dicts[0]["pass_count"],
+        "skip_count": table_dicts[0]["skip_count"],
+        "commits_where_fail": table_dicts[0]["commits_where_fail"],
+        "last_duration": table_dicts[0]["last_duration"],
+    }
 
-def populate_analytics_testruns(bq: BQDriver):
-    upload_0 = UploadFactory()
-    upload_0.report.commit.commitid = "abcde"
-    upload_0.report.commit.branch = "feature_branch"
-    upload_0.report.commit.repoid = 1
-    upload_0.flags.append(RepositoryFlagFactory(flag_name="flag_0"))
+    first_dict = table_dicts[0]
+    for table_dict in table_dicts[1:]:
+        assert table_dict == first_dict
 
-    upload_1 = UploadFactory()
-    upload_1.report.commit.commitid = "abcde"
-    upload_1.report.commit.branch = "feature_branch"
-    upload_1.report.commit.repoid = 1
-    upload_1.flags.append(RepositoryFlagFactory(flag_name="flag_1"))
+    queries = []
+    params = []
+    for args in mock_bigquery_service.query.call_args_list:
+        queries.append(args[0][0])
+        params.append(args[0][1])
 
-    testruns: list[test_results_parser.Testrun] = [
-        {
-            "name": "interval_start",
-            "classname": "class_0",
-            "testsuite": "suite_upload",
-            "duration": 20000.0,
-            "outcome": "failure",
-            "filename": None,
-            "computed_name": "upload_computed_name_0",
-            "failure_message": None,
-            "build_url": None,
-        },
-    ]
+    first_query = queries[0]
+    for query in queries[1:]:
+        assert query == first_query
 
-    timestamp = int((datetime.now() - timedelta(days=50)).timestamp() * 1000000)
+    assert snapshot("txt") == first_query
 
-    bq.write_testruns(
-        timestamp, 1, "interval_start", "feature_branch", upload_0, "pytest", testruns
-    )
-
-    testruns: list[test_results_parser.Testrun] = [
-        {
-            "name": "interval_end",
-            "classname": "class_0",
-            "testsuite": "suite_upload",
-            "duration": 20000.0,
-            "outcome": "failure",
-            "filename": None,
-            "computed_name": "upload_computed_name_0",
-            "failure_message": None,
-            "build_url": None,
-        },
-    ]
-
-    timestamp = int((datetime.now() - timedelta(days=1)).timestamp() * 1000000)
-
-    bq.write_testruns(
-        timestamp, 1, "interval_end", "feature_branch", upload_0, "pytest", testruns
-    )
-
-    testruns: list[test_results_parser.Testrun] = [
-        {
-            "name": "test_0",
-            "classname": "class_0",
-            "testsuite": "suite_upload",
-            "duration": 10.0,
-            "outcome": "failure",
-            "filename": None,
-            "computed_name": "upload_computed_name_0",
-            "failure_message": None,
-            "build_url": None,
-        },
-        {
-            "name": "test_1",
-            "classname": "class_1",
-            "testsuite": "suite_upload",
-            "duration": 10.0,
-            "outcome": "pass",
-            "filename": None,
-            "computed_name": "upload_computed_name_1",
-            "failure_message": None,
-            "build_url": None,
-        },
-    ]
-
-    timestamp = int((datetime.now() - timedelta(days=20)).timestamp() * 1000000)
-
-    bq.write_testruns(
-        timestamp, 1, "commit_1", "feature_branch", upload_0, "pytest", testruns
-    )
-
-    testruns: list[test_results_parser.Testrun] = [
-        {
-            "name": "test_1",
-            "classname": "class_1",
-            "testsuite": "suite_upload",
-            "duration": 10.0,
-            "outcome": "failure",
-            "filename": None,
-            "computed_name": "upload_computed_name_1",
-            "failure_message": None,
-            "build_url": None,
-        },
-    ]
-
-    timestamp = int((datetime.now() - timedelta(days=20)).timestamp() * 1000000)
-
-    bq.write_testruns(
-        timestamp, 1, "commit_1", "feature_branch", upload_1, "pytest", testruns
-    )
-
-    bq = BQDriver(
-        {
-            calc_test_id("test_1", "class_1", "suite_upload"),
-        }
-    )
-
-    testruns: list[test_results_parser.Testrun] = [
-        {
-            "name": "test_0",
-            "classname": "class_0",
-            "testsuite": "suite_upload",
-            "duration": 20.0,
-            "outcome": "pass",
-            "filename": None,
-            "computed_name": "upload_computed_name_0",
-            "failure_message": None,
-            "build_url": None,
-        },
-        {
-            "name": "test_1",
-            "classname": "class_1",
-            "testsuite": "suite_upload",
-            "duration": 10.0,
-            "outcome": "failure",
-            "filename": None,
-            "computed_name": "upload_computed_name_1",
-            "failure_message": None,
-            "build_url": None,
-        },
-    ]
-
-    timestamp = int((datetime.now() - timedelta(days=10)).timestamp() * 1000000)
-
-    bq.write_testruns(
-        timestamp, 1, "commit_2", "feature_branch", upload_1, "pytest", testruns
-    )
-
-
-@pytest.mark.skip(reason="need creds")
-@time_machine.travel(datetime.now(tz=timezone.utc), tick=False)
-def test_bq_analytics():
-    bq = BQDriver()
-
-    if (
-        bq.bq_service.query(
-            "select * from `test_dataset.testruns` where repoid = 1 limit 1"
-        )
-        == []
-    ):
-        populate_analytics_testruns(bq)
-
-    testruns_for_upload = bq.analytics(1, 30, 7, "feature_branch")
-
-    assert sorted(
-        [(x | {"flags": sorted(x["flags"])}) for x in testruns_for_upload],
-        key=lambda x: x["name"],
-    ) == [
-        {
-            "name": "test_0",
-            "classname": "class_0",
-            "testsuite": "suite_upload",
-            "computed_name": "upload_computed_name_0",
-            "cwf": 1,
-            "avg_duration": 15.0,
-            "last_duration": 20.0,
-            "pass_count": 1,
-            "fail_count": 1,
-            "skip_count": 0,
-            "flaky_fail_count": 0,
-            "updated_at": datetime.now(tz=timezone.utc) - timedelta(days=10),
-            "flags": ["flag_0", "flag_1"],
-        },
-        {
-            "name": "test_1",
-            "classname": "class_1",
-            "testsuite": "suite_upload",
-            "computed_name": "upload_computed_name_1",
-            "cwf": 2,
-            "avg_duration": 10.0,
-            "last_duration": 10.0,
-            "pass_count": 1,
-            "fail_count": 1,
-            "skip_count": 0,
-            "flaky_fail_count": 1,
-            "updated_at": datetime.now(tz=timezone.utc) - timedelta(days=10),
-            "flags": ["flag_0", "flag_1"],
-        },
-    ]
+    for i, (interval_start, interval_end) in enumerate(expected_intervals):
+        assert params[i] == [
+            ScalarQueryParameter("repoid", "INT64", 1),
+            ScalarQueryParameter("interval_start", "INT64", interval_start),
+            ScalarQueryParameter("interval_end", "INT64", interval_end),
+            ScalarQueryParameter("branch", "STRING", branch),
+        ]
