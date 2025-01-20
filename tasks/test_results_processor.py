@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import base64
 import logging
-import zlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal, TypedDict
@@ -380,10 +378,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         db_session.execute(insert_on_conflict_do_nothing_flags)
         db_session.commit()
 
-    def decode_raw_file(self, file: bytes) -> bytes:
-        file_bytes = zlib.decompress(base64.b64decode(file))
-        return file_bytes
-
     def parse_file(
         self,
         file_bytes: bytes,
@@ -438,8 +432,6 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
 
         parsing_results, readable_files = result
 
-        upload.state = "processed"
-
         if all(len(result["testruns"]) == 0 for result in parsing_results):
             successful = False
             log.error(
@@ -460,6 +452,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 upload.flag_names,
             )
 
+        upload.state = "processed"
         db_session.commit()
 
         log.info(
@@ -469,23 +462,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         if should_delete_archive:
             self.delete_archive(archive_service, upload)
         else:
+            log.info(
+                "Writing readable files to archive",
+                extra=dict(upload_id=upload_id, readable_files=readable_files),
+            )
             archive_service.write_file(upload.storage_path, readable_files)
 
         return {"successful": successful}
-
-    def rewrite_readable(
-        self, network: list[str] | None, report_contents: list[ReadableFile]
-    ) -> bytes:
-        buffer = b""
-        if network is not None:
-            for file in network:
-                buffer += f"{file}\n".encode("utf-8")
-            buffer += b"<<<<<< network\n\n"
-        for report_content in report_contents:
-            buffer += f"# path={report_content.path}\n".encode("utf-8")
-            buffer += report_content.contents
-            buffer += b"\n<<<<<< EOF\n\n"
-        return buffer
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):

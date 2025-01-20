@@ -222,7 +222,7 @@ def save_tests(db_session: Session, tests_to_write: dict[str, dict[str, Any]]):
 
     test_insert = insert(Test.__table__).values(test_data)
     insert_on_conflict_do_update = test_insert.on_conflict_do_update(
-        index_elements=["repoid", "name", "testsuite", "flags_hash"],
+        index_elements=["id"],
         set_={
             "framework": test_insert.excluded.framework,
             "computed_name": test_insert.excluded.computed_name,
