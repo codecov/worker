@@ -4,9 +4,11 @@ from graphlib import TopologicalSorter
 
 from django.db.models import Model, Q
 from django.db.models.query import QuerySet
+from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.django_apps.codecov_auth.models import Owner, OwnerProfile
 from shared.django_apps.core.models import Commit, Pull, Repository
 from shared.django_apps.reports.models import DailyTestRollup, TestInstance
+from shared.django_apps.user_measurements.models import UserMeasurement
 
 # Relations referencing 0 through field 1 of model 2:
 IGNORE_RELATIONS: set[tuple[type[Model], str, type[Model]]] = {
@@ -19,10 +21,16 @@ IGNORE_RELATIONS: set[tuple[type[Model], str, type[Model]]] = {
 }
 
 # Relations which have no proper foreign key:
-UNDOCUMENTED_RELATIONS: set[tuple[type[Model], str, type[Model]]] = {
+UNDOCUMENTED_RELATIONS: list[tuple[type[Model], str, type[Model]]] = [
     (Repository, "repoid", TestInstance),
     (Repository, "repoid", DailyTestRollup),
-}
+    (Commit, "commit_id", UserMeasurement),
+    (Owner, "owner_id", UserMeasurement),
+    (Repository, "repo_id", UserMeasurement),
+    (Repository, "repo_id", CacheConfig),
+    # TODO: `UserMeasurement` also has `upload_id`, should we register that as well?
+    # TODO: should we also include `SimpleMetric` here?
+]
 
 
 @dataclasses.dataclass

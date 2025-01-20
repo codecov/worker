@@ -1,3 +1,12 @@
+-- UserMeasurement
+DELETE
+FROM "user_measurements"
+WHERE "user_measurements"."owner_id" IN
+    (SELECT U0."ownerid"
+     FROM "owners" U0
+     WHERE U0."ownerid" = %s)
+
+
 -- YamlHistory
 DELETE
 FROM "yaml_history"
@@ -84,6 +93,18 @@ WHERE "reports_testinstance"."repoid" IN
 DELETE
 FROM "reports_dailytestrollups"
 WHERE "reports_dailytestrollups"."repoid" IN
+    (SELECT V0."repoid"
+     FROM "repos" V0
+     WHERE V0."ownerid" IN
+         (SELECT U0."ownerid"
+          FROM "owners" U0
+          WHERE U0."ownerid" = %s))
+
+
+-- CacheConfig
+DELETE
+FROM "bundle_analysis_cacheconfig"
+WHERE "bundle_analysis_cacheconfig"."repo_id" IN
     (SELECT V0."repoid"
      FROM "repos" V0
      WHERE V0."ownerid" IN

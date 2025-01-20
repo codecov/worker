@@ -16,6 +16,24 @@ WHERE "reports_dailytestrollups"."repoid" IN
      WHERE U0."repoid" = %s)
 
 
+-- UserMeasurement
+DELETE
+FROM "user_measurements"
+WHERE "user_measurements"."repo_id" IN
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."repoid" = %s)
+
+
+-- CacheConfig
+DELETE
+FROM "bundle_analysis_cacheconfig"
+WHERE "bundle_analysis_cacheconfig"."repo_id" IN
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."repoid" = %s)
+
+
 -- RepositoryToken
 DELETE
 FROM "codecov_auth_repositorytoken"
