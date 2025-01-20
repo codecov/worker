@@ -29,8 +29,10 @@ from database.tests.factories import (
     OwnerFactory,
     PullFactory,
     RepositoryFactory,
+    UploadErrorFactory,
 )
 from database.tests.factories.core import ReportFactory, UploadFactory
+from database.tests.factories.reports import TestResultReportTotalsFactory
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
@@ -47,6 +49,7 @@ from tasks.notify import (
     NotifyTask,
     _possibly_pin_commit_to_github_app,
     _possibly_refresh_previous_selection,
+    get_ta_relevant_context,
 )
 
 
@@ -1243,3 +1246,63 @@ class TestNotifyTask(object):
             task.is_using_codecov_commenter(mock_repository_service)
             == expected_response
         )
+
+    def test_ta_relevant_context(self, mocker, dbsession):
+        report = ReportFactory(report_type="test_results")
+        dbsession.add(report)
+        dbsession.flush()
+
+        upload = UploadFactory(report=report)
+        dbsession.add(upload)
+        dbsession.flush()
+
+        upload_error = UploadErrorFactory(report_upload=upload)
+        dbsession.add(upload_error)
+        dbsession.flush()
+
+        all_tests_passed, ta_error_msg = get_ta_relevant_context(dbsession, report)
+
+        assert all_tests_passed is False
+        assert ta_error_msg == "error message"
+
+    def test_ta_relevant_context_no_error(self, mocker, dbsession):
+        report = ReportFactory(report_type="test_results")
+        dbsession.add(report)
+        dbsession.flush()
+
+        upload = UploadFactory(report=report)
+        dbsession.add(upload)
+        dbsession.flush()
+
+        all_tests_passed, ta_error_msg = get_ta_relevant_context(dbsession, report)
+
+        assert all_tests_passed is False
+        assert ta_error_msg is None
+
+    def test_ta_relevant_context_totals(self, mocker, dbsession):
+        report = ReportFactory(report_type="test_results")
+        dbsession.add(report)
+        dbsession.flush()
+
+        totals = TestResultReportTotalsFactory(report=report, failed=1)
+        dbsession.add(totals)
+        dbsession.flush()
+
+        all_tests_passed, ta_error_msg = get_ta_relevant_context(dbsession, report)
+
+        assert all_tests_passed is False
+        assert ta_error_msg is None
+
+    def test_ta_relevant_context_totals_passed(self, mocker, dbsession):
+        report = ReportFactory(report_type="test_results")
+        dbsession.add(report)
+        dbsession.flush()
+
+        totals = TestResultReportTotalsFactory(report=report, failed=0)
+        dbsession.add(totals)
+        dbsession.flush()
+
+        all_tests_passed, ta_error_msg = get_ta_relevant_context(dbsession, report)
+
+        assert all_tests_passed is True
+        assert ta_error_msg is None

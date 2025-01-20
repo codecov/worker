@@ -2,7 +2,7 @@ import datetime as dt
 
 import polars as pl
 import shared.storage
-from django.db import DatabaseError, connections, transaction
+from django.db import connections
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
 from shared.config import get_config
@@ -108,34 +108,21 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
     def run_impl(
         self, _db_session, repoid: int, branch: str, update_date: bool = True, **kwargs
     ):
-        # TODO(swatinem): We currently nest 2 locks, in Redis and Postgres.
-        # We can remove the first Redis lock in a followup once this is fully rolled out.
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(
                 f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
             ):
-                with transaction.atomic():
-                    try:
-                        last_update, _created = (
-                            LastCacheRollupDate.objects.select_for_update(
-                                nowait=True
-                            ).get_or_create(
-                                repository_id=repoid,
-                                branch=branch,
-                                defaults={"last_rollup_date": dt.date.today()},
-                            )
-                        )
-                    except DatabaseError:
-                        return {"in_progress": True}
+                self.run_impl_within_lock(repoid, branch)
 
-                    self.run_impl_within_lock(repoid, branch)
+                if update_date:
+                    LastCacheRollupDate.objects.update_or_create(
+                        repository_id=repoid,
+                        branch=branch,
+                        defaults={"last_rollup_date": dt.date.today()},
+                    )
 
-                    if update_date:
-                        last_update.last_rollup_date = dt.date.today()
-                        last_update.save()
-
-                    return {"success": True}
+                return {"success": True}
         except LockError:
             return {"in_progress": True}
 

@@ -13,10 +13,12 @@ from database.enums import ReportType
 from database.models import (
     Commit,
     CommitReport,
+    Flake,
     Repository,
     RepositoryFlag,
     TestInstance,
     Upload,
+    UploadError,
 )
 from helpers.notifier import BaseNotifier
 from rollouts import FLAKY_TEST_DETECTION
@@ -135,12 +137,17 @@ class FlakeInfo:
 
 
 @dataclass
+class TACommentInDepthInfo:
+    failures: list[TestResultsNotificationFailure]
+    flaky_tests: dict[str, FlakeInfo]
+
+
+@dataclass
 class TestResultsNotificationPayload:
     failed: int
     passed: int
     skipped: int
-    failures: list[TestResultsNotificationFailure]
-    flaky_tests: dict[str, FlakeInfo]
+    info: TACommentInDepthInfo | None = None
 
 
 def wrap_in_details(summary: str, content: str):
@@ -236,72 +243,120 @@ def messagify_flake(
     return make_quoted(f"{test_name}\n{flake_rate_section}\n{stack_trace}")
 
 
+def specific_error_message(upload_error: UploadError) -> str:
+    title = f"### :x: {upload_error.error_code}"
+    if upload_error.error_code == "Unsupported file format":
+        description = "\n".join(
+            [
+                "Upload processing failed due to unsupported file format. Please review the parser error message:",
+                f"`{upload_error.error_params['error_message']}`",
+                "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
+            ]
+        )
+    elif upload_error.error_code == "File not found":
+        description = "\n".join(
+            [
+                "No result to display due to the CLI not being able to find the file.",
+                "Please ensure the file contains `junit` in the name and automated file search is enabled,",
+                "or the desired file specified by the `file` and `search_dir` arguments of the CLI.",
+            ]
+        )
+    else:
+        raise ValueError("Unrecognized error code")
+    message = [
+        title,
+        make_quoted(description),
+    ]
+    return "\n".join(message)
+
+
 @dataclass
 class TestResultsNotifier(BaseNotifier):
     payload: TestResultsNotificationPayload | None = None
+    error: UploadError | None = None
 
     def build_message(self) -> str:
         if self.payload is None:
             raise ValueError("Payload passed to notifier is None, cannot build message")
 
-        message = [f"### :x: {self.payload.failed} Tests Failed:"]
+        message = []
 
-        completed = self.payload.failed + self.payload.passed
+        if self.error:
+            message.append(specific_error_message(self.error))
 
-        message += [
-            "| Tests completed | Failed | Passed | Skipped |",
-            "|---|---|---|---|",
-            f"| {completed} | {self.payload.failed} | {self.payload.passed} | {self.payload.skipped} |",
-        ]
+        if self.error and self.payload.info:
+            message.append("---")
 
-        failures = sorted(
-            (
-                failure
-                for failure in self.payload.failures
-                if failure.test_id not in self.payload.flaky_tests
-            ),
-            key=lambda x: (x.duration_seconds, x.display_name),
-        )
-        if failures:
-            failure_content = [f"{messagify_failure(failure)}" for failure in failures]
+        if self.payload.info:
+            message.append(f"### :x: {self.payload.failed} Tests Failed:")
 
-            top_3_failed_section = wrap_in_details(
-                f"View the top {min(3, len(failures))} failed tests by shortest run time",
-                "\n".join(failure_content),
-            )
+            completed = self.payload.failed + self.payload.passed
 
-            message.append(top_3_failed_section)
-
-        flaky_failures = [
-            failure
-            for failure in self.payload.failures
-            if failure.test_id in self.payload.flaky_tests
-        ]
-        if flaky_failures:
-            flake_content = [
-                f"{messagify_flake(flaky_failure, self.payload.flaky_tests[flaky_failure.test_id])}"
-                for flaky_failure in flaky_failures
+            message += [
+                "| Tests completed | Failed | Passed | Skipped |",
+                "|---|---|---|---|",
+                f"| {completed} | {self.payload.failed} | {self.payload.passed} | {self.payload.skipped} |",
             ]
 
-            flaky_section = wrap_in_details(
-                f"View the full list of {len(flaky_failures)} :snowflake: flaky tests",
-                "\n".join(flake_content),
+            failures = sorted(
+                (
+                    failure
+                    for failure in self.payload.info.failures
+                    if failure.test_id not in self.payload.info.flaky_tests
+                ),
+                key=lambda x: (x.duration_seconds, x.display_name),
             )
+            if failures:
+                failure_content = [
+                    f"{messagify_failure(failure)}" for failure in failures
+                ]
 
-            message.append(flaky_section)
+                top_3_failed_section = wrap_in_details(
+                    f"View the top {min(3, len(failures))} failed tests by shortest run time",
+                    "\n".join(failure_content),
+                )
 
-        message.append(generate_view_test_analytics_line(self.commit))
+                message.append(top_3_failed_section)
+
+            flaky_failures = [
+                failure
+                for failure in self.payload.info.failures
+                if failure.test_id in self.payload.info.flaky_tests
+            ]
+            if flaky_failures:
+                flake_content = [
+                    f"{messagify_flake(flaky_failure, self.payload.info.flaky_tests[flaky_failure.test_id])}"
+                    for flaky_failure in flaky_failures
+                ]
+
+                flaky_section = wrap_in_details(
+                    f"View the full list of {len(flaky_failures)} :snowflake: flaky tests",
+                    "\n".join(flake_content),
+                )
+
+                message.append(flaky_section)
+
+            message.append(generate_view_test_analytics_line(self.commit))
         return "\n".join(message)
 
     def error_comment(self):
+        """
+        This is no longer used in the new TA finisher task, but this is what used to display the error comment
+        """
+        message: str
+
+        if self.error is None:
+            message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
+        else:
+            message = specific_error_message(self.error)
+
         pull = self.get_pull()
         if pull is None:
             return False, "no_pull"
 
-        message = ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
-
         sent_to_provider = self.send_to_provider(pull, message)
-        if sent_to_provider == False:
+
+        if sent_to_provider is False:
             return (False, "torngit_error")
 
         return (True, "comment_posted")
@@ -410,3 +465,12 @@ def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
     )
     has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
     return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)
+
+
+def get_flake_set(db_session: Session, repoid: int) -> set[str]:
+    repo_flakes: list[Flake] = (
+        db_session.query(Flake.testid)
+        .filter(Flake.repoid == repoid, Flake.end_date.is_(None))
+        .all()
+    )
+    return {flake.testid for flake in repo_flakes}

@@ -1,11 +1,9 @@
 import logging
 from dataclasses import dataclass
 
-from shared.billing import is_pr_billing_plan
 from shared.config import get_config
 from shared.plan.service import PlanService
 from shared.upload.utils import query_monthly_coverage_measurements
-from sqlalchemy import func
 
 from database.enums import Decoration
 from database.models import Owner
@@ -31,8 +29,8 @@ class DecorationDetails(object):
     decoration_type: Decoration
     reason: str
     should_attempt_author_auto_activation: bool = False
-    activation_org_ownerid: int = None
-    activation_author_ownerid: int = None
+    activation_org_ownerid: int | None = None
+    activation_author_ownerid: int | None = None
 
 
 def _is_bot_account(author: Owner) -> bool:
@@ -50,7 +48,7 @@ def determine_uploads_used(plan_service: PlanService) -> int:
 
 def determine_decoration_details(
     enriched_pull: EnrichedPull, empty_upload=None
-) -> dict:
+) -> DecorationDetails:
     """
     Determine the decoration details from pull information. We also check if the pull author needs to be activated
 
@@ -85,7 +83,7 @@ def determine_decoration_details(
             )
 
         if db_pull.repository.private is False:
-            # public repo or repo we arent certain is private should be standard
+            # public repo or repo we aren't certain is private should be standard
             return DecorationDetails(
                 decoration_type=Decoration.standard, reason="Public repo"
             )
@@ -94,19 +92,12 @@ def determine_decoration_details(
 
         db_session = db_pull.get_db_session()
 
-        if org.service == "gitlab" and org.parent_service_id:
-            # need to get root group so we can check plan info
-            (gl_root_group,) = db_session.query(
-                func.public.get_gitlab_root_group(org.ownerid)
-            ).first()
+        # do not access plan directly - only through PlanService
+        org_plan = PlanService(current_org=org)
+        # use the org that has the plan - for GL this is the root_org rather than the repository.owner org
+        org = org_plan.current_org
 
-            org = (
-                db_session.query(Owner)
-                .filter(Owner.ownerid == gl_root_group.get("ownerid"))
-                .first()
-            )
-
-        if not is_pr_billing_plan(org.plan):
+        if not org_plan.is_pr_billing_plan:
             return DecorationDetails(
                 decoration_type=Decoration.standard, reason="Org not on PR plan"
             )
@@ -134,13 +125,12 @@ def determine_decoration_details(
                 reason="PR author not found in database",
             )
 
-        plan_service = PlanService(current_org=org)
-        monthly_limit = plan_service.monthly_uploads_limit
+        monthly_limit = org_plan.monthly_uploads_limit
         if monthly_limit is not None:
-            uploads_used = determine_uploads_used(plan_service=plan_service)
+            uploads_used = determine_uploads_used(plan_service=org_plan)
 
             if (
-                uploads_used >= plan_service.monthly_uploads_limit
+                uploads_used >= org_plan.monthly_uploads_limit
                 and not requires_license()
             ):
                 return DecorationDetails(

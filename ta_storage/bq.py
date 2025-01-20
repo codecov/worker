@@ -1,8 +1,10 @@
-from datetime import datetime
-from typing import Literal, TypedDict, cast
+from __future__ import annotations
 
+from datetime import datetime
+from typing import Literal, cast
+
+import test_results_parser
 from shared.config import get_config
-from test_results_parser import Testrun
 
 import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from database.models.reports import Upload
@@ -32,17 +34,6 @@ def outcome_to_int(
             raise ValueError(f"Invalid outcome: {outcome}")
 
 
-class TransformedTestrun(TypedDict):
-    name: str
-    classname: str
-    testsuite: str
-    computed_name: str
-    outcome: int
-    failure_message: str
-    duration: float
-    filename: str
-
-
 class BQDriver(TADriver):
     def write_testruns(
         self,
@@ -52,7 +43,7 @@ class BQDriver(TADriver):
         branch_name: str,
         upload: Upload,
         framework: str | None,
-        testruns: list[Testrun],
+        testruns: list[test_results_parser.Testrun],
     ):
         bq_service = get_bigquery_service()
 

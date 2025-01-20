@@ -14,6 +14,9 @@ from services.notification.notifiers.mixins.message.helpers import (
     escape_markdown,
     make_patch_only_metrics,
 )
+from services.notification.notifiers.mixins.message.sections import (
+    ALL_TESTS_PASSED_MSG,
+)
 
 log = logging.getLogger(__name__)
 
@@ -50,17 +53,12 @@ class TeamPlanWriter:
 
         hide_project_coverage = settings.get("hide_project_coverage", False)
         if hide_project_coverage:
-            if comparison.test_results_error():
+            if ta_error_msg := comparison.test_results_error():
                 lines.append("")
-                lines.append(
-                    ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."
-                )
+                lines.append(ta_error_msg)
             elif comparison.all_tests_passed():
                 lines.append("")
-                lines.append(
-                    ":white_check_mark: All tests successful. No failed tests found."
-                )
-
+                lines.append(ALL_TESTS_PASSED_MSG)
         return lines
 
     def middle_lines(

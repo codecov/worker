@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 from typing import Any, Literal, TypedDict
 
+import test_results_parser
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
-from test_results_parser import Testrun
 
 from database.models import (
     DailyTestRollup,
@@ -51,7 +53,7 @@ def modify_structures(
     test_instances_to_write: list[dict[str, Any]],
     test_flag_bridge_data: list[dict],
     daily_totals: dict[str, DailyTotals],
-    testrun: Testrun,
+    testrun: test_results_parser.Testrun,
     upload: Upload,
     repoid: int,
     branch: str | None,
@@ -61,14 +63,18 @@ def modify_structures(
     framework: str | None,
 ):
     flags_hash = generate_flags_hash(upload.flag_names)
+
+    test_name = f"{testrun['classname']}\x1f{testrun['name']}"
     test_id = generate_test_id(
         repoid,
         testrun["testsuite"],
-        testrun["name"],
+        test_name,
         flags_hash,
     )
 
-    test = generate_test_dict(test_id, repoid, testrun, flags_hash, framework)
+    test = generate_test_dict(
+        test_id, test_name, repoid, testrun, flags_hash, framework
+    )
     tests_to_write[test_id] = test
 
     test_instance = generate_test_instance_dict(
@@ -81,10 +87,10 @@ def modify_structures(
             {"test_id": test_id, "flag_id": flag_id} for flag_id in repo_flag_ids
         )
 
-    if test["id"] in daily_totals:
+    if test_id in daily_totals:
         update_daily_totals(
             daily_totals,
-            test["id"],
+            test_id,
             testrun["duration"],
             testrun["outcome"],
         )
@@ -103,15 +109,16 @@ def modify_structures(
 
 def generate_test_dict(
     test_id: str,
+    test_name: str,
     repoid: int,
-    testrun: Testrun,
+    testrun: test_results_parser.Testrun,
     flags_hash: str,
     framework: str | None,
 ) -> dict[str, Any]:
     return {
         "id": test_id,
         "repoid": repoid,
-        "name": f"{testrun['classname']}\x1f{testrun['name']}",
+        "name": test_name,
         "testsuite": testrun["testsuite"],
         "flags_hash": flags_hash,
         "framework": framework,
@@ -123,7 +130,7 @@ def generate_test_dict(
 def generate_test_instance_dict(
     test_id: str,
     upload: Upload,
-    testrun: Testrun,
+    testrun: test_results_parser.Testrun,
     commit_sha: str,
     branch: str | None,
     repoid: int,
@@ -142,13 +149,11 @@ def generate_test_instance_dict(
 
 
 def update_daily_totals(
-    daily_totals: dict,
+    daily_totals: dict[str, DailyTotals],
     test_id: str,
     duration_seconds: float | None,
     outcome: Literal["pass", "failure", "error", "skip"],
 ):
-    daily_totals[test_id]["last_duration_seconds"] = duration_seconds
-
     # logic below is a little complicated but we're basically doing:
 
     # (old_avg * num of values used to compute old avg) + new value
@@ -192,8 +197,8 @@ def create_daily_totals(
     daily_totals[test_id] = {
         "test_id": test_id,
         "repoid": repoid,
-        "last_duration_seconds": duration_seconds,
-        "avg_duration_seconds": duration_seconds,
+        "last_duration_seconds": duration_seconds or 0.0,
+        "avg_duration_seconds": duration_seconds or 0.0,
         "pass_count": 1 if outcome == "pass" else 0,
         "fail_count": 1 if outcome == "failure" or outcome == "error" else 0,
         "skip_count": 1 if outcome == "skip" else 0,
@@ -217,7 +222,7 @@ def save_tests(db_session: Session, tests_to_write: dict[str, dict[str, Any]]):
 
     test_insert = insert(Test.__table__).values(test_data)
     insert_on_conflict_do_update = test_insert.on_conflict_do_update(
-        index_elements=["repoid", "name", "testsuite", "flags_hash"],
+        index_elements=["id"],
         set_={
             "framework": test_insert.excluded.framework,
             "computed_name": test_insert.excluded.computed_name,
@@ -290,7 +295,7 @@ class PGDriver(TADriver):
         branch_name: str,
         upload: Upload,
         framework: str | None,
-        testruns: list[Testrun],
+        testruns: list[test_results_parser.Testrun],
     ):
         tests_to_write: dict[str, dict[str, Any]] = {}
         test_instances_to_write: list[dict[str, Any]] = []
@@ -326,6 +331,3 @@ class PGDriver(TADriver):
 
         if len(test_instances_to_write) > 0:
             save_test_instances(self.db_session, test_instances_to_write)
-
-        upload.state = "v2_persisted"
-        self.db_session.commit()

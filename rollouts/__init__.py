@@ -12,3 +12,5 @@ CHECKPOINT_ENABLED_REPOSITORIES = Feature("checkpoint_enabled_repositories")
 SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG = Feature(
     "show_impact_analysis_deprecation_message"
 )
+
+NEW_TA_TASKS = Feature("new_ta_tasks")

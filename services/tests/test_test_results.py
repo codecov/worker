@@ -2,14 +2,17 @@ import mock
 import pytest
 from shared.torngit.exceptions import TorngitClientError
 
+from database.models import UploadError
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
     RepositoryFactory,
+    UploadFactory,
 )
 from helpers.notifier import NotifierResult
 from services.test_results import (
     FlakeInfo,
+    TACommentInDepthInfo,
     TestResultsNotificationFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
@@ -112,7 +115,8 @@ def test_build_message():
         1.0,
         "https://example.com/build_url",
     )
-    payload = TestResultsNotificationPayload(1, 2, 3, [fail], dict())
+    info = TACommentInDepthInfo(failures=[fail], flaky_tests={})
+    payload = TestResultsNotificationPayload(1, 2, 3, info)
     commit = CommitFactory(branch="thing/thing")
     tn = TestResultsNotifier(commit, None, None, None, payload)
     res = tn.build_message()
@@ -159,10 +163,9 @@ def test_build_message_with_flake():
         1.0,
         "https://example.com/build_url",
     )
-
-    payload = TestResultsNotificationPayload(
-        1, 2, 3, [fail], {test_id: FlakeInfo(1, 3)}
-    )
+    flaky_test = FlakeInfo(1, 3)
+    info = TACommentInDepthInfo(failures=[fail], flaky_tests={test_id: flaky_test})
+    payload = TestResultsNotificationPayload(1, 2, 3, info)
     commit = CommitFactory(branch="test_branch")
     tn = TestResultsNotifier(commit, None, None, None, payload)
     res = tn.build_message()
@@ -274,3 +277,58 @@ def test_should_do_flake_detection(
     result = should_do_flaky_detection(repo, UserYaml.from_dict(yaml))
 
     assert result == ex_result
+
+
+def test_specific_error_message(mocker):
+    mock_repo_service = mock.AsyncMock()
+    mocker.patch(
+        "helpers.notifier.get_repo_provider_service", return_value=mock_repo_service
+    )
+    mocker.patch(
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
+        return_value=mock.AsyncMock(),
+    )
+
+    upload = UploadFactory()
+    error = UploadError(
+        report_upload=upload,
+        error_code="Unsupported file format",
+        error_params={
+            "error_message": "Error parsing JUnit XML in test.xml at 4:32: ParserError: No name found"
+        },
+    )
+    tn = TestResultsNotifier(CommitFactory(), None, error=error)
+    result = tn.error_comment()
+    expected = """### :x: Unsupported file format
+
+> Upload processing failed due to unsupported file format. Please review the parser error message:
+> `Error parsing JUnit XML in test.xml at 4:32: ParserError: No name found`
+> For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).
+"""
+
+    assert result == (True, "comment_posted")
+    print(mock_repo_service.mock_calls)
+    mock_repo_service.edit_comment.assert_called_with(
+        tn._pull.database_pull.pullid, tn._pull.database_pull.commentid, expected
+    )
+
+
+def test_specific_error_message_no_error(mocker):
+    mock_repo_service = mock.AsyncMock()
+    mocker.patch(
+        "helpers.notifier.get_repo_provider_service", return_value=mock_repo_service
+    )
+    mocker.patch(
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
+        return_value=mock.AsyncMock(),
+    )
+
+    tn = TestResultsNotifier(CommitFactory(), None)
+    result = tn.error_comment()
+    expected = """:x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."""
+
+    assert result == (True, "comment_posted")
+    print(mock_repo_service.mock_calls)
+    mock_repo_service.edit_comment.assert_called_with(
+        tn._pull.database_pull.pullid, tn._pull.database_pull.commentid, expected
+    )

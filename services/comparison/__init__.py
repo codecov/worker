@@ -10,7 +10,7 @@ from shared.torngit.base import TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientGeneralError
 from shared.utils.sessions import SessionType
 
-from database.enums import CompareCommitState, TestResultsProcessingError
+from database.enums import CompareCommitState
 from database.models import CompareCommit
 from services.archive import ArchiveService
 from services.comparison.changes import get_changes
@@ -27,7 +27,7 @@ class ComparisonContext(object):
 
     repository_service: TorngitBaseAdapter | None = None
     all_tests_passed: bool | None = None
-    test_results_error: TestResultsProcessingError | None = None
+    test_results_error: str | None = None
     gh_app_installation_name: str | None = None
     gh_is_using_codecov_commenter: bool = False
     # GitLab has a "merge results pipeline" (see https://docs.gitlab.com/ee/ci/pipelines/merged_results_pipelines.html)
@@ -263,11 +263,17 @@ class ComparisonProxy(object):
             ]
         return self._behind_by
 
-    def all_tests_passed(self):
-        return self.context is not None and self.context.all_tests_passed
+    def all_tests_passed(self) -> bool:
+        if self.context:
+            return self.context.all_tests_passed or False
 
-    def test_results_error(self):
-        return self.context is not None and self.context.test_results_error
+        return False
+
+    def test_results_error(self) -> str | None:
+        if self.context:
+            return self.context.test_results_error
+
+        return None
 
     def get_existing_statuses(self):
         if self._existing_statuses is None:

@@ -31,6 +31,7 @@ from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
+from rollouts import NEW_TA_TASKS
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
@@ -52,6 +53,8 @@ from services.test_results import TestResultsReportService
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
+from tasks.ta_finisher import ta_finisher_task
+from tasks.ta_processor import ta_processor_task
 from tasks.test_results_finisher import test_results_finisher_task
 from tasks.test_results_processor import test_results_processor_task
 from tasks.upload_finisher import upload_finisher_task
@@ -729,7 +732,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
         elif upload_context.report_type == ReportType.TEST_RESULTS:
             assert commit_report.report_type == ReportType.TEST_RESULTS.value
-            return self._schedule_test_results_processing_task(
+            return self._schedule_ta_processing_task(
                 commit, commit_yaml, argument_list, commit_report
             )
 
@@ -800,36 +803,56 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         return chain(task_signatures).apply_async()
 
-    def _schedule_test_results_processing_task(
+    def _schedule_ta_processing_task(
         self,
         commit: Commit,
         commit_yaml: dict,
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
     ):
-        task_group = [
-            test_results_processor_task.s(
-                repoid=commit.repoid,
-                commitid=commit.commitid,
-                commit_yaml=commit_yaml,
-                arguments_list=list(chunk),
-                report_code=commit_report.code,
+        if NEW_TA_TASKS.check_value(commit.repoid):
+            ta_proc_group = [
+                ta_processor_task.s(
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    argument=argument,
+                )
+                for argument in argument_list
+            ]
+            ta_finisher_kwargs = {
+                "repoid": commit.repoid,
+                "commitid": commit.commitid,
+                "commit_yaml": commit_yaml,
+            }
+            ta_finisher_kwargs = TestResultsFlow.save_to_kwargs(ta_finisher_kwargs)
+            ta_finisher_task_sig = ta_finisher_task.s(**ta_finisher_kwargs)
+
+            return chord(ta_proc_group, ta_finisher_task_sig).apply_async()
+        else:
+            task_group = [
+                test_results_processor_task.s(
+                    repoid=commit.repoid,
+                    commitid=commit.commitid,
+                    commit_yaml=commit_yaml,
+                    arguments_list=list(chunk),
+                    report_code=commit_report.code,
+                )
+                for chunk in itertools.batched(argument_list, CHUNK_SIZE)
+            ]
+
+            task_group[0].args = (False,)
+
+            finisher_kwargs = {
+                "repoid": commit.repoid,
+                "commitid": commit.commitid,
+                "commit_yaml": commit_yaml,
+            }
+            finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
+            task_group.append(
+                test_results_finisher_task.signature(kwargs=finisher_kwargs),
             )
-            for chunk in itertools.batched(argument_list, CHUNK_SIZE)
-        ]
-
-        task_group[0].args = (False,)
-
-        finisher_kwargs = {
-            "repoid": commit.repoid,
-            "commitid": commit.commitid,
-            "commit_yaml": commit_yaml,
-        }
-        finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
-        task_group.append(
-            test_results_finisher_task.signature(kwargs=finisher_kwargs),
-        )
-        return chain(*task_group).apply_async()
+            return chain(*task_group).apply_async()
 
     def possibly_carryforward_bundle_report(
         self,

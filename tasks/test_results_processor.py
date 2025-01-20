@@ -1,18 +1,17 @@
-import base64
-import json
+from __future__ import annotations
+
 import logging
-import zlib
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import sentry_sdk
+import test_results_parser
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
-from test_results_parser import Outcome, ParserError, ParsingInfo, parse_junit_xml
 
 from app import celery_app
 from database.models import (
@@ -60,7 +59,7 @@ def create_daily_totals(
     test_id: str,
     repoid: int,
     duration_seconds: float,
-    outcome: Outcome,
+    outcome: Literal["pass", "failure", "error", "skip"],
     branch: str,
     commitid: str,
     flaky_test_set: set[str],
@@ -70,20 +69,17 @@ def create_daily_totals(
         "repoid": repoid,
         "last_duration_seconds": duration_seconds,
         "avg_duration_seconds": duration_seconds,
-        "pass_count": 1 if outcome == str(Outcome.Pass) else 0,
-        "fail_count": 1
-        if outcome == str(Outcome.Failure) or outcome == str(Outcome.Error)
-        else 0,
-        "skip_count": 1 if outcome == str(Outcome.Skip) else 0,
+        "pass_count": 1 if outcome == "pass" else 0,
+        "fail_count": 1 if outcome == "failure" or outcome == "error" else 0,
+        "skip_count": 1 if outcome == "skip" else 0,
         "flaky_fail_count": 1
-        if test_id in flaky_test_set
-        and (outcome == str(Outcome.Failure) or outcome == str(Outcome.Error))
+        if test_id in flaky_test_set and (outcome == "failure" or outcome == "error")
         else 0,
         "branch": branch,
         "date": date.today(),
         "latest_run": datetime.now(),
         "commits_where_fail": [commitid]
-        if (outcome == str(Outcome.Failure) or outcome == str(Outcome.Error))
+        if outcome == "failure" or outcome == "error"
         else [],
     }
 
@@ -92,7 +88,7 @@ def update_daily_totals(
     daily_totals: dict,
     test_id: str,
     duration_seconds: float,
-    outcome: Outcome,
+    outcome: Literal["pass", "failure", "error", "skip"],
 ):
     daily_totals[test_id]["last_duration_seconds"] = duration_seconds
 
@@ -107,11 +103,11 @@ def update_daily_totals(
         + duration_seconds
     ) / (daily_totals[test_id]["pass_count"] + daily_totals[test_id]["fail_count"] + 1)
 
-    if outcome == str(Outcome.Pass):
+    if outcome == "pass":
         daily_totals[test_id]["pass_count"] += 1
-    elif outcome == str(Outcome.Failure) or outcome == str(Outcome.Error):
+    elif outcome == "failure" or outcome == "error":
         daily_totals[test_id]["fail_count"] += 1
-    elif outcome == str(Outcome.Skip):
+    elif outcome == "skip":
         daily_totals[test_id]["skip_count"] += 1
 
 
@@ -199,7 +195,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         commitid: str,
         upload_id: int,
         branch: str,
-        parsing_results: list[ParsingInfo],
+        parsing_results: list[test_results_parser.ParsingInfo],
         flaky_test_set: set[str],
         flags: list[str],
     ):
@@ -213,21 +209,20 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         repo_flag_ids = get_repo_flag_ids(db_session, repoid, flags)
 
         for p in parsing_results:
-            framework = str(p.framework) if p.framework else None
+            framework = p["framework"]
 
-            for testrun in p.testruns:
+            for testrun in p["testruns"]:
                 # Build up the data for bulk insert
-                name: str = f"{testrun.classname}\x1f{testrun.name}"
-                testsuite: str = testrun.testsuite
-                outcome: str = str(testrun.outcome)
+                name: str = f"{testrun['classname']}\x1f{testrun['name']}"
+                testsuite: str = testrun["testsuite"]
+                outcome = testrun["outcome"]
                 duration_seconds: float = (
-                    testrun.duration if testrun.duration is not None else 0.0
+                    testrun["duration"] if testrun["duration"] is not None else 0.0
                 )
-                failure_message: str | None = testrun.failure_message
+                failure_message: str | None = testrun["failure_message"]
                 test_id: str = generate_test_id(repoid, testsuite, name, flags_hash)
-                computed_name = testrun.computed_name
-
-                filename: str | None = testrun.filename
+                computed_name = testrun["computed_name"]
+                filename: str | None = testrun["filename"]
 
                 test_data[(repoid, name, testsuite, flags_hash)] = dict(
                     id=test_id,
@@ -260,7 +255,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     )
                 )
 
-                if outcome != str(Outcome.Skip):
+                if outcome != "skip":
                     if test_id in daily_totals:
                         update_daily_totals(
                             daily_totals, test_id, duration_seconds, outcome
@@ -331,7 +326,9 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         db_session.execute(insert_on_conflict_do_update)
         db_session.commit()
 
-    def save_daily_test_rollups(self, db_session: Session, daily_rollups: list[dict]):
+    def save_daily_test_rollups(
+        self, db_session: Session, daily_rollups: list[DailyTotals]
+    ):
         rollup_table = DailyTestRollup.__table__
         stmt = insert(rollup_table).values(daily_rollups)
         stmt = stmt.on_conflict_do_update(
@@ -381,17 +378,17 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         db_session.execute(insert_on_conflict_do_nothing_flags)
         db_session.commit()
 
-    def decode_raw_file(self, file: bytes) -> bytes:
-        file_bytes = zlib.decompress(base64.b64decode(file))
-        return file_bytes
-
     def parse_file(
-        self, file_bytes: bytes, upload: Upload, parsing_results: list[ParsingInfo]
-    ) -> bool:
+        self,
+        file_bytes: bytes,
+        upload: Upload,
+    ) -> tuple[list[test_results_parser.ParsingInfo], bytes] | None:
         try:
-            parsing_results.append(parse_junit_xml(file_bytes))
-            return True
-        except ParserError as exc:
+            parsing_infos, readable_files = test_results_parser.parse_raw_upload(
+                file_bytes
+            )
+            return parsing_infos, readable_files
+        except RuntimeError as exc:
             log.error(
                 "Error parsing file",
                 extra=dict(
@@ -399,10 +396,11 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                     commitid=upload.report.commit_id,
                     uploadid=upload.id,
                     parser_err_msg=str(exc),
+                    upload_state=upload.state,
                 ),
             )
             sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
-            return False
+            return None
 
     def process_individual_upload(
         self,
@@ -423,38 +421,18 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             return {"successful": False}
 
         payload_bytes = archive_service.read_file(upload.storage_path)
-        try:
-            data = json.loads(payload_bytes)
-        except json.JSONDecodeError as e:
-            with sentry_sdk.new_scope() as scope:
-                scope.set_tag("upload_state", upload.state)
-                sentry_sdk.capture_exception(e, scope)
-
-                upload.state = "not parsed"
-                db_session.flush()
-                return {"successful": False}
-
-        parsing_results: list[ParsingInfo] = []
-        network: list[str] | None = data.get("network_files")
+        parsing_results: list[test_results_parser.ParsingInfo] = []
         report_contents: list[ReadableFile] = []
 
-        all_succesful = True
-        for file_dict in data["test_results_files"]:
-            file = file_dict["data"]
-            file_bytes = self.decode_raw_file(file)
-            report_contents.append(
-                ReadableFile(path=file_dict["filename"], contents=file_bytes)
-            )
-            success = self.parse_file(file_bytes, upload, parsing_results)
-            if not success:
-                all_succesful = False
-
-        if all_succesful:
-            upload.state = "processed"
-        else:
+        result = self.parse_file(payload_bytes, upload)
+        if result is None:
             upload.state = "has_failed"
+            db_session.commit()
+            return {"successful": False}
 
-        if all(len(result.testruns) == 0 for result in parsing_results):
+        parsing_results, readable_files = result
+
+        if all(len(result["testruns"]) == 0 for result in parsing_results):
             successful = False
             log.error(
                 "No test result files were successfully parsed for this upload",
@@ -474,6 +452,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
                 upload.flag_names,
             )
 
+        upload.state = "processed"
         db_session.commit()
 
         log.info(
@@ -483,24 +462,13 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         if should_delete_archive:
             self.delete_archive(archive_service, upload)
         else:
-            readable_report = self.rewrite_readable(network, report_contents)
-            archive_service.write_file(upload.storage_path, readable_report)
+            log.info(
+                "Writing readable files to archive",
+                extra=dict(upload_id=upload_id, readable_files=readable_files),
+            )
+            archive_service.write_file(upload.storage_path, readable_files)
 
         return {"successful": successful}
-
-    def rewrite_readable(
-        self, network: list[str] | None, report_contents: list[ReadableFile]
-    ) -> bytes:
-        buffer = b""
-        if network is not None:
-            for file in network:
-                buffer += f"{file}\n".encode("utf-8")
-            buffer += b"<<<<<< network\n\n"
-        for report_content in report_contents:
-            buffer += f"# path={report_content.path}\n".encode("utf-8")
-            buffer += report_content.contents
-            buffer += b"\n<<<<<< EOF\n\n"
-        return buffer
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):

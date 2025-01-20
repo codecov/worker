@@ -2,8 +2,18 @@ import datetime as dt
 
 import factory
 
-from database.models.reports import CompareFlag, Flake, RepositoryFlag, Test
-from database.tests.factories.core import CompareCommitFactory, RepositoryFactory
+from database.models.reports import (
+    CompareFlag,
+    Flake,
+    RepositoryFlag,
+    Test,
+    TestResultReportTotals,
+)
+from database.tests.factories.core import (
+    CompareCommitFactory,
+    ReportFactory,
+    RepositoryFactory,
+)
 
 
 class RepositoryFlagFactory(factory.Factory):
@@ -47,3 +57,13 @@ class FlakeFactory(factory.Factory):
 
     start_date = dt.datetime.now()
     end_date = None
+
+
+class TestResultReportTotalsFactory(factory.Factory):
+    class Meta:
+        model = TestResultReportTotals
+
+    report = factory.SubFactory(ReportFactory)
+    passed = 0
+    skipped = 0
+    failed = 0
