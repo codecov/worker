@@ -55,7 +55,11 @@
     US Bank Account
     {% if bank_name %} from {{ bank_name }}{% endif %}
   {% endif %}
-  {% if last_four %} ending in {{ last_four }}{% endif %}. 
+  {% if is_us_bank_account and bank_last_four %}
+    ending in {{ bank_last_four }}
+  {% elif is_credit_card and last_four %}
+    ending in {{ last_four }}
+  {% endif %}. 
   Please take a moment to double check your payment information 
   to ensure your account continues to run smoothly.
 </p>
