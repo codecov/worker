@@ -1,7 +1,6 @@
 import logging
 from decimal import Decimal, InvalidOperation
 from enum import Enum
-from typing import Literal, TypedDict
 
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.yaml.reader import round_number
@@ -14,35 +13,7 @@ class StatusState(Enum):
     failure = "failure"
 
 
-class StatusResult(TypedDict):
-    """
-    The mixins in this file do the calculations and decide the SuccessState for all Status and Checks Notifiers.
-    Checks have different fields than Statuses, so Checks are converted to the CheckResult type later.
-    """
-
-    state: Literal["success", "failure"]  # StatusState values
-    message: str
-    included_helper_text: dict[str, str]
-
-
-CUSTOM_TARGET_TEXT_PATCH_KEY = "custom_target_helper_text_patch"
-CUSTOM_TARGET_TEXT_PROJECT_KEY = "custom_target_helper_text_project"
-CUSTOM_TARGET_TEXT_VALUE = (
-    "Your {context} {notification_type} has failed because the patch coverage is below the target coverage. "
-    "You can increase the patch coverage or adjust the "
-    "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
-)
-
-
-HELPER_TEXT_MAP = {
-    CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE,
-    CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE,
-}
-
-
 class StatusPatchMixin(object):
-    context = "patch"
-
     def _get_threshold(self) -> Decimal:
         """
         Threshold can be configured by user, default is 0.0
@@ -58,7 +29,7 @@ class StatusPatchMixin(object):
 
     def _get_target(
         self, comparison: ComparisonProxy | FilteredComparison
-    ) -> tuple[Decimal | None, bool]:
+    ) -> Decimal | None:
         """
         Target can be configured by user, default is auto, which is the coverage level from the base report.
         Target will be None if no report is found to compare against.
@@ -68,7 +39,6 @@ class StatusPatchMixin(object):
             target_coverage = Decimal(
                 str(self.notifier_yaml_settings.get("target")).replace("%", "")
             )
-            is_custom_target = True
         else:
             target_coverage = (
                 Decimal(comparison.project_coverage_base.report.totals.coverage)
@@ -76,16 +46,14 @@ class StatusPatchMixin(object):
                 and comparison.project_coverage_base.report.totals.coverage is not None
                 else None
             )
-            is_custom_target = False
-        return target_coverage, is_custom_target
+        return target_coverage
 
     def get_patch_status(
-        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
-    ) -> StatusResult:
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str]:
         threshold = self._get_threshold()
-        target_coverage, is_custom_target = self._get_target(comparison)
+        target_coverage = self._get_target(comparison)
         totals = comparison.get_patch_totals()
-        included_helper_text = {}
 
         # coverage affected
         if totals and totals.lines > 0:
@@ -116,16 +84,7 @@ class StatusPatchMixin(object):
                     message = (
                         f"{coverage_rounded}% of diff hit (target {target_rounded}%)"
                     )
-                # TODO:
-                # if state == StatusState.failure.value and is_custom_target:
-                #     helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PATCH_KEY].format(
-                #         context=self.context, notification_type=notification_type
-                #     )
-                #     included_helper_text[CUSTOM_TARGET_TEXT_PATCH_KEY] = helper_text
-                #     message = message + " - " + helper_text
-            return StatusResult(
-                state=state, message=message, included_helper_text=included_helper_text
-            )
+            return state, message
 
         # coverage not affected
         if comparison.project_coverage_base.commit:
@@ -135,16 +94,10 @@ class StatusPatchMixin(object):
             )
         else:
             description = "Coverage not affected"
-        return StatusResult(
-            state=StatusState.success.value,
-            message=description,
-            included_helper_text=included_helper_text,
-        )
+        return StatusState.success.value, description
 
 
 class StatusChangesMixin(object):
-    context = "changes"
-
     def is_a_change_worth_noting(self, change) -> bool:
         if not change.new and not change.deleted:
             # has totals and not -10m => 10h
@@ -191,7 +144,6 @@ class StatusChangesMixin(object):
 
 class StatusProjectMixin(object):
     DEFAULT_REMOVED_CODE_BEHAVIOR = "adjust_base"
-    context = "project"
 
     def _apply_removals_only_behavior(
         self, comparison: ComparisonProxy | FilteredComparison
@@ -468,11 +420,6 @@ class StatusProjectMixin(object):
             # use rounded numbers for messages
             target_rounded = round_number(self.current_yaml, target_coverage)
             message = f"{head_coverage_rounded}% (target {target_rounded}%)"
-            # TODO:
-            # helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT].format(
-            # context=self.context, notification_type=notification_type)
-            # included_helper_text[CUSTOM_TARGET_TEXT] = helper_text
-            # message = message + " - " + helper_text
             return state, message
 
         # use rounded numbers for messages

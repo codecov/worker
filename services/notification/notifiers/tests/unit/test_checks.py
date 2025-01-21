@@ -703,9 +703,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "66.67% of diff hit (target 50.00%)",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_flag_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 50.00%)",
-                "annotations": [],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -731,9 +729,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "Codecov Report",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nThe author of this PR, codecov-test-user, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov](test.example.br/members/gh/test_build_upgrade_payload) to display a detailed status check.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
-                "annotations": [],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -765,7 +761,6 @@ class TestPatchChecksNotifier(object):
                     }
                 ],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result["output"]["summary"] == result["output"]["summary"]
@@ -788,9 +783,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "66.67% of diff hit (target 70.00%)",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 70.00%)",
-                "annotations": [],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -826,7 +819,6 @@ class TestPatchChecksNotifier(object):
                     }
                 ],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison)
         assert expected_result == result
@@ -864,7 +856,6 @@ class TestPatchChecksNotifier(object):
                     }
                 ],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result["state"] == result["state"]
@@ -907,7 +898,6 @@ class TestPatchChecksNotifier(object):
                     }
                 ],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result["state"] == result["state"]
@@ -969,9 +959,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_no_diff/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nCoverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
-                "annotations": [],
             },
-            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert notifier.notification_type.value == "checks_patch"
@@ -1064,6 +1052,10 @@ class TestPatchChecksNotifier(object):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         comparison = sample_comparison
+        payload = {
+            "state": "success",
+            "output": {"title": "Codecov Report", "summary": "Summary"},
+        }
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
         notifier = PatchChecksNotifier(
@@ -1084,9 +1076,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nCoverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
-                "annotations": [],
             },
-            "included_helper_text": {},
             "url": f"test.example.br/gh/test_notify/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
         }
 
@@ -1115,9 +1105,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "Empty Upload",
                 "summary": "Non-testable files changed.",
-                "annotations": [],
             },
-            "included_helper_text": {},
             "url": f"test.example.br/gh/test_notify_passing_empty_upload/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
         }
 
@@ -1146,9 +1134,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "Empty Upload",
                 "summary": "Testable files changed",
-                "annotations": [],
             },
-            "included_helper_text": {},
             "url": f"test.example.br/gh/test_notify_failing_empty_upload/{sample_comparison.head.commit.repository.name}/pull/{comparison.pull.pullid}",
         }
 
