@@ -1257,16 +1257,9 @@ class TestNotifyTask(object):
             assert expected["result"].data_received == actual["result"].data_received
             assert expected["result"] == actual["result"]
             assert expected == actual
-
-        sorted_result = sorted(result["notifications"], key=lambda x: x["notifier"])
-        sorted_expected_result = sorted(
+        assert sorted(result["notifications"], key=lambda x: x["notifier"]) == sorted(
             expected_result["notifications"], key=lambda x: x["notifier"]
         )
-        assert len(sorted_result) == len(sorted_expected_result) == 7
-        assert sorted_result == sorted_expected_result
-
-        result["notifications"] = sorted_result
-        expected_result["notifications"] = sorted_expected_result
         assert result == expected_result
 
         pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
