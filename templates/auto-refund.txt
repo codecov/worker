@@ -1,5 +1,5 @@
 Your subscription has been successfully canceled. Your account has been returned to our one-seat developer plan. We appreciate your business and welcome you back anytime.
 
-A ${{ amount }} auto refund has been processed and will be credited to your {% if card_type %}{{ card_type | capitalize }}{% else %}card{% endif %}{% if card_type == 'us_bank_account' and bank_name %} from {{ bank_name }}{% endif %}{% if last_four %} ending in {{ last_four }}{% endif %} shortly.
+A ${{ amount }} auto refund has been processed and will be credited to your {% if card_type %}{{ card_type }}{% elif is_credit_card %}card{% elif is_us_bank_account %}US Bank Account{% if bank_name %} from {{ bank_name }}{% endif %}{% endif %}{% if last_four %} ending in {{ last_four }}{% endif %} shortly.
 
 If you have any questions or need help, please contact us at support@codecov.io
