@@ -1,8 +1,6 @@
 import dataclasses
-import itertools
 from collections import defaultdict
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from django.db.models import Model
@@ -25,16 +23,12 @@ DELETE_FILES_BATCHSIZE = 50
 def cleanup_files_batched(
     context: CleanupContext, buckets_paths: dict[str, list[str]]
 ) -> int:
-    cleaned_files = 0
+    def delete_file(bucket_path: tuple[str, str]) -> bool:
+        return context.storage.delete_file(bucket_path[0], bucket_path[1])
 
-    # TODO: maybe reuse the executor across calls?
-    with ThreadPoolExecutor() as e:
-        for bucket, paths in buckets_paths.items():
-            for batched_paths in itertools.batched(paths, DELETE_FILES_BATCHSIZE):
-                e.submit(context.storage.delete_files, bucket, list(batched_paths))
-            cleaned_files += len(paths)
-
-    return cleaned_files
+    iter = ((bucket, path) for bucket, paths in buckets_paths.items() for path in paths)
+    results = context.threadpool.map(delete_file, iter)
+    return sum(results)
 
 
 def cleanup_with_storage_field(
