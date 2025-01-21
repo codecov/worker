@@ -229,13 +229,6 @@ class ArchiveService(object):
         """
         self.storage.delete_file(self.root, path)
 
-    @sentry_sdk.trace()
-    def delete_files(self, paths: list[str]) -> list[bool]:
-        """
-        Batch-deletes the gives list of files.
-        """
-        return self.storage.delete_files(self.root, paths)
-
     def read_chunks(self, commit_sha, report_code=None) -> str:
         """
         Convenience method to read a chunks file from the archive.
