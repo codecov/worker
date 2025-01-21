@@ -292,14 +292,17 @@ class NotificationService(object):
                 notification_result = result["result"]
                 if (
                     notification_result is not None
-                    and notification_result.data_sent.get("state")
-                    == StatusState.failure.value
-                ) and notification_result.data_sent.get("included_helper_text"):
-                    status_or_checks_helper_text.update(
-                        notification_result.data_sent["included_helper_text"]
-                    )
-                    # TODO: pass status_or_checks_helper_text to all_other_notifiers,
-                    #  where they can integrate the helper text into their messages
+                    and notification_result.data_sent is not None
+                ):
+                    if (
+                        notification_result.data_sent.get("state")
+                        == StatusState.failure.value
+                    ) and notification_result.data_sent.get("included_helper_text"):
+                        status_or_checks_helper_text.update(
+                            notification_result.data_sent["included_helper_text"]
+                        )
+                        # TODO: pass status_or_checks_helper_text to all_other_notifiers,
+                        #  where they can integrate the helper text into their messages
         results = results + status_or_checks_results
 
         results = results + [
