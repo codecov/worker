@@ -692,7 +692,6 @@ class TestUploadTaskIntegration(object):
         mock_storage,
         celery_app,
     ):
-
         mock_configuration.set_params({"setup": {"upload_processing_delay": 1000}})
         mocker.patch.object(UploadTask, "app", celery_app)
         mocker.patch(
