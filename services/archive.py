@@ -236,15 +236,6 @@ class ArchiveService(object):
         """
         return self.storage.delete_files(self.root, paths)
 
-    def delete_repo_files(self) -> int:
-        """
-        Deletes an entire repository's contents
-        """
-        path = "v4/repos/{}".format(self.storage_hash)
-        objects = self.storage.list_folder_contents(self.root, path)
-        results = self.storage.delete_files(self.root, [obj["name"] for obj in objects])
-        return len(results)
-
     def read_chunks(self, commit_sha, report_code=None) -> str:
         """
         Convenience method to read a chunks file from the archive.
