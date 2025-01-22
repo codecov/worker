@@ -1,118 +1,140 @@
-from database.tests.factories import (
+import pytest
+from shared.bundle_analysis import StoragePaths
+from shared.django_apps.compare.models import CommitComparison, FlagComparison
+from shared.django_apps.compare.tests.factories import (
+    CommitComparisonFactory,
+    FlagComparisonFactory,
+)
+from shared.django_apps.core.models import Branch, Commit, Pull, Repository
+from shared.django_apps.core.tests.factories import (
     BranchFactory,
     CommitFactory,
-    CompareCommitFactory,
     PullFactory,
     RepositoryFactory,
 )
-from database.tests.factories.reports import CompareFlagFactory, RepositoryFlagFactory
+from shared.django_apps.reports.models import CommitReport, RepositoryFlag
+from shared.django_apps.reports.models import ReportSession as Upload
+from shared.django_apps.reports.tests.factories import (
+    CommitReportFactory,
+    RepositoryFlagFactory,
+    UploadFactory,
+)
+
 from services.archive import ArchiveService
-from tasks.flush_repo import FlushRepoTask, FlushRepoTaskReturnType
+from services.cleanup.utils import CleanupResult, CleanupSummary
+from tasks.flush_repo import FlushRepoTask
 
 
-class TestFlushRepo(object):
-    def test_flush_repo_nothing(self, dbsession, mock_storage):
-        task = FlushRepoTask()
-        repo = RepositoryFactory.create()
-        dbsession.add(repo)
-        dbsession.flush()
-        res = task.run_impl(dbsession, repoid=repo.repoid)
-        assert res == FlushRepoTaskReturnType(
-            **{
-                "delete_branches_count": 0,
-                "deleted_archives_count": 0,
-                "deleted_commits_count": 0,
-                "deleted_pulls_count": 0,
-            }
+@pytest.mark.django_db
+def test_flush_repo_nothing(mock_storage):
+    repo = RepositoryFactory()
+
+    task = FlushRepoTask()
+    res = task.run_impl({}, repoid=repo.repoid)
+
+    assert res == CleanupSummary(
+        CleanupResult(1),
+        {
+            Repository: CleanupResult(1),
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_flush_repo_few_of_each_only_db_objects(mock_storage):
+    repo = RepositoryFactory()
+    flag = RepositoryFlagFactory(repository=repo)
+
+    for i in range(8):
+        CommitFactory(repository=repo)
+
+    for i in range(4):
+        base_commit = CommitFactory(repository=repo)
+        head_commit = CommitFactory(repository=repo)
+        comparison = CommitComparisonFactory(
+            base_commit=base_commit, compare_commit=head_commit
         )
 
-    def test_flush_repo_few_of_each_only_db_objects(self, dbsession, mock_storage):
-        task = FlushRepoTask()
-        repo = RepositoryFactory.create()
-        dbsession.add(repo)
-        dbsession.flush()
-        flag = RepositoryFlagFactory.create(repository=repo)
-        dbsession.add(flag)
-        for i in range(8):
-            commit = CommitFactory.create(repository=repo)
-            dbsession.add(commit)
-        for i in range(4):
-            base_commit = CommitFactory.create(repository=repo)
-            head_commit = CommitFactory.create(repository=repo)
-            comparison = CompareCommitFactory.create(
-                base_commit=base_commit, compare_commit=head_commit
-            )
-            dbsession.add(base_commit)
-            dbsession.add(head_commit)
-            dbsession.add(comparison)
+        FlagComparisonFactory(commit_comparison=comparison, repositoryflag=flag)
 
-            flag_comparison = CompareFlagFactory.create(
-                commit_comparison=comparison, repositoryflag=flag
-            )
-            dbsession.add(flag_comparison)
-        for i in range(17):
-            pull = PullFactory.create(repository=repo, pullid=i + 100)
-            dbsession.add(pull)
-        for i in range(23):
-            branch = BranchFactory.create(repository=repo)
-            dbsession.add(branch)
-        dbsession.flush()
-        res = task.run_impl(dbsession, repoid=repo.repoid)
-        assert res == FlushRepoTaskReturnType(
-            **{
-                "delete_branches_count": 23,
-                "deleted_archives_count": 0,
-                "deleted_commits_count": 16,
-                "deleted_pulls_count": 17,
-            }
+    # NOTE: The `CommitFactary` defaults to `branch: main, pullid: 1`
+    # This default seems to create models for
+    # `Pull` and `Branch` automatically through some kind of trigger?
+
+    for i in range(17):
+        PullFactory(repository=repo, pullid=i + 100)
+
+    for i in range(23):
+        BranchFactory(repository=repo)
+
+    task = FlushRepoTask()
+    res = task.run_impl({}, repoid=repo.repoid)
+
+    assert res == CleanupSummary(
+        CleanupResult(24 + 16 + 4 + 4 + 18 + 1 + 1),
+        {
+            Branch: CleanupResult(24),
+            Commit: CleanupResult(16),
+            CommitComparison: CleanupResult(4),
+            FlagComparison: CleanupResult(4),
+            Pull: CleanupResult(18),
+            Repository: CleanupResult(1),
+            RepositoryFlag: CleanupResult(1),
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_flush_repo_little_bit_of_everything(mocker, mock_storage):
+    repo = RepositoryFactory()
+    archive_service = ArchiveService(repo)
+
+    for i in range(8):
+        # NOTE: `CommitWithReportFactory` exists, but its only usable from `api`,
+        # because of unresolved imports
+        commit = CommitFactory(repository=repo)
+        commit_report = CommitReportFactory(commit=commit)
+        upload = UploadFactory(report=commit_report, storage_path=f"upload{i}")
+
+        archive_service.write_chunks(commit.commitid, f"chunks_data{i}")
+        archive_service.write_file(upload.storage_path, f"upload_data{i}")
+
+        ba_report = CommitReportFactory(commit=commit, report_type="bundle_analysis")
+        ba_upload = UploadFactory(report=ba_report, storage_path=f"ba_upload{i}")
+        ba_report_path = StoragePaths.bundle_report.path(
+            repo_key=archive_service.storage_hash, report_key=ba_report.external_id
+        )
+        archive_service.storage.write_file(
+            "bundle-analysis", ba_report_path, f"ba_report_data{i}"
+        )
+        archive_service.storage.write_file(
+            "bundle-analysis", ba_upload.storage_path, f"ba_upload_data{i}"
         )
 
-    def test_flush_repo_only_archives(self, dbsession, mock_storage):
-        repo = RepositoryFactory.create()
-        dbsession.add(repo)
-        dbsession.flush()
-        archive_service = ArchiveService(repo)
-        for i in range(4):
-            archive_service.write_chunks(f"commit_sha{i}", f"data{i}")
-        task = FlushRepoTask()
-        res = task.run_impl(dbsession, repoid=repo.repoid)
-        assert res == FlushRepoTaskReturnType(
-            **{
-                "delete_branches_count": 0,
-                "deleted_archives_count": 4,
-                "deleted_commits_count": 0,
-                "deleted_pulls_count": 0,
-            }
-        )
+    for i in range(17):
+        PullFactory(repository=repo, pullid=i + 100)
 
-    def test_flush_repo_little_bit_of_everything(self, dbsession, mock_storage):
-        repo = RepositoryFactory.create()
-        dbsession.add(repo)
-        dbsession.flush()
-        archive_service = ArchiveService(repo)
-        for i in range(8):
-            commit = CommitFactory.create(repository=repo)
-            dbsession.add(commit)
-        for i in range(17):
-            pull = PullFactory.create(repository=repo, pullid=i + 100)
-            dbsession.add(pull)
-        for i in range(23):
-            branch = BranchFactory.create(repository=repo)
-            dbsession.add(branch)
-        dbsession.flush()
-        for i in range(4):
-            archive_service.write_chunks(f"commit_sha{i}", f"data{i}")
-        task = FlushRepoTask()
-        res = task.run_impl(dbsession, repoid=repo.repoid)
-        assert res == FlushRepoTaskReturnType(
-            **{
-                "delete_branches_count": 23,
-                "deleted_archives_count": 4,
-                "deleted_commits_count": 8,
-                "deleted_pulls_count": 17,
-            }
-        )
-        dbsession.flush()
-        dbsession.refresh(repo)
-        # Those assertions are almost tautological. If they start being a
-        # problem, don't hesitate to delete them
+    for i in range(23):
+        BranchFactory(repository=repo)
+
+    archive = mock_storage.storage["archive"]
+    ba_archive = mock_storage.storage["bundle-analysis"]
+    assert len(archive) == 16
+    assert len(ba_archive) == 16
+
+    task = FlushRepoTask()
+    res = task.run_impl({}, repoid=repo.repoid)
+
+    assert res == CleanupSummary(
+        CleanupResult(24 + 8 + 16 + 18 + 1 + 16, 16 + 16),
+        {
+            Branch: CleanupResult(24),
+            Commit: CleanupResult(8),
+            CommitReport: CleanupResult(16, 16),
+            Pull: CleanupResult(18),
+            Repository: CleanupResult(1),
+            Upload: CleanupResult(16, 16),
+        },
+    )
+    assert len(archive) == 0
+    assert len(ba_archive) == 0

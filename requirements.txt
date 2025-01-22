@@ -400,7 +400,9 @@ sqlalchemy-utils==0.36.8
     #   -r requirements.in
     #   pytest-sqlalchemy
 sqlparse==0.5.0
-    # via django
+    # via
+    #   -r requirements.in
+    #   django
 statsd==3.3.0
     # via -r requirements.in
 stripe==11.4.1

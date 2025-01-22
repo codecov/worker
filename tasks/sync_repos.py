@@ -546,6 +546,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             db_session.query(Repository)
             .join(Owner, Repository.ownerid == Owner.ownerid)
             .filter(
+                Repository.deleted == False,
                 Repository.service_id == repo_data["service_id"],
                 Owner.service == service,
             )
