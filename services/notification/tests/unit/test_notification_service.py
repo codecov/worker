@@ -59,336 +59,336 @@ class TestNotificationService(object):
             == False
         )
 
-    # @pytest.mark.parametrize(
-    #     "repo_data,outcome",
-    #     [
-    #         (
-    #             dict(
-    #                 using_integration=True,
-    #                 owner__integration_id=12341234,
-    #                 owner__service="github",
-    #             ),
-    #             True,
-    #         ),
-    #         (
-    #             dict(
-    #                 using_integration=True,
-    #                 owner__integration_id=12341234,
-    #                 owner__service="gitlab",
-    #             ),
-    #             False,
-    #         ),
-    #         (
-    #             dict(
-    #                 using_integration=True,
-    #                 owner__integration_id=12341234,
-    #                 owner__service="github_enterprise",
-    #             ),
-    #             True,
-    #         ),
-    #         (
-    #             dict(
-    #                 using_integration=False,
-    #                 owner__integration_id=None,
-    #                 owner__service="github",
-    #             ),
-    #             False,
-    #         ),
-    #     ],
-    # )
-    # def test_should_use_checks_notifier_deprecated_flow(
-    #     self, repo_data, outcome, dbsession
-    # ):
-    #     repository = RepositoryFactory.create(**repo_data)
-    #     current_yaml = {"github_checks": True}
-    #     assert repository.owner.github_app_installations == []
-    #     service = NotificationService(repository, current_yaml, None)
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-    #         == outcome
-    #     )
-    #
-    # def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
-    #     repository = RepositoryFactory.create(owner__service="github")
-    #     ghapp_installation = GithubAppInstallation(
-    #         name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-    #         installation_id=456789,
-    #         owner=repository.owner,
-    #         repository_service_ids=None,
-    #     )
-    #     dbsession.add(ghapp_installation)
-    #     dbsession.flush()
-    #     current_yaml = {"github_checks": True}
-    #     assert repository.owner.github_app_installations == [ghapp_installation]
-    #     service = NotificationService(repository, current_yaml, None)
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-    #         == True
-    #     )
-    #
-    # def test_use_checks_notifier_for_team_plan(self, dbsession):
-    #     repository = RepositoryFactory.create(
-    #         owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
-    #     )
-    #     ghapp_installation = GithubAppInstallation(
-    #         name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-    #         installation_id=456789,
-    #         owner=repository.owner,
-    #         repository_service_ids=None,
-    #     )
-    #     dbsession.add(ghapp_installation)
-    #     dbsession.flush()
-    #     current_yaml = {"github_checks": True}
-    #     assert repository.owner.github_app_installations == [ghapp_installation]
-    #     service = NotificationService(repository, current_yaml, None)
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-    #         == False
-    #     )
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
-    #         == False
-    #     )
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
-    #         == True
-    #     )
-    #
-    # def test_use_status_notifier_for_team_plan(self, dbsession):
-    #     repository = RepositoryFactory.create(
-    #         owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
-    #     )
-    #     ghapp_installation = GithubAppInstallation(
-    #         name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-    #         installation_id=456789,
-    #         owner=repository.owner,
-    #         repository_service_ids=None,
-    #     )
-    #     dbsession.add(ghapp_installation)
-    #     dbsession.flush()
-    #     current_yaml = {"github_checks": True}
-    #     assert repository.owner.github_app_installations == [ghapp_installation]
-    #     service = NotificationService(repository, current_yaml, None)
-    #     assert (
-    #         service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
-    #         == False
-    #     )
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
-    #         == False
-    #     )
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
-    #         == True
-    #     )
-    #
-    # def test_use_status_notifier_for_non_team_plan(self, dbsession):
-    #     repository = RepositoryFactory.create(
-    #         owner__service="github", owner__plan=PlanName.CODECOV_PRO_MONTHLY.value
-    #     )
-    #     ghapp_installation = GithubAppInstallation(
-    #         name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-    #         installation_id=456789,
-    #         owner=repository.owner,
-    #         repository_service_ids=None,
-    #     )
-    #     dbsession.add(ghapp_installation)
-    #     dbsession.flush()
-    #     current_yaml = {"github_checks": True}
-    #     assert repository.owner.github_app_installations == [ghapp_installation]
-    #     service = NotificationService(repository, current_yaml, None)
-    #     assert (
-    #         service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
-    #         == True
-    #     )
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
-    #         == True
-    #     )
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
-    #         == True
-    #     )
-    #
-    # @pytest.mark.parametrize(
-    #     "gh_installation_name",
-    #     [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
-    # )
-    # def test_should_use_checks_notifier_ghapp_some_repos_covered(
-    #     self, dbsession, gh_installation_name
-    # ):
-    #     repository = RepositoryFactory.create(owner__service="github")
-    #     other_repo_same_owner = RepositoryFactory.create(owner=repository.owner)
-    #     ghapp_installation = GithubAppInstallation(
-    #         name=gh_installation_name,
-    #         installation_id=456789,
-    #         owner=repository.owner,
-    #         repository_service_ids=[repository.service_id],
-    #         app_id=123123,
-    #         pem_path="path_to_pem_file",
-    #     )
-    #     dbsession.add(ghapp_installation)
-    #     dbsession.flush()
-    #     current_yaml = {"github_checks": True}
-    #     assert repository.owner.github_app_installations == [ghapp_installation]
-    #     service = NotificationService(
-    #         repository,
-    #         current_yaml,
-    #         None,
-    #         gh_installation_name_to_use=gh_installation_name,
-    #     )
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-    #         == True
-    #     )
-    #     service = NotificationService(other_repo_same_owner, current_yaml, None)
-    #     assert (
-    #         service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-    #         == False
-    #     )
-    #
-    # def test_get_notifiers_instances_only_third_party(
-    #     self, dbsession, mock_configuration
-    # ):
-    #     mock_configuration.params["services"] = {
-    #         "notifications": {"slack": ["slack.com"]}
-    #     }
-    #     repository = RepositoryFactory.create(
-    #         owner__unencrypted_oauth_token="testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm",
-    #         owner__username="ThiagoCodecov",
-    #         yaml={"codecov": {"max_report_age": "1y ago"}},
-    #         name="example-python",
-    #     )
-    #     dbsession.add(repository)
-    #     dbsession.flush()
-    #     current_yaml = {
-    #         "coverage": {"notify": {"slack": {"default": {"field": "1y ago"}}}}
-    #     }
-    #     service = NotificationService(repository, current_yaml, None)
-    #     instances = list(service.get_notifiers_instances())
-    #     assert len(instances) == 2
-    #     instance = instances[0]
-    #     assert instance.repository == repository
-    #     assert instance.title == "default"
-    #     assert instance.notifier_yaml_settings == {"field": "1y ago"}
-    #     assert instance.site_settings == ["slack.com"]
-    #     assert instance.current_yaml == current_yaml
-    #
-    # def test_get_notifiers_instances_checks(
-    #     self, dbsession, mock_configuration, mocker
-    # ):
-    #     repository = RepositoryFactory.create(
-    #         owner__integration_id=123,
-    #         owner__service="github",
-    #         yaml={"codecov": {"max_report_age": "1y ago"}},
-    #         name="example-python",
-    #         using_integration=True,
-    #     )
-    #
-    #     dbsession.add(repository)
-    #     dbsession.flush()
-    #     current_yaml = {
-    #         "coverage": {"status": {"project": True, "patch": True, "changes": True}}
-    #     }
-    #     mocker.patch.dict(
-    #         os.environ, {"CHECKS_WHITELISTED_OWNERS": f"0,{repository.owner.ownerid}"}
-    #     )
-    #     service = NotificationService(repository, current_yaml, None)
-    #     instances = list(service.get_notifiers_instances())
-    #     names = sorted([instance.name for instance in instances])
-    #     types = sorted(instance.notification_type.value for instance in instances)
-    #     assert names == [
-    #         "checks-changes-with-fallback",
-    #         "checks-patch-with-fallback",
-    #         "checks-project-with-fallback",
-    #         "codecov-slack-app",
-    #     ]
-    #     assert types == [
-    #         "checks_changes",
-    #         "checks_patch",
-    #         "checks_project",
-    #         "codecov_slack_app",
-    #     ]
-    #
-    # def test_get_notifiers_instances_slack_app_false(
-    #     self, dbsession, mock_configuration, mocker
-    # ):
-    #     mocker.patch("services.notification.get_config", return_value=False)
-    #     repository = RepositoryFactory.create(
-    #         owner__integration_id=123,
-    #         owner__service="github",
-    #         yaml={"codecov": {"max_report_age": "1y ago"}},
-    #         name="example-python",
-    #         using_integration=True,
-    #     )
-    #
-    #     dbsession.add(repository)
-    #     dbsession.flush()
-    #     current_yaml = {
-    #         "coverage": {"status": {"project": True, "patch": True, "changes": True}}
-    #     }
-    #     mocker.patch.dict(
-    #         os.environ, {"CHECKS_WHITELISTED_OWNERS": f"0,{repository.owner.ownerid}"}
-    #     )
-    #     service = NotificationService(repository, current_yaml, None)
-    #     instances = list(service.get_notifiers_instances())
-    #     names = sorted([instance.name for instance in instances])
-    #     assert names == [
-    #         "checks-changes-with-fallback",
-    #         "checks-patch-with-fallback",
-    #         "checks-project-with-fallback",
-    #     ]
-    #
-    # @pytest.mark.parametrize(
-    #     "gh_installation_name",
-    #     [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
-    # )
-    # def test_get_notifiers_instances_checks_percentage_whitelist(
-    #     self, dbsession, mock_configuration, mocker, gh_installation_name
-    # ):
-    #     repository = RepositoryFactory.create(
-    #         owner__integration_id=123,
-    #         owner__service="github",
-    #         owner__ownerid=1234,
-    #         yaml={"codecov": {"max_report_age": "1y ago"}},
-    #         name="example-python",
-    #         using_integration=True,
-    #     )
-    #     dbsession.add(repository)
-    #     dbsession.flush()
-    #     current_yaml = {
-    #         "coverage": {"status": {"project": True, "patch": True, "changes": True}}
-    #     }
-    #     mocker.patch.dict(
-    #         os.environ,
-    #         {
-    #             "CHECKS_WHITELISTED_OWNERS": "0,1",
-    #             "CHECKS_WHITELISTED_PERCENTAGE": "35",
-    #         },
-    #     )
-    #     service = NotificationService(
-    #         repository,
-    #         current_yaml,
-    #         gh_installation_name,
-    #     )
-    #     instances = list(service.get_notifiers_instances())
-    #     # we don't need that for slack-app notifier
-    #     names = [
-    #         instance._checks_notifier.name
-    #         for instance in instances
-    #         if instance.name != "codecov-slack-app"
-    #     ]
-    #     assert names == ["checks-project", "checks-patch", "checks-changes"]
-    #     for instance in instances:
-    #         if isinstance(instance, ChecksWithFallback):
-    #             assert (
-    #                 instance._checks_notifier.repository_service == gh_installation_name
-    #             )
-    #             assert (
-    #                 instance._status_notifier.repository_service == gh_installation_name
-    #             )
-    #         else:
-    #             assert instance.repository_service == gh_installation_name
+    @pytest.mark.parametrize(
+        "repo_data,outcome",
+        [
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="github",
+                ),
+                True,
+            ),
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="gitlab",
+                ),
+                False,
+            ),
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="github_enterprise",
+                ),
+                True,
+            ),
+            (
+                dict(
+                    using_integration=False,
+                    owner__integration_id=None,
+                    owner__service="github",
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_should_use_checks_notifier_deprecated_flow(
+        self, repo_data, outcome, dbsession
+    ):
+        repository = RepositoryFactory.create(**repo_data)
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == []
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == outcome
+        )
+
+    def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
+        repository = RepositoryFactory.create(owner__service="github")
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
+
+    def test_use_checks_notifier_for_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+    def test_use_status_notifier_for_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+    def test_use_status_notifier_for_non_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.CODECOV_PRO_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_status_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == True
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+    @pytest.mark.parametrize(
+        "gh_installation_name",
+        [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
+    )
+    def test_should_use_checks_notifier_ghapp_some_repos_covered(
+        self, dbsession, gh_installation_name
+    ):
+        repository = RepositoryFactory.create(owner__service="github")
+        other_repo_same_owner = RepositoryFactory.create(owner=repository.owner)
+        ghapp_installation = GithubAppInstallation(
+            name=gh_installation_name,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=[repository.service_id],
+            app_id=123123,
+            pem_path="path_to_pem_file",
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(
+            repository,
+            current_yaml,
+            None,
+            gh_installation_name_to_use=gh_installation_name,
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
+        service = NotificationService(other_repo_same_owner, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+
+    def test_get_notifiers_instances_only_third_party(
+        self, dbsession, mock_configuration
+    ):
+        mock_configuration.params["services"] = {
+            "notifications": {"slack": ["slack.com"]}
+        }
+        repository = RepositoryFactory.create(
+            owner__unencrypted_oauth_token="testlln8sdeec57lz83oe3l8y9qq4lhqat2f1kzm",
+            owner__username="ThiagoCodecov",
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {
+            "coverage": {"notify": {"slack": {"default": {"field": "1y ago"}}}}
+        }
+        service = NotificationService(repository, current_yaml, None)
+        instances = list(service.get_notifiers_instances())
+        assert len(instances) == 2
+        instance = instances[0]
+        assert instance.repository == repository
+        assert instance.title == "default"
+        assert instance.notifier_yaml_settings == {"field": "1y ago"}
+        assert instance.site_settings == ["slack.com"]
+        assert instance.current_yaml == current_yaml
+
+    def test_get_notifiers_instances_checks(
+        self, dbsession, mock_configuration, mocker
+    ):
+        repository = RepositoryFactory.create(
+            owner__integration_id=123,
+            owner__service="github",
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+            using_integration=True,
+        )
+
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}}
+        }
+        mocker.patch.dict(
+            os.environ, {"CHECKS_WHITELISTED_OWNERS": f"0,{repository.owner.ownerid}"}
+        )
+        service = NotificationService(repository, current_yaml, None)
+        instances = list(service.get_notifiers_instances())
+        names = sorted([instance.name for instance in instances])
+        types = sorted(instance.notification_type.value for instance in instances)
+        assert names == [
+            "checks-changes-with-fallback",
+            "checks-patch-with-fallback",
+            "checks-project-with-fallback",
+            "codecov-slack-app",
+        ]
+        assert types == [
+            "checks_changes",
+            "checks_patch",
+            "checks_project",
+            "codecov_slack_app",
+        ]
+
+    def test_get_notifiers_instances_slack_app_false(
+        self, dbsession, mock_configuration, mocker
+    ):
+        mocker.patch("services.notification.get_config", return_value=False)
+        repository = RepositoryFactory.create(
+            owner__integration_id=123,
+            owner__service="github",
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+            using_integration=True,
+        )
+
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}}
+        }
+        mocker.patch.dict(
+            os.environ, {"CHECKS_WHITELISTED_OWNERS": f"0,{repository.owner.ownerid}"}
+        )
+        service = NotificationService(repository, current_yaml, None)
+        instances = list(service.get_notifiers_instances())
+        names = sorted([instance.name for instance in instances])
+        assert names == [
+            "checks-changes-with-fallback",
+            "checks-patch-with-fallback",
+            "checks-project-with-fallback",
+        ]
+
+    @pytest.mark.parametrize(
+        "gh_installation_name",
+        [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
+    )
+    def test_get_notifiers_instances_checks_percentage_whitelist(
+        self, dbsession, mock_configuration, mocker, gh_installation_name
+    ):
+        repository = RepositoryFactory.create(
+            owner__integration_id=123,
+            owner__service="github",
+            owner__ownerid=1234,
+            yaml={"codecov": {"max_report_age": "1y ago"}},
+            name="example-python",
+            using_integration=True,
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        current_yaml = {
+            "coverage": {"status": {"project": True, "patch": True, "changes": True}}
+        }
+        mocker.patch.dict(
+            os.environ,
+            {
+                "CHECKS_WHITELISTED_OWNERS": "0,1",
+                "CHECKS_WHITELISTED_PERCENTAGE": "35",
+            },
+        )
+        service = NotificationService(
+            repository,
+            current_yaml,
+            gh_installation_name,
+        )
+        instances = list(service.get_notifiers_instances())
+        # we don't need that for slack-app notifier
+        names = [
+            instance._checks_notifier.name
+            for instance in instances
+            if instance.name != "codecov-slack-app"
+        ]
+        assert names == ["checks-project", "checks-patch", "checks-changes"]
+        for instance in instances:
+            if isinstance(instance, ChecksWithFallback):
+                assert (
+                    instance._checks_notifier.repository_service == gh_installation_name
+                )
+                assert (
+                    instance._status_notifier.repository_service == gh_installation_name
+                )
+            else:
+                assert instance.repository_service == gh_installation_name
     #
     # @pytest.mark.parametrize(
     #     "gh_installation_name",
