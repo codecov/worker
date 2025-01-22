@@ -28,6 +28,10 @@ def run_cleanup(
 
     with cleanup_context() as context:
         for model, query in models_to_cleanup:
+            # This is needed so that the correct connection is chosen for the
+            # `_raw_delete` queries, as otherwise it might chose a readonly connection.
+            query._for_write = True
+
             manual_cleanup = MANUAL_CLEANUP.get(model)
             if manual_cleanup is not None:
                 result = manual_cleanup(context, query)
