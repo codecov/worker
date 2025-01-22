@@ -148,9 +148,7 @@ class TestFlareCleanupTask(object):
                 merged_pull_with_archive_flare.id
             )
 
-        everything_in_archive_storage = mock_archive_storage.list_folder_contents(
-            bucket_name="archive"
-        )
+        everything_in_archive_storage = mock_archive_storage.storage["archive"]
         assert len(everything_in_archive_storage) == 5
 
         task = FlareCleanupTask()
@@ -180,13 +178,9 @@ class TestFlareCleanupTask(object):
             assert pull._flare == local_value_for_flare
             assert pull._flare_storage_path is None
 
-        everything_in_archive_storage = mock_archive_storage.list_folder_contents(
-            bucket_name="archive"
-        )
+        everything_in_archive_storage = mock_archive_storage.storage["archive"]
         assert len(everything_in_archive_storage) == 2
-        file_names_in_archive_storage = [
-            file["name"] for file in everything_in_archive_storage
-        ]
+        file_names_in_archive_storage = set(everything_in_archive_storage.keys())
 
         should_be_cleared = oldest_to_newest_pulls_with_archive_flare[:3]
         should_not_be_cleared = oldest_to_newest_pulls_with_archive_flare[3:]

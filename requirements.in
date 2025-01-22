@@ -52,6 +52,7 @@ sentry-sdk>=2.13.0
 sentry-sdk[celery]
 SQLAlchemy
 SQLAlchemy-Utils
+sqlparse
 statsd
 stripe>=11.4.1
 time-machine
