@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -144,7 +145,11 @@ class StatusNotifier(AbstractBaseNotifier):
         return selected_installation_id
 
     @sentry_sdk.trace
-    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         payload = None
         if not self.can_we_set_this_status(comparison):
             return NotificationResult(

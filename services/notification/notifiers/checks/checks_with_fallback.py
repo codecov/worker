@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from shared.torngit.exceptions import TorngitClientError
 
@@ -53,9 +54,15 @@ class ChecksWithFallback(AbstractBaseNotifier):
     def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
-    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         try:
-            res = self._checks_notifier.notify(comparison)
+            res = self._checks_notifier.notify(
+                comparison, status_or_checks_helper_text=status_or_checks_helper_text
+            )
             if not res.notification_successful and (
                 res.explanation == "no_pull_request"
                 or res.explanation == "pull_request_not_in_provider"
@@ -72,7 +79,10 @@ class ChecksWithFallback(AbstractBaseNotifier):
                         explanation=res.explanation,
                     ),
                 )
-                res = self._status_notifier.notify(comparison)
+                res = self._status_notifier.notify(
+                    comparison,
+                    status_or_checks_helper_text=status_or_checks_helper_text,
+                )
             return res
         except TorngitClientError as e:
             if e.code == 403:
@@ -85,5 +95,8 @@ class ChecksWithFallback(AbstractBaseNotifier):
                         commit=comparison.head.commit,
                     ),
                 )
-                return self._status_notifier.notify(comparison)
+                return self._status_notifier.notify(
+                    comparison,
+                    status_or_checks_helper_text=status_or_checks_helper_text,
+                )
             raise e
