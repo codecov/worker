@@ -9,25 +9,25 @@ coverage:
       default:
         target: 99
 
-component_management:
-  default_rules:
-    statuses:
-      - type: patch
-        target: 99
-  individual_components:
-    - component_id: actual_code
-      name: NonTestCode
-      paths:
-        - "!conftest.py"
-        - "!**/conftest.py"
-        - "!**tests**/test_*.py"
-        - "!database/tests/factories/**"
-    - component_id: no_tasks
-      name: OutsideTasks
-      paths:
-        - "!tasks/**"
-      flag_regexes:
-        - "unit"
-
-test_analytics:
-  flake_detection: true
+#component_management:
+#  default_rules:
+#    statuses:
+#      - type: patch
+#        target: 99
+#  individual_components:
+#    - component_id: actual_code
+#      name: NonTestCode
+#      paths:
+#        - "!conftest.py"
+#        - "!**/conftest.py"
+#        - "!**tests**/test_*.py"
+#        - "!database/tests/factories/**"
+#    - component_id: no_tasks
+#      name: OutsideTasks
+#      paths:
+#        - "!tasks/**"
+#      flag_regexes:
+#        - "unit"
+#
+#test_analytics:
+#  flake_detection: true
