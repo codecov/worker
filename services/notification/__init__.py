@@ -6,7 +6,7 @@ This packages uses the following services:
 """
 
 import logging
-from typing import Iterator, List, TypedDict
+from typing import Iterator, List, Optional, TypedDict
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
@@ -287,7 +287,7 @@ class NotificationService(object):
             # to better surface that the status/check failed.
             # so if there are status_and_checks_notifiers and all_other_notifiers, do the status_and_checks_notifiers first,
             # look at the results of the checks, if any failed AND they are the type we have helper text for,
-            # add that text onto the other notifiers messages.
+            # add that text onto the other notifiers messages through status_or_checks_helper_text.
             for result in status_or_checks_results:
                 notification_result = result["result"]
                 if (
@@ -301,12 +301,14 @@ class NotificationService(object):
                         status_or_checks_helper_text.update(
                             notification_result.data_sent["included_helper_text"]
                         )
-                        # TODO: pass status_or_checks_helper_text to all_other_notifiers,
-                        #  where they can integrate the helper text into their messages
         results = results + status_or_checks_results
 
         results = results + [
-            self.notify_individual_notifier(notifier, comparison)
+            self.notify_individual_notifier(
+                notifier,
+                comparison,
+                status_or_checks_helper_text=status_or_checks_helper_text,
+            )
             for notifier in all_other_notifiers
         ]
         return results
@@ -315,6 +317,7 @@ class NotificationService(object):
         self,
         notifier: AbstractBaseNotifier,
         comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
     ) -> IndividualResult:
         commit = comparison.head.commit
         base_commit = comparison.project_coverage_base.commit
@@ -335,7 +338,9 @@ class NotificationService(object):
             notifier=notifier.name, title=notifier.title, result=None
         )
         try:
-            res = notifier.notify(comparison)
+            res = notifier.notify(
+                comparison, status_or_checks_helper_text=status_or_checks_helper_text
+            )
             individual_result["result"] = res
 
             notifier.store_results(comparison, res)

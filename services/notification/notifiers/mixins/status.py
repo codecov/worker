@@ -28,7 +28,7 @@ class StatusResult(TypedDict):
 CUSTOM_TARGET_TEXT_PATCH_KEY = "custom_target_helper_text_patch"
 CUSTOM_TARGET_TEXT_PROJECT_KEY = "custom_target_helper_text_project"
 CUSTOM_TARGET_TEXT_VALUE = (
-    "Your {context} {notification_type} has failed because the patch coverage is below the target coverage. "
+    "Your {context} {notification_type} has failed because the patch coverage ({coverage}%) is below the target coverage ({target}%). "
     "You can increase the patch coverage or adjust the "
     "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
 )
@@ -104,10 +104,8 @@ class StatusPatchMixin(object):
                 # use rounded numbers for messages
                 coverage_rounded = round_number(self.current_yaml, coverage)
                 target_rounded = round_number(self.current_yaml, target_coverage)
-                if (
-                    state == StatusState.failure.value
-                    and threshold is not None
-                    and coverage >= (target_coverage - threshold)
+                if state == StatusState.failure.value and coverage >= (
+                    target_coverage - threshold
                 ):
                     threshold_rounded = round_number(self.current_yaml, threshold)
                     state = StatusState.success.value
@@ -116,13 +114,14 @@ class StatusPatchMixin(object):
                     message = (
                         f"{coverage_rounded}% of diff hit (target {target_rounded}%)"
                     )
-                # TODO:
-                # if state == StatusState.failure.value and is_custom_target:
-                #     helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PATCH_KEY].format(
-                #         context=self.context, notification_type=notification_type
-                #     )
-                #     included_helper_text[CUSTOM_TARGET_TEXT_PATCH_KEY] = helper_text
-                #     message = message + " - " + helper_text
+                if state == StatusState.failure.value and is_custom_target:
+                    helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PATCH_KEY].format(
+                        context=self.context,
+                        notification_type=notification_type,
+                        coverage=coverage_rounded,
+                        target=target_rounded,
+                    )
+                    included_helper_text[CUSTOM_TARGET_TEXT_PATCH_KEY] = helper_text
             return StatusResult(
                 state=state, message=message, included_helper_text=included_helper_text
             )
@@ -470,9 +469,8 @@ class StatusProjectMixin(object):
             message = f"{head_coverage_rounded}% (target {target_rounded}%)"
             # TODO:
             # helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT].format(
-            # context=self.context, notification_type=notification_type)
+            # context=self.context, notification_type=notification_type, coverage=head_coverage_rounded, target=target_rounded)
             # included_helper_text[CUSTOM_TARGET_TEXT] = helper_text
-            # message = message + " - " + helper_text
             return state, message
 
         # use rounded numbers for messages
