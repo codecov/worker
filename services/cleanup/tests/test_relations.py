@@ -5,7 +5,7 @@ from django.db.models.sql.subqueries import DeleteQuery
 from shared.django_apps.codecov_auth.models import Owner
 from shared.django_apps.core.models import Repository
 
-from services.cleanup.relations import build_relation_graph
+from services.cleanup.relations import build_relation_graph, simplified_lookup
 
 
 def dump_delete_queries(queryset: QuerySet) -> str:
@@ -33,3 +33,21 @@ def test_builds_delete_queries(snapshot):
     # in that case, feel free to update this using `pytest --insta update`.
     assert dump_delete_queries(repo) == snapshot("repository.txt")
     assert dump_delete_queries(org) == snapshot("owner.txt")
+
+
+@pytest.mark.django_db
+def test_can_simplify_queries():
+    repo = Repository.objects.filter(repoid=123)
+    assert simplified_lookup(repo) == [123]
+
+    repo = Repository.objects.filter(repoid__in=[123, 456])
+    assert simplified_lookup(repo) == [123, 456]
+
+    repo = Repository.objects.filter(fork=123)
+    assert simplified_lookup(repo) == repo
+
+    owner_repos = Repository.objects.filter(author=123)
+    repo = Repository.objects.filter(repoid__in=owner_repos)
+    # In theory, we could simplify this to forward directly to the  `owner_repo`
+    # subquery, but that would open too many opportunities to properly test.
+    assert simplified_lookup(repo) == repo
