@@ -12,6 +12,7 @@ from database.models import (
     Commit,
     Repository,
     Upload,
+    UploadError,
 )
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
@@ -90,6 +91,17 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             # don't need to process again because the intermediate result should already be in redis
             return False
 
+        if upload.storage_path is None:
+            upload.state = "v2_processed"
+            new_upload_error = UploadError(
+                upload_id=upload.id,
+                error_code="File not found",
+                error_params={},
+            )
+            db_session.add(new_upload_error)
+            db_session.commit()
+            return False
+
         payload_bytes = archive_service.read_file(upload.storage_path)
 
         try:
@@ -106,6 +118,12 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             )
             sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
             upload.state = "v2_processed"
+            new_upload_error = UploadError(
+                upload_id=upload.id,
+                error_code="Unsupported file format",
+                error_params={"error_message": str(exc)},
+            )
+            db_session.add(new_upload_error)
             db_session.commit()
             return False
         else:

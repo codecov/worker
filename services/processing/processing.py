@@ -51,7 +51,7 @@ def process_upload(
     result = ProcessingResult(
         upload_id=upload_id, arguments=arguments, successful=False
     )
-
+    db_session.commit()
     try:
         report_info = RawReportInfo()
         processing_result = report_service.build_report_from_raw_content(

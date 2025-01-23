@@ -1,10 +1,11 @@
 import logging
 
-from shared.api_archive.archive import ArchiveService
 from shared.celery_config import flare_cleanup_task_name
 from shared.django_apps.core.models import Pull, PullStates
 
 from app import celery_app
+from services.cleanup.models import cleanup_files_batched
+from services.cleanup.utils import cleanup_context
 from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)
@@ -64,31 +65,28 @@ class FlareCleanupTask(CodecovCronTask, name=flare_cleanup_task_name):
         # Process archive deletions in batches
         total_updated = 0
         start = 0
-        while start < limit:
-            stop = start + batch_size if start + batch_size < limit else limit
-            batch = non_open_pulls_with_flare_in_archive.values_list("id", flat=True)[
-                start:stop
-            ]
-            if not batch:
-                break
-            flare_paths_from_batch = Pull.objects.filter(id__in=batch).values_list(
-                "_flare_storage_path", flat=True
-            )
-            try:
-                archive_service = ArchiveService(repository=None)
-                archive_service.delete_files(flare_paths_from_batch)
-            except Exception as e:
-                # if something fails with deleting from archive, leave the _flare_storage_path on the pull object.
-                # only delete _flare_storage_path if the deletion from archive was successful.
-                log.error(f"FlareCleanupTask failed to delete archive files: {e}")
-                continue
+        with cleanup_context() as context:
+            while start < limit:
+                stop = start + batch_size if start + batch_size < limit else limit
+                batch = non_open_pulls_with_flare_in_archive.values_list(
+                    "id", flat=True
+                )[start:stop]
+                if not batch:
+                    break
 
-            # Update the _flare_storage_path field for successfully processed pulls
-            n_updated = Pull.objects.filter(id__in=batch).update(
-                _flare_storage_path=None
-            )
-            total_updated += n_updated
-            start = stop
+                flare_paths_from_batch = Pull.objects.filter(id__in=batch).values_list(
+                    "_flare_storage_path", flat=True
+                )
+                cleanup_files_batched(
+                    context, {context.default_bucket: flare_paths_from_batch}
+                )
+
+                # Update the _flare_storage_path field for successfully processed pulls
+                n_updated = Pull.objects.filter(id__in=batch).update(
+                    _flare_storage_path=None
+                )
+                total_updated += n_updated
+                start = stop
 
         log.info(f"FlareCleanupTask cleared {total_updated} Archive flares")
 

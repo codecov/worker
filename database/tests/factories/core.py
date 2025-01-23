@@ -300,7 +300,6 @@ class ConstantsFactory(Factory):
     key = ""
     value = ""
 
-
 class TierFactory(Factory):
     class Meta:
         model = Tier
@@ -328,3 +327,12 @@ class PlanFactory(Factory):
     name = PlanName.BASIC_PLAN_NAME.value
     paid_plan = False
     stripe_id = None
+
+class UploadErrorFactory(Factory):
+    class Meta:
+        model = models.UploadError
+
+    report_upload = factory.SubFactory(UploadFactory)
+    error_code = "error"
+    error_params = {"error_message": "error message"}
+
