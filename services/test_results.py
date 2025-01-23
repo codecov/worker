@@ -454,7 +454,7 @@ def not_private_and_free_or_team(repo: Repository):
     return not (
         repo.private
         and (
-            plan.tier.tier_name != TierName.FREE.value
+            plan.tier.tier_name != TierName.BASIC.value
             and plan.tier.tier_name != TierName.TEAM.value
         )
     )

@@ -13,6 +13,7 @@ from services.comparison import get_or_create_comparison
 from services.notification.notifiers.base import NotificationResult
 from services.repository import EnrichedPull
 from tasks.notify import NotifyTask
+from tests.helpers import mock_all_plans_and_tiers
 
 sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
 
@@ -28,7 +29,12 @@ def is_not_first_pull(mocker):
 
 @pytest.mark.integration
 class TestNotifyTask(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
     @patch("requests.post")
+    @pytest.mark.django_db
     def test_simple_call_no_notifiers(
         self,
         mock_requests_post,
@@ -155,6 +161,7 @@ class TestNotifyTask(object):
         }
 
     @patch("requests.post")
+    @pytest.mark.django_db
     def test_simple_call_only_status_notifiers(
         self,
         mock_post_request,
@@ -358,6 +365,7 @@ class TestNotifyTask(object):
         }
 
     @patch("requests.post")
+    @pytest.mark.django_db
     def test_simple_call_only_status_notifiers_no_pull_request(
         self,
         mock_post_request,
@@ -584,6 +592,7 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
+    @pytest.mark.django_db
     def test_simple_call_only_status_notifiers_with_pull_request(
         self,
         mock_post_request,
@@ -1265,6 +1274,7 @@ class TestNotifyTask(object):
         pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
         assert pull.commentid == "1699669573"
 
+    @pytest.mark.django_db
     def test_notifier_call_no_head_commit_report(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
@@ -1320,6 +1330,7 @@ class TestNotifyTask(object):
         }
         assert result == expected_result
 
+    @pytest.mark.django_db
     @patch("requests.post")
     def test_notifier_call_no_head_commit_report_empty_upload(
         self,
