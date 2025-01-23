@@ -274,8 +274,6 @@ class TestCriticalPathOverlay(object):
         }
         mock_storage.write_file("bucket", url, sample_open_telemetry_collected_as_str)
         a = CriticalPathOverlay(sample_comparison, None)
-        print(sample_comparison.head.report.files)
-        print(sample_comparison.head.report.files)
         res = a.find_impacted_endpoints()
         assert res == [
             {

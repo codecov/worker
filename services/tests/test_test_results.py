@@ -310,7 +310,6 @@ def test_specific_error_message(mocker):
 """
 
     assert result == (True, "comment_posted")
-    print(mock_repo_service.mock_calls)
     mock_repo_service.edit_comment.assert_called_with(
         tn._pull.database_pull.pullid, tn._pull.database_pull.commentid, expected
     )
