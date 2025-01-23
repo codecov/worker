@@ -14,13 +14,13 @@ CLEAR_ARRAY_FIELDS = ["plan_activated_users", "organizations", "admins"]
 
 
 def cleanup_owner(owner_id: int) -> CleanupSummary:
-    log.info("Started/Continuing Owner cleanup", extra={"owner_id": owner_id})
+    log.info("Started/Continuing Owner cleanup")
 
     clear_owner_references(owner_id)
     owner_query = Owner.objects.filter(ownerid=owner_id)
     summary = run_cleanup(owner_query)
 
-    log.info("Owner cleanup finished", extra={"owner_id": owner_id, "summary": summary})
+    log.info("Owner cleanup finished", extra={"summary": summary})
     return summary
 
 
@@ -30,6 +30,8 @@ def clear_owner_references(owner_id: int):
     This clears the `ownerid` from various DB arrays where it is being referenced.
     """
 
+    # TODO: Some of these UPDATEs are horribly slow because of missing indices.
+    # In particular, filtering by `Commit.author` takes an incredibly long time.
     OwnerProfile.objects.filter(default_org=owner_id).update(default_org=None)
     Owner.objects.filter(bot=owner_id).update(bot=None)
     Repository.objects.filter(bot=owner_id).update(bot=None)
