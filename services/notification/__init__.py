@@ -67,7 +67,7 @@ class NotificationService(object):
     def _should_use_status_notifier(self, status_type: StatusType) -> bool:
         owner: Owner = self.repository.owner
 
-        plan = Plan.objects.get(name=owner.plan)
+        plan = Plan.objects.select_related("tier").get(name=owner.plan)
 
         if (
             plan.tier.tier_name == TierName.TEAM.value
@@ -86,7 +86,7 @@ class NotificationService(object):
         if owner.service not in ["github", "github_enterprise"]:
             return False
 
-        plan = Plan.objects.get(name=owner.plan)
+        plan = Plan.objects.select_related("tier").get(name=owner.plan)
 
         if (
             plan.tier.tier_name == TierName.TEAM.value

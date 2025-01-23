@@ -450,7 +450,7 @@ def get_test_summary_for_commit(
 
 
 def not_private_and_free_or_team(repo: Repository):
-    plan = Plan.objects.get(name=repo.owner.plan)
+    plan = Plan.objects.select_related("tier").get(name=repo.owner.plan)
 
     return not (
         repo.private

@@ -330,7 +330,6 @@ def test_specific_error_message_no_error(mocker):
     expected = """:x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format."""
 
     assert result == (True, "comment_posted")
-    print(mock_repo_service.mock_calls)
     mock_repo_service.edit_comment.assert_called_with(
         tn._pull.database_pull.pullid, tn._pull.database_pull.commentid, expected
     )
