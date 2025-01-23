@@ -1,5 +1,7 @@
 import logging
 
+from celery.exceptions import SoftTimeLimitExceeded
+
 from app import celery_app
 from services.cleanup.repository import cleanup_repo
 from services.cleanup.utils import CleanupSummary
@@ -13,7 +15,10 @@ class FlushRepoTask(BaseCodecovTask, name="app.tasks.flush_repo.FlushRepo"):
     max_retries = None  # aka, no limit on retries
 
     def run_impl(self, _db_session, repoid: int) -> CleanupSummary:
-        return cleanup_repo(repoid)
+        try:
+            return cleanup_repo(repoid)
+        except SoftTimeLimitExceeded:
+            raise self.retry()
 
 
 FlushRepo = celery_app.register_task(FlushRepoTask())
