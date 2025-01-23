@@ -316,7 +316,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
     def save_tests(self, db_session: Session, test_data: list[dict]):
         test_insert = insert(Test.__table__).values(test_data)
         insert_on_conflict_do_update = test_insert.on_conflict_do_update(
-            index_elements=["repoid", "name", "testsuite", "flags_hash"],
+            index_elements=["id"],
             set_={
                 "framework": test_insert.excluded.framework,
                 "computed_name": test_insert.excluded.computed_name,
