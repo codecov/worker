@@ -56,17 +56,28 @@ def get_section_class_from_layout_name(layout_name):
         return ComponentsSectionWriter
     if layout_name == "newfiles" or layout_name == "condensed_files":
         return NewFilesSectionWriter
+    if layout_name == "status_or_checks_helper_text":
+        return HelperTextSectionWriter
     if layout_name == "messages_to_user":
         return MessagesToUserSectionWriter
 
 
 class BaseSectionWriter(object):
-    def __init__(self, repository, layout, show_complexity, settings, current_yaml):
+    def __init__(
+        self,
+        repository,
+        layout,
+        show_complexity,
+        settings,
+        current_yaml,
+        status_or_checks_helper_text=None,
+    ):
         self.repository = repository
         self.layout = layout
         self.show_complexity = show_complexity
         self.settings = settings
         self.current_yaml = current_yaml
+        self.status_or_checks_helper_text = status_or_checks_helper_text
 
     @property
     def name(self):
@@ -723,6 +734,13 @@ class ComponentsSectionWriter(BaseSectionWriter):
                     ),
                 )
             )
+
+
+class HelperTextSectionWriter(BaseSectionWriter):
+    def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
+        helper_template = ":x: {helper_text}"
+        for helper_text in self.status_or_checks_helper_text.values():
+            yield helper_template.format(helper_text=helper_text)
 
 
 class MessagesToUserSectionWriter(BaseSectionWriter):

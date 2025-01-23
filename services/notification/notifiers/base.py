@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 from shared.torngit.base import TorngitBaseAdapter
 from shared.yaml import UserYaml
@@ -79,7 +79,11 @@ class AbstractBaseNotifier(object):
     def name(self) -> str:
         raise NotImplementedError()
 
-    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         raise NotImplementedError()
 
     def is_enabled(self) -> bool:

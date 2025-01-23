@@ -20,6 +20,10 @@ from services.notification.notifiers.checks.base import ChecksNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
+from services.notification.notifiers.mixins.status import (
+    CUSTOM_TARGET_TEXT_PATCH_KEY,
+    CUSTOM_TARGET_TEXT_VALUE,
+)
 from services.notification.notifiers.status import PatchStatusNotifier
 
 
@@ -790,7 +794,14 @@ class TestPatchChecksNotifier(object):
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 70.00%)",
                 "annotations": [],
             },
-            "included_helper_text": {},
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="patch",
+                    notification_type="check",
+                    coverage=66.67,
+                    target="70.00",
+                )
+            },
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -831,7 +842,7 @@ class TestPatchChecksNotifier(object):
         result = notifier.build_payload(comparison)
         assert expected_result == result
 
-    def test_build_payload_target_coverage_failure_witinh_threshold(
+    def test_build_payload_target_coverage_failure_within_threshold(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
@@ -853,7 +864,7 @@ class TestPatchChecksNotifier(object):
             "state": "success",
             "output": {
                 "title": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure_witinh_threshold/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (within 5.00% threshold of 70.00%)",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure_within_threshold/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (within 5.00% threshold of 70.00%)",
                 "annotations": [
                     {
                         "path": "file_1.go",
@@ -907,7 +918,7 @@ class TestPatchChecksNotifier(object):
                     }
                 ],
             },
-            "included_helper_text": {},
+            "included_helper_text": {},  # not a custom target, no helper text
         }
         result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result["state"] == result["state"]
