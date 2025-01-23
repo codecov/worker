@@ -451,12 +451,11 @@ def get_test_summary_for_commit(
 
 def not_private_and_free_or_team(repo: Repository):
     plan = Plan.objects.get(name=repo.owner.plan)
+
     return not (
         repo.private
-        and (
-            plan.tier.tier_name != TierName.BASIC.value
-            and plan.tier.tier_name != TierName.TEAM.value
-        )
+        and plan
+        and plan.tier.tier_name in {TierName.BASIC.value, TierName.TEAM.value}
     )
 
 
@@ -468,6 +467,14 @@ def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
         identifier=repo.repoid, default=True
     )
     has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
+    print(
+        "has_flaky_configured",
+        has_flaky_configured,
+        "feature_enabled",
+        feature_enabled,
+        "has_valid_plan_repo_or_owner",
+        has_valid_plan_repo_or_owner,
+    )
     return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)
 
 

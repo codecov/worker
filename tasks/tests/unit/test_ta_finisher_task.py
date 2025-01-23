@@ -21,6 +21,7 @@ from services.seats import SeatActivationInfo
 from services.urls import services_short_dict
 from tasks.ta_finisher import TAFinisherTask
 from tasks.ta_processor import TAProcessorTask
+from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
 
@@ -98,6 +99,7 @@ def generate_junit_xml(
 
 
 @travel("2025-01-01T00:00:00Z", tick=False)
+@pytest.mark.django_db
 def test_test_analytics(
     dbsession,
     mocker,
@@ -106,6 +108,7 @@ def test_test_analytics(
     snapshot,
     mock_repo_provider_comments,
 ):
+    mock_all_plans_and_tiers()
     url = "literally/whatever"
 
     testruns = [

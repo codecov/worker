@@ -1,8 +1,10 @@
+import pytest
 from shared.billing import BillingPlan
 
 from database.tests.factories import OwnerFactory, PullFactory
 from services.repository import EnrichedPull
 from services.seats import ShouldActivateSeat, determine_seat_activation
+from tests.helpers import mock_all_plans_and_tiers
 
 
 def test_seat_provider_none(dbsession):
@@ -41,7 +43,9 @@ def test_seat_repo_public(dbsession):
     assert activate_seat_info.reason == "public_repo"
 
 
+@pytest.mark.django_db
 def test_seat_billing_plan(dbsession):
+    mock_all_plans_and_tiers()
     pull = PullFactory()
     dbsession.add(pull)
     dbsession.flush()
@@ -60,7 +64,9 @@ def test_seat_billing_plan(dbsession):
     assert activate_seat_info.reason == "no_pr_billing_plan"
 
 
+@pytest.mark.django_db
 def test_seat_no_author(dbsession):
+    mock_all_plans_and_tiers()
     pull = PullFactory()
     dbsession.add(pull)
     dbsession.flush()
@@ -79,7 +85,9 @@ def test_seat_no_author(dbsession):
     assert activate_seat_info.reason == "no_pr_author"
 
 
+@pytest.mark.django_db
 def test_seat_author_in_org(dbsession):
+    mock_all_plans_and_tiers()
     pull = PullFactory()
     dbsession.add(pull)
     dbsession.flush()
@@ -106,7 +114,9 @@ def test_seat_author_in_org(dbsession):
     assert activate_seat_info.reason == "author_in_plan_activated_users"
 
 
+@pytest.mark.django_db
 def test_seat_author_not_in_org(dbsession):
+    mock_all_plans_and_tiers()
     pull = PullFactory()
     dbsession.add(pull)
     dbsession.flush()
@@ -130,7 +140,9 @@ def test_seat_author_not_in_org(dbsession):
     assert activate_seat_info.reason == "manual_activate"
 
 
+@pytest.mark.django_db
 def test_seat_author_auto_activate(dbsession):
+    mock_all_plans_and_tiers()
     pull = PullFactory()
     dbsession.add(pull)
     dbsession.flush()

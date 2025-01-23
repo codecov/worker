@@ -70,6 +70,28 @@ def mock_all_plans_and_tiers():
         base_unit_price=PlanPrice.YEARLY.value,
         paid_plan=True,
     )
+    PlanFactory(
+        name=PlanName.CODECOV_PRO_MONTHLY_LEGACY.value,
+        tier=pro_tier,
+        marketing_name="Pro",
+        benefits=[
+            "Configurable # of users",
+            "Unlimited public repositories",
+            "Unlimited private repositories",
+            "Priority Support",
+        ],
+    )
+    PlanFactory(
+        name=PlanName.CODECOV_PRO_YEARLY_LEGACY.value,
+        tier=pro_tier,
+        marketing_name="Pro",
+        benefits=[
+            "Configurable # of users",
+            "Unlimited public repositories",
+            "Unlimited private repositories",
+            "Priority Support",
+        ],
+    )
 
     team_tier = TierFactory(tier_name=TierName.TEAM.value)
     PlanFactory(

@@ -16,6 +16,7 @@ from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValid
 from services.repository import EnrichedPull
 from services.yaml import UserYaml
 from tasks.sync_pull import PullSyncTask
+from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
 
@@ -60,6 +61,7 @@ def pull(dbsession, repository, base_commit, head_commit) -> Pull:
     "tests_exist",
     [True, False],
 )
+@pytest.mark.django_db
 def test_update_pull_commits_merged(
     dbsession,
     mocker,
@@ -69,6 +71,7 @@ def test_update_pull_commits_merged(
     base_commit,
     pull,
 ):
+    mock_all_plans_and_tiers()
     mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
     mock_feature.check_value.return_value = True
 
@@ -512,7 +515,9 @@ def test_trigger_ai_pr_review(
 
 
 @pytest.mark.parametrize("flake_detection", [False, True])
+@pytest.mark.django_db
 def test_trigger_process_flakes(dbsession, mocker, flake_detection, repository):
+    mock_all_plans_and_tiers()
     current_yaml = UserYaml.from_dict(dict())
     mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
     mock_feature.check_value.return_value = True

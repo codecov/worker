@@ -23,6 +23,7 @@ from services.test_results import (
 )
 from services.urls import services_short_dict
 from services.yaml import UserYaml
+from tests.helpers import mock_all_plans_and_tiers
 
 
 def mock_repo_service():
@@ -250,6 +251,7 @@ def test_notify_fail_no_pull(
     assert notification_result == NotifierResult.NO_PULL
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "config,feature_flag,private,plan,ex_result",
     [
@@ -264,6 +266,7 @@ def test_notify_fail_no_pull(
 def test_should_do_flake_detection(
     dbsession, mocker, config, feature_flag, private, plan, ex_result
 ):
+    mock_all_plans_and_tiers()
     owner = OwnerFactory(plan=plan)
     repo = RepositoryFactory(private=private, owner=owner)
     dbsession.add(repo)

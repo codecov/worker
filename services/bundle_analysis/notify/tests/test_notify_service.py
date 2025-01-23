@@ -29,6 +29,7 @@ from services.bundle_analysis.notify.messages.comment import (
 )
 from services.bundle_analysis.notify.types import NotificationType
 from services.notification.notifiers.base import NotificationResult
+from tests.helpers import mock_all_plans_and_tiers
 
 
 def override_comment_builder_and_message_strategy(mocker):
@@ -114,7 +115,9 @@ class TestCreateContextForNotification:
         assert base_context.commit_report == head_commit_report
         assert base_context.bundle_analysis_report.session_count() == 19
 
+    @pytest.mark.django_db
     def test_create_context_success(self, dbsession, mock_storage, mocker):
+        mock_all_plans_and_tiers()
         current_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         head_commit, base_commit = get_commit_pair(dbsession)
         head_commit_report, base_commit_report = get_report_pair(

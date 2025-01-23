@@ -24,6 +24,7 @@ from services.bundle_analysis.report import (
 )
 from services.repository import EnrichedPull
 from services.urls import get_bundle_analysis_pull_url
+from tests.helpers import mock_all_plans_and_tiers
 
 
 class MockBundleReport:
@@ -57,6 +58,7 @@ def hook_mock_pull(mocker, mock_pull):
         mocker.patch(usage, return_value=mock_pull)
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "bundle_changes, bundle_routes_changes, percent_change, user_config, expected_message",
     [
@@ -396,6 +398,7 @@ def test_bundle_analysis_notify(
     mock_storage,
     mock_repo_provider,
 ):
+    mock_all_plans_and_tiers()
     hook_mock_repo_provider(mocker, mock_repo_provider)
     base_commit = CommitFactory()
     dbsession.add(base_commit)
@@ -517,6 +520,7 @@ def test_bundle_analysis_notify(
     )
 
 
+@pytest.mark.django_db
 @pytest.mark.asyncio
 async def test_bundle_analysis_save_measurements_report_size(
     dbsession, mocker, mock_storage
