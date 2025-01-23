@@ -475,6 +475,70 @@ class TestNotificationService(object):
         res = notifications_service.notify(sample_comparison)
         assert expected_result == res
 
+    def test_notify_data_sent_None(self, mocker, dbsession, sample_comparison):
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        good_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=True),
+            title="good_notifier",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+            notify=mock.Mock(),
+        )
+        skipped_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=True),
+            title="skippy_notifier",
+            notification_type=Notification.status_project,
+            decoration_type=Decoration.standard,
+        )
+        good_notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"some": "data"},
+        )
+        skipped_expected_return = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="exclude_flag_coverage_not_uploaded_checks",
+            data_sent=None,
+            data_received=None,
+            github_app_used=None,
+        )
+        skipped_notifier.notify.return_value = skipped_expected_return
+        good_notifier.name = "good_name"
+        skipped_notifier.name = "skippy"
+
+        mocker.patch.object(
+            NotificationService,
+            "get_notifiers_instances",
+            return_value=[skipped_notifier, good_notifier],
+        )
+
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
+        expected_result = [
+            {
+                "notifier": "skippy",
+                "title": "skippy_notifier",
+                "result": skipped_expected_return,
+            },
+            {
+                "notifier": "good_name",
+                "title": "good_notifier",
+                "result": NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=True,
+                    explanation="",
+                    data_sent={"some": "data"},
+                    data_received=None,
+                ),
+            },
+        ]
+        res = notifications_service.notify(sample_comparison)
+        assert expected_result == res
+
     def test_notify_individual_notifier_timeout(self, mocker, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
