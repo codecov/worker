@@ -1,624 +1,480 @@
 -- UserMeasurement
 DELETE
 FROM "user_measurements"
-WHERE "user_measurements"."owner_id" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "user_measurements"."owner_id" IN (%s)
 
 
 -- YamlHistory
 DELETE
 FROM "yaml_history"
-WHERE ("yaml_history"."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s)
-       OR "yaml_history"."author" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+WHERE ("yaml_history"."ownerid" IN (%s)
+       OR "yaml_history"."author" IN (%s))
 
 
 -- CommitNotification
 DELETE
 FROM "commit_notifications"
 WHERE "commit_notifications"."gh_app_id" IN
-    (SELECT V0."id"
-     FROM "codecov_auth_githubappinstallation" V0
-     WHERE V0."owner_id" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."id"
+     FROM "codecov_auth_githubappinstallation" U0
+     WHERE U0."owner_id" IN (%s))
 
 
 -- OwnerInstallationNameToUseForTask
 DELETE
 FROM "codecov_auth_ownerinstallationnametousefortask"
-WHERE "codecov_auth_ownerinstallationnametousefortask"."owner_id" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "codecov_auth_ownerinstallationnametousefortask"."owner_id" IN (%s)
 
 
 -- OrganizationLevelToken
 DELETE
 FROM "codecov_auth_organizationleveltoken"
-WHERE "codecov_auth_organizationleveltoken"."ownerid" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "codecov_auth_organizationleveltoken"."ownerid" IN (%s)
 
 
 -- OwnerProfile
 DELETE
 FROM "codecov_auth_ownerprofile"
-WHERE "codecov_auth_ownerprofile"."owner_id" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "codecov_auth_ownerprofile"."owner_id" IN (%s)
 
 
 -- Session
 DELETE
 FROM "sessions"
-WHERE "sessions"."ownerid" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "sessions"."ownerid" IN (%s)
 
 
 -- UserToken
 DELETE
 FROM "codecov_auth_usertoken"
-WHERE "codecov_auth_usertoken"."ownerid" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "codecov_auth_usertoken"."ownerid" IN (%s)
 
 
 -- TestInstance
 DELETE
 FROM "reports_testinstance"
 WHERE "reports_testinstance"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- DailyTestRollup
 DELETE
 FROM "reports_dailytestrollups"
 WHERE "reports_dailytestrollups"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- CacheConfig
 DELETE
 FROM "bundle_analysis_cacheconfig"
 WHERE "bundle_analysis_cacheconfig"."repo_id" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- RepositoryToken
 DELETE
 FROM "codecov_auth_repositorytoken"
 WHERE "codecov_auth_repositorytoken"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- Branch
 DELETE
 FROM "branches"
 WHERE "branches"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- FlagComparison
 DELETE
 FROM "compare_flagcomparison"
 WHERE "compare_flagcomparison"."repositoryflag_id" IN
-    (SELECT W0."id"
-     FROM "reports_repositoryflag" W0
-     WHERE W0."repository_id" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "reports_repositoryflag" V0
+     WHERE V0."repository_id" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- ComponentComparison
 DELETE
 FROM "compare_componentcomparison"
 WHERE "compare_componentcomparison"."commit_comparison_id" IN
-    (SELECT X0."id"
-     FROM "compare_commitcomparison" X0
-     WHERE (X0."base_commit_id" IN
-              (SELECT W0."id"
-               FROM "commits" W0
-               WHERE W0."repoid" IN
-                   (SELECT V0."repoid"
-                    FROM "repos" V0
-                    WHERE V0."ownerid" IN
-                        (SELECT U0."ownerid"
-                         FROM "owners" U0
-                         WHERE U0."ownerid" = %s)))
-            OR X0."compare_commit_id" IN
-              (SELECT W0."id"
-               FROM "commits" W0
-               WHERE W0."repoid" IN
-                   (SELECT V0."repoid"
-                    FROM "repos" V0
-                    WHERE V0."ownerid" IN
-                        (SELECT U0."ownerid"
-                         FROM "owners" U0
-                         WHERE U0."ownerid" = %s)))))
+    (SELECT W0."id"
+     FROM "compare_commitcomparison" W0
+     WHERE (W0."base_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."ownerid" IN (%s)))
+            OR W0."compare_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."ownerid" IN (%s)))))
 
 
 -- CommitError
 DELETE
 FROM "core_commiterror"
 WHERE "core_commiterror"."commit_id" IN
-    (SELECT W0."id"
-     FROM "commits" W0
-     WHERE W0."repoid" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "commits" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- LabelAnalysisProcessingError
 DELETE
 FROM "labelanalysis_labelanalysisprocessingerror"
 WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" IN
-    (SELECT X0."id"
-     FROM "labelanalysis_labelanalysisrequest" X0
-     WHERE (X0."base_commit_id" IN
-              (SELECT W0."id"
-               FROM "commits" W0
-               WHERE W0."repoid" IN
-                   (SELECT V0."repoid"
-                    FROM "repos" V0
-                    WHERE V0."ownerid" IN
-                        (SELECT U0."ownerid"
-                         FROM "owners" U0
-                         WHERE U0."ownerid" = %s)))
-            OR X0."head_commit_id" IN
-              (SELECT W0."id"
-               FROM "commits" W0
-               WHERE W0."repoid" IN
-                   (SELECT V0."repoid"
-                    FROM "repos" V0
-                    WHERE V0."ownerid" IN
-                        (SELECT U0."ownerid"
-                         FROM "owners" U0
-                         WHERE U0."ownerid" = %s)))))
+    (SELECT W0."id"
+     FROM "labelanalysis_labelanalysisrequest" W0
+     WHERE (W0."base_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."ownerid" IN (%s)))
+            OR W0."head_commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."ownerid" IN (%s)))))
 
 
 -- ReportResults
 DELETE
 FROM "reports_reportresults"
 WHERE "reports_reportresults"."report_id" IN
-    (SELECT X0."id"
-     FROM "reports_commitreport" X0
-     WHERE X0."commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s))))
+    (SELECT W0."id"
+     FROM "reports_commitreport" W0
+     WHERE W0."commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))))
 
 
 -- ReportDetails
 DELETE
 FROM "reports_reportdetails"
 WHERE "reports_reportdetails"."report_id" IN
-    (SELECT X0."id"
-     FROM "reports_commitreport" X0
-     WHERE X0."commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s))))
+    (SELECT W0."id"
+     FROM "reports_commitreport" W0
+     WHERE W0."commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))))
 
 
 -- ReportLevelTotals
 DELETE
 FROM "reports_reportleveltotals"
 WHERE "reports_reportleveltotals"."report_id" IN
-    (SELECT X0."id"
-     FROM "reports_commitreport" X0
-     WHERE X0."commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s))))
+    (SELECT W0."id"
+     FROM "reports_commitreport" W0
+     WHERE W0."commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))))
 
 
 -- UploadError
 DELETE
 FROM "reports_uploaderror"
 WHERE "reports_uploaderror"."upload_id" IN
-    (SELECT Y0."id"
-     FROM "reports_upload" Y0
-     WHERE Y0."report_id" IN
-         (SELECT X0."id"
-          FROM "reports_commitreport" X0
-          WHERE X0."commit_id" IN
-              (SELECT W0."id"
-               FROM "commits" W0
-               WHERE W0."repoid" IN
-                   (SELECT V0."repoid"
-                    FROM "repos" V0
-                    WHERE V0."ownerid" IN
-                        (SELECT U0."ownerid"
-                         FROM "owners" U0
-                         WHERE U0."ownerid" = %s)))))
+    (SELECT X0."id"
+     FROM "reports_upload" X0
+     WHERE X0."report_id" IN
+         (SELECT W0."id"
+          FROM "reports_commitreport" W0
+          WHERE W0."commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."ownerid" IN (%s)))))
 
 
 -- UploadFlagMembership
 DELETE
 FROM "reports_uploadflagmembership"
 WHERE "reports_uploadflagmembership"."flag_id" IN
-    (SELECT W0."id"
-     FROM "reports_repositoryflag" W0
-     WHERE W0."repository_id" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "reports_repositoryflag" V0
+     WHERE V0."repository_id" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- UploadLevelTotals
 DELETE
 FROM "reports_uploadleveltotals"
 WHERE "reports_uploadleveltotals"."upload_id" IN
-    (SELECT Y0."id"
-     FROM "reports_upload" Y0
-     WHERE Y0."report_id" IN
-         (SELECT X0."id"
-          FROM "reports_commitreport" X0
-          WHERE X0."commit_id" IN
-              (SELECT W0."id"
-               FROM "commits" W0
-               WHERE W0."repoid" IN
-                   (SELECT V0."repoid"
-                    FROM "repos" V0
-                    WHERE V0."ownerid" IN
-                        (SELECT U0."ownerid"
-                         FROM "owners" U0
-                         WHERE U0."ownerid" = %s)))))
+    (SELECT X0."id"
+     FROM "reports_upload" X0
+     WHERE X0."report_id" IN
+         (SELECT W0."id"
+          FROM "reports_commitreport" W0
+          WHERE W0."commit_id" IN
+              (SELECT V0."id"
+               FROM "commits" V0
+               WHERE V0."repoid" IN
+                   (SELECT U0."repoid"
+                    FROM "repos" U0
+                    WHERE U0."ownerid" IN (%s)))))
 
 
 -- TestResultReportTotals
 DELETE
 FROM "reports_testresultreporttotals"
 WHERE "reports_testresultreporttotals"."report_id" IN
-    (SELECT X0."id"
-     FROM "reports_commitreport" X0
-     WHERE X0."commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s))))
+    (SELECT W0."id"
+     FROM "reports_commitreport" W0
+     WHERE W0."commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))))
 
 
 -- StaticAnalysisSuiteFilepath
 DELETE
 FROM "staticanalysis_staticanalysissuitefilepath"
 WHERE "staticanalysis_staticanalysissuitefilepath"."file_snapshot_id" IN
-    (SELECT W0."id"
-     FROM "staticanalysis_staticanalysissinglefilesnapshot" W0
-     WHERE W0."repository_id" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "staticanalysis_staticanalysissinglefilesnapshot" V0
+     WHERE V0."repository_id" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- Pull
 DELETE
 FROM "pulls"
 WHERE "pulls"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- ProfilingUpload
 DELETE
 FROM "profiling_profilingupload"
 WHERE "profiling_profilingupload"."profiling_commit_id" IN
-    (SELECT W0."id"
-     FROM "profiling_profilingcommit" W0
-     WHERE W0."repoid" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "profiling_profilingcommit" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- TestFlagBridge
 DELETE
 FROM "reports_test_results_flag_bridge"
 WHERE "reports_test_results_flag_bridge"."test_id" IN
-    (SELECT W0."id"
-     FROM "reports_test" W0
-     WHERE W0."repoid" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "reports_test" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- Flake
 DELETE
 FROM "reports_flake"
 WHERE "reports_flake"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- LastCacheRollupDate
 DELETE
 FROM "reports_lastrollupdate"
 WHERE "reports_lastrollupdate"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- GithubAppInstallation
 DELETE
 FROM "codecov_auth_githubappinstallation"
-WHERE "codecov_auth_githubappinstallation"."owner_id" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "codecov_auth_githubappinstallation"."owner_id" IN (%s)
 
 
 -- CommitComparison
 DELETE
 FROM "compare_commitcomparison"
 WHERE ("compare_commitcomparison"."base_commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s)))
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s)))
        OR "compare_commitcomparison"."compare_commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s))))
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))))
 
 
 -- LabelAnalysisRequest
 DELETE
 FROM "labelanalysis_labelanalysisrequest"
 WHERE ("labelanalysis_labelanalysisrequest"."base_commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s)))
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s)))
        OR "labelanalysis_labelanalysisrequest"."head_commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s))))
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))))
 
 
 -- ReportSession
 DELETE
 FROM "reports_upload"
 WHERE "reports_upload"."report_id" IN
-    (SELECT X0."id"
-     FROM "reports_commitreport" X0
-     WHERE X0."commit_id" IN
-         (SELECT W0."id"
-          FROM "commits" W0
-          WHERE W0."repoid" IN
-              (SELECT V0."repoid"
-               FROM "repos" V0
-               WHERE V0."ownerid" IN
-                   (SELECT U0."ownerid"
-                    FROM "owners" U0
-                    WHERE U0."ownerid" = %s))))
+    (SELECT W0."id"
+     FROM "reports_commitreport" W0
+     WHERE W0."commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))))
 
 
 -- StaticAnalysisSuite
 DELETE
 FROM "staticanalysis_staticanalysissuite"
 WHERE "staticanalysis_staticanalysissuite"."commit_id" IN
-    (SELECT W0."id"
-     FROM "commits" W0
-     WHERE W0."repoid" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "commits" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- StaticAnalysisSingleFileSnapshot
 DELETE
 FROM "staticanalysis_staticanalysissinglefilesnapshot"
 WHERE "staticanalysis_staticanalysissinglefilesnapshot"."repository_id" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- ProfilingCommit
 DELETE
 FROM "profiling_profilingcommit"
 WHERE "profiling_profilingcommit"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- RepositoryFlag
 DELETE
 FROM "reports_repositoryflag"
 WHERE "reports_repositoryflag"."repository_id" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- Test
 DELETE
 FROM "reports_test"
 WHERE "reports_test"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- ReducedError
 DELETE
 FROM "reports_reducederror"
 WHERE "reports_reducederror"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- CommitReport
 DELETE
 FROM "reports_commitreport"
 WHERE "reports_commitreport"."commit_id" IN
-    (SELECT W0."id"
-     FROM "commits" W0
-     WHERE W0."repoid" IN
-         (SELECT V0."repoid"
-          FROM "repos" V0
-          WHERE V0."ownerid" IN
-              (SELECT U0."ownerid"
-               FROM "owners" U0
-               WHERE U0."ownerid" = %s)))
+    (SELECT V0."id"
+     FROM "commits" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)))
 
 
 -- Commit
 DELETE
 FROM "commits"
 WHERE "commits"."repoid" IN
-    (SELECT V0."repoid"
-     FROM "repos" V0
-     WHERE V0."ownerid" IN
-         (SELECT U0."ownerid"
-          FROM "owners" U0
-          WHERE U0."ownerid" = %s))
+    (SELECT U0."repoid"
+     FROM "repos" U0
+     WHERE U0."ownerid" IN (%s))
 
 
 -- Repository
 DELETE
 FROM "repos"
-WHERE "repos"."ownerid" IN
-    (SELECT U0."ownerid"
-     FROM "owners" U0
-     WHERE U0."ownerid" = %s)
+WHERE "repos"."ownerid" IN (%s)
 
 
 -- Owner

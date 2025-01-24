@@ -1,8 +1,9 @@
 import logging
-from typing import Callable, List
+from typing import Any, Callable, List, Mapping, Optional
 
-from shared.billing import BillingPlan
 from shared.django_apps.core.models import Repository
+from shared.plan.constants import PlanName
+from shared.plan.service import PlanService
 from shared.reports.resources import ReportTotals
 from shared.validation.helpers import LayoutStructure
 
@@ -27,7 +28,11 @@ log = logging.getLogger(__name__)
 
 class MessageMixin(object):
     def create_message(
-        self, comparison: ComparisonProxy | FilteredComparison, pull_dict, yaml_settings
+        self,
+        comparison: ComparisonProxy | FilteredComparison,
+        pull_dict: Optional[Mapping[str, Any]],
+        yaml_settings: dict,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
     ):
         """
         Assemble the various components of the PR comments message in accordance with their YAML configuration.
@@ -85,10 +90,11 @@ class MessageMixin(object):
         owner: Owner = repo.owner
 
         # Separate PR comment based on plan that can't/won't be tweaked by codecov.yml settings
-        if (
-            owner.plan == BillingPlan.team_monthly.value
-            or owner.plan == BillingPlan.team_yearly.value
-        ):
+        owner_plan = PlanService(owner)
+        if owner_plan.plan_name in {
+            PlanName.TEAM_MONTHLY.value,
+            PlanName.TEAM_YEARLY.value,
+        }:
             return self._team_plan_notification(
                 comparison=comparison,
                 message=message,
@@ -99,6 +105,9 @@ class MessageMixin(object):
             )
 
         upper_section_names = self.get_upper_section_names(settings)
+        if status_or_checks_helper_text:
+            # add status_or_checks_helper_text to header
+            upper_section_names.append("status_or_checks_helper_text")
         # We write the header and then the messages_to_user section
         upper_section_names.append("messages_to_user")
         for upper_section_name in upper_section_names:
@@ -111,6 +120,7 @@ class MessageMixin(object):
                 show_complexity,
                 settings,
                 current_yaml,
+                status_or_checks_helper_text,
             )
 
             self.write_section_to_msg(
