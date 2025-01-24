@@ -11,6 +11,7 @@ message TestRun {
         PASSED = 0;
         FAILED = 1;
         SKIPPED = 2;
+        FLAKY_FAILED = 3;
     }
 
     optional Outcome outcome = 6;
@@ -27,4 +28,8 @@ message TestRun {
 
     optional string filename = 14;
     optional string framework = 15;
+
+    optional int64 upload_id = 16;
+    optional bytes flags_hash = 17;
+    optional bytes test_id = 18;
 }

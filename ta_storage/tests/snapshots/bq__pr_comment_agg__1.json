@@ -1,0 +1,7 @@
+{
+  "commit_sha": "abc123",
+  "passed_ct": 10,
+  "failed_ct": 2,
+  "skipped_ct": 1,
+  "flaky_failed_ct": 1
+}

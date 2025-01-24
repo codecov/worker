@@ -1,0 +1,24 @@
+
+        
+SELECT
+    timestamp,
+    test_id,
+    outcome,
+    branch_name,
+    flags_hash,
+FROM
+    `test-project.test-dataset.test-table`
+WHERE
+    upload_id = @upload_id
+    AND (
+        outcome = 1
+        OR outcome = 3
+        OR EXISTS (
+            SELECT 1
+                FROM UNNEST(@flake_ids) AS flake_id
+            WHERE flake_id.candidate_test_id = test_id
+            AND IF(flake_id.candidate_flags_hash IS NULL, flags_hash IS NULL, flake_id.candidate_flags_hash = flags_hash)
+        )
+    )
+
+        

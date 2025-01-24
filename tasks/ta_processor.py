@@ -14,9 +14,9 @@ from database.models import (
     Upload,
     UploadError,
 )
+from django_scaffold import settings
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
-from services.test_results import get_flake_set
 from services.yaml import read_yaml_field
 from ta_storage.bq import BQDriver
 from ta_storage.pg import PGDriver
@@ -127,33 +127,43 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             db_session.commit()
             return False
         else:
-            flaky_test_set = get_flake_set(db_session, upload.report.commit.repoid)
-            pg = PGDriver(db_session, flaky_test_set)
-            bq_enabled = False
-            if get_config("services", "bigquery", "enabled", default=False):
-                bq = BQDriver()
-                bq_enabled = True
+            # the flaky test set will be generated in the first call to write_testruns
+            pg = PGDriver(repoid, db_session)
+            if settings.BIGQUERY_WRITE_ENABLED:
+                bq = BQDriver(repoid)
 
-            for parsing_info in parsing_infos:
-                framework = parsing_info["framework"]
-                testruns = parsing_info["testruns"]
-                pg.write_testruns(
-                    None,
-                    repoid,
-                    commitid,
-                    branch,
-                    upload,
-                    framework,
-                    testruns,
-                )
-
-                if bq_enabled:
-                    bq.write_testruns(
+                for parsing_info in parsing_infos:
+                    framework = parsing_info["framework"]
+                    testruns = parsing_info["testruns"]
+                    pg.write_testruns(
                         None,
-                        repoid,
                         commitid,
                         branch,
-                        upload,
+                        upload.id_,
+                        upload.flag_names,
+                        framework,
+                        testruns,
+                    )
+
+                    bq.write_testruns(
+                        None,
+                        commitid,
+                        branch,
+                        upload.id_,
+                        upload.flag_names,
+                        framework,
+                        testruns,
+                    )
+            else:
+                for parsing_info in parsing_infos:
+                    framework = parsing_info["framework"]
+                    testruns = parsing_info["testruns"]
+                    pg.write_testruns(
+                        None,
+                        commitid,
+                        branch,
+                        upload.id_,
+                        upload.flag_names,
                         framework,
                         testruns,
                     )

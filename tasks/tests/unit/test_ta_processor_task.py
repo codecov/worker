@@ -33,6 +33,7 @@ def mock_bigquery_service():
 class TestUploadTestProcessorTask(object):
     @pytest.mark.integration
     @travel("2025-01-01T00:00:00Z", tick=False)
+    @pytest.mark.django_db(transaction=True, databases=["test_analytics"])
     def test_ta_processor_task_call(
         self,
         mocker,
@@ -45,7 +46,15 @@ class TestUploadTestProcessorTask(object):
         snapshot,
     ):
         mock_configuration.set_params(
-            mock_configuration.params | {"services": {"bigquery": {"enabled": True}}}
+            mock_configuration.params
+            | {
+                "services": {"bigquery": {"write_enabled": True}},
+            }
+        )
+
+        mocker.patch(
+            "django_scaffold.settings.BIGQUERY_WRITE_ENABLED",
+            True,
         )
 
         tests = dbsession.query(Test).all()

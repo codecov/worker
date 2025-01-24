@@ -13,12 +13,12 @@ from database.enums import FlakeSymptomType, ReportType
 from database.models import (
     Commit,
     CommitReport,
-    Flake,
     Repository,
     TestResultReportTotals,
     Upload,
     UploadError,
 )
+from django_scaffold.settings import BIGQUERY_READ_ENABLED
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
@@ -32,20 +32,20 @@ from services.repository import (
     get_repo_provider_service,
 )
 from services.seats import ShouldActivateSeat, determine_seat_activation
-from services.test_results import (
+from services.ta_utils import (
     FlakeInfo,
-    TACommentInDepthInfo,
-    TestResultsNotificationFailure,
+    TestFailure,
     TestResultsNotificationPayload,
     TestResultsNotifier,
-    get_test_summary_for_commit,
-    latest_failures_for_commit,
     should_do_flaky_detection,
 )
+from ta_storage.base import PRCommentAggResult, PRCommentFailResult
+from ta_storage.bq import BQDriver
+from ta_storage.pg import PGDriver
 from tasks.base import BaseCodecovTask
-from tasks.cache_test_rollups import cache_test_rollups_task
 from tasks.notify import notify_task
-from tasks.process_flakes import process_flakes_task
+from tasks.ta_cache_analytics import ta_cache_analytics_task
+from tasks.ta_process_flakes import TA_FLAKE_UPLOADS_KEY, ta_process_flakes_task
 
 log = logging.getLogger(__name__)
 
@@ -86,18 +86,18 @@ def queue_optional_tasks(
     branch: str | None,
 ):
     redis_client = get_redis_connection()
-
     if should_do_flaky_detection(repo, commit_yaml):
         if commit.merged is True or branch == repo.branch:
-            redis_client.set(f"flake_uploads:{repo.repoid}", 0)
-            process_flakes_task_sig = process_flakes_task.s(
+            # run new process flakes task
+            redis_client.set(TA_FLAKE_UPLOADS_KEY.format(repo_id=repo.repoid), 0)
+            ta_process_flakes_task_sig = ta_process_flakes_task.s(
                 repo_id=repo.repoid,
                 commit_id=commit.commitid,
             )
-            process_flakes_task_sig.apply_async()
+            ta_process_flakes_task_sig.apply_async()
 
     if branch is not None:
-        cache_task_sig = cache_test_rollups_task.s(
+        cache_task_sig = ta_cache_analytics_task.s(
             repoid=repo.repoid,
             branch=branch,
         )
@@ -109,9 +109,8 @@ def get_totals(
 ) -> TestResultReportTotals:
     totals = commit_report.test_result_totals
     if totals is None:
-        totals = TestResultReportTotals(
-            report_id=commit_report.id,
-        )
+        totals = TestResultReportTotals()
+        totals.report = commit_report
         totals.passed = 0
         totals.skipped = 0
         totals.failed = 0
@@ -121,64 +120,42 @@ def get_totals(
     return totals
 
 
-def populate_failures(
-    failures: list[TestResultsNotificationFailure],
-    db_session: Session,
-    repoid: int,
-    commitid: str,
-    shorten_paths: bool,
-    uploads: dict[int, Upload],
-    escaper: StringEscaper,
-) -> None:
-    failed_test_instances = latest_failures_for_commit(db_session, repoid, commitid)
-
-    for test_instance in failed_test_instances:
-        failure_message = test_instance.failure_message
-        if failure_message is not None:
-            if shorten_paths:
-                failure_message = shorten_file_paths(failure_message)
-            failure_message = escaper.replace(failure_message)
-
-        upload = uploads[test_instance.upload_id]
-
-        failures.append(
-            TestResultsNotificationFailure(
-                display_name=test_instance.test.computed_name
-                if test_instance.test.computed_name is not None
-                else test_instance.test.name,
-                failure_message=failure_message,
-                test_id=test_instance.test_id,
-                envs=upload.flag_names,
-                duration_seconds=test_instance.duration_seconds,
-                build_url=upload.build_url,
-            )
+def get_bigquery_test_data(
+    repo: Repository, commit_sha: str, commit_yaml: UserYaml
+) -> tuple[
+    PRCommentAggResult,
+    list[PRCommentFailResult[tuple[bytes, bytes | None]]],
+    dict[tuple[bytes, bytes | None], FlakeInfo] | None,
+]:
+    driver = BQDriver(repo.repoid)
+    agg_result = driver.pr_comment_agg(commit_sha)
+    failures = driver.pr_comment_fail(commit_sha)
+    if should_do_flaky_detection(repo, commit_yaml):
+        flaky_tests = driver.get_repo_flakes(
+            tuple(failure["id"] for failure in failures)
         )
+    else:
+        flaky_tests = None
+
+    return agg_result, failures, flaky_tests
 
 
-def get_flaky_tests(
-    db_session: Session,
-    repoid: int,
-    failures: list[TestResultsNotificationFailure],
-) -> dict[str, FlakeInfo]:
-    failure_test_ids = [failure.test_id for failure in failures]
-
-    matching_flakes = list(
-        db_session.query(Flake)
-        .filter(
-            Flake.repoid == repoid,
-            Flake.testid.in_(failure_test_ids),
-            Flake.end_date.is_(None),
-            Flake.count != (Flake.recent_passes_count + Flake.fail_count),
+def get_postgres_test_data(
+    db_session: Session, repo: Repository, commit_sha: str, commit_yaml: UserYaml
+) -> tuple[
+    PRCommentAggResult, list[PRCommentFailResult[str]], dict[str, FlakeInfo] | None
+]:
+    driver = PGDriver(repo.repoid, db_session)
+    agg_result = driver.pr_comment_agg(commit_sha)
+    failures = driver.pr_comment_fail(commit_sha)
+    if should_do_flaky_detection(repo, commit_yaml):
+        flaky_tests = driver.get_repo_flakes(
+            tuple(failure["id"] for failure in failures)
         )
-        .limit(100)
-        .all()
-    )
+    else:
+        flaky_tests = None
 
-    flaky_test_ids = {
-        flake.testid: FlakeInfo(flake.fail_count, flake.count)
-        for flake in matching_flakes
-    }
-    return flaky_test_ids
+    return agg_result, failures, flaky_tests
 
 
 class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
@@ -243,59 +220,143 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         log.info("Running test results finishers", extra=self.extra_dict)
         TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
 
-        commit: Commit = (
+        commit = (
             db_session.query(Commit).filter_by(repoid=repoid, commitid=commitid).first()
         )
-        assert commit, "commit not found"
+        if commit is None:
+            raise ValueError("commit not found")
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
 
-        totals = get_totals(commit_report, db_session)
-        uploads = get_uploads(
-            db_session, commit
-        )  # processed uploads that have yet to be persisted
+        uploads = get_uploads(db_session, commit)
 
         repo = commit.repository
         branch = commit.branch
 
-        uploads = get_uploads(db_session, commit)
+        if BIGQUERY_READ_ENABLED:
+            agg_result, failures, flaky_tests = get_bigquery_test_data(
+                repo, commitid, commit_yaml
+            )
+            payload = TestResultsNotificationPayload(
+                agg_result["failed_ct"] + agg_result["flaky_failed_ct"],
+                agg_result["passed_ct"],
+                agg_result["skipped_ct"],
+            )
 
-        # if we succeed once, error should be None for this commit forever
-        if totals.error is not None:
-            totals.error = None
+            if failures:
+                escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+                shorten_paths = commit_yaml.read_yaml_field(
+                    "test_analytics", "shorten_paths", _else=True
+                )
+
+                failures_list = []
+                flaky_failures = []
+
+                for failure in failures:
+                    failure_message = failure["failure_message"]
+                    if failure_message is not None and shorten_paths:
+                        failure_message = shorten_file_paths(failure_message)
+                    if failure_message is not None:
+                        failure_message = escaper.replace(failure_message)
+
+                    test_id = failure["id"]
+                    base_failure = TestFailure(
+                        display_name=failure["computed_name"],
+                        failure_message=failure_message,
+                        duration_seconds=failure["duration_seconds"],
+                        build_url=uploads[failure["upload_id"]].build_url
+                        if failure["upload_id"] in uploads
+                        else None,
+                    )
+
+                    if flaky_tests and test_id in flaky_tests:
+                        flaky_failures.append(
+                            TestFailure(
+                                display_name=base_failure.display_name,
+                                failure_message=base_failure.failure_message,
+                                duration_seconds=base_failure.duration_seconds,
+                                build_url=base_failure.build_url,
+                                flake_info=flaky_tests[test_id],
+                            )
+                        )
+                    else:
+                        failures_list.append(base_failure)
+
+                failures_list = sorted(failures_list, key=lambda x: x.duration_seconds)
+                flaky_failures = sorted(
+                    flaky_failures, key=lambda x: x.duration_seconds
+                )
+
+                payload.regular_failures = failures_list if failures_list else None
+                payload.flaky_failures = flaky_failures if flaky_failures else None
+        else:
+            totals = get_totals(commit_report, db_session)
+
+            agg_result, failures, flaky_tests = get_postgres_test_data(
+                db_session, repo, commitid, commit_yaml
+            )
+
+            totals.failed = agg_result["failed_ct"]
+            totals.skipped = agg_result["skipped_ct"]
+            totals.passed = agg_result["passed_ct"]
             db_session.flush()
 
-        test_summary = get_test_summary_for_commit(db_session, repoid, commitid)
-        totals.failed = test_summary.get("error", 0) + test_summary.get("failure", 0)
-        totals.skipped = test_summary.get("skip", 0)
-        totals.passed = test_summary.get("pass", 0)
-        db_session.flush()
-
-        info = None
-        if totals.failed:
-            escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
-            shorten_paths = commit_yaml.read_yaml_field(
-                "test_analytics", "shorten_paths", _else=True
+            payload = TestResultsNotificationPayload(
+                totals.failed, totals.passed, totals.skipped
             )
 
-            failures = []
-            populate_failures(
-                failures,
-                db_session,
-                repoid,
-                commitid,
-                shorten_paths,
-                uploads,
-                escaper,
-            )
+            if failures:
+                escaper = StringEscaper(ESCAPE_FAILURE_MESSAGE_DEFN)
+                shorten_paths = commit_yaml.read_yaml_field(
+                    "test_analytics", "shorten_paths", _else=True
+                )
 
-            flaky_tests = dict()
-            if should_do_flaky_detection(repo, commit_yaml):
-                flaky_tests = get_flaky_tests(db_session, repoid, failures)
+                failures_list = []
+                flaky_failures = []
 
-            failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
+                for failure in failures:
+                    failure_message = failure["failure_message"]
+                    if failure_message is not None and shorten_paths:
+                        failure_message = shorten_file_paths(failure_message)
+                    if failure_message is not None:
+                        failure_message = escaper.replace(failure_message)
 
-            info = TACommentInDepthInfo(failures, flaky_tests)
+                    test_id = failure["id"]
+                    base_failure = TestFailure(
+                        display_name=failure["computed_name"],
+                        failure_message=failure_message,
+                        duration_seconds=failure["duration_seconds"],
+                        build_url=uploads[failure["upload_id"]].build_url
+                        if failure["upload_id"] in uploads
+                        else None,
+                    )
+
+                    if flaky_tests and test_id in flaky_tests:
+                        flaky_failures.append(
+                            TestFailure(
+                                display_name=base_failure.display_name,
+                                failure_message=base_failure.failure_message,
+                                duration_seconds=base_failure.duration_seconds,
+                                build_url=base_failure.build_url,
+                                flake_info=flaky_tests[test_id],
+                            )
+                        )
+                    else:
+                        failures_list.append(base_failure)
+
+                failures_list = sorted(failures_list, key=lambda x: x.duration_seconds)
+                flaky_failures = sorted(
+                    flaky_failures, key=lambda x: x.duration_seconds
+                )
+
+                if failures_list or flaky_failures:
+                    payload = TestResultsNotificationPayload(
+                        totals.failed,
+                        totals.passed,
+                        totals.skipped,
+                        regular_failures=failures_list if failures_list else None,
+                        flaky_failures=flaky_failures if flaky_failures else None,
+                    )
 
         additional_data: AdditionalData = {"upload_type": UploadType.TEST_RESULTS}
         repo_service = get_repo_provider_service(repo, additional_data=additional_data)
@@ -316,16 +377,13 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             .first()
         )
 
-        if not (info or upload_error):
+        if not (payload or upload_error):
             return {
                 "notify_attempted": False,
                 "notify_succeeded": False,
                 "queue_notify": True,
             }
 
-        payload = TestResultsNotificationPayload(
-            totals.failed, totals.passed, totals.skipped, info
-        )
         notifier = TestResultsNotifier(
             commit,
             commit_yaml,
@@ -335,6 +393,7 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             error=upload_error,
         )
         notifier_result = notifier.notify()
+
         for upload in uploads.values():
             upload.state = "v2_finished"
         db_session.commit()
@@ -351,7 +410,7 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
         return {
             "notify_attempted": True,
             "notify_succeeded": success,
-            "queue_notify": not info,
+            "queue_notify": not payload,
         }
 
     def seat_activation(
