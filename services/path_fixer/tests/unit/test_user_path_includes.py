@@ -18,7 +18,6 @@ class TestUserPathIncludes(BaseTestCase):
     def test_user_path_regex(self):
         path_patterns = ["sample/[^/]+/to/.*"]
         upi = UserPathIncludes(path_patterns)
-        print(upi.includes)
         assert upi("sample/path/to/file.go")
         assert upi("sample/something/to/haha.cpp")
         assert not upi("any/to/file.cpp")
