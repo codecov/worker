@@ -227,11 +227,13 @@ class BQDriver(TADriver):
     ):
         query = f"""
         WITH 
-        {RANKED_DATA.format(
-            PROJECT_ID=self.project_id,
-            DATASET_NAME=self.dataset_name,
-            TESTRUN_TABLE_NAME=self.testrun_table_name,
-        )},
+        {
+            RANKED_DATA.format(
+                PROJECT_ID=self.project_id,
+                DATASET_NAME=self.dataset_name,
+                TESTRUN_TABLE_NAME=self.testrun_table_name,
+            )
+        },
         {LATEST_INSTANCES}
         {PR_COMMENT_AGG}
         """
@@ -246,11 +248,13 @@ class BQDriver(TADriver):
     def pr_comment_fail(self, repoid: int, commit_sha: str):
         query = f"""
         WITH 
-        {RANKED_DATA.format(
-            PROJECT_ID=self.project_id,
-            DATASET_NAME=self.dataset_name,
-            TESTRUN_TABLE_NAME=self.testrun_table_name,
-        )},
+        {
+            RANKED_DATA.format(
+                PROJECT_ID=self.project_id,
+                DATASET_NAME=self.dataset_name,
+                TESTRUN_TABLE_NAME=self.testrun_table_name,
+            )
+        },
         {LATEST_INSTANCES}
         {PR_COMMENT_FAIL}
         """
@@ -264,11 +268,13 @@ class BQDriver(TADriver):
 
     def testruns_for_upload(self, upload_id: int, test_ids: list[bytes]):
         query = f"""
-        {TESTRUNS_FOR_UPLOAD.format(
-            PROJECT_ID=self.project_id,
-            DATASET_NAME=self.dataset_name,
-            TESTRUN_TABLE_NAME=self.testrun_table_name,
-        )}
+        {
+            TESTRUNS_FOR_UPLOAD.format(
+                PROJECT_ID=self.project_id,
+                DATASET_NAME=self.dataset_name,
+                TESTRUN_TABLE_NAME=self.testrun_table_name,
+            )
+        }
         """
         return self.bq_service.query(
             query,
@@ -288,21 +294,25 @@ class BQDriver(TADriver):
         if branch:
             query = f"""
             WITH
-            {ANALYTICS_BRANCH.format(
-                PROJECT_ID=self.project_id,
-                DATASET_NAME=self.dataset_name,
-                TESTRUN_TABLE_NAME=self.testrun_table_name,
-            )}
+            {
+                ANALYTICS_BRANCH.format(
+                    PROJECT_ID=self.project_id,
+                    DATASET_NAME=self.dataset_name,
+                    TESTRUN_TABLE_NAME=self.testrun_table_name,
+                )
+            }
             {ANALYTICS}
             """
         else:
             query = f"""
             WITH
-            {ANALYTICS_BASE.format(
-                PROJECT_ID=self.project_id,
-                DATASET_NAME=self.dataset_name,
-                TESTRUN_TABLE_NAME=self.testrun_table_name,
-            )}
+            {
+                ANALYTICS_BASE.format(
+                    PROJECT_ID=self.project_id,
+                    DATASET_NAME=self.dataset_name,
+                    TESTRUN_TABLE_NAME=self.testrun_table_name,
+                )
+            }
             {ANALYTICS}
             """
 
