@@ -632,7 +632,9 @@ class TestNotificationService(object):
                     "output": {
                         "title": "No coverage information found on head",
                         "summary": f"[View this Pull Request on Codecov](test/gh/test_notify_individual_checks_project_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo coverage information found on head",
+                        "annotations": [],
                     },
+                    "included_helper_text": {},
                     "url": f"test/gh/test_notify_individual_checks_project_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
                 },
                 data_received=None,
