@@ -64,7 +64,7 @@ def mark_process_dead(pid, exitcode, **kwargs):
 
 
 def setup_worker():
-    print(initialization_text.format(version=get_current_version()))
+    print(initialization_text.format(version=get_current_version()))  # noqa: T201
 
     if getattr(sys, "frozen", False):
         # Only for enterprise builds
