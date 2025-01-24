@@ -18,5 +18,6 @@ class TADriver(ABC):
         upload: Upload,
         framework: str | None,
         testruns: list[test_results_parser.Testrun],
+        flaky_test_set: set[str],
     ):
         pass

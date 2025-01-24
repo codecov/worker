@@ -283,7 +283,7 @@ def save_test_instances(db_session: Session, test_instance_data: list[dict]):
 
 
 class PGDriver(TADriver):
-    def __init__(self, db_session: Session, flaky_test_set: set):
+    def __init__(self, db_session: Session, flaky_test_set: set[str]):
         self.db_session = db_session
         self.flaky_test_set = flaky_test_set
 
