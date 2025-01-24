@@ -22,6 +22,7 @@ from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.mixins.status import (
     CUSTOM_TARGET_TEXT_PATCH_KEY,
+    CUSTOM_TARGET_TEXT_PROJECT_KEY,
     CUSTOM_TARGET_TEXT_VALUE,
 )
 from services.notification.notifiers.status import (
@@ -917,6 +918,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -937,6 +939,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "state": "success",
             "message": "Non-testable files changed.",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -957,6 +960,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "state": "failure",
             "message": "Testable files changed",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -978,6 +982,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "Please activate this user to display a detailed status check",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -997,7 +1002,11 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
             repository_service=mock_repo_provider,
         )
-        expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
+        expected_result = {
+            "message": "60.00% (target 57.00%)",
+            "state": "success",
+            "included_helper_text": {},
+        }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
@@ -1013,7 +1022,11 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
             repository_service=mock_repo_provider,
         )
-        expected_result = {"message": "60.00% (target 57.00%)", "state": "success"}
+        expected_result = {
+            "message": "60.00% (target 57.00%)",
+            "state": "success",
+            "included_helper_text": {},
+        }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
@@ -1036,6 +1049,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "No report found to compare against",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison)
         assert expected_result == result
@@ -1096,6 +1110,7 @@ class TestProjectStatusNotifier(object):
                 "message": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "state": "success",
                 "url": f"test.example.br/gh/{repo.slug}/pull/{sample_comparison.pull.pullid}",
+                "included_helper_text": {},
             },
             data_received=None,
         )
@@ -1129,6 +1144,7 @@ class TestProjectStatusNotifier(object):
                 "message": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "state": "success",
                 "url": f"test.example.br/gh/{repo.slug}/pull/{sample_comparison.pull.pullid}",
+                "included_helper_text": {},
             },
             data_received=None,
         )
@@ -1384,6 +1400,7 @@ class TestProjectStatusNotifier(object):
             "message": f"62.50% (+12.50%) compared to {base_commit.commitid[:7]}",
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
+            "included_helper_text": {},
         }
         result = notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
@@ -1409,6 +1426,7 @@ class TestProjectStatusNotifier(object):
             "message": "No coverage information found on base report",
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
+            "included_helper_text": {},
         }
         result = notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
@@ -1439,6 +1457,7 @@ class TestProjectStatusNotifier(object):
             "message": f"100.00% (+0.00%) compared to {base_commit.commitid[:7]}",
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison_matching_flags.head.commit.repository.slug}/pull/{sample_comparison_matching_flags.pull.pullid}",
+            "included_helper_text": {},
         }
         result = notifier.notify(sample_comparison_matching_flags)
         assert result == mocked_send_notification.return_value
@@ -1487,6 +1506,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "60.00% (target 80.00%), passed because this change only removed code",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert result == expected_result
@@ -1647,6 +1667,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by 0% when compared to adjusted base (50.00%)",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert result == expected_result
@@ -1694,6 +1715,14 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "60.00% (target 80.00%)",
             "state": "failure",
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="project",
+                    notification_type="status",
+                    coverage="60.00",
+                    target="80.00",
+                )
+            },
         }
         result = notifier.build_payload(sample_comparison)
         assert result == expected_result
@@ -1738,6 +1767,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}",
             "state": "failure",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert result == expected_result
@@ -1765,6 +1795,14 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "50.00% (target 80.00%)",
             "state": "failure",
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="project",
+                    notification_type="status",
+                    coverage="50.00",
+                    target="80.00",
+                )
+            },
         }
         result = notifier.build_payload(sample_comparison)
         assert result == expected_result
@@ -1788,6 +1826,14 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "60.00% (target 80.00%)",
             "state": "failure",
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="project",
+                    notification_type="status",
+                    coverage="60.00",
+                    target="80.00",
+                )
+            },
         }
         result = notifier.build_payload(sample_comparison)
         assert result == expected_result
@@ -1840,6 +1886,14 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "50.00% (target 70.00%)",
             "state": "failure",
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="project",
+                    notification_type="status",
+                    coverage="50.00",
+                    target="70.00",
+                )
+            },
         }
         result = notifier.build_payload(comparison_with_multiple_changes)
         assert result == expected_result
@@ -1893,6 +1947,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "28.57% (target 70.00%), passed because patch was fully covered by tests, and no indirect coverage changes",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison_100_percent_patch)
         assert result == expected_result
@@ -2054,6 +2109,7 @@ class TestProjectStatusNotifier(object):
         expected_result = {
             "message": "60.00% (target 70.00%), passed because coverage was not affected by patch",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert result == expected_result

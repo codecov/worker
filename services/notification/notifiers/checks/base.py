@@ -1,6 +1,6 @@
 import logging
 from contextlib import nullcontext
-from typing import Optional
+from typing import Any, Optional, TypedDict
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -8,6 +8,7 @@ from shared.torngit.exceptions import TorngitClientError, TorngitError
 
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.mixins.status import StatusState
 from services.notification.notifiers.status.base import StatusNotifier
 from services.urls import (
     append_tracking_params_to_urls,
@@ -18,6 +19,19 @@ from services.urls import (
 from services.yaml.reader import get_paths_from_flags
 
 log = logging.getLogger(__name__)
+
+
+class CheckOutput(TypedDict):
+    title: str
+    summary: str
+    annotations: list[Any]
+    text: Optional[str]
+
+
+class CheckResult(TypedDict):
+    state: StatusState
+    output: CheckOutput
+    included_helper_text: dict[str, str]
 
 
 class ChecksNotifier(StatusNotifier):
