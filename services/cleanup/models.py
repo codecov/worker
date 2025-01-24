@@ -12,6 +12,7 @@ from shared.django_apps.profiling.models import ProfilingUpload
 from shared.django_apps.reports.models import CommitReport, ReportDetails
 from shared.django_apps.reports.models import ReportSession as Upload
 from shared.django_apps.staticanalysis.models import StaticAnalysisSingleFileSnapshot
+from shared.storage.exceptions import FileNotInStorageError
 
 from services.archive import ArchiveService, MinioEndpoints
 from services.cleanup.utils import CleanupContext, CleanupResult
@@ -24,7 +25,10 @@ def cleanup_files_batched(
     context: CleanupContext, buckets_paths: dict[str, list[str]]
 ) -> int:
     def delete_file(bucket_path: tuple[str, str]) -> bool:
-        return context.storage.delete_file(bucket_path[0], bucket_path[1])
+        try:
+            return context.storage.delete_file(bucket_path[0], bucket_path[1])
+        except FileNotInStorageError:
+            return False
 
     iter = ((bucket, path) for bucket, paths in buckets_paths.items() for path in paths)
     results = context.threadpool.map(delete_file, iter)

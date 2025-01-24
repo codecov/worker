@@ -20,6 +20,10 @@ from services.comparison import ComparisonProxy
 from services.comparison.types import FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.mixins.status import (
+    CUSTOM_TARGET_TEXT_PATCH_KEY,
+    CUSTOM_TARGET_TEXT_VALUE,
+)
 from services.notification.notifiers.status import (
     ChangesStatusNotifier,
     PatchStatusNotifier,
@@ -2072,6 +2076,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "66.67% of diff hit (target 50.00%)",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2092,6 +2097,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "Please activate this user to display a detailed status check",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2111,6 +2117,14 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "66.67% of diff hit (target 70.00%)",
             "state": "failure",
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="patch",
+                    notification_type="status",
+                    coverage=66.67,
+                    target="70.00",
+                )
+            },
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2130,6 +2144,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "66.67% of diff hit (target 57.00%)",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2155,6 +2170,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2180,6 +2196,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "66.67% of diff hit (target 70.00%)",
             "state": "failure",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2207,6 +2224,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2257,6 +2275,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": f"Coverage not affected when comparing {base_commit.commitid[:7]}...{head_commit.commitid[:7]}",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2306,7 +2325,11 @@ class TestPatchStatusNotifier(object):
             current_yaml=UserYaml({}),
             repository_service=mock_repo_provider,
         )
-        expected_result = {"message": "Coverage not affected", "state": "success"}
+        expected_result = {
+            "message": "Coverage not affected",
+            "state": "success",
+            "included_helper_text": {},
+        }
         result = notifier.build_payload(comparison)
         assert expected_result == result
 
@@ -2329,6 +2352,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "No report found to compare against",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison)
         assert expected_result == result
@@ -2355,6 +2379,7 @@ class TestPatchStatusNotifier(object):
         expected_result = {
             "message": "50.00% of diff hit (target 76.92%)",
             "state": "failure",
+            "included_helper_text": {},  # not a custom target, no helper text
         }
         result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result

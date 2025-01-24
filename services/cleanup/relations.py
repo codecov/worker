@@ -3,6 +3,8 @@ from collections import defaultdict
 from graphlib import TopologicalSorter
 
 from django.db.models import Model, Q
+from django.db.models.expressions import Col, Expression
+from django.db.models.lookups import Exact, In
 from django.db.models.query import QuerySet
 from shared.django_apps.bundle_analysis.models import CacheConfig
 from shared.django_apps.codecov_auth.models import Owner, OwnerProfile
@@ -125,6 +127,7 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
     for model in reversed(sorted_models):
         node = nodes[model]
         depth = node.depth + 1
+        in_filter = simplified_lookup(node.queryset)
 
         for related_model, related_fields in node.edges.items():
             related_node = nodes[related_model]
@@ -132,9 +135,48 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
             if depth < related_node.depth:
                 filter = Q()
                 for field in related_fields:
-                    filter = filter | Q(**{f"{field}__in": node.queryset})
+                    filter = filter | Q(**{f"{field}__in": in_filter})
 
                 related_node.queryset = related_model.objects.filter(filter)
                 related_node.depth = depth
 
     return [(model, nodes[model].queryset) for model in sorted_models]
+
+
+def simplified_lookup(queryset: QuerySet) -> QuerySet | list[int]:
+    """
+    This potentially simplifies simple primary key lookups.
+
+    The whole point of the `build_relation_graph` is to begin with a `QuerySet`,
+    and most of the time, those are simple lookups by primary key.
+
+    When chaining those to related objects, and we can detect that this is indeed
+    a simple primary key lookup, we can eliminate one level of subqueries by
+    returning the simplified lookup value.
+
+    This is hopefully slightly faster, as the DB will still do an index scan for
+    a subquery like `foreign_pk IN (SELECT pk FROM table WHERE pk=123)`.
+    In that case, the expression will be simplified to `foreign_pk IN (123)`.
+    """
+    if queryset.query.is_sliced:
+        return queryset
+
+    where = queryset.query.where
+    if len(where.children) != 1:
+        return queryset
+
+    condition = where.children[0]
+    if not isinstance(condition, Expression) or not isinstance(condition.lhs, Col):
+        return queryset
+
+    column = condition.lhs.target
+    if column.model == queryset.model and column.primary_key:
+        if isinstance(condition, Exact) and condition.rhs_is_direct_value():
+            return [condition.rhs]
+
+        # In theory, this does not necessarily need to be a "direct value",
+        # but it can also be a subquery. But lets be conservative here.
+        if isinstance(condition, In) and condition.rhs_is_direct_value():
+            return condition.rhs
+
+    return queryset

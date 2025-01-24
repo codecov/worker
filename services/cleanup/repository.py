@@ -1,31 +1,44 @@
 import logging
 from uuid import uuid4
 
-from django.db import transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from shared.django_apps.codecov_auth.models import Owner
 from shared.django_apps.core.models import Repository
 
 from services.cleanup.cleanup import run_cleanup
-from services.cleanup.utils import CleanupSummary
+from services.cleanup.utils import CleanupResult, CleanupSummary
 
 log = logging.getLogger(__name__)
 
 
 def cleanup_repo(repo_id: int) -> CleanupSummary:
-    cleanup_started, owner_id = start_repo_cleanup(repo_id)
+    try:
+        cleanup_started, owner_id = start_repo_cleanup(repo_id)
+    except Repository.DoesNotExist:
+        log.warning("Repository does not exist / was already cleaned up")
+        return CleanupSummary(CleanupResult(0), {})
+    except (DatabaseError, IntegrityError) as _:
+        # `DatabaseError` means that the `SELECT FOR UPDATE NOWAIT` is currently locked.
+        # `IntegrityError` means that the `Owner.create` has a duplicated `service_id`.
+        log.warning("Cleanup could not be started because of conflicting job")
+        return CleanupSummary(CleanupResult(0), {})
 
     if cleanup_started:
-        log.info("Started Repository cleanup", extra={"repo_id": repo_id})
+        log.info("Started Repository cleanup")
     else:
-        log.info("Continuing Repository cleanup", extra={"repo_id": repo_id})
+        log.info("Continuing Repository cleanup")
 
     repo_query = Repository.objects.filter(repoid=repo_id)
     summary = run_cleanup(repo_query)
-    Owner.objects.filter(ownerid=owner_id).delete()
 
-    log.info(
-        "Repository cleanup finished", extra={"repoid": repo_id, "summary": summary}
-    )
+    # Delete the created "Shadow Owner" using a `raw_delete`, as otherwise this
+    # would run some very slow and expensive `SET NULL` / `CASCADE` queries,
+    # which are unnecessary as this shadow owner does not have any relations
+    owner_query = Owner.objects.filter(ownerid=owner_id)
+    owner_query._for_write = True  # Select the correct writable DB connection
+    owner_query._raw_delete(owner_query.db)
+
+    log.info("Repository cleanup finished", extra={"summary": summary})
     return summary
 
 
@@ -53,14 +66,18 @@ def start_repo_cleanup(repo_id: int) -> tuple[bool, int]:
             owner_username,
             owner_service,
             owner_service_id,
-        ) = Repository.objects.values_list(
-            "deleted",
-            "author__ownerid",
-            "author__name",
-            "author__username",
-            "author__service",
-            "author__service_id",
-        ).get(repoid=repo_id)
+        ) = (
+            Repository.objects.select_for_update(nowait=True)
+            .values_list(
+                "deleted",
+                "author__ownerid",
+                "author__name",
+                "author__username",
+                "author__service",
+                "author__service_id",
+            )
+            .get(repoid=repo_id)
+        )
 
         if repo_deleted and not owner_name and not owner_username:
             return (False, owner_id)
@@ -82,8 +99,8 @@ def start_repo_cleanup(repo_id: int) -> tuple[bool, int]:
             image_token=new_token,
         )
 
-        # The equivalent of `SET NULL`:
-        # TODO: maybe turn this into a `MANUAL_CLEANUP`?
-        Repository.objects.filter(fork=repo_id).update(fork=None)
+    # The equivalent of `SET NULL`:
+    # TODO: maybe turn this into a `MANUAL_CLEANUP`?
+    Repository.objects.filter(fork=repo_id).update(fork=None)
 
-        return (True, shadow_owner.ownerid)
+    return (True, shadow_owner.ownerid)

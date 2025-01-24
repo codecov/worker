@@ -8,6 +8,7 @@ import pytest
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.plan.constants import PlanName, TierName
 from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.types import Change, ReportTotals
 from shared.torngit.status import Status
 from shared.yaml import UserYaml
 
@@ -21,18 +22,28 @@ from database.tests.factories.core import PlanFactory, TierFactory
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.notification import NotificationService
-from services.notification.notifiers import StatusType
+from services.notification.notifiers import (
+    CommentNotifier,
+    PatchChecksNotifier,
+    StatusType,
+)
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.checks import ProjectChecksNotifier
 from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
+)
+from services.notification.notifiers.mixins.status import (
+    CUSTOM_TARGET_TEXT_PATCH_KEY,
+    CUSTOM_TARGET_TEXT_VALUE,
 )
 
 
 @pytest.fixture
 def sample_comparison(dbsession, request):
     repository = RepositoryFactory.create(
-        owner__username=request.node.name, owner__service="github"
+        owner__username=request.node.name,
+        owner__service="github",
+        using_integration=True,
     )
     dbsession.add(repository)
     dbsession.flush()
@@ -53,7 +64,16 @@ def sample_comparison(dbsession, request):
             head=head_full_commit,
             project_coverage_base=base_full_commit,
             patch_coverage_base_commitid=base_commit.commitid,
-            enriched_pull=EnrichedPull(database_pull=pull, provider_pull={}),
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "head": {"commitid": head_full_commit.commit.commitid},
+                    "base": {
+                        "commitid": base_full_commit.commit.commitid,
+                        "branch": {},
+                    },
+                },
+            ),
         )
     )
 
@@ -343,11 +363,18 @@ class TestNotificationService(object):
         service = NotificationService(repository, current_yaml, None)
         instances = list(service.get_notifiers_instances())
         names = sorted([instance.name for instance in instances])
+        types = sorted(instance.notification_type.value for instance in instances)
         assert names == [
             "checks-changes-with-fallback",
             "checks-patch-with-fallback",
             "checks-project-with-fallback",
             "codecov-slack-app",
+        ]
+        assert types == [
+            "checks_changes",
+            "checks_patch",
+            "checks_project",
+            "codecov_slack_app",
         ]
 
     @patch("services.notification.Plan.objects.get")
@@ -526,6 +553,70 @@ class TestNotificationService(object):
         res = notifications_service.notify(sample_comparison)
         assert expected_result == res
 
+    def test_notify_data_sent_None(self, mocker, dbsession, sample_comparison):
+        current_yaml = {}
+        commit = sample_comparison.head.commit
+        good_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=True),
+            title="good_notifier",
+            notification_type=Notification.comment,
+            decoration_type=Decoration.standard,
+            notify=mock.Mock(),
+        )
+        skipped_notifier = mocker.MagicMock(
+            is_enabled=mocker.MagicMock(return_value=True),
+            title="skippy_notifier",
+            notification_type=Notification.status_project,
+            decoration_type=Decoration.standard,
+        )
+        good_notifier.notify.return_value = NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation="",
+            data_sent={"some": "data"},
+        )
+        skipped_expected_return = NotificationResult(
+            notification_attempted=False,
+            notification_successful=None,
+            explanation="exclude_flag_coverage_not_uploaded_checks",
+            data_sent=None,
+            data_received=None,
+            github_app_used=None,
+        )
+        skipped_notifier.notify.return_value = skipped_expected_return
+        good_notifier.name = "good_name"
+        skipped_notifier.name = "skippy"
+
+        mocker.patch.object(
+            NotificationService,
+            "get_notifiers_instances",
+            return_value=[skipped_notifier, good_notifier],
+        )
+
+        notifications_service = NotificationService(
+            commit.repository, current_yaml, None
+        )
+        expected_result = [
+            {
+                "notifier": "skippy",
+                "title": "skippy_notifier",
+                "result": skipped_expected_return,
+            },
+            {
+                "notifier": "good_name",
+                "title": "good_notifier",
+                "result": NotificationResult(
+                    notification_attempted=True,
+                    notification_successful=True,
+                    explanation="",
+                    data_sent={"some": "data"},
+                    data_received=None,
+                ),
+            },
+        ]
+        res = notifications_service.notify(sample_comparison)
+        assert expected_result == res
+
     def test_notify_individual_notifier_timeout(self, mocker, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
@@ -548,7 +639,7 @@ class TestNotificationService(object):
             "title": "fake_notifier",
         }
 
-    def test_notify_individual_checks_notifier(
+    def test_notify_individual_checks_project_notifier(
         self, mocker, sample_comparison, mock_repo_provider, mock_configuration
     ):
         mock_repo_provider.get_commit_statuses.return_value = Status([])
@@ -591,13 +682,172 @@ class TestNotificationService(object):
                     "state": "success",
                     "output": {
                         "title": "No coverage information found on head",
-                        "summary": f"[View this Pull Request on Codecov](test/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo coverage information found on head",
+                        "summary": f"[View this Pull Request on Codecov](test/gh/test_notify_individual_checks_project_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo coverage information found on head",
                     },
-                    "url": f"test/gh/test_notify_individual_checks_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
+                    "url": f"test/gh/test_notify_individual_checks_project_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
                 },
                 data_received=None,
             ),
         }
+
+    def test_notify_individual_checks_patch_notifier_included_helper_text(
+        self,
+        mocker,
+        sample_comparison,
+        mock_repo_provider,
+        mock_configuration,
+        dbsession,
+    ):
+        """
+        A failed check/status notification with included_helper_text must pass the
+        included_helper_text along to the comment notifier.
+        """
+        pull_with_coverage = PullFactory(
+            repository=sample_comparison.enriched_pull.database_pull.repository,
+            commentid="1234",
+        )  # add this so we don't get is_first_coverage_pull
+        dbsession.add(pull_with_coverage)
+        dbsession.flush()
+        mock_repo_provider.get_commit_statuses.return_value = Status([])
+        # add this to satisfy create_or_update_commit_notification_from_notification_result
+        mock_repo_provider.post_comment.return_value = {"id": 9865}
+        mock_configuration._params["setup"] = {"codecov_dashboard_url": "test"}
+        current_yaml = {
+            "coverage": {"status": {"patch": True}},
+            "comment": {"layout": "condensed_header"},
+            "slack_app": False,
+            "github_checks": True,
+        }
+        commit = sample_comparison.head.commit
+        report = Report()
+        first_deleted_file = ReportFile("file_1.go")
+        first_deleted_file.append(1, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(2, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(3, ReportLine.create(coverage=0, sessions=[]))
+        first_deleted_file.append(5, ReportLine.create(coverage=0, sessions=[]))
+        report.append(first_deleted_file)
+        sample_comparison.head.report = report
+        sample_comparison.project_coverage_base.report = report
+        mock_repo_provider.create_check_run.return_value = 2234563
+        mock_repo_provider.update_check_run.return_value = "success"
+        patch_check = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "70%",
+                "paths": ["pathone"],
+                "layout": "reach, diff, flags, files, footer",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
+        )
+        comment = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "70%",
+                "paths": ["pathone"],
+                "layout": "reach, diff, flags, files, footer",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
+        )
+        mocker.patch.object(
+            NotificationService,
+            "get_notifiers_instances",
+            return_value=[
+                patch_check,
+                comment,
+            ],
+        )
+
+        service = NotificationService(
+            commit.repository, current_yaml, mock_repo_provider
+        )
+        instances = list(service.get_notifiers_instances())
+        names = sorted([instance.name for instance in instances])
+        types = sorted(instance.notification_type.value for instance in instances)
+        assert names == ["checks-patch", "comment"]
+        assert types == ["checks_patch", "comment"]
+
+        checks_patch_result = {
+            "state": "failure",
+            "output": {
+                "title": "66.67% of diff hit (target 70.00%)",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 70.00%)",
+                "annotations": [],
+            },
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="patch",
+                    notification_type="check",
+                    coverage=66.67,
+                    target="70.00",
+                )
+            },
+        }
+        # forcing this outcome from patch check notifier to test how that affects comment notifier
+        mocker.patch(
+            "services.notification.notifiers.checks.patch.PatchChecksNotifier.build_payload",
+            return_value=checks_patch_result,
+        )
+        mocker.patch(
+            "services.comparison.ComparisonProxy.get_behind_by",
+            return_value=None,
+        )
+        mock_changes = [
+            Change(
+                path="modified.py",
+                new=False,
+                deleted=False,
+                in_diff=True,
+                old_path=None,
+                totals=ReportTotals(
+                    files=0,
+                    lines=0,
+                    hits=-3,
+                    misses=2,
+                    partials=0,
+                    coverage=-35.714290000000005,
+                    branches=0,
+                    methods=0,
+                    messages=0,
+                    sessions=0,
+                    complexity=0,
+                    complexity_total=0,
+                    diff=0,
+                ),
+            ),
+        ]
+        mocker.patch(
+            "services.comparison.ComparisonProxy.get_changes", return_value=mock_changes
+        )
+
+        # this gets the patched result from PatchChecksNotifier, with included_helper_text
+        # CommentNotifier is called next, and should have the included_helper_text in the payload
+        res = service.notify(sample_comparison)
+
+        assert len(res) == 2
+        for r in res:
+            if r["notifier"] == "checks-patch":
+                assert (
+                    checks_patch_result["included_helper_text"][
+                        CUSTOM_TARGET_TEXT_PATCH_KEY
+                    ]
+                    in r["result"].data_sent["included_helper_text"][
+                        CUSTOM_TARGET_TEXT_PATCH_KEY
+                    ]
+                )
+            if r["notifier"] == "comment":
+                assert (
+                    ":x: "
+                    + checks_patch_result["included_helper_text"][
+                        CUSTOM_TARGET_TEXT_PATCH_KEY
+                    ]
+                    in r["result"].data_sent["message"]
+                )
 
     def test_notify_individual_notifier_timeout_notification_created(
         self, mocker, dbsession, sample_comparison
