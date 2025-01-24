@@ -241,7 +241,6 @@ class TestAdjustSession(BaseTestCase):
         assert clear_carryforward_sessions(
             sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
-        print(self.convert_report_to_better_readable(sample_first_report))
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -515,7 +514,6 @@ class TestAdjustSession(BaseTestCase):
         assert clear_carryforward_sessions(
             sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
-        print(self.convert_report_to_better_readable(sample_first_report))
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -811,7 +809,6 @@ class TestAdjustSession(BaseTestCase):
                 "se": {},
             },
         }
-        print(self.convert_report_to_better_readable(sample_first_report)["archive"])
         assert self.convert_report_to_better_readable(sample_first_report)[
             "archive"
         ] == {

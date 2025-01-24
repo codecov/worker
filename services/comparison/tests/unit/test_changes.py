@@ -336,8 +336,6 @@ class TestChanges(object):
         first_old_renamed_and_missing.append(8, ReportLine.create(coverage=0))
         first_report.append(first_old_renamed_and_missing)
         res = get_changes(first_report, second_report, json_diff)
-        for r in res:
-            print(r)
         expected_result = [
             Change(
                 path="modified.py",
@@ -441,8 +439,6 @@ class TestChanges(object):
         second_report = Report()
         second_report.append(first_report_file)
         res = get_changes(first_report, second_report, json_diff)
-        for r in res:
-            print(r)
         assert res == [
             Change(
                 path="missing_file",
@@ -459,6 +455,4 @@ class TestChanges(object):
         first_report = Report()
         second_report = Report()
         res = get_changes(first_report, second_report, json_diff)
-        for r in res:
-            print(r)
         assert res == []

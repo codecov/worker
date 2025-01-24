@@ -107,7 +107,7 @@ def engine(request, sqlalchemy_db, sqlalchemy_connect_url, app_config):
 
     yield engine
 
-    print("Disposing engine")
+    print("Disposing engine")  # noqa: T201
     engine.dispose()
 
 

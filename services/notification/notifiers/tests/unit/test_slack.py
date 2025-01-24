@@ -25,7 +25,6 @@ class TestSlackNotifier(object):
             "author_name": "Codecov",
             "text": text,
         }
-        print(result["text"])
         assert result == expected_result
 
     def test_build_payload_with_attachments(
@@ -83,7 +82,6 @@ class TestSlackNotifier(object):
             "author_name": "Codecov",
             "text": "This is a sample",
         }
-        print(result["text"])
         assert result == expected_result
 
     def test_build_payload_without_pull(
