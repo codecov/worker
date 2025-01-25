@@ -659,7 +659,12 @@ class TestBaseStatusNotifier(object):
         mock_repo_provider.set_commit_status.side_effect = TorngitClientError(
             403, "response", "message"
         )
-        payload = {"message": "something to say", "state": "success", "url": "url"}
+        payload = {
+            "message": "something to say",
+            "state": "success",
+            "url": "url",
+            "included_helper_text": "yayaya",
+        }
         result = no_settings_notifier.send_notification(comparison, payload)
         assert result.notification_attempted
         assert not result.notification_successful
@@ -668,6 +673,7 @@ class TestBaseStatusNotifier(object):
             "message": "something to say",
             "state": "success",
             "title": "codecov/fake/title",
+            "included_helper_text": "yayaya",
         }
         assert result.data_sent == expected_data_sent
         assert result.data_received is None
@@ -1719,6 +1725,7 @@ class TestProjectStatusNotifier(object):
                 CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="project",
                     notification_type="status",
+                    point_of_comparison="head",
                     coverage="60.00",
                     target="80.00",
                 )
@@ -1799,6 +1806,7 @@ class TestProjectStatusNotifier(object):
                 CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="project",
                     notification_type="status",
+                    point_of_comparison="head",
                     coverage="50.00",
                     target="80.00",
                 )
@@ -1830,6 +1838,7 @@ class TestProjectStatusNotifier(object):
                 CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="project",
                     notification_type="status",
+                    point_of_comparison="head",
                     coverage="60.00",
                     target="80.00",
                 )
@@ -1890,6 +1899,7 @@ class TestProjectStatusNotifier(object):
                 CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="project",
                     notification_type="status",
+                    point_of_comparison="head",
                     coverage="50.00",
                     target="70.00",
                 )
@@ -2177,6 +2187,7 @@ class TestPatchStatusNotifier(object):
                 CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="patch",
                     notification_type="status",
+                    point_of_comparison="patch",
                     coverage=66.67,
                     target="70.00",
                 )
