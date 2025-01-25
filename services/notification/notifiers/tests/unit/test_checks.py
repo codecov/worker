@@ -798,6 +798,7 @@ class TestPatchChecksNotifier(object):
                 CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="patch",
                     notification_type="check",
+                    point_of_comparison="patch",
                     coverage=66.67,
                     target="70.00",
                 )

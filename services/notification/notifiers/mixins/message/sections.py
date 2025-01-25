@@ -739,8 +739,11 @@ class ComponentsSectionWriter(BaseSectionWriter):
 class HelperTextSectionWriter(BaseSectionWriter):
     def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
         helper_template = ":x: {helper_text}"
-        for helper_text in self.status_or_checks_helper_text.values():
-            yield helper_template.format(helper_text=helper_text)
+        sorted_helper_text_keys = sorted(self.status_or_checks_helper_text.keys())
+        for helper_text_key in sorted_helper_text_keys:
+            yield helper_template.format(
+                helper_text=self.status_or_checks_helper_text[helper_text_key]
+            )
 
 
 class MessagesToUserSectionWriter(BaseSectionWriter):

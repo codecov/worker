@@ -28,8 +28,8 @@ class StatusResult(TypedDict):
 CUSTOM_TARGET_TEXT_PATCH_KEY = "custom_target_helper_text_patch"
 CUSTOM_TARGET_TEXT_PROJECT_KEY = "custom_target_helper_text_project"
 CUSTOM_TARGET_TEXT_VALUE = (
-    "Your {context} {notification_type} has failed because the patch coverage ({coverage}%) is below the target coverage ({target}%). "
-    "You can increase the patch coverage or adjust the "
+    "Your {context} {notification_type} has failed because the {point_of_comparison} coverage ({coverage}%) is below the target coverage ({target}%). "
+    "You can increase the {point_of_comparison} coverage or adjust the "
     "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
 )
 
@@ -118,6 +118,7 @@ class StatusPatchMixin(object):
                     helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PATCH_KEY].format(
                         context=self.context,
                         notification_type=notification_type,
+                        point_of_comparison=self.context,
                         coverage=coverage_rounded,
                         target=target_rounded,
                     )
@@ -191,6 +192,7 @@ class StatusChangesMixin(object):
 class StatusProjectMixin(object):
     DEFAULT_REMOVED_CODE_BEHAVIOR = "adjust_base"
     context = "project"
+    point_of_comparison = "head"
 
     def _apply_removals_only_behavior(
         self, comparison: ComparisonProxy | FilteredComparison
@@ -386,7 +388,6 @@ class StatusProjectMixin(object):
             # Possibly change status
             if removed_code_result:
                 removed_code_state, removed_code_message = removed_code_result
-                print(removed_code_state, removed_code_message)
                 if removed_code_state == StatusState.success.value:
                     # the status was failure, has been changed to success through RCB settings
                     # since the status is no longer failing, remove any included_helper_text
@@ -486,6 +487,7 @@ class StatusProjectMixin(object):
                 helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PROJECT_KEY].format(
                     context=self.context,
                     notification_type=notification_type,
+                    point_of_comparison=self.point_of_comparison,
                     coverage=head_coverage_rounded,
                     target=target_rounded,
                 )
