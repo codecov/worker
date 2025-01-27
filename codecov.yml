@@ -7,7 +7,7 @@ component_management:
   default_rules:
     statuses:
       - type: project
-        target: auto
+        target: 99
   individual_components:
     - component_id: actual_code
       name: NonTestCode
