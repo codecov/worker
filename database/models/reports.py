@@ -117,7 +117,7 @@ class Upload(CodecovBaseModel, MixinBaseClass):
     upload_type_id = Column(types.Integer)
 
     @cached_property
-    def flag_names(self):
+    def flag_names(self) -> list[str]:
         return [f.flag_name for f in self.flags]
 
 

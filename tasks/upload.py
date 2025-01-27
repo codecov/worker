@@ -531,7 +531,6 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
         # Bulk insert coverage measurements
         if measurements:
-            print("test - I am here!", measurements)
             self._bulk_insert_coverage_measurements(measurements=measurements)
 
         if argument_list:

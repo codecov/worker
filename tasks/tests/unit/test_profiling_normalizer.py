@@ -49,7 +49,6 @@ def test_run_impl_simple_normalizing_run(
     res = task.run_impl(dbsession, profiling_upload_id=puf.id)
     assert res["successful"]
     result = json.loads(mock_storage.read_file("bucket", res["location"]).decode())
-    print(mock_storage.read_file("bucket", res["location"]).decode())
     assert result == sample_open_telemetry_normalized
 
 

@@ -122,7 +122,6 @@ def test_run_impl_simple_run_no_existing_data_sample_new_uploads(
     task = ProfilingCollectionTask()
     res = task.run_impl(dbsession, profiling_id=pcf.id)
     assert res["successful"]
-    print(mock_storage.read_file("bucket", res["location"]).decode())
     assert (
         json.loads(mock_storage.read_file("bucket", res["location"]).decode())
         == sample_open_telemetry_collected
@@ -262,7 +261,6 @@ class TestProfilingCollectionTask(object):
         dbsession.add(pu)
         dbsession.flush()
         res = task.join_profiling_uploads(pcf, [pu])
-        print(res)
         assert res == {
             "groups": [
                 {
@@ -486,7 +484,6 @@ class TestProfilingCollectionTask(object):
         existing_result = {"files": []}
         res = task.merge_into(archive_service, existing_result, [pu])
         assert res is None
-        print(existing_result)
         assert existing_result == {
             "files": [
                 {"filename": "apple.py", "ln_ex_ct": [(2, 10), (101, 11)]},
