@@ -1,5 +1,6 @@
 import logging
 from contextlib import nullcontext
+from typing import Optional
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -75,7 +76,11 @@ class ChecksNotifier(StatusNotifier):
         return f"codecov/{self.context}{status_piece}"
 
     @sentry_sdk.trace
-    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         if comparison.pull is None or ():
             log.debug(
                 "Falling back to commit_status: Not a pull request",

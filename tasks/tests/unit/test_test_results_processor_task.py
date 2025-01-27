@@ -150,7 +150,6 @@ api/temp/calculator/test_calculator.py:30: AssertionError</failure></testcase></
             arguments_list=redis_queue,
         )
 
-        print(caplog.text)
         assert "Error parsing file" in caplog.text
         assert result == False
 

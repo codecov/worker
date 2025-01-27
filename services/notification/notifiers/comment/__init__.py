@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
@@ -74,7 +74,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         return comparison.get_diff()
 
     @sentry_sdk.trace
-    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         # TODO: remove this when we don't need it anymore
         # this line is measuring how often we try to comment on a PR that is closed
         if comparison.pull is not None and comparison.pull.state != "open":
@@ -102,7 +106,9 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 return default_result.merge(side_effect_result)
         pull = comparison.pull
         try:
-            message = self.build_message(comparison)
+            message = self.build_message(
+                comparison, status_or_checks_helper_text=status_or_checks_helper_text
+            )
         except TorngitClientError:
             log.warning(
                 "Unable to fetch enough information to build message for comment",
@@ -310,7 +316,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             self.notifier_yaml_settings, dict
         )
 
-    def build_message(self, comparison: ComparisonProxy) -> list[str]:
+    def build_message(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> list[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
         if self.is_processing_upload():
@@ -322,7 +332,12 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
         if comparison.pull.is_first_coverage_pull:
             return self._create_welcome_message()
         pull_dict = comparison.enriched_pull.provider_pull
-        return self.create_message(comparison, pull_dict, self.notifier_yaml_settings)
+        return self.create_message(
+            comparison,
+            pull_dict,
+            self.notifier_yaml_settings,
+            status_or_checks_helper_text=status_or_checks_helper_text,
+        )
 
     def should_see_project_coverage_cta(self):
         """

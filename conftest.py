@@ -107,7 +107,7 @@ def engine(request, sqlalchemy_db, sqlalchemy_connect_url, app_config):
 
     yield engine
 
-    print("Disposing engine")
+    print("Disposing engine")  # noqa: T201
     engine.dispose()
 
 
@@ -278,13 +278,17 @@ def mock_storage(mocker):
 
 @pytest.fixture
 def mock_archive_storage(mocker):
-    m = mocker.patch("shared.api_archive.archive.StorageService")
-    use_archive = mocker.patch(
-        "shared.django_apps.core.models.should_write_data_to_storage_config_check"
+    mocker.patch(
+        "shared.django_apps.core.models.should_write_data_to_storage_config_check",
+        return_value=True,
     )
-    use_archive.return_value = True
     storage_server = MemoryStorageService({})
-    m.return_value = storage_server
+    mocker.patch(
+        "shared.api_archive.archive.StorageService", return_value=storage_server
+    )
+    mocker.patch(
+        "shared.storage.get_appropriate_storage_service", return_value=storage_server
+    )
     return storage_server
 
 

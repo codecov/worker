@@ -78,9 +78,6 @@ class TestSyncTeamsTaskUnit(object):
         import logging
 
         caplog.set_level(logging.DEBUG)
-        print(codecov_vcr)
-        print(dir(codecov_vcr))
-        print(codecov_vcr.rewound)
         token = "testenll80qbqhofao65"
         user = OwnerFactory.create(
             organizations=[], service="gitlab", unencrypted_oauth_token=token

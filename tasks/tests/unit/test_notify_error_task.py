@@ -105,5 +105,4 @@ def test_notify_error_task_failure(mocker, dbsession, mock_repo_provider_comment
         repoid=commit.repoid,
         current_yaml={},
     )
-    print(result)
     assert result["success"] == False

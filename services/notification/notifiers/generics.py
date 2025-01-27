@@ -1,7 +1,7 @@
 import json
 import logging
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -79,7 +79,11 @@ class StandardNotifier(AbstractBaseNotifier):
         return True
 
     @sentry_sdk.trace
-    def notify(self, comparison: ComparisonProxy) -> NotificationResult:
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         filtered_comparison = comparison.get_filtered_comparison(
             **self.get_notifier_filters()
         )

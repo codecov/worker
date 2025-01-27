@@ -109,7 +109,6 @@ class TestBrollyStatsRollupTask(object):
 
         install_id_val = dbsession.query(Constants).get("install_id").value
         version_val = dbsession.query(Constants).get("version").value
-        print("mattmatt", install_id_val, version_val)
 
         mock_request = respx.post(DEFAULT_BROLLY_ENDPOINT).mock(
             return_value=httpx.Response(200)

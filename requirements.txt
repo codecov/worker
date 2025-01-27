@@ -208,8 +208,10 @@ markupsafe==2.1.3
     # via jinja2
 minio==7.1.13
     # via shared
-mmh3==4.0.1
-    # via shared
+mmh3==5.0.1
+    # via
+    #   -r requirements.in
+    #   shared
 mock==4.0.3
     # via -r requirements.in
 monotonic==1.5
@@ -375,7 +377,7 @@ sentry-sdk==2.13.0
     #   shared
 setuptools==75.7.0
     # via nodeenv
-shared @ https://github.com/codecov/shared/archive/191837f5e35f5efc410e670aac7e50e0d09e43e1.tar.gz#egg=shared
+shared @ https://github.com/codecov/shared/archive/e854f50c7c534bb8ca7227fa45e8f069ff1dfe5c.tar.gz#egg=shared
     # via -r requirements.in
 six==1.16.0
     # via
@@ -400,7 +402,9 @@ sqlalchemy-utils==0.36.8
     #   -r requirements.in
     #   pytest-sqlalchemy
 sqlparse==0.5.0
-    # via django
+    # via
+    #   -r requirements.in
+    #   django
 statsd==3.3.0
     # via -r requirements.in
 stripe==11.4.1
