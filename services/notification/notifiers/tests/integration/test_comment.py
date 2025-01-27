@@ -8,6 +8,7 @@ from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.comment import CommentNotifier
+from tests.helpers import mock_all_plans_and_tiers
 
 
 @pytest.fixture
@@ -335,6 +336,11 @@ def sample_comparison_for_limited_upload(
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierIntegration(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
     def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
         sample_comparison.context = ComparisonContext(
             all_tests_passed=True, test_results_error=None
@@ -407,6 +413,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669247}
 
+    @pytest.mark.django_db
     def test_notify_test_results_error(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
@@ -482,6 +489,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669247}
 
+    @pytest.mark.django_db
     def test_notify_upgrade(
         self, dbsession, sample_comparison_for_upgrade, codecov_vcr, mock_configuration
     ):
@@ -516,6 +524,7 @@ class TestCommentNotifierIntegration(object):
         }
         assert result.data_received == {"id": 1361234119}
 
+    @pytest.mark.django_db
     def test_notify_upload_limited(
         self,
         dbsession,
@@ -559,6 +568,7 @@ class TestCommentNotifierIntegration(object):
         }
         assert result.data_received == {"id": 1111984446}
 
+    @pytest.mark.django_db
     def test_notify_gitlab(
         self, sample_comparison_gitlab, codecov_vcr, mock_configuration
     ):
@@ -625,6 +635,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 5}
         assert result.data_received == {"id": 1457135397}
 
+    @pytest.mark.django_db
     def test_notify_new_layout(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
@@ -695,6 +706,7 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669290}
 
+    @pytest.mark.django_db
     def test_notify_with_components(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):

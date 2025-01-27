@@ -25,6 +25,7 @@ from services.notification.notifiers.mixins.status import (
     CUSTOM_TARGET_TEXT_VALUE,
 )
 from services.notification.notifiers.status import PatchStatusNotifier
+from tests.helpers import mock_all_plans_and_tiers
 
 
 @pytest.fixture
@@ -742,9 +743,11 @@ class TestPatchChecksNotifier(object):
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
+    @pytest.mark.django_db
     def test_build_default_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -1548,9 +1551,11 @@ class TestProjectChecksNotifier(object):
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
 
+    @pytest.mark.django_db
     def test_build_default_payload(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = ProjectChecksNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -1595,9 +1600,11 @@ class TestProjectChecksNotifier(object):
         ].split("\n")
         assert expected_result == result
 
+    @pytest.mark.django_db
     def test_build_default_payload_with_flags(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = ProjectChecksNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -1642,9 +1649,11 @@ class TestProjectChecksNotifier(object):
         ].split("\n")
         assert expected_result == result
 
+    @pytest.mark.django_db
     def test_build_default_payload_with_flags_and_footer(
         self, sample_comparison, mock_repo_provider, mock_configuration
     ):
+        mock_all_plans_and_tiers()
         test_name = "test_build_default_payload_with_flags_and_footer"
         mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
         notifier = ProjectChecksNotifier(

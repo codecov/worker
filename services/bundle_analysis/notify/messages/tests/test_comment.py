@@ -30,6 +30,7 @@ from tests.helpers import mock_all_plans_and_tiers
 
 
 class TestCommentMesage:
+    @pytest.mark.django_db
     def test_build_message_from_samples(self, dbsession, mocker, mock_storage):
         mock_all_plans_and_tiers()
         head_commit, base_commit = get_commit_pair(dbsession)

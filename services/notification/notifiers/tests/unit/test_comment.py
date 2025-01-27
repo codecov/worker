@@ -47,6 +47,7 @@ from services.notification.notifiers.mixins.message.sections import (
 from services.notification.notifiers.tests.conftest import generate_sample_comparison
 from services.repository import EnrichedPull
 from services.yaml.reader import get_components_from_yaml
+from tests.helpers import mock_all_plans_and_tiers
 
 
 @pytest.fixture
@@ -228,6 +229,7 @@ def mock_repo_provider(mock_repo_provider):
 
 
 class TestCommentNotifierHelpers(object):
+    @pytest.mark.django_db
     def test_sort_by_importance(self):
         modified_change = Change(
             path="modified.py",
@@ -308,6 +310,7 @@ class TestCommentNotifierHelpers(object):
         ]
         assert expected_result == res
 
+    @pytest.mark.django_db
     def test_format_number_to_str(self):
         assert "<0.1" == format_number_to_str(
             {"coverage": {"precision": 1}}, Decimal("0.001")
@@ -319,6 +322,7 @@ class TestCommentNotifierHelpers(object):
             {"coverage": {"precision": 1, "round": "up"}}, Decimal("10.001")
         )
 
+    @pytest.mark.django_db
     def test_diff_to_string_case_1(self):
         case_1 = (
             "master",
@@ -339,6 +343,7 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
+    @pytest.mark.django_db
     def test_diff_to_string_case_2(self):
         case_2 = (
             "master",
@@ -361,6 +366,7 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
+    @pytest.mark.django_db
     def test_diff_to_string_case_3(self):
         case_3 = (
             "master",
@@ -386,6 +392,7 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
+    @pytest.mark.django_db
     def test_diff_to_string_case_4(self):
         case_4 = (
             "master",
@@ -408,6 +415,7 @@ class TestCommentNotifierHelpers(object):
         diff = diff_to_string({}, base_title, base_totals, head_title, head_totals)
         assert diff == expected_result
 
+    @pytest.mark.django_db
     def test_diff_to_string_case_different_types(self):
         case_1 = (
             "master",
@@ -432,6 +440,11 @@ class TestCommentNotifierHelpers(object):
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifier(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
     def test_is_enabled_settings_individual_settings_false(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -446,6 +459,7 @@ class TestCommentNotifier(object):
         )
         assert not notifier.is_enabled()
 
+    @pytest.mark.django_db
     def test_is_enabled_settings_individual_settings_none(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -460,6 +474,7 @@ class TestCommentNotifier(object):
         )
         assert not notifier.is_enabled()
 
+    @pytest.mark.django_db
     def test_is_enabled_settings_individual_settings_true(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -474,6 +489,7 @@ class TestCommentNotifier(object):
         )
         assert not notifier.is_enabled()
 
+    @pytest.mark.django_db
     def test_is_enabled_settings_individual_settings_dict(self, dbsession):
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -488,6 +504,7 @@ class TestCommentNotifier(object):
         )
         assert notifier.is_enabled()
 
+    @pytest.mark.django_db
     def test_create_message_files_section(
         self,
         dbsession,
@@ -639,6 +656,7 @@ class TestCommentNotifier(object):
         for expected, res in zip(expected_result, res):
             assert expected == res
 
+    @pytest.mark.django_db
     def test_create_message_files_section_with_critical_files(
         self,
         dbsession,
@@ -803,6 +821,7 @@ class TestCommentNotifier(object):
             mocked_search_files_for_critical_changes.call_count == 3
         )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
+    @pytest.mark.django_db
     def test_create_message_with_github_app_comment(
         self,
         dbsession,
@@ -834,6 +853,7 @@ class TestCommentNotifier(object):
         "check_value",
         return_value=True,
     )
+    @pytest.mark.django_db
     def test_build_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -909,6 +929,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_flags_empty_coverage(
         self,
         dbsession,
@@ -954,6 +975,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_more_sections(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -1038,6 +1060,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_upgrade_message(
         self,
         request,
@@ -1075,6 +1098,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_limited_upload_message(
         self,
         request,
@@ -1115,6 +1139,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_passing_empty_upload(
         self,
         request,
@@ -1148,6 +1173,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_failing_empty_upload(
         self,
         request,
@@ -1182,6 +1208,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_processing_upload(
         self,
         request,
@@ -1214,6 +1241,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_upgrade_message_enterprise(
         self,
         request,
@@ -1257,6 +1285,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_hide_complexity(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -1331,6 +1360,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_no_base_report(
         self,
         dbsession,
@@ -1406,6 +1436,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_no_base_commit(
         self,
         dbsession,
@@ -1481,6 +1512,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_no_change(
         self,
         dbsession,
@@ -1560,6 +1592,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_negative_change(
         self,
         dbsession,
@@ -1634,6 +1667,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_negative_change_tricky_rounding(
         self,
         dbsession,
@@ -1701,6 +1735,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_negative_change_tricky_rounding_newheader(
         self,
         dbsession,
@@ -1755,6 +1790,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_show_carriedforward_flags_no_cf_coverage(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -1830,6 +1866,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_with_without_flags(
         self,
         dbsession,
@@ -1960,6 +1997,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_show_carriedforward_flags_has_cf_coverage(
         self,
         dbsession,
@@ -2033,6 +2071,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_hide_carriedforward_flags_has_cf_coverage(
         self,
         dbsession,
@@ -2104,6 +2143,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_send_actual_notification_spammy(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2130,6 +2170,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.edit_comment.called
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_build_message_no_flags(
         self,
         dbsession,
@@ -2211,6 +2252,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_send_actual_notification_new_no_permissions(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2240,6 +2282,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.post_comment.called
         assert not mock_repo_provider.edit_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_new(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2267,6 +2310,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.edit_comment.called
         mock_repo_provider.delete_comment.assert_called_with(98, "12345")
 
+    @pytest.mark.django_db
     def test_send_actual_notification_new_no_permissions_post(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2298,6 +2342,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.delete_comment.called
         assert not mock_repo_provider.edit_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_new_deleted_comment(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2327,6 +2372,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.edit_comment.called
         mock_repo_provider.delete_comment.assert_called_with(98, "12345")
 
+    @pytest.mark.django_db
     def test_send_actual_notification_once_deleted_comment(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2356,6 +2402,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_once_non_existing_comment(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2385,6 +2432,7 @@ class TestCommentNotifier(object):
         assert not mock_repo_provider.delete_comment.called
         assert not mock_repo_provider.edit_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_once(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2412,6 +2460,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_once_no_permissions(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2441,6 +2490,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_default(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2468,6 +2518,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_default_no_permissions_edit(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2497,6 +2548,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_default_no_permissions_twice(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2528,6 +2580,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.edit_comment.assert_called_with(98, "12345", "message")
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_send_actual_notification_default_comment_not_found(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2557,6 +2610,7 @@ class TestCommentNotifier(object):
         mock_repo_provider.post_comment.assert_called_with(98, "message")
         assert not mock_repo_provider.delete_comment.called
 
+    @pytest.mark.django_db
     def test_notify_no_pull_request(self, dbsession, sample_comparison_without_pull):
         notifier = CommentNotifier(
             repository=sample_comparison_without_pull.head.commit.repository,
@@ -2576,6 +2630,7 @@ class TestCommentNotifier(object):
         assert result.data_sent is None
         assert result.data_received is None
 
+    @pytest.mark.django_db
     def test_notify_pull_head_doesnt_match(self, dbsession, sample_comparison):
         sample_comparison.pull.head = "aaaaaaaaaa"
         dbsession.flush()
@@ -2597,6 +2652,7 @@ class TestCommentNotifier(object):
         assert result.data_sent is None
         assert result.data_received is None
 
+    @pytest.mark.django_db
     def test_notify_pull_request_not_in_provider(
         self, dbsession, sample_comparison_database_pull_without_provider
     ):
@@ -2618,6 +2674,7 @@ class TestCommentNotifier(object):
         assert result.data_sent is None
         assert result.data_received is None
 
+    @pytest.mark.django_db
     def test_notify_server_unreachable(self, mocker, dbsession, sample_comparison):
         mocked_send_actual_notification = mocker.patch.object(
             CommentNotifier,
@@ -2649,6 +2706,7 @@ class TestCommentNotifier(object):
         }
         assert result.data_received is None
 
+    @pytest.mark.django_db
     def test_store_results(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -2675,6 +2733,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         assert sample_comparison.pull.commentid == "578263422"
 
+    @pytest.mark.django_db
     def test_store_results_deleted_comment(self, dbsession, sample_comparison):
         sample_comparison.pull.commentid = 12
         dbsession.flush()
@@ -2703,6 +2762,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         assert sample_comparison.pull.commentid is None
 
+    @pytest.mark.django_db
     def test_store_results_no_succesfull_result(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -2729,6 +2789,7 @@ class TestCommentNotifier(object):
         dbsession.refresh(sample_comparison.pull)
         assert sample_comparison.pull.commentid is None
 
+    @pytest.mark.django_db
     def test_notify_unable_to_fetch_info(self, dbsession, mocker, sample_comparison):
         mocked_build_message = mocker.patch.object(
             CommentNotifier,
@@ -2753,6 +2814,7 @@ class TestCommentNotifier(object):
         assert result.data_sent is None
         assert result.data_received is None
 
+    @pytest.mark.django_db
     def test_notify_not_enough_builds(self, dbsession, sample_comparison):
         notifier = CommentNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -2773,6 +2835,7 @@ class TestCommentNotifier(object):
         assert result.data_sent is None
         assert result.data_received is None
 
+    @pytest.mark.django_db
     @pytest.mark.asyncio
     @pytest.mark.parametrize("pull_state", ["open", "closed"])
     async def test_notify_with_enough_builds(
@@ -2819,6 +2882,7 @@ class TestCommentNotifier(object):
         }
         assert result.data_received is None
 
+    @pytest.mark.django_db
     def test_notify_exact_same_report_diff_unrelated_report(
         self, sample_comparison_no_change, mock_repo_provider
     ):
@@ -2880,6 +2944,7 @@ class TestCommentNotifier(object):
         assert res.data_sent is None
         assert res.data_received is None
 
+    @pytest.mark.django_db
     def test_notify_exact_same_report_diff_unrelated_report_update_comment(
         self, sample_comparison_no_change, mock_repo_provider
     ):
@@ -2941,6 +3006,7 @@ class TestCommentNotifier(object):
         assert res.notification_successful is True
         mock_repo_provider.edit_comment.assert_called()
 
+    @pytest.mark.django_db
     def test_message_hide_details_github(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -2975,6 +3041,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_message_announcements_only(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -3012,6 +3079,7 @@ class TestCommentNotifier(object):
                 assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_message_hide_details_bitbucket(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
@@ -3961,6 +4029,11 @@ class TestNewFooterSectionWriter(object):
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierInNewLayout(object):
+    @pytest.fixture(autouse=True)
+    def mock_all_plans_and_tiers(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
     def test_create_message_files_section_with_critical_files_new_layout(
         self,
         dbsession,
@@ -4125,6 +4198,7 @@ class TestCommentNotifierInNewLayout(object):
             mocked_search_files_for_critical_changes.call_count == 3
         )  # called 2 times by FilesSectionWriter and 1 time by NewFilesSectionWriter
 
+    @pytest.mark.django_db
     def test_build_message_no_base_commit_new_layout(
         self,
         dbsession,
@@ -4194,6 +4268,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_no_base_report_new_layout(
         self,
         dbsession,
@@ -4267,6 +4342,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_no_project_coverage(
         self,
         dbsession,
@@ -4308,6 +4384,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_no_project_coverage_files(
         self,
         dbsession,
@@ -4355,6 +4432,7 @@ class TestCommentNotifierInNewLayout(object):
         for exp, res in zip(expected_result, result):
             assert exp == res
 
+    @pytest.mark.django_db
     def test_build_message_no_project_coverage_condensed_yaml_configs(
         self,
         dbsession,
@@ -4396,6 +4474,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_head_and_pull_head_differ_new_layout(
         self,
         dbsession,
@@ -4466,6 +4545,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_head_and_pull_head_differ_with_components(
         self,
         dbsession,
@@ -4548,6 +4628,7 @@ class TestCommentNotifierInNewLayout(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_team_plan_customer_missing_lines(
         self,
         dbsession,
@@ -4598,6 +4679,7 @@ class TestCommentNotifierInNewLayout(object):
     @patch.object(
         SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG, "check_value", return_value=True
     )
+    @pytest.mark.django_db
     def test_build_message_team_plan_customer_all_lines_covered(
         self,
         dbsession,
@@ -4640,6 +4722,7 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_team_plan_customer_all_lines_covered_test_results_error(
         self,
         dbsession,
@@ -4682,6 +4765,7 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_team_plan_customer_all_lines_covered_no_third_line(
         self,
         dbsession,
@@ -4722,6 +4806,7 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_no_patch_or_proj_change(
         self,
         dbsession,
