@@ -126,8 +126,6 @@ def test_pg_driver_cache_analytics(mock_storage):
         branch=upload.report.commit.branch,
     )
 
-    print(rollups)
-
     expected_intervals = [
         (1, None),  # Today
         (2, 1),  # Yesterday
@@ -148,7 +146,6 @@ def test_pg_driver_cache_analytics(mock_storage):
             table = read_table(mock_storage, bucket, storage_key)
             table_dict = table.to_dict(as_series=False)
 
-            print(table_dict)
             # Verify data based on intervals
             if (interval_start, interval_end) == (1, None):
                 # Today's data
