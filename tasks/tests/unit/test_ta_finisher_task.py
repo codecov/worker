@@ -305,6 +305,5 @@ def test_test_analytics(
 
 </details>
 
-To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{short_form_service_name}/{upload.report.commit.repository.owner.username}/{upload.report.commit.repository.name}/tests/{upload.report.commit.branch})
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{short_form_service_name}/{upload.report.commit.repository.owner.username}/{upload.report.commit.repository.name}/tests/{upload.report.commit.branch})""",
     )
