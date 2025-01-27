@@ -3,6 +3,12 @@ codecov:
   notify:
     wait_for_ci: false
 
+coverage:
+  status:
+    patch:
+      default:
+        target: 99
+
 component_management:
   default_rules:
     statuses:
