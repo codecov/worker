@@ -22,6 +22,7 @@ from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.mixins.status import (
     CUSTOM_RCB_INDIRECT_CHANGES_KEY,
+    CUSTOM_RCB_ADJUST_BASE_KEY,
     CUSTOM_TARGET_TEXT_PATCH_KEY,
     CUSTOM_TARGET_TEXT_PROJECT_KEY,
     CUSTOM_TARGET_TEXT_VALUE,
@@ -1553,8 +1554,11 @@ class TestProjectStatusNotifier(object):
                     }
                 ],
                 (
-                    "success",
-                    ", passed because coverage increased by 0.02% when compared to adjusted base (94.24%)",
+                    (
+                        "success",
+                        ", passed because coverage increased by 0.02% when compared to adjusted base (94.24%)",
+                    ),
+                    {},
                 ),
                 id="many_removed_hits_makes_head_more_covered_than_base",
             ),
@@ -1579,8 +1583,11 @@ class TestProjectStatusNotifier(object):
                     }
                 ],
                 (
-                    "success",
-                    ", passed because coverage increased by 0% when compared to adjusted base (94.27%)",
+                    (
+                        "success",
+                        ", passed because coverage increased by 0% when compared to adjusted base (94.27%)",
+                    ),
+                    {},
                 ),
                 id="many_removed_hits_makes_head_same_as_base",
             ),
@@ -1601,14 +1608,25 @@ class TestProjectStatusNotifier(object):
                         ]
                     }
                 ],
-                None,
+                (
+                    None,
+                    {
+                        CUSTOM_RCB_ADJUST_BASE_KEY: HELPER_TEXT_MAP[
+                            CUSTOM_RCB_ADJUST_BASE_KEY
+                        ].format(
+                            notification_type="status",
+                            coverage=94.27,
+                            adjusted_base_cov=94.28,
+                        ),
+                    },
+                ),
                 id="not_enough_hits_removed_for_status_to_pass",
             ),
             pytest.param(
                 ReportTotals(hits=0, misses=0, partials=0),
                 ReportTotals(hits=0, misses=0, partials=0, coverage="100"),
                 [],
-                None,
+                (None, {}),
                 id="zero_coverage",
             ),
         ],
@@ -1633,7 +1651,9 @@ class TestProjectStatusNotifier(object):
             current_yaml=settings,
             repository_service={},
         )
-        result = status_mixin._apply_adjust_base_behavior(comparison)
+        result = status_mixin._apply_adjust_base_behavior(
+            comparison, notification_type="status"
+        )
         assert result == expected
 
     def test_notify_pass_adjust_base_behavior(
@@ -1773,6 +1793,61 @@ class TestProjectStatusNotifier(object):
             current_yaml=UserYaml({}),
             repository_service={},
         )
+        # included helper text for this user because they have adjust_base in their yaml
+        expected_result = {
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}",
+            "state": "failure",
+            "included_helper_text": {
+                CUSTOM_RCB_ADJUST_BASE_KEY: HELPER_TEXT_MAP[
+                    CUSTOM_RCB_ADJUST_BASE_KEY
+                ].format(
+                    notification_type="status",
+                    coverage="50.00",
+                    adjusted_base_cov=71.43,
+                )
+            },
+        }
+        result = notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    def test_notify_rcb_default(
+        self, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"], [3, "m"], [4, "m"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            repository_service={},
+        )
+        # NO helper text for this user because they have NOT specified adjust_base in their yaml
         expected_result = {
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}",
             "state": "failure",
