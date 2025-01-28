@@ -32,6 +32,7 @@ from services.notification.notifiers.checks.checks_with_fallback import (
 )
 from services.notification.notifiers.mixins.status import (
     CUSTOM_TARGET_TEXT_PATCH_KEY,
+    CUSTOM_TARGET_TEXT_PROJECT_KEY,
     CUSTOM_TARGET_TEXT_VALUE,
 )
 
@@ -632,14 +633,16 @@ class TestNotificationService(object):
                     "output": {
                         "title": "No coverage information found on head",
                         "summary": f"[View this Pull Request on Codecov](test/gh/test_notify_individual_checks_project_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo coverage information found on head",
+                        "annotations": [],
                     },
+                    "included_helper_text": {},
                     "url": f"test/gh/test_notify_individual_checks_project_notifier/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
                 },
                 data_received=None,
             ),
         }
 
-    def test_notify_individual_checks_patch_notifier_included_helper_text(
+    def test_notify_individual_checks_patch_and_project_notifier_included_helper_text(
         self,
         mocker,
         sample_comparison,
@@ -662,10 +665,10 @@ class TestNotificationService(object):
         mock_repo_provider.post_comment.return_value = {"id": 9865}
         mock_configuration._params["setup"] = {"codecov_dashboard_url": "test"}
         current_yaml = {
-            "coverage": {"status": {"patch": True}},
+            "coverage": {"status": {"patch": True, "project": True}},
             "comment": {"layout": "condensed_header"},
             "slack_app": False,
-            "github_checks": True,
+            "github_checks": {"annotations": False},
         }
         commit = sample_comparison.head.commit
         report = Report()
@@ -680,6 +683,18 @@ class TestNotificationService(object):
         mock_repo_provider.create_check_run.return_value = 2234563
         mock_repo_provider.update_check_run.return_value = "success"
         patch_check = PatchChecksNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "70%",
+                "paths": ["pathone"],
+                "layout": "reach, diff, flags, files, footer",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
+        )
+        proj_check = ProjectChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="title",
             notifier_yaml_settings={
@@ -708,6 +723,7 @@ class TestNotificationService(object):
             "get_notifiers_instances",
             return_value=[
                 patch_check,
+                proj_check,
                 comment,
             ],
         )
@@ -718,20 +734,21 @@ class TestNotificationService(object):
         instances = list(service.get_notifiers_instances())
         names = sorted([instance.name for instance in instances])
         types = sorted(instance.notification_type.value for instance in instances)
-        assert names == ["checks-patch", "comment"]
-        assert types == ["checks_patch", "comment"]
+        assert names == ["checks-patch", "checks-project", "comment"]
+        assert types == ["checks_patch", "checks_project", "comment"]
 
         checks_patch_result = {
             "state": "failure",
             "output": {
                 "title": "66.67% of diff hit (target 70.00%)",
-                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 70.00%)",
+                "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_notify_individual_checks_patch_and_project_notifier_included_helper_text/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 70.00%)",
                 "annotations": [],
             },
             "included_helper_text": {
                 CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="patch",
                     notification_type="check",
+                    point_of_comparison="patch",
                     coverage=66.67,
                     target="70.00",
                 )
@@ -742,6 +759,30 @@ class TestNotificationService(object):
             "services.notification.notifiers.checks.patch.PatchChecksNotifier.build_payload",
             return_value=checks_patch_result,
         )
+
+        checks_proj_result = {
+            "state": "failure",
+            "output": {
+                "title": "50.00% (target 70.00%)",
+                "summary": f"[View this Pull Request on Codecov](test/gh/test_notify_individual_checks_patch_and_project_notifier_included_helper_text/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo coverage information found on head",
+                "annotations": [],
+            },
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="project",
+                    notification_type="check",
+                    point_of_comparison="head",
+                    coverage="50.00",
+                    target="70.00",
+                )
+            },
+        }
+        # forcing this outcome from project check notifier to test how that affects comment notifier
+        mocker.patch(
+            "services.notification.notifiers.checks.project.ProjectChecksNotifier.build_payload",
+            return_value=checks_proj_result,
+        )
+
         mocker.patch(
             "services.comparison.ComparisonProxy.get_behind_by",
             return_value=None,
@@ -774,26 +815,33 @@ class TestNotificationService(object):
             "services.comparison.ComparisonProxy.get_changes", return_value=mock_changes
         )
 
-        # this gets the patched result from PatchChecksNotifier, with included_helper_text
+        # this gets the patched results from PatchChecksNotifier and ProjectChecksNotifier, with included_helper_text
         # CommentNotifier is called next, and should have the included_helper_text in the payload
         res = service.notify(sample_comparison)
 
-        assert len(res) == 2
+        assert len(res) == 3
         for r in res:
             if r["notifier"] == "checks-patch":
                 assert (
-                    checks_patch_result["included_helper_text"][
-                        CUSTOM_TARGET_TEXT_PATCH_KEY
-                    ]
-                    in r["result"].data_sent["included_helper_text"][
-                        CUSTOM_TARGET_TEXT_PATCH_KEY
-                    ]
+                    r["result"].data_sent["included_helper_text"]
+                    == checks_patch_result["included_helper_text"]
                 )
+
+            if r["notifier"] == "checks-project":
+                assert (
+                    r["result"].data_sent["included_helper_text"]
+                    == checks_proj_result["included_helper_text"]
+                )
+
             if r["notifier"] == "comment":
                 assert (
                     ":x: "
                     + checks_patch_result["included_helper_text"][
                         CUSTOM_TARGET_TEXT_PATCH_KEY
+                    ]
+                    and ":x: "
+                    + checks_proj_result["included_helper_text"][
+                        CUSTOM_TARGET_TEXT_PROJECT_KEY
                     ]
                     in r["result"].data_sent["message"]
                 )

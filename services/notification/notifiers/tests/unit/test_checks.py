@@ -798,6 +798,7 @@ class TestPatchChecksNotifier(object):
                 CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
                     context="patch",
                     notification_type="check",
+                    point_of_comparison="patch",
                     coverage=66.67,
                     target="70.00",
                 )
@@ -1491,7 +1492,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_flag_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         assert result == expected_result
         assert notifier.notification_type.value == "checks_project"
@@ -1517,7 +1520,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": "Codecov Report",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nThe author of this PR, codecov-test-user, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov](test.example.br/members/gh/test_build_upgrade_payload) to display a detailed status check.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -1543,7 +1548,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": "Empty Upload",
                 "summary": "Non-testable files changed.",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -1588,7 +1595,9 @@ class TestProjectChecksNotifier(object):
                         "",
                     ]
                 ),
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         assert expected_result["output"]["text"].split("\n") == result["output"][
             "text"
@@ -1635,7 +1644,9 @@ class TestProjectChecksNotifier(object):
                         "",
                     ]
                 ),
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         assert expected_result["output"]["text"].split("\n") == result["output"][
             "text"
@@ -1689,7 +1700,9 @@ class TestProjectChecksNotifier(object):
                         "",
                     ],
                 ),
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         assert expected_result["output"]["text"].split("\n") == result["output"][
             "text"
@@ -1716,7 +1729,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_default_payload_comment_off/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         assert expected_result == result
 
@@ -1740,7 +1755,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"50.00% (-10.00%) compared to {base_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_default_payload_negative_change_comment_off/{repo.name}/pull/{sample_comparison_negative_change.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n50.00% (-10.00%) compared to {base_commit.commitid[:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         assert expected_result == result
 
@@ -1762,7 +1779,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": "60.00% (target 57.00%)",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_not_auto/{repo.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (target 57.00%)",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -1789,7 +1808,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": "No report found to compare against",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_no_base_report/{repo.name}/pull/{sample_comparison_without_base_report.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo report found to compare against",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison)
         assert expected_result == result
@@ -1819,7 +1840,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": "No coverage information found on head",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo coverage information found on head",
+                "annotations": [],
             },
+            "included_helper_text": {},
             "url": f"test.example.br/gh/test_check_notify_no_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
@@ -1850,7 +1873,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"62.50% (+12.50%) compared to {base_commit.commitid[0:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n62.50% (+12.50%) compared to {base_commit.commitid[0:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
             "url": f"test.example.br/gh/test_check_notify_single_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
         assert result.data_sent["state"] == expected_result["state"]
@@ -1887,7 +1912,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
             "url": f"test.example.br/gh/test_check_notify_multiple_path_match/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
@@ -1921,7 +1948,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[0:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
             "url": f"test.example.br/gh/test_check_notify_with_paths/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}",
         }
 
@@ -1960,7 +1989,9 @@ class TestProjectChecksNotifier(object):
                 "output": {
                     "title": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]} [Auto passed due to carriedforward or missing coverage]",
+                    "annotations": [],
                 },
+                "included_helper_text": {},
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
@@ -2006,7 +2037,9 @@ class TestProjectChecksNotifier(object):
                 "output": {
                     "title": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                    "annotations": [],
                 },
+                "included_helper_text": {},
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
@@ -2048,7 +2081,9 @@ class TestProjectChecksNotifier(object):
                 "output": {
                     "title": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
+                    "annotations": [],
                 },
+                "included_helper_text": {},
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
@@ -2121,7 +2156,9 @@ class TestProjectChecksNotifier(object):
                 "output": {
                     "title": f"25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n25.00% (+0.00%) compared to {base_commit.commitid[:7]}",
+                    "annotations": [],
                 },
+                "included_helper_text": {},
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
@@ -2167,7 +2204,9 @@ class TestProjectChecksNotifier(object):
                 "output": {
                     "title": f"36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n36.17% (+0.00%) compared to {base_commit.commitid[:7]}",
+                    "annotations": [],
                 },
+                "included_helper_text": {},
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
@@ -2210,7 +2249,9 @@ class TestProjectChecksNotifier(object):
                 "output": {
                     "title": f"65.38% (+0.00%) compared to {base_commit.commitid[:7]}",
                     "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n65.38% (+0.00%) compared to {base_commit.commitid[:7]}",
+                    "annotations": [],
                 },
+                "included_helper_text": {},
                 "url": f"test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison_coverage_carriedforward.pull.pullid}",
             },
         )
@@ -2241,7 +2282,9 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
 
     def test_build_payload_comments_false(self, sample_comparison, mock_configuration):
@@ -2262,5 +2305,7 @@ class TestProjectChecksNotifier(object):
             "output": {
                 "title": f"60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/{head_commit.repository.owner.username}/{head_commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n60.00% (+10.00%) compared to {base_commit.commitid[:7]}",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
