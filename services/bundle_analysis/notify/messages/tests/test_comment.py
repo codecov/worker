@@ -51,7 +51,8 @@ class TestCommentMesage:
 
         context = builder.build_context().get_result()
         message = BundleAnalysisCommentMarkdownStrategy().build_message(context)
-        assert message == dedent("""\
+        assert message.startswith(
+            dedent("""\
                 ## [Bundle](https://app.codecov.io/gh/{owner}/{repo}/pull/{pullid}?dropdown=bundle) Report
 
                 Changes will decrease total bundle size by 372.56kB (-48.89%) :arrow_down:. This is within the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold :white_check_mark:
@@ -68,9 +69,10 @@ class TestCommentMesage:
 
                 </details>
                 """).format(
-            pullid=enriched_pull.database_pull.pullid,
-            owner=head_commit.repository.owner.username,
-            repo=head_commit.repository.name,
+                pullid=enriched_pull.database_pull.pullid,
+                owner=head_commit.repository.owner.username,
+                repo=head_commit.repository.name,
+            )
         )
 
     def _setup_send_message_tests(

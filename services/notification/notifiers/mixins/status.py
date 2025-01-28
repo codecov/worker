@@ -28,8 +28,8 @@ class StatusResult(TypedDict):
 CUSTOM_TARGET_TEXT_PATCH_KEY = "custom_target_helper_text_patch"
 CUSTOM_TARGET_TEXT_PROJECT_KEY = "custom_target_helper_text_project"
 CUSTOM_TARGET_TEXT_VALUE = (
-    "Your {context} {notification_type} has failed because the patch coverage ({coverage}%) is below the target coverage ({target}%). "
-    "You can increase the patch coverage or adjust the "
+    "Your {context} {notification_type} has failed because the {point_of_comparison} coverage ({coverage}%) is below the target coverage ({target}%). "
+    "You can increase the {point_of_comparison} coverage or adjust the "
     "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
 )
 
@@ -118,6 +118,7 @@ class StatusPatchMixin(object):
                     helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PATCH_KEY].format(
                         context=self.context,
                         notification_type=notification_type,
+                        point_of_comparison=self.context,
                         coverage=coverage_rounded,
                         target=target_rounded,
                     )
@@ -191,6 +192,7 @@ class StatusChangesMixin(object):
 class StatusProjectMixin(object):
     DEFAULT_REMOVED_CODE_BEHAVIOR = "adjust_base"
     context = "project"
+    point_of_comparison = "head"
 
     def _apply_removals_only_behavior(
         self, comparison: ComparisonProxy | FilteredComparison
@@ -349,11 +351,13 @@ class StatusProjectMixin(object):
         return None
 
     def get_project_status(
-        self, comparison: ComparisonProxy | FilteredComparison
-    ) -> tuple[str, str]:
-        state, message = self._get_project_status(comparison)
-        if state == StatusState.success.value:
-            return state, message
+        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
+    ) -> StatusResult:
+        result = self._get_project_status(
+            comparison, notification_type=notification_type
+        )
+        if result["state"] == StatusState.success.value:
+            return result
 
         # Possibly pass the status check via removed_code_behavior
         # The removed code behavior can change the `state` from `failure` to `success` and add to the `message`.
@@ -384,8 +388,13 @@ class StatusProjectMixin(object):
             # Possibly change status
             if removed_code_result:
                 removed_code_state, removed_code_message = removed_code_result
-                return removed_code_state, message + removed_code_message
-        return state, message
+                if removed_code_state == StatusState.success.value:
+                    # the status was failure, has been changed to success through RCB settings
+                    # since the status is no longer failing, remove any included_helper_text
+                    result["included_helper_text"] = {}
+                result["state"] = removed_code_state
+                result["message"] = result["message"] + removed_code_message
+        return result
 
     def _get_threshold(self) -> Decimal:
         """
@@ -418,8 +427,9 @@ class StatusProjectMixin(object):
         return target_coverage, is_custom_target
 
     def _get_project_status(
-        self, comparison: ComparisonProxy | FilteredComparison
-    ) -> tuple[str, str]:
+        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
+    ) -> StatusResult:
+        included_helper_text = {}
         if (
             not comparison.head.report
             or (head_report_totals := comparison.head.report.totals) is None
@@ -429,7 +439,9 @@ class StatusProjectMixin(object):
                 "if_not_found", StatusState.success.value
             )
             message = "No coverage information found on head"
-            return state, message
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
 
         base_report = comparison.project_coverage_base.report
         if base_report is None:
@@ -438,7 +450,9 @@ class StatusProjectMixin(object):
                 "if_not_found", StatusState.success.value
             )
             message = "No report found to compare against"
-            return state, message
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
 
         base_report_totals = base_report.totals
         if base_report_totals.coverage is None:
@@ -447,7 +461,9 @@ class StatusProjectMixin(object):
                 "if_not_found", StatusState.success.value
             )
             message = "No coverage information found on base report"
-            return state, message
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
 
         # Proper comparison head vs base report
         threshold = self._get_threshold()
@@ -467,15 +483,24 @@ class StatusProjectMixin(object):
             # use rounded numbers for messages
             target_rounded = round_number(self.current_yaml, target_coverage)
             message = f"{head_coverage_rounded}% (target {target_rounded}%)"
-            # TODO:
-            # helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT].format(
-            # context=self.context, notification_type=notification_type, coverage=head_coverage_rounded, target=target_rounded)
-            # included_helper_text[CUSTOM_TARGET_TEXT] = helper_text
-            return state, message
+            if state == StatusState.failure.value:
+                helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PROJECT_KEY].format(
+                    context=self.context,
+                    notification_type=notification_type,
+                    point_of_comparison=self.point_of_comparison,
+                    coverage=head_coverage_rounded,
+                    target=target_rounded,
+                )
+                included_helper_text[CUSTOM_TARGET_TEXT_PROJECT_KEY] = helper_text
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
 
         # use rounded numbers for messages
         change_coverage_rounded = round_number(
             self.current_yaml, head_coverage - target_coverage
         )
         message = f"{head_coverage_rounded}% ({change_coverage_rounded:+}%) compared to {comparison.project_coverage_base.commit.commitid[:7]}"
-        return state, message
+        return StatusResult(
+            state=state, message=message, included_helper_text=included_helper_text
+        )

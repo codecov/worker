@@ -1,22 +1,12 @@
-from typing import Any, TypedDict
-
 from database.enums import Notification
 from services.comparison import ComparisonProxy, FilteredComparison
-from services.notification.notifiers.checks.base import ChecksNotifier
-from services.notification.notifiers.mixins.status import StatusPatchMixin, StatusState
+from services.notification.notifiers.checks.base import (
+    CheckOutput,
+    CheckResult,
+    ChecksNotifier,
+)
+from services.notification.notifiers.mixins.status import StatusPatchMixin
 from services.yaml import read_yaml_field
-
-
-class CheckOutput(TypedDict):
-    title: str
-    summary: str
-    annotations: list[Any]
-
-
-class CheckResult(TypedDict):
-    state: StatusState
-    output: CheckOutput
-    included_helper_text: dict[str, str]
 
 
 class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):

@@ -2,7 +2,7 @@ import dataclasses
 from collections import defaultdict
 from graphlib import TopologicalSorter
 
-from django.db.models import Model, Q
+from django.db.models import Model
 from django.db.models.expressions import Col, Expression
 from django.db.models.lookups import Exact, In
 from django.db.models.query import QuerySet
@@ -40,11 +40,17 @@ class Node:
     edges: dict[type[Model], list[str]] = dataclasses.field(
         default_factory=lambda: defaultdict(list)
     )
-    queryset: QuerySet = dataclasses.field(default_factory=Q)
+    querysets: list[QuerySet] = dataclasses.field(default_factory=list)
     depth: int = 9999
 
 
-def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
+@dataclasses.dataclass
+class ModelQueries:
+    model: type[Model]
+    querysets: list[QuerySet]
+
+
+def build_relation_graph(query: QuerySet) -> list[ModelQueries]:
     """
     This takes as input a django `QuerySet`, like `Repository.objects.filter(repoid=123)`.
 
@@ -122,25 +128,29 @@ def build_relation_graph(query: QuerySet) -> list[tuple[type[Model], QuerySet]]:
     sorted_models = list(graph.static_order())
 
     # but for actually building the querysets, we prefer the order from root to leafs
-    nodes[query.model].queryset = query
+    nodes[query.model].querysets = [query]
     nodes[query.model].depth = 0
     for model in reversed(sorted_models):
         node = nodes[model]
         depth = node.depth + 1
-        in_filter = simplified_lookup(node.queryset)
+        in_filters = [simplified_lookup(qs) for qs in node.querysets]
 
         for related_model, related_fields in node.edges.items():
             related_node = nodes[related_model]
 
             if depth < related_node.depth:
-                filter = Q()
-                for field in related_fields:
-                    filter = filter | Q(**{f"{field}__in": in_filter})
-
-                related_node.queryset = related_model.objects.filter(filter)
                 related_node.depth = depth
+                queries_to_build = (
+                    (field, in_filter)
+                    for field in related_fields
+                    for in_filter in in_filters
+                )
+                related_node.querysets = [
+                    related_model.objects.filter(**{f"{field}__in": in_filter})
+                    for field, in_filter in queries_to_build
+                ]
 
-    return [(model, nodes[model].queryset) for model in sorted_models]
+    return [ModelQueries(model, nodes[model].querysets) for model in sorted_models]
 
 
 def simplified_lookup(queryset: QuerySet) -> QuerySet | list[int]:
