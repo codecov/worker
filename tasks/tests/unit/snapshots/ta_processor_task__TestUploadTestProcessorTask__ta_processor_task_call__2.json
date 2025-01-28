@@ -9,7 +9,10 @@
     "duration_seconds": 0.001,
     "repoid": "1",
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
-    "framework": "Pytest"
+    "framework": "Pytest",
+    "upload_id": "1",
+    "flags_hash": "AAAAAAAAAAA=",
+    "test_id": "S/K2VdzrrehI4hnoZNsPVg=="
   },
   {
     "timestamp": "1735689600000000",
@@ -22,7 +25,10 @@
     "duration_seconds": 0.001,
     "repoid": "1",
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
-    "framework": "Pytest"
+    "framework": "Pytest",
+    "upload_id": "1",
+    "flags_hash": "AAAAAAAAAAA=",
+    "test_id": "CVU2jNUNOkOrl6/lJdK0nw=="
   },
   {
     "timestamp": "1735689600000000",
@@ -34,7 +40,10 @@
     "duration_seconds": 0.0,
     "repoid": "1",
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
-    "framework": "Pytest"
+    "framework": "Pytest",
+    "upload_id": "1",
+    "flags_hash": "AAAAAAAAAAA=",
+    "test_id": "UDBibp0NWEToP72TpCn1xg=="
   },
   {
     "timestamp": "1735689600000000",
@@ -46,6 +55,9 @@
     "duration_seconds": 0.001,
     "repoid": "1",
     "commit_sha": "cd76b0821854a780b60012aed85af0a8263004ad",
-    "framework": "Pytest"
+    "framework": "Pytest",
+    "upload_id": "1",
+    "flags_hash": "AAAAAAAAAAA=",
+    "test_id": "VE2yD2IYxdSbTvGB6XCJPA=="
   }
 ]

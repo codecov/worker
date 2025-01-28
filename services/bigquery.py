@@ -1,5 +1,5 @@
 from types import ModuleType
-from typing import Dict, List, cast
+from typing import Dict, List, Sequence, cast
 
 import polars as pl
 from google.api_core import retry
@@ -108,7 +108,17 @@ class BigQueryService:
 
         self.write_client.batch_commit_write_streams(batch_commit_write_streams_request)
 
-    def query(self, query: str, params: dict | None = None) -> List[Dict]:
+    def query(
+        self,
+        query: str,
+        params: Sequence[
+            bigquery.ScalarQueryParameter
+            | bigquery.RangeQueryParameter
+            | bigquery.ArrayQueryParameter
+            | bigquery.StructQueryParameter
+        ]
+        | None = None,
+    ) -> List[Dict]:
         """Execute a BigQuery SQL query and return results.
         Try not to write INSERT statements and use the write method instead.
 
@@ -125,9 +135,7 @@ class BigQueryService:
         job_config = bigquery.QueryJobConfig()
 
         if params:
-            job_config.query_parameters = [
-                bigquery.ScalarQueryParameter(k, "STRING", v) for k, v in params.items()
-            ]
+            job_config.query_parameters = params
 
         row_iterator = self.client.query_and_wait(
             query, job_config=job_config, retry=retry.Retry(deadline=30)

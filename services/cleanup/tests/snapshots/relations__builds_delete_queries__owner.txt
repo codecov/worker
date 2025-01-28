@@ -1,14 +1,16 @@
 -- UserMeasurement
 DELETE
 FROM "user_measurements"
-WHERE "user_measurements"."owner_id" IN (%s)
+WHERE "user_measurements"."owner_id" IN (%s);
 
 
 -- YamlHistory
 DELETE
 FROM "yaml_history"
-WHERE ("yaml_history"."ownerid" IN (%s)
-       OR "yaml_history"."author" IN (%s))
+WHERE "yaml_history"."ownerid" IN (%s);
+DELETE
+FROM "yaml_history"
+WHERE "yaml_history"."author" IN (%s);
 
 
 -- CommitNotification
@@ -17,37 +19,37 @@ FROM "commit_notifications"
 WHERE "commit_notifications"."gh_app_id" IN
     (SELECT U0."id"
      FROM "codecov_auth_githubappinstallation" U0
-     WHERE U0."owner_id" IN (%s))
+     WHERE U0."owner_id" IN (%s));
 
 
 -- OwnerInstallationNameToUseForTask
 DELETE
 FROM "codecov_auth_ownerinstallationnametousefortask"
-WHERE "codecov_auth_ownerinstallationnametousefortask"."owner_id" IN (%s)
+WHERE "codecov_auth_ownerinstallationnametousefortask"."owner_id" IN (%s);
 
 
 -- OrganizationLevelToken
 DELETE
 FROM "codecov_auth_organizationleveltoken"
-WHERE "codecov_auth_organizationleveltoken"."ownerid" IN (%s)
+WHERE "codecov_auth_organizationleveltoken"."ownerid" IN (%s);
 
 
 -- OwnerProfile
 DELETE
 FROM "codecov_auth_ownerprofile"
-WHERE "codecov_auth_ownerprofile"."owner_id" IN (%s)
+WHERE "codecov_auth_ownerprofile"."owner_id" IN (%s);
 
 
 -- Session
 DELETE
 FROM "sessions"
-WHERE "sessions"."ownerid" IN (%s)
+WHERE "sessions"."ownerid" IN (%s);
 
 
 -- UserToken
 DELETE
 FROM "codecov_auth_usertoken"
-WHERE "codecov_auth_usertoken"."ownerid" IN (%s)
+WHERE "codecov_auth_usertoken"."ownerid" IN (%s);
 
 
 -- TestInstance
@@ -56,7 +58,7 @@ FROM "reports_testinstance"
 WHERE "reports_testinstance"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- DailyTestRollup
@@ -65,7 +67,7 @@ FROM "reports_dailytestrollups"
 WHERE "reports_dailytestrollups"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- CacheConfig
@@ -74,7 +76,7 @@ FROM "bundle_analysis_cacheconfig"
 WHERE "bundle_analysis_cacheconfig"."repo_id" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- RepositoryToken
@@ -83,7 +85,7 @@ FROM "codecov_auth_repositorytoken"
 WHERE "codecov_auth_repositorytoken"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- Branch
@@ -92,7 +94,7 @@ FROM "branches"
 WHERE "branches"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- FlagComparison
@@ -104,7 +106,7 @@ WHERE "compare_flagcomparison"."repositoryflag_id" IN
      WHERE V0."repository_id" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- ComponentComparison
@@ -113,20 +115,25 @@ FROM "compare_componentcomparison"
 WHERE "compare_componentcomparison"."commit_comparison_id" IN
     (SELECT W0."id"
      FROM "compare_commitcomparison" W0
-     WHERE (W0."base_commit_id" IN
-              (SELECT V0."id"
-               FROM "commits" V0
-               WHERE V0."repoid" IN
-                   (SELECT U0."repoid"
-                    FROM "repos" U0
-                    WHERE U0."ownerid" IN (%s)))
-            OR W0."compare_commit_id" IN
-              (SELECT V0."id"
-               FROM "commits" V0
-               WHERE V0."repoid" IN
-                   (SELECT U0."repoid"
-                    FROM "repos" U0
-                    WHERE U0."ownerid" IN (%s)))))
+     WHERE W0."base_commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))));
+DELETE
+FROM "compare_componentcomparison"
+WHERE "compare_componentcomparison"."commit_comparison_id" IN
+    (SELECT W0."id"
+     FROM "compare_commitcomparison" W0
+     WHERE W0."compare_commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))));
 
 
 -- CommitError
@@ -138,7 +145,7 @@ WHERE "core_commiterror"."commit_id" IN
      WHERE V0."repoid" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- LabelAnalysisProcessingError
@@ -147,20 +154,25 @@ FROM "labelanalysis_labelanalysisprocessingerror"
 WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" IN
     (SELECT W0."id"
      FROM "labelanalysis_labelanalysisrequest" W0
-     WHERE (W0."base_commit_id" IN
-              (SELECT V0."id"
-               FROM "commits" V0
-               WHERE V0."repoid" IN
-                   (SELECT U0."repoid"
-                    FROM "repos" U0
-                    WHERE U0."ownerid" IN (%s)))
-            OR W0."head_commit_id" IN
-              (SELECT V0."id"
-               FROM "commits" V0
-               WHERE V0."repoid" IN
-                   (SELECT U0."repoid"
-                    FROM "repos" U0
-                    WHERE U0."ownerid" IN (%s)))))
+     WHERE W0."base_commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))));
+DELETE
+FROM "labelanalysis_labelanalysisprocessingerror"
+WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" IN
+    (SELECT W0."id"
+     FROM "labelanalysis_labelanalysisrequest" W0
+     WHERE W0."head_commit_id" IN
+         (SELECT V0."id"
+          FROM "commits" V0
+          WHERE V0."repoid" IN
+              (SELECT U0."repoid"
+               FROM "repos" U0
+               WHERE U0."ownerid" IN (%s))));
 
 
 -- ReportResults
@@ -175,7 +187,7 @@ WHERE "reports_reportresults"."report_id" IN
           WHERE V0."repoid" IN
               (SELECT U0."repoid"
                FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))))
+               WHERE U0."ownerid" IN (%s))));
 
 
 -- ReportDetails
@@ -190,7 +202,7 @@ WHERE "reports_reportdetails"."report_id" IN
           WHERE V0."repoid" IN
               (SELECT U0."repoid"
                FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))))
+               WHERE U0."ownerid" IN (%s))));
 
 
 -- ReportLevelTotals
@@ -205,7 +217,7 @@ WHERE "reports_reportleveltotals"."report_id" IN
           WHERE V0."repoid" IN
               (SELECT U0."repoid"
                FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))))
+               WHERE U0."ownerid" IN (%s))));
 
 
 -- UploadError
@@ -223,7 +235,7 @@ WHERE "reports_uploaderror"."upload_id" IN
                WHERE V0."repoid" IN
                    (SELECT U0."repoid"
                     FROM "repos" U0
-                    WHERE U0."ownerid" IN (%s)))))
+                    WHERE U0."ownerid" IN (%s)))));
 
 
 -- UploadFlagMembership
@@ -235,7 +247,7 @@ WHERE "reports_uploadflagmembership"."flag_id" IN
      WHERE V0."repository_id" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- UploadLevelTotals
@@ -253,7 +265,7 @@ WHERE "reports_uploadleveltotals"."upload_id" IN
                WHERE V0."repoid" IN
                    (SELECT U0."repoid"
                     FROM "repos" U0
-                    WHERE U0."ownerid" IN (%s)))))
+                    WHERE U0."ownerid" IN (%s)))));
 
 
 -- TestResultReportTotals
@@ -268,7 +280,7 @@ WHERE "reports_testresultreporttotals"."report_id" IN
           WHERE V0."repoid" IN
               (SELECT U0."repoid"
                FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))))
+               WHERE U0."ownerid" IN (%s))));
 
 
 -- StaticAnalysisSuiteFilepath
@@ -280,7 +292,7 @@ WHERE "staticanalysis_staticanalysissuitefilepath"."file_snapshot_id" IN
      WHERE V0."repository_id" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- Pull
@@ -289,7 +301,7 @@ FROM "pulls"
 WHERE "pulls"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- ProfilingUpload
@@ -301,7 +313,7 @@ WHERE "profiling_profilingupload"."profiling_commit_id" IN
      WHERE V0."repoid" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- TestFlagBridge
@@ -313,7 +325,7 @@ WHERE "reports_test_results_flag_bridge"."test_id" IN
      WHERE V0."repoid" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- Flake
@@ -322,7 +334,7 @@ FROM "reports_flake"
 WHERE "reports_flake"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- LastCacheRollupDate
@@ -331,51 +343,55 @@ FROM "reports_lastrollupdate"
 WHERE "reports_lastrollupdate"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- GithubAppInstallation
 DELETE
 FROM "codecov_auth_githubappinstallation"
-WHERE "codecov_auth_githubappinstallation"."owner_id" IN (%s)
+WHERE "codecov_auth_githubappinstallation"."owner_id" IN (%s);
 
 
 -- CommitComparison
 DELETE
 FROM "compare_commitcomparison"
-WHERE ("compare_commitcomparison"."base_commit_id" IN
-         (SELECT V0."id"
-          FROM "commits" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."ownerid" IN (%s)))
-       OR "compare_commitcomparison"."compare_commit_id" IN
-         (SELECT V0."id"
-          FROM "commits" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))))
+WHERE "compare_commitcomparison"."base_commit_id" IN
+    (SELECT V0."id"
+     FROM "commits" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)));
+DELETE
+FROM "compare_commitcomparison"
+WHERE "compare_commitcomparison"."compare_commit_id" IN
+    (SELECT V0."id"
+     FROM "commits" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- LabelAnalysisRequest
 DELETE
 FROM "labelanalysis_labelanalysisrequest"
-WHERE ("labelanalysis_labelanalysisrequest"."base_commit_id" IN
-         (SELECT V0."id"
-          FROM "commits" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."ownerid" IN (%s)))
-       OR "labelanalysis_labelanalysisrequest"."head_commit_id" IN
-         (SELECT V0."id"
-          FROM "commits" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))))
+WHERE "labelanalysis_labelanalysisrequest"."base_commit_id" IN
+    (SELECT V0."id"
+     FROM "commits" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)));
+DELETE
+FROM "labelanalysis_labelanalysisrequest"
+WHERE "labelanalysis_labelanalysisrequest"."head_commit_id" IN
+    (SELECT V0."id"
+     FROM "commits" V0
+     WHERE V0."repoid" IN
+         (SELECT U0."repoid"
+          FROM "repos" U0
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- ReportSession
@@ -390,7 +406,7 @@ WHERE "reports_upload"."report_id" IN
           WHERE V0."repoid" IN
               (SELECT U0."repoid"
                FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))))
+               WHERE U0."ownerid" IN (%s))));
 
 
 -- StaticAnalysisSuite
@@ -402,7 +418,7 @@ WHERE "staticanalysis_staticanalysissuite"."commit_id" IN
      WHERE V0."repoid" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- StaticAnalysisSingleFileSnapshot
@@ -411,7 +427,7 @@ FROM "staticanalysis_staticanalysissinglefilesnapshot"
 WHERE "staticanalysis_staticanalysissinglefilesnapshot"."repository_id" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- ProfilingCommit
@@ -420,7 +436,7 @@ FROM "profiling_profilingcommit"
 WHERE "profiling_profilingcommit"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- RepositoryFlag
@@ -429,7 +445,7 @@ FROM "reports_repositoryflag"
 WHERE "reports_repositoryflag"."repository_id" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- Test
@@ -438,7 +454,7 @@ FROM "reports_test"
 WHERE "reports_test"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- ReducedError
@@ -447,7 +463,7 @@ FROM "reports_reducederror"
 WHERE "reports_reducederror"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- CommitReport
@@ -459,7 +475,7 @@ WHERE "reports_commitreport"."commit_id" IN
      WHERE V0."repoid" IN
          (SELECT U0."repoid"
           FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)))
+          WHERE U0."ownerid" IN (%s)));
 
 
 -- Commit
@@ -468,16 +484,16 @@ FROM "commits"
 WHERE "commits"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
-     WHERE U0."ownerid" IN (%s))
+     WHERE U0."ownerid" IN (%s));
 
 
 -- Repository
 DELETE
 FROM "repos"
-WHERE "repos"."ownerid" IN (%s)
+WHERE "repos"."ownerid" IN (%s);
 
 
 -- Owner
 DELETE
 FROM "owners"
-WHERE "owners"."ownerid" = %s
+WHERE "owners"."ownerid" = %s;

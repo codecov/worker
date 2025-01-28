@@ -3,6 +3,7 @@ from datetime import datetime
 
 import polars as pl
 import pytest
+from google.cloud.bigquery import ScalarQueryParameter
 
 import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from services.bigquery import BigQueryService
@@ -61,6 +62,33 @@ def test_bigquery_service():
     }
     assert {row["name"] for row in results} == {"name", "name2"}
     assert {row["id"] for row in results} == {1, 2}
+
+
+sql = """
+WITH sample_data AS (
+    SELECT * FROM UNNEST([
+        STRUCT(TIMESTAMP '2025-01-01T00:00:00Z' AS timestamp, 1 AS id, 'name' AS name),
+        STRUCT(TIMESTAMP '2024-12-30T00:00:00Z' AS timestamp, 2 AS id, 'name2' AS name)
+    ])
+)
+SELECT * FROM sample_data where id = @id
+"""
+
+
+@pytest.mark.skip(reason="This test requires being run using actual working creds")
+def test_bigquery_service_params():
+    bigquery_service = BigQueryService(gcp_config)
+
+    results = bigquery_service.query(
+        sql, params=[ScalarQueryParameter("id", "INT64", 2)]
+    )
+
+    assert len(results) == 1
+    assert {row["timestamp"] for row in results} == {
+        datetime.fromisoformat("2024-12-30T00:00:00Z"),
+    }
+    assert {row["name"] for row in results} == {"name2"}
+    assert {row["id"] for row in results} == {2}
 
 
 @pytest.mark.skip(reason="This test requires being run using actual working creds")
