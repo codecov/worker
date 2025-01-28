@@ -453,8 +453,7 @@ class TestUploadTestFinisherTask(object):
 
 </details>
 
-To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
     @pytest.mark.integration
@@ -766,8 +765,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
 </details>
 
-To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
         assert expected_result == result
@@ -927,8 +925,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
 </details>
 
-To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
     @pytest.mark.integration
@@ -1100,8 +1097,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
 </details>
 
-To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)""",
         )
 
     @pytest.mark.integration

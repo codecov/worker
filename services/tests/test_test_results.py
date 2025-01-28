@@ -147,8 +147,7 @@ def test_build_message():
 
 </details>
 
-To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/thing%2Fthing)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"""
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/thing%2Fthing)"""
     )
 
 
@@ -197,8 +196,7 @@ def test_build_message_with_flake():
 
 </details>
 
-To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"""
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})"""
     )
 
 
