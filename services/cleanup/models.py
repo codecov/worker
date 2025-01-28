@@ -4,8 +4,7 @@ from collections.abc import Callable
 from functools import partial
 
 import sentry_sdk
-from django.db.models import Model
-from django.db.models.query import QuerySet
+from django.db.models import Model, Q, QuerySet
 from shared.bundle_analysis import StoragePaths
 from shared.django_apps.compare.models import CommitComparison
 from shared.django_apps.core.models import Commit, Pull
@@ -14,6 +13,7 @@ from shared.django_apps.reports.models import CommitReport, ReportDetails
 from shared.django_apps.reports.models import ReportSession as Upload
 from shared.django_apps.staticanalysis.models import StaticAnalysisSingleFileSnapshot
 from shared.storage.exceptions import FileNotInStorageError
+from shared.utils.sessions import SessionType
 
 from services.archive import ArchiveService, MinioEndpoints
 from services.cleanup.utils import CleanupContext, CleanupResult
@@ -158,8 +158,11 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
 def cleanup_upload(context: CleanupContext, query: QuerySet) -> CleanupResult:
     cleaned_files = 0
 
-    # delete `None` `storage_path`s right away
-    cleaned_models = query.filter(storage_path__isnull=True)._raw_delete(query.db)
+    # delete `None` `storage_path`s or carryforwarded right away,
+    # as those duplicate their parents `storage_path`.
+    cleaned_models = query.filter(
+        Q(storage_path__isnull=True) | Q(upload_type=SessionType.carriedforward.value)
+    )._raw_delete(query.db)
 
     # delete all those files from storage, using chunks based on the `id` column
     storage_query = query.filter(storage_path__isnull=False).order_by("id")
