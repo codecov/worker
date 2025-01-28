@@ -50,10 +50,7 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
         if warning_threshold.type == "absolute":
             warning_threshold_readable = bytes_readable(warning_threshold.threshold)
             absolute_change = context.bundle_analysis_comparison.total_size_delta
-            is_negative = absolute_change < 0
-            change_readable = ("-" if is_negative else "") + bytes_readable(
-                absolute_change
-            )
+            change_readable = bytes_readable(absolute_change)
         else:
             warning_threshold_readable = str(warning_threshold.threshold) + "%"
             change_readable = (

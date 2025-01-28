@@ -1,5 +1,5 @@
 import numbers
-from typing import Literal
+from typing import Literal, Optional
 
 from shared.bundle_analysis import BundleAnalysisComparison, BundleChange
 from shared.django_apps.codecov_auth.models import Service
@@ -63,8 +63,9 @@ def get_github_app_used(torngit: TorngitBaseAdapter | None) -> int | None:
     return selected_installation_id
 
 
-def bytes_readable(bytes: int) -> str:
+def bytes_readable(bytes: int, show_negative: Optional[bool] = True) -> str:
     """Converts bytes into human-readable string (up to GB)"""
+    is_negative = bytes < 0
     value: float = abs(bytes)
     exponent_index = 0
 
@@ -74,7 +75,11 @@ def bytes_readable(bytes: int) -> str:
 
     exponent_str = [" bytes", "kB", "MB", "GB"][exponent_index]
     rounded_value = round(value, 2)
-    return f"{rounded_value}{exponent_str}"
+
+    if is_negative and show_negative:
+        return f"-{rounded_value}{exponent_str}"
+    else:
+        return f"{rounded_value}{exponent_str}"
 
 
 def to_BundleThreshold(value: int | float | BundleThreshold) -> BundleThreshold:
