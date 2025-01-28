@@ -27,16 +27,23 @@ def run_cleanup(
     cleaned_files = 0
 
     with cleanup_context() as context:
-        for model, query in models_to_cleanup:
-            # This is needed so that the correct connection is chosen for the
-            # `_raw_delete` queries, as otherwise it might chose a readonly connection.
-            query._for_write = True
+        for relation in models_to_cleanup:
+            model = relation.model
+            result = CleanupResult(0)
 
-            manual_cleanup = MANUAL_CLEANUP.get(model)
-            if manual_cleanup is not None:
-                result = manual_cleanup(context, query)
-            else:
-                result = CleanupResult(query._raw_delete(query.db))
+            for query in relation.querysets:
+                # This is needed so that the correct connection is chosen for the
+                # `_raw_delete` queries, as otherwise it might chose a readonly connection.
+                query._for_write = True
+
+                manual_cleanup = MANUAL_CLEANUP.get(model)
+                if manual_cleanup is not None:
+                    query_result = manual_cleanup(context, query)
+                else:
+                    query_result = CleanupResult(query._raw_delete(query.db))
+
+                result.cleaned_models += query_result.cleaned_models
+                result.cleaned_files += query_result.cleaned_files
 
             if result.cleaned_models > 0 or result.cleaned_files > 0:
                 summary[model] = result
