@@ -3,6 +3,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from functools import partial
 
+import sentry_sdk
 from django.db.models import Model
 from django.db.models.query import QuerySet
 from shared.bundle_analysis import StoragePaths
@@ -21,6 +22,7 @@ MANUAL_QUERY_CHUNKSIZE = 5_000
 DELETE_FILES_BATCHSIZE = 50
 
 
+@sentry_sdk.trace
 def cleanup_files_batched(
     context: CleanupContext, buckets_paths: dict[str, list[str]]
 ) -> int:
@@ -35,6 +37,7 @@ def cleanup_files_batched(
     return sum(results)
 
 
+@sentry_sdk.trace
 def cleanup_with_storage_field(
     path_field: str,
     context: CleanupContext,
@@ -60,7 +63,8 @@ def cleanup_with_storage_field(
         cleaned_files += cleanup_files_batched(
             context, {context.default_bucket: storage_paths}
         )
-        cleaned_models += query.filter(
+        # go through `query.object` here, to avoid some duplicated subqueries
+        cleaned_models += query.model.objects.filter(
             id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
 
@@ -83,6 +87,7 @@ class FakeRepository:
     service_id: str
 
 
+@sentry_sdk.trace
 def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupResult:
     coverage_reports = query.values_list(
         "report_type",
@@ -142,13 +147,14 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
                 buckets_paths[context.default_bucket].append(path)
 
         cleaned_files += cleanup_files_batched(context, buckets_paths)
-        cleaned_models += query.filter(
+        cleaned_models += query.model.objects.filter(
             id__in=query.order_by("id")[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
 
     return CleanupResult(cleaned_models, cleaned_files)
 
 
+@sentry_sdk.trace
 def cleanup_upload(context: CleanupContext, query: QuerySet) -> CleanupResult:
     cleaned_files = 0
 
@@ -173,7 +179,7 @@ def cleanup_upload(context: CleanupContext, query: QuerySet) -> CleanupResult:
                 buckets_paths[context.default_bucket].append(storage_path)
 
         cleaned_files += cleanup_files_batched(context, buckets_paths)
-        cleaned_models += query.filter(
+        cleaned_models += query.model.objects.filter(
             id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
         )._raw_delete(query.db)
 

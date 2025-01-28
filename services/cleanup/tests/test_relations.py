@@ -12,14 +12,16 @@ def dump_delete_queries(queryset: QuerySet) -> str:
     relations = build_relation_graph(queryset)
 
     queries = ""
-    for model, query in relations:
-        compiler = query.query.chain(DeleteQuery).get_compiler(query.db)
-        sql, _params = compiler.as_sql()
-        sql = sqlparse.format(sql, reindent=True, keyword_case="upper")
-
+    for relation in relations:
         if queries:
             queries += "\n\n"
-        queries += f"-- {model.__name__}\n{sql}\n"
+        queries += f"-- {relation.model.__name__}\n"
+
+        for query in relation.querysets:
+            compiler = query.query.chain(DeleteQuery).get_compiler(query.db)
+            sql, _params = compiler.as_sql()
+            sql = sqlparse.format(sql, reindent=True, keyword_case="upper")
+            queries += sql + ";\n"
 
     return queries
 
