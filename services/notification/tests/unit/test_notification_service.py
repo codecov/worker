@@ -1,187 +1,165 @@
-# import os
-# from asyncio import CancelledError
-# from asyncio import TimeoutError as AsyncioTimeoutError
-#
-# import mock
-# import pytest
-# from celery.exceptions import SoftTimeLimitExceeded
-# from shared.plan.constants import PlanName
-# from shared.reports.resources import Report, ReportFile, ReportLine
-# from shared.reports.types import Change, ReportTotals
-# from shared.torngit.status import Status
-# from shared.yaml import UserYaml
-#
-# from database.enums import Decoration, Notification, NotificationState
-# from database.models.core import (
-#     GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-#     GithubAppInstallation,
-# )
-# from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-# from services.comparison import ComparisonProxy
-# from services.comparison.types import Comparison, EnrichedPull, FullCommit
-# from services.notification import NotificationService
-# from services.notification.notifiers import (
-#     CommentNotifier,
-#     PatchChecksNotifier,
-#     StatusType,
-# )
-# from services.notification.notifiers.base import NotificationResult
-# from services.notification.notifiers.checks import ProjectChecksNotifier
-# from services.notification.notifiers.checks.checks_with_fallback import (
-#     ChecksWithFallback,
-# )
-# from services.notification.notifiers.mixins.status import (
-#     CUSTOM_TARGET_TEXT_PATCH_KEY,
-#     CUSTOM_TARGET_TEXT_PROJECT_KEY,
-#     CUSTOM_TARGET_TEXT_VALUE,
-# )
-#
-#
-# @pytest.fixture
-# def sample_comparison(dbsession, request):
-#     repository = RepositoryFactory.create(
-#         owner__username=request.node.name,
-#         owner__service="github",
-#         using_integration=True,
-#     )
-#     dbsession.add(repository)
-#     dbsession.flush()
-#     base_commit = CommitFactory.create(repository=repository)
-#     head_commit = CommitFactory.create(repository=repository, branch="new_branch")
-#     pull = PullFactory.create(
-#         repository=repository, base=base_commit.commitid, head=head_commit.commitid
-#     )
-#     dbsession.add(base_commit)
-#     dbsession.add(head_commit)
-#     dbsession.add(pull)
-#     dbsession.flush()
-#     repository = base_commit.repository
-#     base_full_commit = FullCommit(commit=base_commit, report=None)
-#     head_full_commit = FullCommit(commit=head_commit, report=None)
-#     return ComparisonProxy(
-#         Comparison(
-#             head=head_full_commit,
-#             project_coverage_base=base_full_commit,
-#             patch_coverage_base_commitid=base_commit.commitid,
-#             enriched_pull=EnrichedPull(
-#                 database_pull=pull,
-#                 provider_pull={
-#                     "head": {"commitid": head_full_commit.commit.commitid},
-#                     "base": {
-#                         "commitid": base_full_commit.commit.commitid,
-#                         "branch": {},
-#                     },
-#                 },
-#             ),
-#         )
-#     )
-#
-#
-# class TestNotificationService(object):
-#     def test_should_use_checks_notifier_yaml_field_false(self, dbsession):
-#         repository = RepositoryFactory.create()
-#         current_yaml = {"github_checks": False}
-#         service = NotificationService(repository, current_yaml, None)
-#         assert (
-#             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-#             == False
-#         )
-#
-#     @pytest.mark.parametrize(
-#         "repo_data,outcome",
-#         [
-#             (
-#                 dict(
-#                     using_integration=True,
-#                     owner__integration_id=12341234,
-#                     owner__service="github",
-#                 ),
-#                 True,
-#             ),
-#             (
-#                 dict(
-#                     using_integration=True,
-#                     owner__integration_id=12341234,
-#                     owner__service="gitlab",
-#                 ),
-#                 False,
-#             ),
-#             (
-#                 dict(
-#                     using_integration=True,
-#                     owner__integration_id=12341234,
-#                     owner__service="github_enterprise",
-#                 ),
-#                 True,
-#             ),
-#             (
-#                 dict(
-#                     using_integration=False,
-#                     owner__integration_id=None,
-#                     owner__service="github",
-#                 ),
-#                 False,
-#             ),
-#         ],
-#     )
-#     def test_should_use_checks_notifier_deprecated_flow(
-#         self, repo_data, outcome, dbsession
-#     ):
-#         repository = RepositoryFactory.create(**repo_data)
-#         current_yaml = {"github_checks": True}
-#         assert repository.owner.github_app_installations == []
-#         service = NotificationService(repository, current_yaml, None)
-#         assert (
-#             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-#             == outcome
-#         )
-#
-#     def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
-#         repository = RepositoryFactory.create(owner__service="github")
-#         ghapp_installation = GithubAppInstallation(
-#             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-#             installation_id=456789,
-#             owner=repository.owner,
-#             repository_service_ids=None,
-#         )
-#         dbsession.add(ghapp_installation)
-#         dbsession.flush()
-#         current_yaml = {"github_checks": True}
-#         assert repository.owner.github_app_installations == [ghapp_installation]
-#         service = NotificationService(repository, current_yaml, None)
-#         assert (
-#             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-#             == True
-#         )
-#
-#     def test_use_checks_notifier_for_team_plan(self, dbsession):
-#         repository = RepositoryFactory.create(
-#             owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
-#         )
-#         ghapp_installation = GithubAppInstallation(
-#             name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
-#             installation_id=456789,
-#             owner=repository.owner,
-#             repository_service_ids=None,
-#         )
-#         dbsession.add(ghapp_installation)
-#         dbsession.flush()
-#         current_yaml = {"github_checks": True}
-#         assert repository.owner.github_app_installations == [ghapp_installation]
-#         service = NotificationService(repository, current_yaml, None)
-#         assert (
-#             service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
-#             == False
-#         )
-#         assert (
-#             service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
-#             == False
-#         )
-#         assert (
-#             service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
-#             == True
-#         )
-#
+import pytest
+from shared.plan.constants import PlanName
+
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    GithubAppInstallation,
+)
+from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
+from services.comparison import ComparisonProxy
+from services.comparison.types import Comparison, EnrichedPull, FullCommit
+from services.notification import NotificationService
+from services.notification.notifiers import (
+    StatusType,
+)
+
+
+@pytest.fixture
+def sample_comparison(dbsession, request):
+    repository = RepositoryFactory.create(
+        owner__username=request.node.name,
+        owner__service="github",
+        using_integration=True,
+    )
+    dbsession.add(repository)
+    dbsession.flush()
+    base_commit = CommitFactory.create(repository=repository)
+    head_commit = CommitFactory.create(repository=repository, branch="new_branch")
+    pull = PullFactory.create(
+        repository=repository, base=base_commit.commitid, head=head_commit.commitid
+    )
+    dbsession.add(base_commit)
+    dbsession.add(head_commit)
+    dbsession.add(pull)
+    dbsession.flush()
+    repository = base_commit.repository
+    base_full_commit = FullCommit(commit=base_commit, report=None)
+    head_full_commit = FullCommit(commit=head_commit, report=None)
+    return ComparisonProxy(
+        Comparison(
+            head=head_full_commit,
+            project_coverage_base=base_full_commit,
+            patch_coverage_base_commitid=base_commit.commitid,
+            enriched_pull=EnrichedPull(
+                database_pull=pull,
+                provider_pull={
+                    "head": {"commitid": head_full_commit.commit.commitid},
+                    "base": {
+                        "commitid": base_full_commit.commit.commitid,
+                        "branch": {},
+                    },
+                },
+            ),
+        )
+    )
+
+
+class TestNotificationService(object):
+    def test_should_use_checks_notifier_yaml_field_false(self, dbsession):
+        repository = RepositoryFactory.create()
+        current_yaml = {"github_checks": False}
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+
+    @pytest.mark.parametrize(
+        "repo_data,outcome",
+        [
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="github",
+                ),
+                True,
+            ),
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="gitlab",
+                ),
+                False,
+            ),
+            (
+                dict(
+                    using_integration=True,
+                    owner__integration_id=12341234,
+                    owner__service="github_enterprise",
+                ),
+                True,
+            ),
+            (
+                dict(
+                    using_integration=False,
+                    owner__integration_id=None,
+                    owner__service="github",
+                ),
+                False,
+            ),
+        ],
+    )
+    def test_should_use_checks_notifier_deprecated_flow(
+        self, repo_data, outcome, dbsession
+    ):
+        repository = RepositoryFactory.create(**repo_data)
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == []
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == outcome
+        )
+
+    def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
+        repository = RepositoryFactory.create(owner__service="github")
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == True
+        )
+
+    def test_use_checks_notifier_for_team_plan(self, dbsession):
+        repository = RepositoryFactory.create(
+            owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
+        )
+        ghapp_installation = GithubAppInstallation(
+            name=GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+            installation_id=456789,
+            owner=repository.owner,
+            repository_service_ids=None,
+        )
+        dbsession.add(ghapp_installation)
+        dbsession.flush()
+        current_yaml = {"github_checks": True}
+        assert repository.owner.github_app_installations == [ghapp_installation]
+        service = NotificationService(repository, current_yaml, None)
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PROJECT.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.CHANGES.value)
+            == False
+        )
+        assert (
+            service._should_use_checks_notifier(status_type=StatusType.PATCH.value)
+            == True
+        )
+
+
 #     def test_use_status_notifier_for_team_plan(self, dbsession):
 #         repository = RepositoryFactory.create(
 #             owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
