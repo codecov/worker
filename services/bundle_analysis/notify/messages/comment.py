@@ -144,7 +144,7 @@ class BundleAnalysisCommentMarkdownStrategy(MessageStrategyInterface):
                 round(context.bundle_analysis_comparison.percentage_delta, 2)
             )
             + "%",
-            total_size_readable=bytes_readable(total_size_delta),
+            total_size_readable=bytes_readable(total_size_delta, show_negative=False),
             warning_threshold_readable=warning_threshold_readable,
             individual_bundle_data=individual_bundle_data,
         )

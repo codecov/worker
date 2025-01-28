@@ -493,7 +493,7 @@ async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_s
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::warning: |
             | changed-bundle | 123.46kB | 3.46kB (0.35%) :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB (-1.23%) :arrow_down: |
+            | removed-bundle | (removed) | -1.23kB (-1.23%) :arrow_down: |
             """),
             id="comment_increase_size_warning",
         ),
@@ -535,7 +535,7 @@ async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_s
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::x: |
             | changed-bundle | 123.46kB | 3.46kB (2.56%) :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB (-100.0%) :arrow_down: |
+            | removed-bundle | (removed) | -1.23kB (-100.0%) :arrow_down: |
             """),
             id="comment_increase_size_error",
         ),
@@ -579,7 +579,7 @@ async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_s
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB (2.56%) :arrow_up: |
             | cached-bundle* | 123.46kB | 3.46kB (2.56%) :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB (2.56%) :arrow_down: |
+            | removed-bundle | (removed) | -1.23kB (2.56%) :arrow_down: |
 
             </details>
 
@@ -614,7 +614,7 @@ async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_s
 
             | Bundle name | Size | Change |
             | ----------- | ---- | ------ |
-            | test-bundle | 123.46kB | 3.46kB (-2.56%) :arrow_down: |
+            | test-bundle | 123.46kB | -3.46kB (-2.56%) :arrow_down: |
 
             </details>
             """),
@@ -684,7 +684,7 @@ async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_s
             | ----------- | ---- | ------ |
             | added-bundle | 123.46kB | 12.35kB (5.56%) :arrow_up::warning: |
             | changed-bundle | 123.46kB | 3.46kB (0.35%) :arrow_up: |
-            | removed-bundle | (removed) | 1.23kB (-1.23%) :arrow_down: |
+            | removed-bundle | (removed) | -1.23kB (-1.23%) :arrow_down: |
             """),
             id="comparison_by_file_path",
         ),
@@ -964,7 +964,7 @@ class MockAssetComparison:
             | ---------- | ----------- | ---------- | ---------- |
             | ```this-is-a-warning``` | 200 bytes | 1.2kB | 20.0% :warning: |
             | **```this-is-added```** _(New)_ | 10.0kB | 10.0kB | 100.0% :rocket: |
-            | ~~**```this-is-removed```**~~ _(Deleted)_ | 20.0kB | 0 bytes | -100.0% :wastebasket: |
+            | ~~**```this-is-removed```**~~ _(Deleted)_ | -20.0kB | 0 bytes | -100.0% :wastebasket: |
             | ```this-is-a-small-change``` | 1.0kB | 101.0kB | 1.0%  |
 
 
@@ -1088,7 +1088,7 @@ class MockAssetComparison:
             | ---------- | ----------- | ---------- | ---------- |
             | ```this-is-a-warning``` | 200 bytes | 1.2kB | 20.0% :warning: |
             | **```this-is-added```** _(New)_ | 10.0kB | 10.0kB | 100.0% :rocket: |
-            | ~~**```this-is-removed```**~~ _(Deleted)_ | 20.0kB | 0 bytes | -100.0% :wastebasket: |
+            | ~~**```this-is-removed```**~~ _(Deleted)_ | -20.0kB | 0 bytes | -100.0% :wastebasket: |
             | ```this-is-a-small-change``` | 1.0kB | 101.0kB | 1.0%  |
 
 
@@ -1262,7 +1262,7 @@ class MockAssetComparison:
             | ---------- | ----------- | ---------- | ---------- |
             | ```this-is-a-warning``` | 200 bytes | 1.2kB | 20.0% :warning: |
             | **```this-is-added```** _(New)_ | 10.0kB | 10.0kB | 100.0% :rocket: |
-            | ~~**```this-is-removed```**~~ _(Deleted)_ | 20.0kB | 0 bytes | -100.0% :wastebasket: |
+            | ~~**```this-is-removed```**~~ _(Deleted)_ | -20.0kB | 0 bytes | -100.0% :wastebasket: |
             | ```this-is-a-small-change``` | 1.0kB | 101.0kB | 1.0%  |
 
 
@@ -1280,7 +1280,7 @@ class MockAssetComparison:
             | App Route | Size Change | Total Size | Change (%) |
             | --------- | ----------- | ---------- | ---------- |
             | **/users** _(New)_ | 1.0kB | 1.0kB | 100% :rocket: |
-            | ~~**/faq**~~ _(Deleted)_ | 5.0kB | 0 bytes | -100.0% :wastebasket: |
+            | ~~**/faq**~~ _(Deleted)_ | -5.0kB | 0 bytes | -100.0% :wastebasket: |
             | /big-change | 10.0kB | 30.0kB | 50.0% :warning: |
             | /small-change | 1.0kB | 101.0kB | 1.0%  |
 
@@ -1436,7 +1436,7 @@ class MockAssetComparison:
             | ---------- | ----------- | ---------- | ---------- |
             | ```this-is-a-warning``` | 200 bytes | 1.2kB | 20.0% :warning: |
             | **```this-is-added```** _(New)_ | 10.0kB | 10.0kB | 100.0% :rocket: |
-            | ~~**```this-is-removed```**~~ _(Deleted)_ | 20.0kB | 0 bytes | -100.0% :wastebasket: |
+            | ~~**```this-is-removed```**~~ _(Deleted)_ | -20.0kB | 0 bytes | -100.0% :wastebasket: |
             | ```this-is-a-small-change``` | 1.0kB | 101.0kB | 1.0%  |
 
 
@@ -1472,7 +1472,7 @@ class MockAssetComparison:
             | App Route | Size Change | Total Size | Change (%) |
             | --------- | ----------- | ---------- | ---------- |
             | **/users** _(New)_ | 1.0kB | 1.0kB | 100% :rocket: |
-            | ~~**/faq**~~ _(Deleted)_ | 5.0kB | 0 bytes | -100.0% :wastebasket: |
+            | ~~**/faq**~~ _(Deleted)_ | -5.0kB | 0 bytes | -100.0% :wastebasket: |
             | /big-change | 10.0kB | 30.0kB | 50.0% :warning: |
             | /small-change | 1.0kB | 101.0kB | 1.0%  |
 
