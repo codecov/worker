@@ -220,13 +220,6 @@ class ReportService(BaseReportService):
 
         return current_report_row
 
-    def create_report_upload(
-        self, arguments: UploadArguments, commit_report: CommitReport
-    ) -> Upload:
-        upload = super().create_report_upload(arguments, commit_report)
-        self._attach_flags_to_upload(upload, arguments["flags"])
-        return upload
-
     def _attach_flags_to_upload(self, upload: Upload, flag_names: list[str]):
         """
         Internal function that manages creating the proper `RepositoryFlag`s,

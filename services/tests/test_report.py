@@ -3727,10 +3727,6 @@ class TestReportService(BaseTestCase):
         assert res.totals is None
         assert res.upload_extras == {}
         assert res.upload_type == "uploaded"
-        assert len(res.flags) == 1
-        first_flag = res.flags[0]
-        assert first_flag.flag_name == "unittest"
-        assert first_flag.repository_id == commit.repoid
 
     def test_shift_carryforward_report(
         self, dbsession, sample_report, mocker, mock_repo_provider
