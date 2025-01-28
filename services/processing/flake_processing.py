@@ -27,6 +27,17 @@ def process_flake_for_repo_commit(
         state__in=["processed", "v2_finished"],
     ).all()
 
+    process_flakes_for_uploads(repo_id, [upload for upload in uploads])
+
+    log.info(
+        "Successfully processed flakes",
+        extra=dict(repoid=repo_id, commit=commit_id),
+    )
+
+    return {"successful": True}
+
+
+def process_flakes_for_uploads(repo_id: int, uploads: list[ReportSession]):
     curr_flakes = fetch_curr_flakes(repo_id)
     new_flakes: dict[str, Flake] = dict()
 
@@ -91,13 +102,6 @@ def process_flake_for_repo_commit(
         upload.state = "flake_processed"
         upload.save()
         django_transaction.commit()
-
-    log.info(
-        "Successfully processed flakes",
-        extra=dict(repoid=repo_id, commit=commit_id),
-    )
-
-    return {"successful": True}
 
 
 def get_test_instances(

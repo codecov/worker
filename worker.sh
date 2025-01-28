@@ -15,6 +15,10 @@ if [ "$RUN_ENV" = "ENTERPRISE" ] || [ "$RUN_ENV" = "DEV" ]; then
     python manage.py migrate --database "timeseries"
 fi
 
+if [ "$RUN_ENV" = "DEV" ]; then
+    python manage.py migrate --database "test_analytics"
+fi
+
 if [ -z "$1" ];
 then
   python main.py worker ${queues}

@@ -1,0 +1,31 @@
+
+            WITH
+            
+analytics_base AS (
+    SELECT *
+    FROM `test-project.test-dataset.test-table`
+    WHERE repoid = @repoid
+        AND timestamp BETWEEN
+        (CURRENT_DATE - INTERVAL @interval_start) AND
+        (CURRENT_DATE - INTERVAL @interval_end)
+)
+
+            
+SELECT
+    name,
+    classname,
+    testsuite,
+    ANY_VALUE(computed_name) AS computed_name,
+    COUNT(DISTINCT IF(outcome = 1 OR outcome = 3, commit_sha, NULL)) AS cwf,
+    AVG(duration_seconds) AS avg_duration,
+    MAX_BY(duration_seconds, timestamp) AS last_duration,
+    SUM(IF(outcome = 0, 1, 0)) AS pass_count,
+    SUM(IF(outcome = 1, 1, 0)) AS fail_count,
+    SUM(IF(outcome = 2, 1, 0)) AS skip_count,
+    SUM(IF(outcome = 3, 1, 0)) AS flaky_fail_count,
+    MAX(timestamp) AS updated_at,
+    ARRAY_AGG(DISTINCT unnested_flags) AS flags
+FROM analytics_base, UNNEST(flags) AS unnested_flags
+GROUP BY name, classname, testsuite
+
+            

@@ -1,0 +1,12 @@
+[
+  {
+    "computed_name": "TestClass.test_something",
+    "failure_message": "assertion failed",
+    "id": [
+      "746573745f6964",
+      "666c6167735f68617368"
+    ],
+    "duration_seconds": 1.5,
+    "upload_id": 1
+  }
+]

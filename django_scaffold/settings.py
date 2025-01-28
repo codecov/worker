@@ -12,11 +12,23 @@ DATABASES["default"]["AUTOCOMMIT"] = False
 if "timeseries" in DATABASES:
     DATABASES["timeseries"]["AUTOCOMMIT"] = False
 
+if "test_analytics" in DATABASES:
+    DATABASES["test_analytics"]["AUTOCOMMIT"] = False
+
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
 IS_ENTERPRISE = os.getenv("RUN_ENV") == "ENTERPRISE"
 
 GCS_BUCKET_NAME = get_config("services", "minio", "bucket", default="codecov")
 
+BIGQUERY_WRITE_ENABLED = (
+    get_config("services", "bigquery", "write_enabled", default=False)
+    and "test_analytics" in DATABASES
+)
+
+BIGQUERY_READ_ENABLED = (
+    get_config("services", "bigquery", "read_enabled", default=False)
+    and "test_analytics" in DATABASES
+)
 # Application definition
 INSTALLED_APPS = [
     # dependencies
@@ -40,6 +52,7 @@ INSTALLED_APPS = [
     "shared.django_apps.profiling",
     "shared.django_apps.reports",
     "shared.django_apps.staticanalysis",
+    "shared.django_apps.test_analytics",
 ]
 
 TELEMETRY_VANILLA_DB = "default"

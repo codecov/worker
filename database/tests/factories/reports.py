@@ -7,12 +7,14 @@ from database.models.reports import (
     Flake,
     RepositoryFlag,
     Test,
+    TestInstance,
     TestResultReportTotals,
 )
 from database.tests.factories.core import (
     CompareCommitFactory,
     ReportFactory,
     RepositoryFactory,
+    UploadFactory,
 )
 
 
@@ -41,6 +43,20 @@ class TestFactory(factory.Factory):
     flags_hash = "flags_hash"
     id_ = factory.Sequence(lambda n: f"id_{n}")
     repository = factory.SubFactory(RepositoryFactory)
+
+
+class TestInstanceFactory(factory.Factory):
+    class Meta:
+        model = TestInstance
+
+    test = factory.SubFactory(TestFactory)
+    upload = factory.SubFactory(UploadFactory)
+
+    outcome = "pass"
+    duration_seconds = 1.5
+    commitid = factory.SelfAttribute("upload.report.commit.commitid")
+    branch = factory.SelfAttribute("upload.report.commit.branch")
+    repoid = factory.SelfAttribute("upload.report.commit.repository.repoid")
 
 
 class FlakeFactory(factory.Factory):

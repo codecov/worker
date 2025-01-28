@@ -1,0 +1,12 @@
+[
+  {
+    "repoid": 1,
+    "test_id": "746573745f6964",
+    "fail_count": 1,
+    "count": 1,
+    "recent_passes_count": 0,
+    "start_date": "2025-01-01T00:00:00+00:00",
+    "end_date": null,
+    "flags_id": null
+  }
+]
