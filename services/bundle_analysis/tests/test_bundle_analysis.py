@@ -30,6 +30,7 @@ from services.bundle_analysis.report import (
 )
 from services.repository import EnrichedPull
 from services.urls import get_bundle_analysis_pull_url
+from tests.helpers import mock_all_plans_and_tiers
 
 
 class MockBundleReport:
@@ -690,6 +691,7 @@ async def test_bundle_analysis_save_measurements_error(dbsession, mocker, mock_s
         ),
     ],
 )
+@pytest.mark.django_db
 def test_bundle_analysis_notify_bundle_summary(
     bundle_changes: list[BundleChange],
     percent_change: float,
@@ -700,6 +702,7 @@ def test_bundle_analysis_notify_bundle_summary(
     mock_storage,
     mock_repo_provider,
 ):
+    mock_all_plans_and_tiers()
     hook_mock_repo_provider(mocker, mock_repo_provider)
     base_commit = CommitFactory()
     dbsession.add(base_commit)
@@ -1483,6 +1486,7 @@ class MockAssetComparison:
         ),
     ],
 )
+@pytest.mark.django_db
 def test_bundle_analysis_notify_individual_bundle_data(
     bundle_changes: list[BundleChange],
     route_changes: Dict[str, List[RouteChange]],
@@ -1493,6 +1497,7 @@ def test_bundle_analysis_notify_individual_bundle_data(
     mock_storage,
     mock_repo_provider,
 ):
+    mock_all_plans_and_tiers()
     percent_change = 5.56
     user_config = {
         **PATCH_CENTRIC_DEFAULT_CONFIG,
