@@ -1,5 +1,5 @@
 https://github.com/codecov/test-results-parser/archive/190bbc8a911099749928e13d5fe57f6027ca1e74.tar.gz#egg=test-results-parser
-https://github.com/codecov/shared/archive/ce6e1e9198b046af850606e8fe3633d9a25fea98.tar.gz#egg=shared
+https://github.com/codecov/shared/archive/a4bd8f76aa40b41772e59fb1993a7c7e5192f0df.tar.gz#egg=shared
 https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
 asgiref>=3.7.2
 analytics-python==1.3.0b1
