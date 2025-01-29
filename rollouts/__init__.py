@@ -14,3 +14,5 @@ SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG = Feature(
 )
 
 NEW_TA_TASKS = Feature("new_ta_tasks")
+
+PARALLEL_COMPONENT_COMPARISON = Feature("parallel_component_comparison")

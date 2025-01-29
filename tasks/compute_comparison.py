@@ -3,10 +3,10 @@ from typing import Literal, TypedDict
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
+from celery import group
 from shared.celery_config import compute_comparison_task_name
 from shared.components import Component
 from shared.helpers.flag import Flag
-from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.exceptions import TorngitRateLimitError
 from shared.yaml import UserYaml
 
@@ -16,12 +16,13 @@ from database.models import CompareCommit, CompareComponent, CompareFlag
 from database.models.reports import ReportLevelTotals, RepositoryFlag
 from helpers.comparison import minimal_totals
 from helpers.github_installation import get_installation_name_for_owner_for_task
+from rollouts import PARALLEL_COMPONENT_COMPARISON
 from services.archive import ArchiveService
-from services.comparison import ComparisonContext, ComparisonProxy, FilteredComparison
-from services.comparison.types import Comparison, FullCommit
-from services.report import ReportService
+from services.comparison import ComparisonProxy, FilteredComparison
+from services.comparison_utils import get_comparison_proxy
 from services.yaml import get_current_yaml, get_repo_yaml
 from tasks.base import BaseCodecovTask
+from tasks.compute_component_comparison import compute_component_comparison_task
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
             self.name, repo.owner
         )
 
-        comparison_proxy = self.get_comparison_proxy(
+        comparison_proxy = get_comparison_proxy(
             comparison, current_yaml, installation_name_to_use
         )
         if not comparison_proxy.has_head_report():
@@ -241,10 +242,31 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
                 component_count=len(components),
             ),
         )
-        for component in components:
-            self.compute_component_comparison(
-                db_session, comparison, comparison_proxy, component
-            )
+        if PARALLEL_COMPONENT_COMPARISON.check_value(
+            comparison.compare_commit.repoid, default=False
+        ):
+            self.parallel_compute_component_comparison(comparison.id, components)
+        else:
+            for component in components:
+                self.compute_component_comparison(
+                    db_session, comparison, comparison_proxy, component
+                )
+
+    @sentry_sdk.trace
+    def parallel_compute_component_comparison(
+        self,
+        comparison_id: int,
+        components: list[Component],
+    ):
+        task_group = group(
+            [
+                compute_component_comparison_task.s(
+                    comparison_id, component.component_id
+                )
+                for component in components
+            ]
+        )
+        task_group.apply_async()
 
     def compute_component_comparison(
         self,
@@ -287,38 +309,6 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
 
         db_session.add(component_comparison)
         db_session.flush()
-
-    @sentry_sdk.trace
-    def get_comparison_proxy(
-        self, comparison, current_yaml, installation_name_to_use: str | None = None
-    ):
-        compare_commit = comparison.compare_commit
-        base_commit = comparison.base_commit
-        report_service = ReportService(
-            current_yaml, gh_app_installation_name=installation_name_to_use
-        )
-        base_report = report_service.get_existing_report_for_commit(
-            base_commit, report_class=ReadOnlyReport
-        )
-        compare_report = report_service.get_existing_report_for_commit(
-            compare_commit, report_class=ReadOnlyReport
-        )
-        # No access to the PR so we have to assume the base commit did not need
-        # to be adjusted.
-        patch_coverage_base_commitid = base_commit.commitid
-        return ComparisonProxy(
-            Comparison(
-                head=FullCommit(commit=compare_commit, report=compare_report),
-                project_coverage_base=FullCommit(
-                    commit=base_commit, report=base_report
-                ),
-                patch_coverage_base_commitid=patch_coverage_base_commitid,
-                enriched_pull=None,
-            ),
-            context=ComparisonContext(
-                gh_app_installation_name=installation_name_to_use
-            ),
-        )
 
     @sentry_sdk.trace
     def store_results(self, comparison, impacted_files):
