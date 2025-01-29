@@ -10,7 +10,9 @@ from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 @pytest.mark.integration
 def test_backfill_dataset_run_impl(dbsession, mocker, mock_storage):
-    mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+    mocker.patch(
+        "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+    )
     mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
     mocked_app = mocker.patch.object(
         TimeseriesBackfillCommitsTask,

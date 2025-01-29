@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 import pytest
+from celery import group
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
@@ -16,8 +17,8 @@ from services.timeseries import (
     delete_repository_measurements,
     repository_commits_query,
     repository_datasets_query,
-    save_commit_measurements,
 )
+from tasks.save_commit_measurements import save_commit_measurements
 
 
 @pytest.fixture
@@ -105,7 +106,9 @@ class TestTimeseriesService(object):
     def test_insert_commit_measurement(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -140,7 +143,9 @@ class TestTimeseriesService(object):
         assert measurement.value == 60.0
 
     def test_save_commit_measurements_no_report(self, dbsession, repository, mocker):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=None,
@@ -167,7 +172,9 @@ class TestTimeseriesService(object):
     def test_update_commit_measurement(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -218,7 +225,9 @@ class TestTimeseriesService(object):
     def test_commit_measurement_insert_flags(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -291,7 +300,9 @@ class TestTimeseriesService(object):
     def test_commit_measurement_update_flags(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -390,7 +401,13 @@ class TestTimeseriesService(object):
     def test_commit_measurement_insert_components(
         self, dbsession, sample_report_for_components, repository, mocker
     ):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(
@@ -402,7 +419,7 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
         yaml_dict = {
             "component_management": {
                 "default_rules": {
@@ -572,10 +589,30 @@ class TestTimeseriesService(object):
         )
         assert empty_path_measurements is None
 
-    def test_commit_measurement_update_component(
-        self, dbsession, sample_report_for_components, repository, mocker
+    def test_commit_measurement_update_component_parallel(
+        self,
+        sample_report_for_components,
+        repository,
+        mocker,
+        mock_repo_provider,
     ):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        dbsession = repository.get_db_session()
+        mocker.patch.object(dbsession, "close")
+        mocker.patch("tasks.base.get_db_session", return_value=dbsession)
+        mocker.patch.object(group, "apply_async", group.apply)
+
+        mocker.patch(
+            "tasks.upsert_component.get_repo_provider_service",
+            return_value=mock_repo_provider,
+        )
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=True,
+        )
+
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(
@@ -587,7 +624,68 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
+        get_current_yaml = mocker.patch("tasks.upsert_component.get_current_yaml")
+        yaml_dict = {
+            "component_management": {
+                "individual_components": [
+                    {
+                        "component_id": "test-component-123",
+                        "name": "test component",
+                        "flag_regexes": ["random-flago-987"],
+                        "paths": [r"folder/*"],
+                    },
+                ],
+            }
+        }
+        get_repo_yaml.return_value = UserYaml(yaml_dict)
+        get_current_yaml.return_value = UserYaml(yaml_dict)
+
+        save_commit_measurements(commit)
+
+        # Want to commit here to have the results persisted properly.
+        # Otherwise the results aren't going to be reflected in the select below.
+        # dbsession.commit()
+
+        measurements = (
+            dbsession.query(Measurement)
+            .filter_by(name=MeasurementName.component_coverage.value)
+            .all()
+        )
+
+        assert len(measurements) == 1
+        dbsession.add(commit)
+        assert measurements[0].name == MeasurementName.component_coverage.value
+        assert measurements[0].owner_id == commit.repository.ownerid
+        assert measurements[0].repo_id == commit.repoid
+        assert measurements[0].measurable_id == "test-component-123"
+        assert measurements[0].commit_sha == commit.commitid
+        assert measurements[0].timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
+
+    def test_commit_measurement_update_component(
+        self, dbsession, sample_report_for_components, repository, mocker
+    ):
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_for_components
+            ),
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
         yaml_dict = {
             "component_management": {
                 "individual_components": [
@@ -645,7 +743,13 @@ class TestTimeseriesService(object):
         assert measurement.value == 50.0
 
     def test_commit_measurement_no_datasets(self, dbsession, mocker):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
 
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -711,6 +815,10 @@ class TestTimeseriesService(object):
         ]
 
     def test_backfill_batch_size(self, repository, mocker):
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
         dbsession = repository.get_db_session()
         coverage_dataset = (
             dbsession.query(Dataset.name)
@@ -786,7 +894,9 @@ class TestTimeseriesService(object):
         assert batch_size == 100
 
     def test_delete_repository_data(self, dbsession, sample_report, repository, mocker):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -825,7 +935,10 @@ class TestTimeseriesService(object):
     def test_delete_repository_data_side_effects(
         self, dbsession, sample_report, repository, mocker
     ):
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -850,6 +963,19 @@ class TestTimeseriesService(object):
         dbsession.add(other_commit)
         dbsession.flush()
         save_commit_measurements(other_commit)
+
+        assert (
+            dbsession.query(Dataset)
+            .filter_by(repository_id=other_repository.repoid)
+            .count()
+            != 0
+        )
+        assert (
+            dbsession.query(Measurement)
+            .filter_by(repo_id=other_repository.repoid)
+            .count()
+            != 0
+        )
 
         delete_repository_data(repository)
 
@@ -878,7 +1004,12 @@ class TestTimeseriesService(object):
         )
 
     def test_delete_repository_data_measurements_only(
-        self, dbsession, sample_report_for_components, repository, mocker
+        self,
+        dbsession,
+        sample_report_for_components,
+        repository,
+        mocker,
+        mock_repo_provider,
     ):
         def validate_invariants(repository, other_repository):
             assert (
@@ -901,7 +1032,26 @@ class TestTimeseriesService(object):
                 == 16
             )
 
-        mocker.patch("services.timeseries.is_timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
+        dbsession = repository.get_db_session()
+        mocker.patch.object(dbsession, "close")
+        mocker.patch("tasks.base.get_db_session", return_value=dbsession)
+        mocker.patch.object(group, "apply_async", group.apply)
+
+        mocker.patch(
+            "tasks.upsert_component.get_repo_provider_service",
+            return_value=mock_repo_provider,
+        )
+
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=True,
+        )
+        mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(
@@ -909,7 +1059,8 @@ class TestTimeseriesService(object):
             ),
         )
 
-        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
+        get_current_yaml = mocker.patch("tasks.upsert_component.get_current_yaml")
         yaml_dict = {
             "component_management": {
                 "default_rules": {
@@ -933,6 +1084,7 @@ class TestTimeseriesService(object):
             }
         }
         get_repo_yaml.return_value = UserYaml(yaml_dict)
+        get_current_yaml.return_value = UserYaml(yaml_dict)
 
         commit = CommitFactory.create(branch="foo", repository=repository)
         dbsession.add(commit)
@@ -965,6 +1117,8 @@ class TestTimeseriesService(object):
                 )
             ]
         )
+
+        m = dbsession.query(Measurement).filter_by(repo_id=repository.repoid).all()
 
         # 2x(1 coverage, 3 flag coverage, 4 component coverage) = 16
         assert (

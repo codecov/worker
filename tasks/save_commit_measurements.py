@@ -1,15 +1,88 @@
 import logging
-from typing import Iterable
+from typing import Iterable, Sequence
 
+from celery import group
 from shared.celery_config import timeseries_save_commit_measurements_task_name
-from sqlalchemy.orm.session import Session
+from shared.reports.readonly import ReadOnlyReport
+from shared.timeseries.helpers import is_timeseries_enabled
+from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.models.core import Commit
-from services.timeseries import save_commit_measurements
+from database.models import Commit, MeasurementName
+from rollouts import PARALLEL_COMPONENT_COMPARISON
+from services.report import ReportService
+from services.timeseries import (
+    find_duplicate_component_ids,
+    maybe_upsert_coverage_measurement,
+    maybe_upsert_flag_measurements,
+    repository_datasets_query,
+    upsert_components_measurements,
+)
+from services.yaml import get_repo_yaml
 from tasks.base import BaseCodecovTask
+from tasks.upsert_component import upsert_component_task
 
 log = logging.getLogger(__name__)
+
+
+def save_commit_measurements(
+    commit: Commit, dataset_names: Sequence[str] | None = None
+) -> None:
+    if not is_timeseries_enabled():
+        log.debug(
+            "Timeseries is disabled, skipping save_commit_measurements",
+            extra=dict(commitid=commit.commitid, repoid=commit.repoid),
+        )
+        return
+
+    if dataset_names is None:
+        dataset_names = [
+            dataset.name for dataset in repository_datasets_query(commit.repository)
+        ]
+
+    if len(dataset_names) == 0:
+        log.debug(
+            "No datasets found for commit",
+            extra=dict(commitid=commit.commitid, repoid=commit.repoid),
+        )
+        return
+
+    current_yaml = get_repo_yaml(commit.repository)
+    report_service = ReportService(current_yaml)
+    report = report_service.get_existing_report_for_commit(
+        commit, report_class=ReadOnlyReport
+    )
+
+    if report is None:
+        log.warning(
+            "No report found for commit",
+            extra=dict(commitid=commit.commitid, repoid=commit.repoid),
+        )
+        return
+
+    db_session = commit.get_db_session()
+
+    maybe_upsert_coverage_measurement(commit, dataset_names, db_session, report)
+    if MeasurementName.component_coverage.value in dataset_names:
+        components = current_yaml.get_components()
+        if components:
+            find_duplicate_component_ids(components, commit)
+            if PARALLEL_COMPONENT_COMPARISON.check_value(commit.repository.repoid):
+                g = group(
+                    [
+                        upsert_component_task.s(
+                            commit.commitid,
+                            commit.repoid,
+                            component.component_id,
+                        )
+                        for component in components
+                    ]
+                )
+                g.apply_async()
+            else:
+                upsert_components_measurements(commit, current_yaml, db_session, report)
+
+    maybe_upsert_flag_measurements(commit, dataset_names, db_session, report)
 
 
 class SaveCommitMeasurementsTask(

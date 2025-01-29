@@ -65,3 +65,4 @@ from tasks.update_branches import update_branches_task_name
 from tasks.upload import upload_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
+from tasks.upsert_component import upsert_component_task
