@@ -58,6 +58,8 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
                     ownerid=ownerid,
                 ),
             )
+            for org in removed_orgs:
+                org.plan_activated_users.remove(ownerid)
 
         owner.updatestamp = datetime.now()
         owner.organizations = team_ids
