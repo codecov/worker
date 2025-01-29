@@ -2143,7 +2143,37 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
-    @pytest.mark.django_db
+    def test_build_message_default_layout(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_report_without_flags,
+        sample_comparison,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        pull = comparison.pull
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml={"codecov": {"ui": {"hide_complexity": True}}},
+            repository_service=mock_repo_provider,
+        )
+        repository = sample_comparison.head.commit.repository
+        result = notifier.build_message(comparison)
+        expected_result = [
+            f"## [Codecov](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=h1) Report",
+            "Attention: Patch coverage is `66.66667%` with `1 line` in your changes missing coverage. Please review.",
+            f"> Project coverage is 60.00%. Comparing base [(`{sample_comparison.project_coverage_base.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.project_coverage_base.commit.commitid}?dropdown=coverage&el=desc) to head [(`{sample_comparison.head.commit.commitid[:7]}`)](test.example.br/gh/{repository.slug}/commit/{sample_comparison.head.commit.commitid}?dropdown=coverage&el=desc).",
+            "",
+        ]
+        for exp, res in zip(expected_result, result):
+            assert exp == res
+        assert result == expected_result
+
     def test_send_actual_notification_spammy(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):

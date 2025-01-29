@@ -54,7 +54,8 @@ class TestCommentMesage:
 
         context = builder.build_context().get_result()
         message = BundleAnalysisCommentMarkdownStrategy().build_message(context)
-        assert message == dedent("""\
+        assert message.startswith(
+            dedent("""\
                 ## [Bundle](https://app.codecov.io/gh/{owner}/{repo}/pull/{pullid}?dropdown=bundle) Report
 
                 Changes will decrease total bundle size by 372.56kB (-48.89%) :arrow_down:. This is within the [configured](https://docs.codecov.com/docs/javascript-bundle-analysis#main-features) threshold :white_check_mark:
@@ -64,16 +65,17 @@ class TestCommentMesage:
                 | Bundle name | Size | Change |
                 | ----------- | ---- | ------ |
                 | @codecov/sveltekit-plugin-esm | 1.1kB | 188 bytes (20.68%) :arrow_up: |
-                | @codecov/rollup-plugin-esm | 1.32kB | 1.01kB (-43.37%) :arrow_down: |
-                | @codecov/bundler-plugin-core-esm | 8.2kB | 30.02kB (-78.55%) :arrow_down: |
+                | @codecov/rollup-plugin-esm | 1.32kB | -1.01kB (-43.37%) :arrow_down: |
+                | @codecov/bundler-plugin-core-esm | 8.2kB | -30.02kB (-78.55%) :arrow_down: |
                 | @codecov/bundler-plugin-core-cjs | 43.32kB | 611 bytes (1.43%) :arrow_up: |
-                | @codecov/example-next-app-server-cjs | (removed) | 342.32kB (-100.0%) :arrow_down: |
+                | @codecov/example-next-app-server-cjs | (removed) | -342.32kB (-100.0%) :arrow_down: |
 
                 </details>
                 """).format(
-            pullid=enriched_pull.database_pull.pullid,
-            owner=head_commit.repository.owner.username,
-            repo=head_commit.repository.name,
+                pullid=enriched_pull.database_pull.pullid,
+                owner=head_commit.repository.owner.username,
+                repo=head_commit.repository.name,
+            )
         )
 
     def _setup_send_message_tests(

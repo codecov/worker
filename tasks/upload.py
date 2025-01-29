@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, TypedDict
 
 import orjson
 import sentry_sdk
@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from app import celery_app
 from database.enums import CommitErrorTypes, ReportType
-from database.models import Commit, CommitReport
+from database.models import Commit, CommitReport, Repository, RepositoryFlag, Upload
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
@@ -216,6 +216,12 @@ def _should_debounce_processing(upload_context: UploadContext) -> Optional[float
     if last_upload_delta < upload_processing_delay:
         return max(30, upload_processing_delay - last_upload_delta)
     return None
+
+
+class CreateUploadResponse(TypedDict):
+    argument_list: list[UploadArguments]
+    measurements_list: list[UserMeasurement]
+    upload_flag_map: dict[Upload, list | str | None]
 
 
 class UploadTask(BaseCodecovTask, name=upload_task_name):
@@ -500,18 +506,112 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             )
             self.retry(countdown=60, kwargs=upload_context.kwargs_for_retry(kwargs))
 
+        upload_argument_list = self.possibly_insert_uploads_and_side_effects(
+            db_session=db_session,
+            upload_context=upload_context,
+            commit=commit,
+            commit_report=commit_report,
+            report_service=report_service,
+        )
+
+        if upload_argument_list:
+            db_session.commit()
+
+            UPLOADS_PER_TASK_SCHEDULE.labels(report_type=report_type.value).observe(
+                len(upload_argument_list)
+            )
+            scheduled_tasks = self.schedule_task(
+                commit,
+                commit_yaml.to_dict(),
+                upload_argument_list,
+                commit_report,
+                upload_context,
+            )
+
+            log.info(
+                f"Scheduling {upload_context.report_type.value} processing tasks",
+                extra=upload_context.log_extra(
+                    argument_list=upload_argument_list,
+                    number_arguments=len(upload_argument_list),
+                    scheduled_task_ids=scheduled_tasks.as_tuple(),
+                ),
+            )
+
+        else:
+            self.maybe_log_upload_checkpoint(UploadFlow.INITIAL_PROCESSING_COMPLETE)
+            self.maybe_log_upload_checkpoint(UploadFlow.NO_REPORTS_FOUND)
+            log.info(
+                "Not scheduling task because there were no arguments found on redis",
+                extra=upload_context.log_extra(),
+            )
+        return {"was_setup": was_setup, "was_updated": was_updated}
+
+    def possibly_insert_uploads_and_side_effects(
+        self,
+        db_session: Session,
+        upload_context: UploadContext,
+        commit: Commit,
+        commit_report: CommitReport,
+        report_service: ReportService,
+    ) -> list[UploadArguments]:
+        """
+        This method possibly batch inserts uploads, flags and user measurements.
+        This only happens for v4 uploads as CLI uploads create the records mentioned
+        above in the uploads codecov-api route.
+        """
+        repository: Repository = commit.repository
+
+        # Possibly batch insert uploads
+        create_upload_res = self._possibly_create_uploads_to_insert(
+            db_session=db_session,
+            commit=commit,
+            repository=repository,
+            commit_report=commit_report,
+            upload_context=upload_context,
+            report_service=report_service,
+        )
+
+        # Bulk insert flags
+        if uploads_flag_map := create_upload_res["upload_flag_map"]:
+            self._bulk_insert_flags(
+                db_session=db_session,
+                repoid=repository.repoid,
+                upload_flag_map=uploads_flag_map,
+            )
+
+        # Bulk insert coverage measurements
+        if measurements := create_upload_res["measurements_list"]:
+            self._bulk_insert_coverage_measurements(measurements=measurements)
+
+        return create_upload_res["argument_list"]
+
+    def _possibly_create_uploads_to_insert(
+        self,
+        db_session: Session,
+        commit: Commit,
+        repository: Repository,
+        upload_context: UploadContext,
+        report_service: ReportService,
+        commit_report: CommitReport,
+    ) -> CreateUploadResponse:
+        # List to track arguments for the rest of uploads
         argument_list: list[UploadArguments] = []
-        # Measurements insertion performance
-        measurements = []
+
+        # List to track possible measurements to insert later
+        measurements_list: list[UserMeasurement] = []
         created_at = timezone.now()
+
+        # List + helper mapping to track possible upload + flags to insert later
+        upload_flag_map: dict[Upload, list | str | None] = {}
 
         for arguments in upload_context.arguments_list():
             arguments = upload_context.normalize_arguments(commit, arguments)
             if "upload_id" not in arguments:
                 upload = report_service.create_report_upload(arguments, commit_report)
                 arguments["upload_id"] = upload.id_
-                # Adding measurements to array to later add in bulk
-                measurements.append(
+                # Adds objects to insert later in bulk
+                upload_flag_map[upload] = arguments.get("flags", [])
+                measurements_list.append(
                     UserMeasurement(
                         owner_id=repository.owner.ownerid,
                         repo_id=repository.repoid,
@@ -529,41 +629,70 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             arguments["upload_pk"] = arguments["upload_id"]
             argument_list.append(arguments)
 
-        # Bulk insert coverage measurements
-        if measurements:
-            self._bulk_insert_coverage_measurements(measurements=measurements)
+        db_session.commit()
+        return CreateUploadResponse(
+            argument_list=argument_list,
+            measurements_list=measurements_list,
+            upload_flag_map=upload_flag_map,
+        )
 
-        if argument_list:
+    def _bulk_insert_flags(
+        self,
+        db_session: Session,
+        repoid: int,
+        upload_flag_map: dict[Upload, list | str | None] = None,
+    ):
+        """
+        This function possibly inserts flags in bulk for a Repository if these
+        don't exist already
+        """
+        if upload_flag_map is None:
+            upload_flag_map = {}
+
+        # Fetch all RepositoryFlags per repo
+        existing_flags = self._fetch_all_repo_flags(
+            db_session=db_session, repoid=repoid
+        )
+
+        # Prepare new flags and map relationships
+        flags_to_create: list[RepositoryFlag] = []
+        upload_flag_links = {}
+
+        # Loops through upload_flag_map dict, possibly creates flags and maps them to their uploads
+        for upload, flag_names in upload_flag_map.items():
+            upload_flags = []
+
+            for flag_name in flag_names:
+                # Check for existing flag, create if missing
+                flag = existing_flags.get(flag_name)
+                if not flag:
+                    flag = RepositoryFlag(repository_id=repoid, flag_name=flag_name)
+                    flags_to_create.append(flag)
+                    existing_flags[flag_name] = flag
+
+                upload_flags.append(flag)
+
+            # Save the relationship mapping without causing additional queries
+            upload_flag_links[upload] = upload_flags
+
+        if flags_to_create:
+            db_session.add_all(flags_to_create)
             db_session.commit()
 
-            UPLOADS_PER_TASK_SCHEDULE.labels(report_type=report_type.value).observe(
-                len(argument_list)
-            )
-            scheduled_tasks = self.schedule_task(
-                commit,
-                commit_yaml.to_dict(),
-                argument_list,
-                commit_report,
-                upload_context,
-            )
+        # Assign flags to uploads
+        for upload, upload_flags in upload_flag_links.items():
+            upload.flags = upload_flags
 
-            log.info(
-                f"Scheduling {upload_context.report_type.value} processing tasks",
-                extra=upload_context.log_extra(
-                    argument_list=argument_list,
-                    number_arguments=len(argument_list),
-                    scheduled_task_ids=scheduled_tasks.as_tuple(),
-                ),
-            )
+        db_session.commit()
 
-        else:
-            self.maybe_log_upload_checkpoint(UploadFlow.INITIAL_PROCESSING_COMPLETE)
-            self.maybe_log_upload_checkpoint(UploadFlow.NO_REPORTS_FOUND)
-            log.info(
-                "Not scheduling task because there were no arguments found on redis",
-                extra=upload_context.log_extra(),
-            )
-        return {"was_setup": was_setup, "was_updated": was_updated}
+    def _fetch_all_repo_flags(
+        self, db_session: Session, repoid: int
+    ) -> Optional[dict[str, RepositoryFlag] | dict]:
+        """
+        Fetches all flags on a repository
+        """
+        flags = db_session.query(RepositoryFlag).filter_by(repository_id=repoid).all()
+        return {flag.flag_name: flag for flag in flags} if flags else {}
 
     def _bulk_insert_coverage_measurements(self, measurements: list[UserMeasurement]):
         bulk_insert_coverage_measurements(measurements=measurements)

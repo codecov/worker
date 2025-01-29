@@ -335,6 +335,11 @@ class StatusNotifier(AbstractBaseNotifier):
             "message": message,
         }
 
+        if payload.get("included_helper_text"):
+            notification_result_data_sent["included_helper_text"] = payload[
+                "included_helper_text"
+            ]
+
         all_shas_to_notify = [head_commit_sha] + list(
             comparison.context.gitlab_extra_shas or set()
         )
