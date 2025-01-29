@@ -4,6 +4,7 @@ from django.db.models.query import QuerySet
 from django.db.models.sql.subqueries import DeleteQuery
 from shared.django_apps.codecov_auth.models import Owner
 from shared.django_apps.core.models import Repository
+from shared.django_apps.reports.models import ReportDetails
 
 from services.cleanup.relations import build_relation_graph, simplified_lookup
 
@@ -53,3 +54,9 @@ def test_can_simplify_queries():
     # In theory, we could simplify this to forward directly to the  `owner_repo`
     # subquery, but that would open too many opportunities to properly test.
     assert simplified_lookup(repo) == repo
+
+
+@pytest.mark.django_db
+def test_leaf_table(snapshot):
+    query = ReportDetails.objects.all()
+    assert dump_delete_queries(query) == snapshot("leaf.txt")
