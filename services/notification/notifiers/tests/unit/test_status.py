@@ -21,9 +21,11 @@ from services.comparison.types import FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.mixins.status import (
+    CUSTOM_RCB_INDIRECT_CHANGES_KEY,
     CUSTOM_TARGET_TEXT_PATCH_KEY,
     CUSTOM_TARGET_TEXT_PROJECT_KEY,
     CUSTOM_TARGET_TEXT_VALUE,
+    HELPER_TEXT_MAP,
 )
 from services.notification.notifiers.status import (
     ChangesStatusNotifier,
@@ -1903,6 +1905,74 @@ class TestProjectStatusNotifier(object):
                     coverage="50.00",
                     target="70.00",
                 )
+            },
+        }
+        result = notifier.build_payload(comparison_with_multiple_changes)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    def test_notify_fully_covered_patch_behavior_fail_indirect_changes(
+        self,
+        comparison_with_multiple_changes,
+        mock_repo_provider,
+        mock_configuration,
+        multiple_diff_changes,
+        mocker,
+    ):
+        json_diff = multiple_diff_changes
+        mock_repo_provider.get_compare.return_value = {"diff": json_diff}
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [[2, "h"], [3, "h"]],
+                        "unexpected_line_changes": "any value in this field",
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"], [3, None]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        notifier = ProjectStatusNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "target": "70%",
+                "removed_code_behavior": "fully_covered_patch",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
+        )
+        expected_result = {
+            "message": "50.00% (target 70.00%)",
+            "state": "failure",
+            "included_helper_text": {
+                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                    context="project",
+                    notification_type="status",
+                    point_of_comparison="head",
+                    coverage="50.00",
+                    target="70.00",
+                ),
+                CUSTOM_RCB_INDIRECT_CHANGES_KEY: HELPER_TEXT_MAP[
+                    CUSTOM_RCB_INDIRECT_CHANGES_KEY
+                ].format(
+                    context="project",
+                    notification_type="status",
+                ),
             },
         }
         result = notifier.build_payload(comparison_with_multiple_changes)
