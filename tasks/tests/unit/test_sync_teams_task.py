@@ -37,10 +37,12 @@ class TestSyncTeamsTaskUnit(object):
             service="github",
             unencrypted_oauth_token=token,
         )
+        prev_team.plan_activated_users = [user.ownerid]
         dbsession.add(user)
         dbsession.flush()
         SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
         assert prev_team.ownerid not in user.organizations
+        assert user.ownerid not in prev_team.plan_activated_users
 
     def test_team_data_updated(
         self, mocker, mock_configuration, dbsession, codecov_vcr

@@ -58,8 +58,14 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
                     ownerid=ownerid,
                 ),
             )
-            for org in removed_orgs:
-                org.plan_activated_users.remove(ownerid)
+            for org_ownerid in removed_orgs:
+                org = db_session.query(Owner).filter(Owner.ownerid == org_ownerid).first()
+                if org and ownerid in org.plan_activated_users:
+                    log.info(
+                        "Removing user from org's plan_activated_users",
+                        extra=dict(user_ownerid=ownerid, org_ownerid=org_ownerid)
+                    )
+                    org.plan_activated_users.remove(ownerid)
 
         owner.updatestamp = datetime.now()
         owner.organizations = team_ids
