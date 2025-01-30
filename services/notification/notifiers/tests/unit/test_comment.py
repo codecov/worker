@@ -2143,6 +2143,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_build_message_default_layout(
         self,
         dbsession,
@@ -2174,6 +2175,7 @@ class TestCommentNotifier(object):
             assert exp == res
         assert result == expected_result
 
+    @pytest.mark.django_db
     def test_send_actual_notification_spammy(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
     ):
