@@ -49,8 +49,12 @@ def clear_owner_references(owner_id: int):
 
         owners_with_reference = Owner.objects.select_for_update().filter(filter)
         for owner in owners_with_reference:
+            updated_fields = set()
             for field in CLEAR_ARRAY_FIELDS:
                 array = getattr(owner, field)
-                setattr(owner, field, [x for x in array if x != owner_id])
+                if array:
+                    updated_fields.add(field)
+                    setattr(owner, field, [x for x in array if x != owner_id])
 
-            owner.save(update_fields=CLEAR_ARRAY_FIELDS)
+            if updated_fields:
+                owner.save(update_fields=updated_fields)
