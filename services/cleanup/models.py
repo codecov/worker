@@ -50,22 +50,21 @@ def cleanup_with_storage_field(
         query.db
     )
 
-    # delete all those files from storage, using chunks based on the `id` column
-    storage_query = query.filter(**{f"{path_field}__isnull": False}).order_by("id")
-
+    # delete all those files from storage in chunks
+    storage_query = query.filter(**{f"{path_field}__isnull": False}).values_list(
+        "pk", path_field
+    )
     while True:
-        storage_paths = storage_query.values_list(path_field, flat=True)[
-            :MANUAL_QUERY_CHUNKSIZE
-        ]
-        if len(storage_paths) == 0:
+        storage_results = dict(storage_query[:MANUAL_QUERY_CHUNKSIZE])
+        if len(storage_results) == 0:
             break
 
         cleaned_files += cleanup_files_batched(
-            context, {context.default_bucket: storage_paths}
+            context, {context.default_bucket: list(storage_results.values())}
         )
         # go through `query.object` here, to avoid some duplicated subqueries
         cleaned_models += query.model.objects.filter(
-            id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
+            pk__in=storage_results.keys()
         )._raw_delete(query.db)
 
     return CleanupResult(cleaned_models, cleaned_files)
@@ -90,6 +89,7 @@ class FakeRepository:
 @sentry_sdk.trace
 def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupResult:
     coverage_reports = query.values_list(
+        "pk",
         "report_type",
         "code",
         "external_id",
@@ -97,19 +97,20 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
         "commit__repository__repoid",
         "commit__repository__author__service",
         "commit__repository__service_id",
-    ).order_by("id")
+    )
 
     cleaned_models = 0
     cleaned_files = 0
     repo_hashes: dict[int, str] = {}
 
     while True:
-        reports = coverage_reports[:MANUAL_QUERY_CHUNKSIZE]
+        reports = list(coverage_reports[:MANUAL_QUERY_CHUNKSIZE])
         if len(reports) == 0:
             break
 
         buckets_paths: dict[str, list[str]] = defaultdict(list)
         for (
+            _pk,
             report_type,
             report_code,
             external_id,
@@ -148,7 +149,7 @@ def cleanup_commitreport(context: CleanupContext, query: QuerySet) -> CleanupRes
 
         cleaned_files += cleanup_files_batched(context, buckets_paths)
         cleaned_models += query.model.objects.filter(
-            id__in=query.order_by("id")[:MANUAL_QUERY_CHUNKSIZE]
+            pk__in=(r[0] for r in reports)
         )._raw_delete(query.db)
 
     return CleanupResult(cleaned_models, cleaned_files)
@@ -164,18 +165,17 @@ def cleanup_upload(context: CleanupContext, query: QuerySet) -> CleanupResult:
         Q(storage_path__isnull=True) | Q(upload_type=SessionType.carriedforward.value)
     )._raw_delete(query.db)
 
-    # delete all those files from storage, using chunks based on the `id` column
-    storage_query = query.filter(storage_path__isnull=False).order_by("id")
-
+    # delete all those files from storage in chunks
+    upload_query = query.filter(storage_path__isnull=False).values_list(
+        "pk", "report__report_type", "storage_path"
+    )
     while True:
-        uploads = storage_query.values_list("report__report_type", "storage_path")[
-            :MANUAL_QUERY_CHUNKSIZE
-        ]
+        uploads = list(upload_query[:MANUAL_QUERY_CHUNKSIZE])
         if len(uploads) == 0:
             break
 
         buckets_paths: dict[str, list[str]] = defaultdict(list)
-        for report_type, storage_path in uploads:
+        for _pk, report_type, storage_path in uploads:
             if report_type == "bundle_analysis":
                 buckets_paths[context.bundleanalysis_bucket].append(storage_path)
             else:
@@ -183,7 +183,7 @@ def cleanup_upload(context: CleanupContext, query: QuerySet) -> CleanupResult:
 
         cleaned_files += cleanup_files_batched(context, buckets_paths)
         cleaned_models += query.model.objects.filter(
-            id__in=storage_query[:MANUAL_QUERY_CHUNKSIZE]
+            pk__in=(u[0] for u in uploads)
         )._raw_delete(query.db)
 
     return CleanupResult(cleaned_models, cleaned_files)
