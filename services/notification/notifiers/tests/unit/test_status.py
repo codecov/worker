@@ -21,12 +21,9 @@ from services.comparison.types import FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.base import NotificationResult
 from services.notification.notifiers.mixins.status import (
-    CUSTOM_RCB_INDIRECT_CHANGES_KEY,
-    CUSTOM_RCB_ADJUST_BASE_KEY,
-    CUSTOM_TARGET_TEXT_PATCH_KEY,
-    CUSTOM_TARGET_TEXT_PROJECT_KEY,
-    CUSTOM_TARGET_TEXT_VALUE,
     HELPER_TEXT_MAP,
+    HelperTextKey,
+    HelperTextTemplate,
 )
 from services.notification.notifiers.status import (
     ChangesStatusNotifier,
@@ -1611,9 +1608,9 @@ class TestProjectStatusNotifier(object):
                 (
                     None,
                     {
-                        CUSTOM_RCB_ADJUST_BASE_KEY: HELPER_TEXT_MAP[
-                            CUSTOM_RCB_ADJUST_BASE_KEY
-                        ].format(
+                        HelperTextKey.RCB_ADJUST_BASE.value: HELPER_TEXT_MAP[
+                            HelperTextKey.RCB_ADJUST_BASE
+                        ].value.format(
                             notification_type="status",
                             coverage=94.27,
                             adjusted_base_cov=94.28,
@@ -1744,7 +1741,7 @@ class TestProjectStatusNotifier(object):
             "message": "60.00% (target 80.00%)",
             "state": "failure",
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="project",
                     notification_type="status",
                     point_of_comparison="head",
@@ -1798,9 +1795,9 @@ class TestProjectStatusNotifier(object):
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}",
             "state": "failure",
             "included_helper_text": {
-                CUSTOM_RCB_ADJUST_BASE_KEY: HELPER_TEXT_MAP[
-                    CUSTOM_RCB_ADJUST_BASE_KEY
-                ].format(
+                HelperTextKey.RCB_ADJUST_BASE.value: HELPER_TEXT_MAP[
+                    HelperTextKey.RCB_ADJUST_BASE
+                ].value.format(
                     notification_type="status",
                     coverage="50.00",
                     adjusted_base_cov=71.43,
@@ -1880,7 +1877,7 @@ class TestProjectStatusNotifier(object):
             "message": "50.00% (target 80.00%)",
             "state": "failure",
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="project",
                     notification_type="status",
                     point_of_comparison="head",
@@ -1912,7 +1909,7 @@ class TestProjectStatusNotifier(object):
             "message": "60.00% (target 80.00%)",
             "state": "failure",
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="project",
                     notification_type="status",
                     point_of_comparison="head",
@@ -1973,7 +1970,7 @@ class TestProjectStatusNotifier(object):
             "message": "50.00% (target 70.00%)",
             "state": "failure",
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="project",
                     notification_type="status",
                     point_of_comparison="head",
@@ -2035,16 +2032,16 @@ class TestProjectStatusNotifier(object):
             "message": "50.00% (target 70.00%)",
             "state": "failure",
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PROJECT.value: HelperTextTemplate.CUSTOM_TARGET.value.format(
                     context="project",
                     notification_type="status",
                     point_of_comparison="head",
                     coverage="50.00",
                     target="70.00",
                 ),
-                CUSTOM_RCB_INDIRECT_CHANGES_KEY: HELPER_TEXT_MAP[
-                    CUSTOM_RCB_INDIRECT_CHANGES_KEY
-                ].format(
+                HelperTextKey.RCB_INDIRECT_CHANGES.value: HELPER_TEXT_MAP[
+                    HelperTextKey.RCB_INDIRECT_CHANGES
+                ].value.format(
                     context="project",
                     notification_type="status",
                 ),
@@ -2329,7 +2326,7 @@ class TestPatchStatusNotifier(object):
             "message": "66.67% of diff hit (target 70.00%)",
             "state": "failure",
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PATCH: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="patch",
                     notification_type="status",
                     point_of_comparison="patch",
