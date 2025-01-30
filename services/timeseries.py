@@ -120,7 +120,6 @@ def find_duplicate_component_ids(components: list[Component], commit: Commit):
                 ),
             )
         seen_component_ids[component.component_id] = component.name
-    return False
 
 
 def maybe_upsert_components_measurements(
