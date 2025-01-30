@@ -762,15 +762,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "66.67% of diff hit (target 50.00%)",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_default_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (target 50.00%)",
-                "annotations": [
-                    {
-                        "path": "file_1.go",
-                        "start_line": 10,
-                        "end_line": 10,
-                        "annotation_level": "warning",
-                        "message": "Added line #L10 was not covered by tests",
-                    }
-                ],
+                "annotations": [],
             },
             "included_helper_text": {},
         }
@@ -823,7 +815,7 @@ class TestPatchChecksNotifier(object):
             title="default",
             notifier_yaml_settings={},
             notifier_site_settings=True,
-            current_yaml=UserYaml({}),
+            current_yaml=UserYaml({"github_checks": {"annotations": True}}),
             repository_service=mock_repo_provider,
         )
         expected_result = {
@@ -869,15 +861,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "66.67% of diff hit (within 5.00% threshold of 70.00%)",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_target_coverage_failure_within_threshold/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n66.67% of diff hit (within 5.00% threshold of 70.00%)",
-                "annotations": [
-                    {
-                        "path": "file_1.go",
-                        "start_line": 10,
-                        "end_line": 10,
-                        "annotation_level": "warning",
-                        "message": "Added line #L10 was not covered by tests",
-                    }
-                ],
+                "annotations": [],
             },
             "included_helper_text": {},
         }
@@ -912,15 +896,7 @@ class TestPatchChecksNotifier(object):
             "output": {
                 "title": "50.00% of diff hit (target 76.92%)",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_with_multiple_changes/{comparison_with_multiple_changes.head.commit.repository.name}/pull/{comparison_with_multiple_changes.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n50.00% of diff hit (target 76.92%)",
-                "annotations": [
-                    {
-                        "path": "modified.py",
-                        "start_line": 23,
-                        "end_line": 23,
-                        "annotation_level": "warning",
-                        "message": "Added line #L23 was not covered by tests",
-                    }
-                ],
+                "annotations": [],
             },
             "included_helper_text": {},  # not a custom target, no helper text
         }
@@ -933,6 +909,75 @@ class TestPatchChecksNotifier(object):
             assert original_value["files"][filename].get(
                 "segments"
             ) == multiple_diff_changes["files"][filename].get("segments")
+
+    def test_github_checks_annotations_yaml(
+        self,
+        comparison_with_multiple_changes,
+        mock_repo_provider,
+        mock_configuration,
+        multiple_diff_changes,
+    ):
+        mock_repo_provider.get_compare.return_value = {"diff": multiple_diff_changes}
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+
+        empty_annotations = []
+
+        # checks_yaml_field can be None
+        notifier = PatchChecksNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            repository_service=mock_repo_provider,
+        )
+        result = notifier.build_payload(comparison_with_multiple_changes)
+        assert empty_annotations == result["output"]["annotations"]
+
+        # checks_yaml_field can be dict
+        notifier = PatchChecksNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({"github_checks": {"one": "two"}}),
+            repository_service=mock_repo_provider,
+        )
+        result = notifier.build_payload(comparison_with_multiple_changes)
+        assert empty_annotations == result["output"]["annotations"]
+
+        # checks_yaml_field can be bool
+        notifier = PatchChecksNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({"github_checks": False}),
+            repository_service=mock_repo_provider,
+        )
+        result = notifier.build_payload(comparison_with_multiple_changes)
+        assert empty_annotations == result["output"]["annotations"]
+
+        # checks_yaml_field with annotations
+        notifier = PatchChecksNotifier(
+            repository=comparison_with_multiple_changes.head.commit.repository,
+            title="default",
+            notifier_yaml_settings={},
+            notifier_site_settings=True,
+            current_yaml=UserYaml({"github_checks": {"annotations": True}}),
+            repository_service=mock_repo_provider,
+        )
+        expected_annotations = [
+            {
+                "path": "modified.py",
+                "start_line": 23,
+                "end_line": 23,
+                "annotation_level": "warning",
+                "message": "Added line #L23 was not covered by tests",
+            }
+        ]
+        result = notifier.build_payload(comparison_with_multiple_changes)
+        assert expected_annotations == result["output"]["annotations"]
 
     def test_build_payload_no_diff(
         self, sample_comparison, mock_repo_provider, mock_configuration
