@@ -147,22 +147,6 @@ def maybe_upsert_components_measurements(
                         measurement_key = create_component_measurement_key(
                             commit, component
                         )
-                        if (
-                            existing_measurement := component_measurements.get(
-                                measurement_key
-                            )
-                        ) is not None:
-                            log.warning(
-                                "Duplicate measurement keys being added to measurements",
-                                extra=dict(
-                                    repoid=commit.repoid,
-                                    commit_id=commit.id_,
-                                    commitid=commit.commitid,
-                                    measurement_key=measurement_key,
-                                    existing_value=existing_measurement.get("value"),
-                                    new_value=float(filtered_report.totals.coverage),
-                                ),
-                            )
 
                         component_measurements[measurement_key] = (
                             create_measurement_dict(
