@@ -8,6 +8,7 @@ from database.models import CompareCommit, CompareComponent
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.comparison_utils import get_comparison_proxy
+from services.report import ReportService
 from services.yaml import get_current_yaml, get_repo_yaml
 from tasks.base import BaseCodecovTask
 
@@ -69,9 +70,10 @@ class ComputeComponentComparisonTask(BaseCodecovTask):
         installation_name_to_use = get_installation_name_for_owner_for_task(
             self.name, repo.owner
         )
-        comparison_proxy = get_comparison_proxy(
-            comparison, current_yaml, installation_name_to_use
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
         )
+        comparison_proxy = get_comparison_proxy(comparison, report_service)
         head_commit = comparison_proxy.comparison.head.commit
 
         yaml: UserYaml = async_to_sync(get_current_yaml)(

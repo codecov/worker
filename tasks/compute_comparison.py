@@ -20,6 +20,7 @@ from rollouts import PARALLEL_COMPONENT_COMPARISON
 from services.archive import ArchiveService
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.comparison_utils import get_comparison_proxy
+from services.report import ReportService
 from services.yaml import get_current_yaml, get_repo_yaml
 from tasks.base import BaseCodecovTask
 from tasks.compute_component_comparison import compute_component_comparison_task
@@ -55,10 +56,11 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         installation_name_to_use = get_installation_name_for_owner_for_task(
             self.name, repo.owner
         )
-
-        comparison_proxy = get_comparison_proxy(
-            comparison, current_yaml, installation_name_to_use
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
         )
+
+        comparison_proxy = get_comparison_proxy(comparison, report_service)
         if not comparison_proxy.has_head_report():
             comparison.error = CompareCommitError.missing_head_report.value
             comparison.state = CompareCommitState.error.value
