@@ -3,33 +3,25 @@ codecov:
   notify:
     wait_for_ci: false
 
-
-coverage:
-  status:
-    patch: true
-    project:
-      default:
-        removed_code_behavior: "adjust_base"
-
-#component_management:
-#  default_rules:
-#    statuses:
-#      - type: project
-#        target: auto
-#  individual_components:
-#    - component_id: actual_code
-#      name: NonTestCode
-#      paths:
-#        - "!conftest.py"
-#        - "!**/conftest.py"
-#        - "!**tests**/test_*.py"
-#        - "!database/tests/factories/**"
-#    - component_id: no_tasks
-#      name: OutsideTasks
-#      paths:
-#        - "!tasks/**"
-#      flag_regexes:
-#        - "unit"
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+  individual_components:
+    - component_id: actual_code
+      name: NonTestCode
+      paths:
+        - "!conftest.py"
+        - "!**/conftest.py"
+        - "!**tests**/test_*.py"
+        - "!database/tests/factories/**"
+    - component_id: no_tasks
+      name: OutsideTasks
+      paths:
+        - "!tasks/**"
+      flag_regexes:
+        - "unit"
 
 test_analytics:
   flake_detection: true
