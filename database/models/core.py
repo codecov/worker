@@ -60,7 +60,9 @@ class Account(CodecovBaseModel, MixinBaseClassNoExternalID):
     name = Column(types.String(100), nullable=False, unique=True)
     is_active = Column(types.Boolean, nullable=False, default=True)
     plan = Column(
-        types.String(50), nullable=False, default=PlanName.BASIC_PLAN_NAME.value
+        types.String(50),
+        nullable=False,
+        default=PlanName.BASIC_PLAN_NAME.value,  # TODO: UPDATE WITH NEW FREE PLAN NAME
     )
     plan_seat_count = Column(types.SmallInteger, nullable=False, default=1)
     free_seat_count = Column(types.SmallInteger, nullable=False, default=0)

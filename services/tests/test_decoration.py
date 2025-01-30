@@ -35,6 +35,7 @@ from services.decoration import (
     determine_uploads_used,
 )
 from services.repository import EnrichedPull
+from tests.helpers import mock_all_plans_and_tiers
 
 
 @pytest.fixture
@@ -211,6 +212,10 @@ def gitlab_enriched_pull_root(dbsession, gitlab_root_group):
 
 
 class TestDecorationServiceTestCase(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
     @pytest.mark.django_db
     def test_decoration_type_basic_plan_upload_limit(
         self, enriched_pull, dbsession, mocker
@@ -452,6 +457,7 @@ class TestDecorationServiceTestCase(object):
 
         assert uploads_used == 2
 
+    @pytest.mark.django_db
     def test_get_decoration_type_no_pull(self, mocker):
         decoration_details = determine_decoration_details(None)
 
@@ -459,6 +465,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "No pull"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_no_provider_pull(self, mocker, enriched_pull):
         enriched_pull.provider_pull = None
 
@@ -471,6 +478,7 @@ class TestDecorationServiceTestCase(object):
         )
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_public_repo(self, dbsession, mocker, enriched_pull):
         enriched_pull.database_pull.repository.private = False
         dbsession.flush()
@@ -481,6 +489,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Public repo"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_not_pr_plan(self, dbsession, mocker, enriched_pull):
         enriched_pull.database_pull.repository.owner.plan = "users-inappm"
         dbsession.flush()
@@ -491,12 +500,14 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Org not on PR plan"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
+    # what is a users plan?
     def test_get_decoration_type_for_users_plan(self, dbsession):
         repository = RepositoryFactory.create(
             owner__username="drazisil-org",
             owner__service="github",
             owner__unencrypted_oauth_token="testtfasdfasdflxuu2kfer2ef23",
-            owner__plan="users",
+            owner__plan=PlanName.BASIC_PLAN_NAME.value,
             private=True,
         )
         dbsession.add(repository)
@@ -558,6 +569,7 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull_whitelisted.database_pull.repository.owner.plan_activated_users
         )
 
+    @pytest.mark.django_db
     def test_get_decoration_type_pr_author_not_in_db(self, mocker, enriched_pull):
         enriched_pull.provider_pull["author"]["id"] = "190"
 
@@ -567,6 +579,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "PR author not found in database"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_pr_author_manual_activation_required(
         self, dbsession, mocker, enriched_pull, with_sql_functions
     ):
@@ -593,6 +606,7 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
+    @pytest.mark.django_db
     @pytest.mark.parametrize(
         "is_bot,param,value",
         [
@@ -612,6 +626,7 @@ class TestDecorationServiceTestCase(object):
             pr_author.service_id = value
         assert _is_bot_account(pr_author) == is_bot
 
+    @pytest.mark.django_db
     def test_get_decoration_type_bot(self, dbsession, mocker, enriched_pull):
         pr_author = OwnerFactory.create(
             service="github",
@@ -632,6 +647,7 @@ class TestDecorationServiceTestCase(object):
         )
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_pr_author_already_active(
         self, dbsession, mocker, enriched_pull
     ):
@@ -656,6 +672,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "User is currently activated"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_should_attempt_pr_author_auto_activation(
         self, dbsession, mocker, enriched_pull
     ):
@@ -688,6 +705,7 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
+    @pytest.mark.django_db
     def test_get_decoration_type_should_attempt_pr_author_auto_activation_users_free(
         self, dbsession, mocker, enriched_pull
     ):
@@ -721,6 +739,7 @@ class TestDecorationServiceTestCase(object):
             not in enriched_pull.database_pull.repository.owner.plan_activated_users
         )
 
+    @pytest.mark.django_db
     def test_get_decoration_type_passing_empty_upload(
         self, dbsession, mocker, enriched_pull
     ):
@@ -733,6 +752,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Non testable files got changed."
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_failing_empty_upload(
         self, dbsession, mocker, enriched_pull
     ):
@@ -745,6 +765,7 @@ class TestDecorationServiceTestCase(object):
         assert decoration_details.reason == "Testable files got changed."
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_processing_upload(
         self, dbsession, mocker, enriched_pull
     ):
@@ -759,6 +780,11 @@ class TestDecorationServiceTestCase(object):
 
 
 class TestDecorationServiceGitLabTestCase(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
     def test_get_decoration_type_not_pr_plan_gitlab_subgroup(
         self,
         dbsession,
@@ -776,6 +802,7 @@ class TestDecorationServiceGitLabTestCase(object):
         assert decoration_details.reason == "Org not on PR plan"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_pr_author_not_in_db_gitlab_subgroup(
         self,
         mocker,
@@ -791,6 +818,7 @@ class TestDecorationServiceGitLabTestCase(object):
         assert decoration_details.reason == "PR author not found in database"
         assert decoration_details.should_attempt_author_auto_activation is False
 
+    @pytest.mark.django_db
     def test_get_decoration_type_pr_author_manual_activation_required_gitlab_subgroup(
         self,
         dbsession,
@@ -836,6 +864,7 @@ class TestDecorationServiceGitLabTestCase(object):
         # activation hasn't happened yet
         assert pr_author.ownerid not in gitlab_root_group.plan_activated_users
 
+    @pytest.mark.django_db
     def test_get_decoration_type_pr_author_already_active_subgroup(
         self,
         dbsession,
@@ -864,6 +893,7 @@ class TestDecorationServiceGitLabTestCase(object):
         assert decoration_details.activation_org_ownerid is None
         assert decoration_details.activation_author_ownerid is None
 
+    @pytest.mark.django_db
     def test_get_decoration_type_should_attempt_pr_author_auto_activation(
         self,
         dbsession,
@@ -895,6 +925,7 @@ class TestDecorationServiceGitLabTestCase(object):
         # activation hasn't happened yet
         assert pr_author.ownerid not in gitlab_root_group.plan_activated_users
 
+    @pytest.mark.django_db
     def test_get_decoration_type_owner_activated_users_null(
         self, dbsession, mocker, enriched_pull
     ):
@@ -956,6 +987,7 @@ class TestDecorationServiceGitLabTestCase(object):
 
         assert uploads_used == 0
 
+    @pytest.mark.django_db
     def test_author_is_activated_on_subgroup_not_root(
         self, dbsession, gitlab_root_group, gitlab_enriched_pull_subgroup
     ):

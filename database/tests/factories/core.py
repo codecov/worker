@@ -4,7 +4,8 @@ from uuid import uuid4
 
 import factory
 from factory import Factory
-from shared.plan.constants import PlanName
+from shared.django_apps.codecov_auth.models import Plan, Tier
+from shared.plan.constants import PlanName, TierName
 
 from database import enums, models
 from services.encryption import encryptor
@@ -298,6 +299,35 @@ class ConstantsFactory(Factory):
 
     key = ""
     value = ""
+
+
+class TierFactory(Factory):
+    class Meta:
+        model = Tier
+
+    tier_name = TierName.BASIC.value
+    bundle_analysis = False
+    test_analytics = False
+    flaky_test_detection = False
+    project_coverage = False
+    private_repo_support = False
+
+
+class PlanFactory(Factory):
+    class Meta:
+        model = Plan
+
+    tier = factory.SubFactory(TierFactory)
+    base_unit_price = 0
+    benefits = factory.LazyFunction(lambda: ["Benefit 1", "Benefit 2", "Benefit 3"])
+    billing_rate = None
+    is_active = True
+    marketing_name = factory.Faker("catch_phrase")
+    max_seats = 1
+    monthly_uploads_limit = None
+    name = PlanName.BASIC_PLAN_NAME.value
+    paid_plan = False
+    stripe_id = None
 
 
 class UploadErrorFactory(Factory):

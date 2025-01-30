@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import Sequence
 
-from shared.plan.constants import FREE_PLAN_REPRESENTATIONS, TEAM_PLAN_REPRESENTATIONS
+from shared.django_apps.codecov_auth.models import Plan
+from shared.plan.constants import TierName
 from shared.yaml import UserYaml
 from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import joinedload
@@ -449,10 +450,12 @@ def get_test_summary_for_commit(
 
 
 def not_private_and_free_or_team(repo: Repository):
+    plan = Plan.objects.select_related("tier").get(name=repo.owner.plan)
+
     return not (
         repo.private
-        and repo.owner.plan
-        in {**FREE_PLAN_REPRESENTATIONS, **TEAM_PLAN_REPRESENTATIONS}
+        and plan
+        and plan.tier.tier_name in {TierName.BASIC.value, TierName.TEAM.value}
     )
 
 
@@ -464,6 +467,7 @@ def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
         identifier=repo.repoid, default=True
     )
     has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
+
     return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)
 
 

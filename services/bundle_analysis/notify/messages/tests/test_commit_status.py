@@ -24,6 +24,7 @@ from services.bundle_analysis.notify.messages.commit_status import (
 )
 from services.notification.notifiers.base import NotificationResult
 from services.seats import SeatActivationInfo, ShouldActivateSeat
+from tests.helpers import mock_all_plans_and_tiers
 
 
 class FakeRedis(object):
@@ -55,6 +56,10 @@ def mock_cache(mocker):
 
 
 class TestCommitStatusMessage:
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
     @pytest.mark.parametrize(
         "user_config, expected",
         [
@@ -81,6 +86,7 @@ class TestCommitStatusMessage:
             ),
         ],
     )
+    @pytest.mark.django_db
     def test_build_message_from_samples_negative_changes(
         self, user_config, expected, dbsession, mocker, mock_storage
     ):
@@ -133,6 +139,7 @@ class TestCommitStatusMessage:
             ),
         ],
     )
+    @pytest.mark.django_db
     def test_build_message_from_samples(
         self, user_config, expected, dbsession, mocker, mock_storage
     ):
@@ -159,6 +166,7 @@ class TestCommitStatusMessage:
         message = CommitStatusMessageStrategy().build_message(context)
         assert message == expected
 
+    @pytest.mark.django_db
     def _setup_send_message_tests(
         self, dbsession, mocker, torngit_ghapp_data, mock_storage
     ):
@@ -207,6 +215,7 @@ class TestCommitStatusMessage:
             "Passed with Warnings - Bundle change: 95.64% (Threshold: 5.0%)",
         )
 
+    @pytest.mark.django_db
     @pytest.mark.parametrize(
         "torngit_ghapp_data",
         [
@@ -246,6 +255,7 @@ class TestCommitStatusMessage:
         # Side effect of sending message is updating the cache
         assert mock_cache.get_backend().get(strategy._cache_key(context)) == message
 
+    @pytest.mark.django_db
     def test_send_message_fail(self, dbsession, mocker, mock_storage):
         fake_repo_provider, context, message = self._setup_send_message_tests(
             dbsession, mocker, None, mock_storage
@@ -259,6 +269,7 @@ class TestCommitStatusMessage:
             explanation="TorngitClientError",
         )
 
+    @pytest.mark.django_db
     def test_skip_payload_unchanged(self, dbsession, mocker, mock_storage, mock_cache):
         fake_repo_provider, context, message = self._setup_send_message_tests(
             dbsession, mocker, None, mock_storage

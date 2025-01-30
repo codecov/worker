@@ -1,8 +1,10 @@
+import pytest
 from django.test import override_settings
 from shared.plan.constants import PlanName
 from shared.plan.service import PlanService
 
 from database.tests.factories import OwnerFactory
+from tests.helpers import mock_all_plans_and_tiers
 
 
 class TestBillingServiceTestCase(object):
@@ -10,6 +12,11 @@ class TestBillingServiceTestCase(object):
     BillingService is deprecated - use PlanService instead.
     """
 
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
     def test_pr_author_plan_check(self, request, dbsession, with_sql_functions):
         owner = OwnerFactory.create(service="github", plan="users-pr-inappm")
         dbsession.add(owner)
@@ -17,6 +24,7 @@ class TestBillingServiceTestCase(object):
         plan = PlanService(owner)
         assert plan.is_pr_billing_plan
 
+    @pytest.mark.django_db
     @override_settings(IS_ENTERPRISE=True)
     def test_pr_author_enterprise_plan_check(
         self, request, dbsession, mock_configuration, with_sql_functions
@@ -35,6 +43,7 @@ class TestBillingServiceTestCase(object):
 
         assert plan.is_pr_billing_plan
 
+    @pytest.mark.django_db
     def test_plan_not_pr_author(self, request, dbsession, with_sql_functions):
         owner = OwnerFactory.create(
             service="github", plan=PlanName.CODECOV_PRO_MONTHLY_LEGACY.value
@@ -46,6 +55,7 @@ class TestBillingServiceTestCase(object):
 
         assert not plan.is_pr_billing_plan
 
+    @pytest.mark.django_db
     @override_settings(IS_ENTERPRISE=True)
     def test_pr_author_enterprise_plan_check_non_pr_plan(
         self, request, dbsession, mocker, mock_configuration, with_sql_functions

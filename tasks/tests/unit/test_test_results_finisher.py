@@ -26,6 +26,7 @@ from services.repository import EnrichedPull
 from services.test_results import generate_test_id
 from services.urls import get_members_url
 from tasks.test_results_finisher import TestResultsFinisherTask
+from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
 
@@ -336,8 +337,12 @@ def test_results_setup_no_instances(mocker, dbsession):
 
 
 class TestUploadTestFinisherTask(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
     @pytest.mark.integration
-    @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.django_db
     def test_upload_finisher_task_call(
         self,
         mocker,
@@ -458,6 +463,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         )
 
     @pytest.mark.integration
+    @pytest.mark.django_db
     def test_upload_finisher_task_call_no_failures(
         self,
         mocker,
@@ -515,6 +521,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         assert expected_result == result
 
+    @pytest.mark.django_db
     @pytest.mark.integration
     def test_upload_finisher_task_call_no_success(
         self,
@@ -576,6 +583,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         )
 
     @pytest.mark.integration
+    @pytest.mark.django_db
     def test_upload_finisher_task_call_upgrade_comment(
         self,
         mocker,
@@ -648,6 +656,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         )
 
     @pytest.mark.integration
+    @pytest.mark.django_db
     def test_upload_finisher_task_call_existing_comment(
         self,
         mocker,
@@ -773,6 +782,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         assert expected_result == result
 
     @pytest.mark.integration
+    @pytest.mark.django_db
     def test_upload_finisher_task_call_comment_fails(
         self,
         mocker,
@@ -822,6 +832,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         "fail_count,count,recent_passes_count", [(2, 15, 13), (50, 150, 10)]
     )
     @pytest.mark.integration
+    @pytest.mark.django_db
     def test_upload_finisher_task_call_with_flaky(
         self,
         mocker,
@@ -932,6 +943,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         )
 
     @pytest.mark.integration
+    @pytest.mark.django_db
     def test_upload_finisher_task_call_main_branch(
         self,
         mocker,
@@ -988,7 +1000,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         )
 
     @pytest.mark.integration
-    @pytest.mark.django_db(databases={"default"})
+    @pytest.mark.django_db
     def test_upload_finisher_task_call_computed_name(
         self,
         mocker,
@@ -1105,6 +1117,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         )
 
     @pytest.mark.integration
+    @pytest.mark.django_db
     @pytest.mark.parametrize("plan", ["users-basic", "users-pr-inappm"])
     def test_upload_finisher_task_call_main_with_plan(
         self,

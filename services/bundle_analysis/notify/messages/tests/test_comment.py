@@ -26,10 +26,13 @@ from services.bundle_analysis.notify.messages.comment import (
 )
 from services.bundle_analysis.notify.types import NotificationUserConfig
 from services.notification.notifiers.base import NotificationResult
+from tests.helpers import mock_all_plans_and_tiers
 
 
 class TestCommentMesage:
+    @pytest.mark.django_db
     def test_build_message_from_samples(self, dbsession, mocker, mock_storage):
+        mock_all_plans_and_tiers()
         head_commit, base_commit = get_commit_pair(dbsession)
         repository = head_commit.repository
         head_commit_report, base_commit_report = get_report_pair(

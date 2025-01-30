@@ -66,7 +66,6 @@ class TestAdjustSession(BaseTestCase):
         second_file = EditableReportFile("second_file.py")
         first_report.append(first_file)
         first_report.append(second_file)
-        # print(self.convert_report_to_better_readable(first_report)["archive"])
         assert self.convert_report_to_better_readable(first_report)["archive"] == {
             "first_file.py": [
                 (
@@ -761,7 +760,6 @@ class TestAdjustSession(BaseTestCase):
             sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
         res = self.convert_report_to_better_readable(sample_first_report)
-        # print(res["report"]["sessions"])
         assert res["report"]["sessions"] == {
             "1": {
                 "t": None,

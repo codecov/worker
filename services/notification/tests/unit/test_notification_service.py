@@ -35,6 +35,7 @@ from services.notification.notifiers.mixins.status import (
     CUSTOM_TARGET_TEXT_PROJECT_KEY,
     CUSTOM_TARGET_TEXT_VALUE,
 )
+from tests.helpers import mock_all_plans_and_tiers
 
 
 @pytest.fixture
@@ -78,6 +79,11 @@ def sample_comparison(dbsession, request):
 
 
 class TestNotificationService(object):
+    @pytest.fixture(autouse=True)
+    def mock_all_plans_and_tiers_fixture(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
     def test_should_use_checks_notifier_yaml_field_false(self, dbsession):
         repository = RepositoryFactory.create()
         current_yaml = {"github_checks": False}
@@ -124,6 +130,7 @@ class TestNotificationService(object):
             ),
         ],
     )
+    @pytest.mark.django_db
     def test_should_use_checks_notifier_deprecated_flow(
         self, repo_data, outcome, dbsession
     ):
@@ -136,6 +143,7 @@ class TestNotificationService(object):
             == outcome
         )
 
+    @pytest.mark.django_db
     def test_should_use_checks_notifier_ghapp_all_repos_covered(self, dbsession):
         repository = RepositoryFactory.create(owner__service="github")
         ghapp_installation = GithubAppInstallation(
@@ -154,7 +162,11 @@ class TestNotificationService(object):
             == True
         )
 
-    def test_use_checks_notifier_for_team_plan(self, dbsession):
+    @pytest.mark.django_db
+    def test_use_checks_notifier_for_team_plan(
+        self,
+        dbsession,
+    ):
         repository = RepositoryFactory.create(
             owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
         )
@@ -182,6 +194,7 @@ class TestNotificationService(object):
             == True
         )
 
+    @pytest.mark.django_db
     def test_use_status_notifier_for_team_plan(self, dbsession):
         repository = RepositoryFactory.create(
             owner__service="github", owner__plan=PlanName.TEAM_MONTHLY.value
@@ -210,6 +223,7 @@ class TestNotificationService(object):
             == True
         )
 
+    @pytest.mark.django_db
     def test_use_status_notifier_for_non_team_plan(self, dbsession):
         repository = RepositoryFactory.create(
             owner__service="github", owner__plan=PlanName.CODECOV_PRO_MONTHLY.value
@@ -242,6 +256,7 @@ class TestNotificationService(object):
         "gh_installation_name",
         [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
     )
+    @pytest.mark.django_db
     def test_should_use_checks_notifier_ghapp_some_repos_covered(
         self, dbsession, gh_installation_name
     ):
@@ -275,6 +290,7 @@ class TestNotificationService(object):
             == False
         )
 
+    @pytest.mark.django_db
     def test_get_notifiers_instances_only_third_party(
         self, dbsession, mock_configuration
     ):
@@ -302,6 +318,7 @@ class TestNotificationService(object):
         assert instance.site_settings == ["slack.com"]
         assert instance.current_yaml == current_yaml
 
+    @pytest.mark.django_db
     def test_get_notifiers_instances_checks(
         self, dbsession, mock_configuration, mocker
     ):
@@ -338,6 +355,7 @@ class TestNotificationService(object):
             "codecov_slack_app",
         ]
 
+    @pytest.mark.django_db
     def test_get_notifiers_instances_slack_app_false(
         self, dbsession, mock_configuration, mocker
     ):
@@ -371,8 +389,13 @@ class TestNotificationService(object):
         "gh_installation_name",
         [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
     )
+    @pytest.mark.django_db
     def test_get_notifiers_instances_checks_percentage_whitelist(
-        self, dbsession, mock_configuration, mocker, gh_installation_name
+        self,
+        dbsession,
+        mock_configuration,
+        mocker,
+        gh_installation_name,
     ):
         repository = RepositoryFactory.create(
             owner__integration_id=123,
@@ -422,6 +445,7 @@ class TestNotificationService(object):
         "gh_installation_name",
         [GITHUB_APP_INSTALLATION_DEFAULT_NAME, "notifications-app"],
     )
+    @pytest.mark.django_db
     def test_get_notifiers_instances_comment(
         self, dbsession, mock_configuration, mocker, gh_installation_name
     ):
@@ -445,6 +469,7 @@ class TestNotificationService(object):
         assert len(instances) == 1
         assert instances[0].repository_service == gh_installation_name
 
+    @pytest.mark.django_db
     def test_notify_general_exception(self, mocker, dbsession, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
@@ -503,6 +528,7 @@ class TestNotificationService(object):
         res = notifications_service.notify(sample_comparison)
         assert expected_result == res
 
+    @pytest.mark.django_db
     def test_notify_data_sent_None(self, mocker, dbsession, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
@@ -567,6 +593,7 @@ class TestNotificationService(object):
         res = notifications_service.notify(sample_comparison)
         assert expected_result == res
 
+    @pytest.mark.django_db
     def test_notify_individual_notifier_timeout(self, mocker, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
@@ -589,6 +616,7 @@ class TestNotificationService(object):
             "title": "fake_notifier",
         }
 
+    @pytest.mark.django_db
     def test_notify_individual_checks_project_notifier(
         self, mocker, sample_comparison, mock_repo_provider, mock_configuration
     ):
@@ -642,6 +670,7 @@ class TestNotificationService(object):
             ),
         }
 
+    @pytest.mark.django_db
     def test_notify_individual_checks_patch_and_project_notifier_included_helper_text(
         self,
         mocker,
@@ -846,6 +875,7 @@ class TestNotificationService(object):
                     in r["result"].data_sent["message"]
                 )
 
+    @pytest.mark.django_db
     def test_notify_individual_notifier_timeout_notification_created(
         self, mocker, dbsession, sample_comparison
     ):
@@ -880,6 +910,7 @@ class TestNotificationService(object):
         assert pull_commit_notification.decoration_type == notifier.decoration_type
         assert pull_commit_notification.state == NotificationState.error
 
+    @pytest.mark.django_db
     def test_notify_individual_notifier_notification_created_then_updated(
         self, mocker, dbsession, sample_comparison
     ):
@@ -929,6 +960,7 @@ class TestNotificationService(object):
         dbsession.commit()
         assert pull_commit_notification.state == NotificationState.success
 
+    @pytest.mark.django_db
     def test_notify_individual_notifier_cancellation(self, mocker, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
@@ -947,6 +979,7 @@ class TestNotificationService(object):
                 notifier, sample_comparison
             )
 
+    @pytest.mark.django_db
     def test_notify_timeout_exception(self, mocker, dbsession, sample_comparison):
         current_yaml = {}
         commit = sample_comparison.head.commit
@@ -1023,6 +1056,7 @@ class TestNotificationService(object):
                 Notification.status_patch,
             )
 
+    @pytest.mark.django_db
     def test_not_licensed_enterprise(self, mocker, dbsession, sample_comparison):
         mocker.patch("services.notification.is_properly_licensed", return_value=False)
         mock_notify_individual_notifier = mocker.patch.object(
@@ -1038,6 +1072,7 @@ class TestNotificationService(object):
         assert expected_result == res
         assert not mock_notify_individual_notifier.called
 
+    @pytest.mark.django_db
     def test_get_statuses(self, mocker, dbsession, sample_comparison):
         current_yaml = {
             "coverage": {"status": {"project": True, "patch": True, "changes": True}},
@@ -1070,6 +1105,7 @@ class TestNotificationService(object):
         res = list(notifications_service.get_statuses(["unit", "banana", "strawberry"]))
         assert expected_result == res
 
+    @pytest.mark.django_db
     def test_get_component_statuses(self, mocker, dbsession, sample_comparison):
         current_yaml = {
             "component_management": {

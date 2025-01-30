@@ -22,6 +22,7 @@ from services.bundle_analysis.notify.contexts.comment import (
 )
 from services.repository import EnrichedPull
 from services.seats import SeatActivationInfo, ShouldActivateSeat
+from tests.helpers import mock_all_plans_and_tiers
 
 
 class TestBundleAnalysisPRCommentNotificationContext:
@@ -272,7 +273,9 @@ class TestBundleAnalysisPRCommentNotificationContext:
         builder.evaluate_should_use_upgrade_message()
         assert builder._notification_context.should_use_upgrade_comment == expected
 
+    @pytest.mark.django_db
     def test_build_context(self, dbsession, mocker, mock_storage):
+        mock_all_plans_and_tiers()
         head_commit, base_commit = get_commit_pair(dbsession)
         repository = head_commit.repository
         head_commit_report, base_commit_report = get_report_pair(
@@ -305,7 +308,9 @@ class TestBundleAnalysisPRCommentNotificationContext:
             == head_commit_report.external_id
         )
 
+    @pytest.mark.django_db
     def test_initialize_from_context(self, dbsession, mocker):
+        mock_all_plans_and_tiers()
         head_commit, base_commit = get_commit_pair(dbsession)
         user_yaml = UserYaml.from_dict(PATCH_CENTRIC_DEFAULT_CONFIG)
         builder = BundleAnalysisPRCommentContextBuilder().initialize(
