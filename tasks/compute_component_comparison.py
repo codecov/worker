@@ -1,5 +1,6 @@
 from asgiref.sync import async_to_sync
 from shared.components import Component
+from shared.utils.enums import TaskConfigGroup
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,10 @@ from services.comparison_utils import get_comparison_proxy
 from services.report import ReportService
 from services.yaml import get_current_yaml, get_repo_yaml
 from tasks.base import BaseCodecovTask
+
+task_name = (
+    f"app.tasks.{TaskConfigGroup.compute_comparison.value}.ComputeComponentComparison"
+)
 
 
 def compute_component_comparison(
@@ -55,7 +60,7 @@ def compute_component_comparison(
     db_session.flush()
 
 
-class ComputeComponentComparisonTask(BaseCodecovTask):
+class ComputeComponentComparisonTask(BaseCodecovTask, name=task_name):
     def run_impl(
         self,
         db_session: Session,
