@@ -463,8 +463,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             self.delete_archive(archive_service, upload)
         else:
             log.info(
-                "Writing readable files to archive",
-                extra=dict(upload_id=upload_id, readable_files=readable_files),
+                "Writing readable files to archive", extra=dict(upload_id=upload_id)
             )
             archive_service.write_file(upload.storage_path, readable_files)
 
@@ -482,10 +481,7 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         if archive_url and not archive_url.startswith("http"):
             log.info(
                 "Deleting uploaded file as requested",
-                extra=dict(
-                    archive_url=archive_url,
-                    upload=upload.external_id,
-                ),
+                extra=dict(archive_url=archive_url, upload=upload.external_id),
             )
             archive_service.delete_file(archive_url)
 
