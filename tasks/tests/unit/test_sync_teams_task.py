@@ -39,6 +39,7 @@ class TestSyncTeamsTaskUnit(object):
         )
         prev_team.plan_activated_users = [user.ownerid]
         dbsession.add(user)
+        dbsession.add(prev_team)
         dbsession.flush()
         SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
         assert prev_team.ownerid not in user.organizations
