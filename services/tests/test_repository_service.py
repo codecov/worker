@@ -41,7 +41,7 @@ from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     fetch_appropriate_parent_for_commit,
     fetch_commit_yaml_and_possibly_store,
-    get_or_create_author,
+    upsert_author,
     get_repo_provider_service,
     get_repo_provider_service_by_id,
     update_commit_from_provider_info,
@@ -721,13 +721,13 @@ async def test_fetch_appropriate_parent_for_commit_multiple_parents(
 
 
 @freeze_time("2024-03-28T00:00:00")
-def test_get_or_create_author_doesnt_exist(dbsession):
+def test_upsert_author_doesnt_exist(dbsession):
     service = "github"
     author_id = "123"
     username = "username"
     email = "email"
     name = "name"
-    author = get_or_create_author(dbsession, service, author_id, username, email, name)
+    author = upsert_author(dbsession, service, author_id, username, email, name)
     dbsession.flush()
     assert author.free == 0
     assert author is not None
@@ -746,7 +746,7 @@ def test_get_or_create_author_doesnt_exist(dbsession):
     assert author.createstamp.isoformat() == "2024-03-28T00:00:00"
 
 
-def test_get_or_create_author_already_exists(dbsession):
+def test_upsert_author_already_exists(dbsession):
     owner = OwnerFactory.create(
         service="bitbucket",
         service_id="975",
@@ -761,7 +761,7 @@ def test_get_or_create_author_already_exists(dbsession):
     username = "username"
     email = "email"
     name = "name"
-    author = get_or_create_author(dbsession, service, author_id, username, email, name)
+    author = upsert_author(dbsession, service, author_id, username, email, name)
     dbsession.flush()
     assert author.ownerid == owner.ownerid
     assert author.free == 0
@@ -771,6 +771,44 @@ def test_get_or_create_author_already_exists(dbsession):
     assert author.name == owner.name
     assert author.email == "different_email@email.com"
     assert author.username == "whoknew"
+    assert author.plan_activated_users == []
+    assert author.admins == []
+    assert author.permission == []
+    assert author.integration_id is None
+    assert author.yaml == {"a": ["12", "3"]}
+    assert author.oauth_token == owner.oauth_token
+    assert author.bot_id == owner.bot_id
+
+
+def test_upsert_author_needs_update(dbsession):
+    username = "username"
+    email = "email@email.com"
+    service = "bitbucket"
+    service_id = "975"
+    owner = OwnerFactory.create(
+        service=service,
+        service_id=service_id,
+        email=email,
+        username=username,
+        yaml=dict(a=["12", "3"]),
+    )
+    dbsession.add(owner)
+    dbsession.flush()
+
+    new_name = "Newt Namenheim"
+    new_username = "new_username"
+    new_email = "new_email@email.com"
+    author = upsert_author(dbsession, service, service_id, new_username, new_email, new_name)
+    dbsession.flush()
+
+    assert author is not None
+    assert author.ownerid == owner.ownerid
+    assert author.free == 0
+    assert author.service == service
+    assert author.service_id == service_id
+    assert author.name == new_name
+    assert author.email == new_email
+    assert author.username == new_username
     assert author.plan_activated_users == []
     assert author.admins == []
     assert author.permission == []
