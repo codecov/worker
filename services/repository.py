@@ -291,6 +291,7 @@ def upsert_author(
 
     if author:
         needs_update = False
+        db_session.begin(nested=True)
         if author.username != username and username is not None:
             author.username = username
             needs_update = True
@@ -303,6 +304,8 @@ def upsert_author(
 
         if needs_update:
             db_session.commit()
+        else:
+            db_session.rollback()
     else:
         db_session.begin(nested=True)
         try:
