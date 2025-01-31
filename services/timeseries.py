@@ -4,7 +4,6 @@ from typing import Any, Iterable, Mapping, Optional
 
 from shared.components import Component
 from shared.reports.readonly import ReadOnlyReport
-from shared.timeseries.helpers import is_timeseries_enabled
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -12,41 +11,9 @@ from database.models import Commit, Dataset, Measurement, MeasurementName
 from database.models.core import Repository
 from database.models.reports import RepositoryFlag
 from helpers.timeseries import backfill_max_batch_size
-from services.report import ReportService
-from services.yaml import get_repo_yaml
+from services.yaml import UserYaml, get_repo_yaml
 
 log = logging.getLogger(__name__)
-
-
-def save_commit_measurements(
-    commit: Commit, dataset_names: Iterable[str] = None
-) -> None:
-    if not is_timeseries_enabled():
-        return
-
-    if dataset_names is None:
-        dataset_names = [
-            dataset.name for dataset in repository_datasets_query(commit.repository)
-        ]
-    if len(dataset_names) == 0:
-        return
-
-    current_yaml = get_repo_yaml(commit.repository)
-    report_service = ReportService(current_yaml)
-    report = report_service.get_existing_report_for_commit(
-        commit, report_class=ReadOnlyReport
-    )
-
-    if report is None:
-        return
-
-    db_session = commit.get_db_session()
-
-    maybe_upsert_coverage_measurement(commit, dataset_names, db_session, report)
-    maybe_upsert_components_measurements(
-        commit, current_yaml, dataset_names, db_session, report
-    )
-    maybe_upsert_flag_measurements(commit, dataset_names, db_session, report)
 
 
 def maybe_upsert_coverage_measurement(commit, dataset_names, db_session, report):
@@ -105,66 +72,47 @@ def maybe_upsert_flag_measurements(commit, dataset_names, db_session, report):
             upsert_measurements(db_session, measurements)
 
 
-def maybe_upsert_components_measurements(
-    commit, current_yaml, dataset_names, db_session, report
+def upsert_components_measurements(
+    commit: Commit,
+    current_yaml: UserYaml,
+    db_session: Session,
+    report: ReadOnlyReport,
 ):
-    if MeasurementName.component_coverage.value in dataset_names:
-        components = current_yaml.get_components()
-        if components:
-            component_measurements = dict()
+    component_measurements = dict()
+    components = current_yaml.get_components()
+    for component in components:
+        if component.paths or component.flag_regexes:
+            report_and_component_matching_flags = component.get_matching_flags(
+                list(report.flags.keys())
+            )
+            filtered_report = report.filter(
+                flags=report_and_component_matching_flags,
+                paths=component.paths,
+            )
+            if filtered_report.totals.coverage is not None:
+                # This measurement key is being used to check for measurement existence and log the warning.
+                # TODO: see if we can remove this warning message as it's necessary to emit this warning.
+                # We're currently not doing anything with this information.
+                measurement_key = create_component_measurement_key(commit, component)
 
-            for component in components:
-                if component.paths or component.flag_regexes:
-                    report_and_component_matching_flags = component.get_matching_flags(
-                        report.flags.keys()
-                    )
-                    filtered_report = report.filter(
-                        flags=report_and_component_matching_flags, paths=component.paths
-                    )
-                    if filtered_report.totals.coverage is not None:
-                        # This measurement key is being used to check for measurement existence and log the warning.
-                        # TODO: see if we can remove this warning message as it's necessary to emit this warning.
-                        # We're currently not doing anything with this information.
-                        measurement_key = create_component_measurement_key(
-                            commit, component
-                        )
-                        if (
-                            existing_measurement := component_measurements.get(
-                                measurement_key
-                            )
-                        ) is not None:
-                            log.warning(
-                                "Duplicate measurement keys being added to measurements",
-                                extra=dict(
-                                    repoid=commit.repoid,
-                                    commit_id=commit.id_,
-                                    commitid=commit.commitid,
-                                    measurement_key=measurement_key,
-                                    existing_value=existing_measurement.get("value"),
-                                    new_value=float(filtered_report.totals.coverage),
-                                ),
-                            )
-
-                        component_measurements[measurement_key] = (
-                            create_measurement_dict(
-                                MeasurementName.component_coverage.value,
-                                commit,
-                                measurable_id=f"{component.component_id}",
-                                value=float(filtered_report.totals.coverage),
-                            )
-                        )
-
-            measurements = list(component_measurements.values())
-            if len(measurements) > 0:
-                upsert_measurements(db_session, measurements)
-                log.info(
-                    "Upserted component coverage measurements",
-                    extra=dict(
-                        repoid=commit.repoid,
-                        commit_id=commit.id_,
-                        count=len(measurements),
-                    ),
+                component_measurements[measurement_key] = create_measurement_dict(
+                    MeasurementName.component_coverage.value,
+                    commit,
+                    measurable_id=f"{component.component_id}",
+                    value=float(filtered_report.totals.coverage),
                 )
+
+    measurements = list(component_measurements.values())
+    if len(measurements) > 0:
+        upsert_measurements(db_session, measurements)
+        log.info(
+            "Upserted component coverage measurements",
+            extra=dict(
+                repoid=commit.repoid,
+                commit_id=commit.id_,
+                count=len(measurements),
+            ),
+        )
 
 
 def create_measurement_dict(
@@ -250,7 +198,6 @@ def repository_datasets_query(
 
 def repository_flag_ids(repository: Repository) -> Mapping[str, int]:
     db_session = repository.get_db_session()
-
     repo_flags = (
         db_session.query(RepositoryFlag).filter_by(repository=repository).yield_per(100)
     )
