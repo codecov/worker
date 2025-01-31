@@ -291,16 +291,16 @@ def upsert_author(
 
     if author:
         needs_update = False
-        if author.username != username and username != None:
+        if author.username != username and username is not None:
             author.username = username
             needs_update = True
-        if author.name != name and name != None:
+        if author.name != name and name is not None:
             author.name = name
             needs_update = True
-        if author.email != email and email != None:
+        if author.email != email and email is not None:
             author.email = email
             needs_update = True
-        
+
         if needs_update:
             db_session.commit()
     else:

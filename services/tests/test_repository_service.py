@@ -41,10 +41,10 @@ from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     fetch_appropriate_parent_for_commit,
     fetch_commit_yaml_and_possibly_store,
-    upsert_author,
     get_repo_provider_service,
     get_repo_provider_service_by_id,
     update_commit_from_provider_info,
+    upsert_author,
 )
 from tasks.notify import get_repo_provider_service_for_specific_commit
 
@@ -798,7 +798,9 @@ def test_upsert_author_needs_update(dbsession):
     new_name = "Newt Namenheim"
     new_username = "new_username"
     new_email = "new_email@email.com"
-    author = upsert_author(dbsession, service, service_id, new_username, new_email, new_name)
+    author = upsert_author(
+        dbsession, service, service_id, new_username, new_email, new_name
+    )
     dbsession.flush()
 
     assert author is not None
