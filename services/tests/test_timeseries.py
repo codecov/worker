@@ -936,6 +936,9 @@ class TestTimeseriesService(object):
         self, dbsession, sample_report, repository, mocker
     ):
         mocker.patch(
+            "tasks.save_commit_measurements.is_timeseries_enabled", return_value=True
+        )
+        mocker.patch(
             "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
             return_value=False,
         )
