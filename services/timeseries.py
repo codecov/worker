@@ -32,7 +32,7 @@ def maybe_upsert_coverage_measurement(commit, dataset_names, db_session, report)
 
 def maybe_upsert_flag_measurements(commit, dataset_names, db_session, report):
     if MeasurementName.flag_coverage.value in dataset_names:
-        flag_ids = repository_flag_ids(db_session, commit.repository)
+        flag_ids = repository_flag_ids(commit.repository)
         measurements = []
 
         for flag_name, flag in report.flags.items():
@@ -214,9 +214,8 @@ def repository_datasets_query(
     return datasets
 
 
-def repository_flag_ids(
-    db_session: Session, repository: Repository
-) -> Mapping[str, int]:
+def repository_flag_ids(repository: Repository) -> Mapping[str, int]:
+    db_session = repository.get_db_session()
     repo_flags = (
         db_session.query(RepositoryFlag).filter_by(repository=repository).yield_per(100)
     )
