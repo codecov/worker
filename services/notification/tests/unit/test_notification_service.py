@@ -31,9 +31,8 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from services.notification.notifiers.mixins.status import (
-    CUSTOM_TARGET_TEXT_PATCH_KEY,
-    CUSTOM_TARGET_TEXT_PROJECT_KEY,
-    CUSTOM_TARGET_TEXT_VALUE,
+    HelperTextKey,
+    HelperTextTemplate,
 )
 from tests.helpers import mock_all_plans_and_tiers
 
@@ -774,7 +773,7 @@ class TestNotificationService(object):
                 "annotations": [],
             },
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PATCH: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="patch",
                     notification_type="check",
                     point_of_comparison="patch",
@@ -797,7 +796,7 @@ class TestNotificationService(object):
                 "annotations": [],
             },
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="project",
                     notification_type="check",
                     point_of_comparison="head",
@@ -866,11 +865,11 @@ class TestNotificationService(object):
                 assert (
                     ":x: "
                     + checks_patch_result["included_helper_text"][
-                        CUSTOM_TARGET_TEXT_PATCH_KEY
+                        HelperTextKey.CUSTOM_TARGET_PATCH
                     ]
                     and ":x: "
                     + checks_proj_result["included_helper_text"][
-                        CUSTOM_TARGET_TEXT_PROJECT_KEY
+                        HelperTextKey.CUSTOM_TARGET_PROJECT
                     ]
                     in r["result"].data_sent["message"]
                 )

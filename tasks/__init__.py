@@ -21,6 +21,7 @@ from tasks.cache_test_rollups import cache_test_rollups_task
 from tasks.cache_test_rollups_redis import cache_test_rollups_redis_task
 from tasks.commit_update import commit_update_task
 from tasks.compute_comparison import compute_comparison_task
+from tasks.compute_component_comparison import compute_component_comparison_task
 from tasks.delete_owner import delete_owner_task
 from tasks.flush_repo import flush_repo
 from tasks.github_app_webhooks_check import gh_webhook_check_task
@@ -64,3 +65,4 @@ from tasks.update_branches import update_branches_task_name
 from tasks.upload import upload_task
 from tasks.upload_finisher import upload_finisher_task
 from tasks.upload_processor import upload_processor_task
+from tasks.upsert_component import upsert_component_task

@@ -52,12 +52,12 @@ class PatchChecksNotifier(StatusPatchMixin, ChecksNotifier):
             title = "Codecov Report"
 
         checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
-
-        should_annotate = (
-            checks_yaml_field.get("annotations", False)
-            if checks_yaml_field is not None
-            else True
-        )
+        try:
+            # checks_yaml_field can be dict, bool, None
+            # should_annotate defaults to False as of Jan 30 2025
+            should_annotate = checks_yaml_field.get("annotations", False)
+        except AttributeError:
+            should_annotate = False
 
         flags = self.notifier_yaml_settings.get("flags")
         paths = self.notifier_yaml_settings.get("paths")

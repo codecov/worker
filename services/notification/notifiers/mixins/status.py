@@ -25,25 +25,37 @@ class StatusResult(TypedDict):
     included_helper_text: dict[str, str]
 
 
-CUSTOM_TARGET_TEXT_PATCH_KEY = "custom_target_helper_text_patch"
-CUSTOM_TARGET_TEXT_PROJECT_KEY = "custom_target_helper_text_project"
-CUSTOM_RCB_INDIRECT_CHANGES_KEY = "custom_rcb_indirect_changes_helper_text"
-CUSTOM_TARGET_TEXT_VALUE = (
-    "Your {context} {notification_type} has failed because the {point_of_comparison} coverage ({coverage}%) is below the target coverage ({target}%). "
-    "You can increase the {point_of_comparison} coverage or adjust the "
-    "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
-)
-CUSTOM_RCB_INDIRECT_CHANGES_VALUE = (
-    "Your {context} {notification_type} has failed because you have indirect coverage changes. "
-    "Learn more about [Unexpected Coverage Changes](https://docs.codecov.com/docs/unexpected-coverage-changes) "
-    "and [reasons for indirect coverage changes](https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes)."
-)
+class HelperTextKey(str, Enum):
+    CUSTOM_TARGET_PATCH = "custom_target_helper_text_patch"
+    CUSTOM_TARGET_PROJECT = "custom_target_helper_text_project"
+    RCB_INDIRECT_CHANGES = "rcb_indirect_changes_helper_text"
+    RCB_ADJUST_BASE = "rcb_adjust_base_helper_text"
+
+
+class HelperTextTemplate(str, Enum):
+    CUSTOM_TARGET = (
+        "Your {context} {notification_type} has failed because the {point_of_comparison} coverage ({coverage}%) is below the target coverage ({target}%). "
+        "You can increase the {point_of_comparison} coverage or adjust the "
+        "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
+    )
+    INDIRECT_CHANGES = (
+        "Your {context} {notification_type} has failed because you have indirect coverage changes. "
+        "Learn more about [Unexpected Coverage Changes](https://docs.codecov.com/docs/unexpected-coverage-changes) "
+        "and [reasons for indirect coverage changes](https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes)."
+    )
+    RCB_ADJUST_BASE = (
+        "Your project {notification_type} has failed because the head coverage ({coverage}%) "
+        "is below the [adjusted base coverage](https://docs.codecov.com/docs/removed-code-behavior#option-3-default-adjust_base) ({adjusted_base_cov}%). "
+        "You can increase the head coverage or adjust the "
+        "[Removed Code Behavior](https://docs.codecov.com/docs/removed-code-behavior)."
+    )
 
 
 HELPER_TEXT_MAP = {
-    CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE,
-    CUSTOM_TARGET_TEXT_PROJECT_KEY: CUSTOM_TARGET_TEXT_VALUE,
-    CUSTOM_RCB_INDIRECT_CHANGES_KEY: CUSTOM_RCB_INDIRECT_CHANGES_VALUE,
+    HelperTextKey.CUSTOM_TARGET_PATCH: HelperTextTemplate.CUSTOM_TARGET,
+    HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET,
+    HelperTextKey.RCB_INDIRECT_CHANGES: HelperTextTemplate.INDIRECT_CHANGES,
+    HelperTextKey.RCB_ADJUST_BASE: HelperTextTemplate.RCB_ADJUST_BASE,
 }
 
 
@@ -122,14 +134,18 @@ class StatusPatchMixin(object):
                         f"{coverage_rounded}% of diff hit (target {target_rounded}%)"
                     )
                 if state == StatusState.failure.value and is_custom_target:
-                    helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PATCH_KEY].format(
+                    helper_text = HELPER_TEXT_MAP[
+                        HelperTextKey.CUSTOM_TARGET_PATCH
+                    ].value.format(
                         context=self.context,
                         notification_type=notification_type,
                         point_of_comparison=self.context,
                         coverage=coverage_rounded,
                         target=target_rounded,
                     )
-                    included_helper_text[CUSTOM_TARGET_TEXT_PATCH_KEY] = helper_text
+                    included_helper_text[HelperTextKey.CUSTOM_TARGET_PATCH.value] = (
+                        helper_text
+                    )
             return StatusResult(
                 state=state, message=message, included_helper_text=included_helper_text
             )
@@ -229,13 +245,16 @@ class StatusProjectMixin(object):
         return None
 
     def _apply_adjust_base_behavior(
-        self, comparison: ComparisonProxy | FilteredComparison
-    ) -> tuple[str, str] | None:
+        self,
+        comparison: ComparisonProxy | FilteredComparison,
+        notification_type: str,
+    ) -> tuple[tuple[str, str] | None, dict]:
         """
         Rule for passing project status on adjust_base behavior:
         We adjust the BASE of the comparison by removing from it lines that were removed in HEAD
         And then re-calculate BASE coverage and compare it to HEAD coverage.
         """
+        helper_text = {}
         log.info(
             "Applying adjust_base behavior to project status",
             extra=dict(commit=comparison.head.commit.commitid),
@@ -248,7 +267,7 @@ class StatusProjectMixin(object):
                 "Notifier settings specify target value. Skipping adjust_base.",
                 extra=dict(commit=comparison.head.commit.commitid),
             )
-            return None
+            return None, helper_text
 
         impacted_files = comparison.get_impacted_files().get("files", [])
 
@@ -278,7 +297,7 @@ class StatusProjectMixin(object):
         )
 
         if not base_adjusted_totals:
-            return None
+            return None, helper_text
 
         # The coverage info is in percentage, so multiply by 100
         base_adjusted_coverage = (
@@ -303,19 +322,34 @@ class StatusProjectMixin(object):
         quantized_base_adjusted_coverage = base_adjusted_coverage.quantize(
             Decimal("0.00000")
         )
+        rounded_base_adjusted_coverage = round_number(
+            self.current_yaml, base_adjusted_coverage
+        )
+
         if quantized_base_adjusted_coverage - head_coverage < Decimal("0.005"):
             rounded_difference = max(
                 0,
                 round_number(self.current_yaml, head_coverage - base_adjusted_coverage),
             )
-            rounded_base_adjusted_coverage = round_number(
-                self.current_yaml, base_adjusted_coverage
-            )
             return (
-                StatusState.success.value,
-                f", passed because coverage increased by {rounded_difference}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)",
+                (
+                    StatusState.success.value,
+                    f", passed because coverage increased by {rounded_difference}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)",
+                ),
+                helper_text,
             )
-        return None
+        # use rounded numbers for messages
+        coverage_rounded = round_number(self.current_yaml, head_coverage)
+
+        # their comparison failed despite the adjusted base, give them helper text about it
+        helper_text[HelperTextKey.RCB_ADJUST_BASE.value] = HELPER_TEXT_MAP[
+            HelperTextKey.RCB_ADJUST_BASE
+        ].value.format(
+            notification_type=notification_type,
+            coverage=coverage_rounded,
+            adjusted_base_cov=rounded_base_adjusted_coverage,
+        )
+        return None, helper_text
 
     def _apply_fully_covered_patch_behavior(
         self,
@@ -344,8 +378,8 @@ class StatusProjectMixin(object):
             )
 
             # their comparison failed because of unexpected/indirect changes, give them helper text about it
-            helper_text[CUSTOM_RCB_INDIRECT_CHANGES_KEY] = HELPER_TEXT_MAP[
-                CUSTOM_RCB_INDIRECT_CHANGES_KEY
+            helper_text[HelperTextKey.RCB_INDIRECT_CHANGES] = HELPER_TEXT_MAP[
+                HelperTextKey.RCB_INDIRECT_CHANGES
             ].format(
                 context=self.context,
                 notification_type=notification_type,
@@ -387,15 +421,26 @@ class StatusProjectMixin(object):
         # The removed code behavior can change the `state` from `failure` to `success` and add to the `message`.
         # We need both reports to be able to get the diff and apply the removed_code behavior
         if comparison.project_coverage_base.report and comparison.head.report:
+            is_custom_rcb = True
             removed_code_behavior = self.notifier_yaml_settings.get(
-                "removed_code_behavior", self.DEFAULT_REMOVED_CODE_BEHAVIOR
+                "removed_code_behavior", None
             )
+            if removed_code_behavior is None:
+                is_custom_rcb = False
+                removed_code_behavior = self.DEFAULT_REMOVED_CODE_BEHAVIOR
+
             # Apply removed_code_behavior
             removed_code_result = None
             if removed_code_behavior == "removals_only":
                 removed_code_result = self._apply_removals_only_behavior(comparison)
             elif removed_code_behavior == "adjust_base":
-                removed_code_result = self._apply_adjust_base_behavior(comparison)
+                removed_code_result, helper_text = self._apply_adjust_base_behavior(
+                    comparison,
+                    notification_type=notification_type,
+                )
+                if is_custom_rcb:
+                    # if user set this in their yaml, give them helper text related to it
+                    result["included_helper_text"].update(helper_text)
             elif removed_code_behavior == "fully_covered_patch":
                 removed_code_result, helper_text = (
                     self._apply_fully_covered_patch_behavior(
@@ -513,14 +558,16 @@ class StatusProjectMixin(object):
             target_rounded = round_number(self.current_yaml, target_coverage)
             message = f"{head_coverage_rounded}% (target {target_rounded}%)"
             if state == StatusState.failure.value:
-                helper_text = HELPER_TEXT_MAP[CUSTOM_TARGET_TEXT_PROJECT_KEY].format(
+                helper_text = HELPER_TEXT_MAP[
+                    HelperTextKey.CUSTOM_TARGET_PROJECT
+                ].value.format(
                     context=self.context,
                     notification_type=notification_type,
                     point_of_comparison=self.point_of_comparison,
                     coverage=head_coverage_rounded,
                     target=target_rounded,
                 )
-                included_helper_text[CUSTOM_TARGET_TEXT_PROJECT_KEY] = helper_text
+                included_helper_text[HelperTextKey.CUSTOM_TARGET_PROJECT] = helper_text
             return StatusResult(
                 state=state, message=message, included_helper_text=included_helper_text
             )
