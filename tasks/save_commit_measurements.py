@@ -49,9 +49,7 @@ def save_commit_measurements(commit: Commit, dataset_names: Sequence[str]) -> No
     if MeasurementName.component_coverage.value in dataset_names:
         components = current_yaml.get_components()
         if components:
-            if PARALLEL_COMPONENT_COMPARISON.check_value(
-                commit.repository.repoid, True
-            ):
+            if PARALLEL_COMPONENT_COMPARISON.check_value(commit.repository.repoid):
                 task_signatures = []
                 components = current_yaml.get_components()
                 for component in components:
