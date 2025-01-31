@@ -474,6 +474,9 @@ class TestNotifyTask(object):
                             "title": "codecov/changes",
                             "state": "failure",
                             "message": "1 file has indirect coverage changes not visible in diff",
+                            "included_helper_text": {
+                                "indirect_changes_helper_text": "Your changes status has failed because you have indirect coverage changes. Learn more about [Unexpected Coverage Changes](https://docs.codecov.com/docs/unexpected-coverage-changes) and [reasons for indirect coverage changes](https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes)."
+                            },
                         },
                         data_received={"id": 9333281703},
                     ),
