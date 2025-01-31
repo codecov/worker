@@ -21,8 +21,8 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from services.notification.notifiers.mixins.status import (
-    CUSTOM_TARGET_TEXT_PATCH_KEY,
-    CUSTOM_TARGET_TEXT_VALUE,
+    HelperTextKey,
+    HelperTextTemplate,
 )
 from services.notification.notifiers.status import PatchStatusNotifier
 from tests.helpers import mock_all_plans_and_tiers
@@ -798,7 +798,7 @@ class TestPatchChecksNotifier(object):
                 "annotations": [],
             },
             "included_helper_text": {
-                CUSTOM_TARGET_TEXT_PATCH_KEY: CUSTOM_TARGET_TEXT_VALUE.format(
+                HelperTextKey.CUSTOM_TARGET_PATCH: HelperTextTemplate.CUSTOM_TARGET.format(
                     context="patch",
                     notification_type="check",
                     point_of_comparison="patch",
