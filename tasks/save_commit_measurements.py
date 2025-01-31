@@ -13,6 +13,7 @@ from services.report import ReportService
 from services.timeseries import (
     maybe_upsert_coverage_measurement,
     maybe_upsert_flag_measurements,
+    repository_datasets_query,
     upsert_components_measurements,
 )
 from services.yaml import get_repo_yaml
@@ -83,7 +84,7 @@ class SaveCommitMeasurementsTask(
         db_session: Session,
         commitid: str,
         repoid: int,
-        dataset_names: Sequence[str],
+        dataset_names: Sequence[str] | None,
         *args,
         **kwargs,
     ):
@@ -105,6 +106,13 @@ class SaveCommitMeasurementsTask(
 
         if commit is None:
             return {"successful": False, "error": "no_commit_in_db"}
+
+        if dataset_names is None:
+            dataset_names = [
+                dataset.name for dataset in repository_datasets_query(commit.repository)
+            ]
+        if len(dataset_names) == 0:
+            return
 
         try:
             # TODO: We should improve on the error handling/logs inside this fn
