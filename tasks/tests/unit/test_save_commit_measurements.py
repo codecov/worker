@@ -1,4 +1,5 @@
 from database.tests.factories.core import CommitFactory, OwnerFactory, RepositoryFactory
+from services.timeseries import MeasurementName
 from tasks.save_commit_measurements import SaveCommitMeasurementsTask
 
 
@@ -21,10 +22,20 @@ class TestSaveCommitMeasurements(object):
 
         task = SaveCommitMeasurementsTask()
         assert task.run_impl(
-            dbsession, commitid=commit.commitid, repoid=commit.repoid
+            dbsession,
+            commitid=commit.commitid,
+            repoid=commit.repoid,
+            dataset_names=[
+                MeasurementName.coverage.value,
+                MeasurementName.flag_coverage.value,
+            ],
         ) == {"successful": True}
         save_commit_measurements_mock.assert_called_with(
-            commit=commit, dataset_names=None
+            commit=commit,
+            dataset_names=[
+                MeasurementName.coverage.value,
+                MeasurementName.flag_coverage.value,
+            ],
         )
 
     def test_save_commit_measurements_no_commit(self, dbsession):
@@ -59,7 +70,13 @@ class TestSaveCommitMeasurements(object):
 
         task = SaveCommitMeasurementsTask()
         assert task.run_impl(
-            dbsession, commitid=commit.commitid, repoid=commit.repoid
+            dbsession,
+            commitid=commit.commitid,
+            repoid=commit.repoid,
+            dataset_names=[
+                MeasurementName.coverage.value,
+                MeasurementName.flag_coverage.value,
+            ],
         ) == {
             "successful": False,
             "error": "exception",

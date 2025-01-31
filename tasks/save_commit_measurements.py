@@ -1,10 +1,9 @@
 import logging
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from celery import group
 from shared.celery_config import timeseries_save_commit_measurements_task_name
 from shared.reports.readonly import ReadOnlyReport
-from shared.timeseries.helpers import is_timeseries_enabled
 from sqlalchemy.orm import Session
 
 from app import celery_app
@@ -12,10 +11,8 @@ from database.models import Commit, MeasurementName
 from rollouts import PARALLEL_COMPONENT_COMPARISON
 from services.report import ReportService
 from services.timeseries import (
-    find_duplicate_component_ids,
     maybe_upsert_coverage_measurement,
     maybe_upsert_flag_measurements,
-    repository_datasets_query,
     upsert_components_measurements,
 )
 from services.yaml import get_repo_yaml
@@ -25,21 +22,7 @@ from tasks.upsert_component import upsert_component_task
 log = logging.getLogger(__name__)
 
 
-def save_commit_measurements(
-    commit: Commit, dataset_names: Sequence[str] | None = None
-) -> None:
-    if not is_timeseries_enabled():
-        log.debug(
-            "Timeseries is disabled, skipping save_commit_measurements",
-            extra=dict(commitid=commit.commitid, repoid=commit.repoid),
-        )
-        return
-
-    if dataset_names is None:
-        dataset_names = [
-            dataset.name for dataset in repository_datasets_query(commit.repository)
-        ]
-
+def save_commit_measurements(commit: Commit, dataset_names: Sequence[str]) -> None:
     if len(dataset_names) == 0:
         log.debug(
             "No datasets found for commit",
@@ -66,19 +49,28 @@ def save_commit_measurements(
     if MeasurementName.component_coverage.value in dataset_names:
         components = current_yaml.get_components()
         if components:
-            find_duplicate_component_ids(components, commit)
-            if PARALLEL_COMPONENT_COMPARISON.check_value(commit.repository.repoid):
-                g = group(
-                    [
-                        upsert_component_task.s(
-                            commit.commitid,
-                            commit.repoid,
-                            component.component_id,
+            if PARALLEL_COMPONENT_COMPARISON.check_value(
+                commit.repository.repoid, True
+            ):
+                task_signatures = []
+                components = current_yaml.get_components()
+                for component in components:
+                    if component.paths or component.flag_regexes:
+                        report_and_component_matching_flags = (
+                            component.get_matching_flags(list(report.flags.keys()))
                         )
-                        for component in components
-                    ]
-                )
-                g.apply_async()
+                        task_signatures.append(
+                            upsert_component_task.s(
+                                commit.commitid,
+                                commit.repoid,
+                                component.component_id,
+                                report_and_component_matching_flags,
+                                component.paths,
+                            )
+                        )
+                if task_signatures:
+                    task_group = group(task_signatures)
+                    task_group.apply_async()
             else:
                 upsert_components_measurements(commit, current_yaml, db_session, report)
 
@@ -93,7 +85,7 @@ class SaveCommitMeasurementsTask(
         db_session: Session,
         commitid: str,
         repoid: int,
-        dataset_names: Iterable[int] = None,
+        dataset_names: Sequence[str],
         *args,
         **kwargs,
     ):

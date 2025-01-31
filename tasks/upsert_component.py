@@ -1,69 +1,16 @@
 import logging
-from datetime import datetime
-from typing import TypedDict
 
-from asgiref.sync import async_to_sync
 from shared.reports.readonly import ReadOnlyReport
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.models import Commit, Measurement, MeasurementName
-from helpers.github_installation import get_installation_name_for_owner_for_task
+from database.models import Commit, MeasurementName
 from services.report import ReportService
-from services.repository import get_repo_provider_service
-from services.yaml import UserYaml, get_current_yaml
+from services.timeseries import create_measurement_dict, upsert_measurements
+from services.yaml import get_repo_yaml
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
-
-
-class MeasurementDict(TypedDict):
-    name: str
-    owner_id: int
-    repo_id: int
-    measurable_id: str
-    branch: str
-    commit_sha: str
-    timestamp: datetime
-    value: float
-
-
-def create_measurement_dict(
-    name: str, commit: Commit, measurable_id: str, value: float
-) -> MeasurementDict:
-    return {
-        "name": name,
-        "owner_id": commit.repository.ownerid,
-        "repo_id": commit.repoid,
-        "measurable_id": measurable_id,
-        "branch": commit.branch,
-        "commit_sha": commit.commitid,
-        "timestamp": commit.timestamp,
-        "value": value,
-    }
-
-
-def upsert_measurements(
-    db_session: Session, measurements: list[MeasurementDict]
-) -> None:
-    command = insert(Measurement.__table__).values(measurements)
-    command = command.on_conflict_do_update(
-        index_elements=[
-            Measurement.name,
-            Measurement.owner_id,
-            Measurement.repo_id,
-            Measurement.measurable_id,
-            Measurement.commit_sha,
-            Measurement.timestamp,
-        ],
-        set_=dict(
-            branch=command.excluded.branch,
-            value=command.excluded.value,
-        ),
-    )
-    db_session.execute(command)
-    db_session.flush()
 
 
 class UpsertComponentTask(BaseCodecovTask):
@@ -73,6 +20,8 @@ class UpsertComponentTask(BaseCodecovTask):
         commitid: str,
         repoid: int,
         component_id: str,
+        flags: list[str],
+        paths: list[str],
         *args,
         **kwargs,
     ):
@@ -84,19 +33,9 @@ class UpsertComponentTask(BaseCodecovTask):
             .first()
         )
 
-        installation_name_to_use = get_installation_name_for_owner_for_task(
-            self.name, commit.repository.owner
-        )
+        current_yaml = get_repo_yaml(commit.repository)
 
-        repository_service = get_repo_provider_service(
-            commit.repository, installation_name_to_use=installation_name_to_use
-        )
-
-        yaml: UserYaml = async_to_sync(get_current_yaml)(commit, repository_service)
-
-        components = yaml.get_components()
-
-        report_service = ReportService(yaml)
+        report_service = ReportService(current_yaml)
         report = report_service.get_existing_report_for_commit(
             commit, report_class=ReadOnlyReport
         )
@@ -112,26 +51,16 @@ class UpsertComponentTask(BaseCodecovTask):
             )
             return
 
-        component_dict = {component.component_id: component for component in components}
-
-        component = component_dict[component_id]
-
-        if component.paths or component.flag_regexes:
-            report_and_component_matching_flags = component.get_matching_flags(
-                list(report.flags.keys())
+        filtered_report = report.filter(flags=flags, paths=paths)
+        if filtered_report.totals.coverage is not None:
+            measurement = create_measurement_dict(
+                MeasurementName.component_coverage.value,
+                commit,
+                measurable_id=f"{component_id}",
+                value=float(filtered_report.totals.coverage),
             )
-            filtered_report = report.filter(
-                flags=report_and_component_matching_flags, paths=component.paths
-            )
-            if filtered_report.totals.coverage is not None:
-                measurement = create_measurement_dict(
-                    MeasurementName.component_coverage.value,
-                    commit,
-                    measurable_id=f"{component.component_id}",
-                    value=float(filtered_report.totals.coverage),
-                )
 
-                upsert_measurements(db_session, [measurement])
+            upsert_measurements(db_session, [measurement])
 
 
 registered_task = celery_app.register_task(UpsertComponentTask())

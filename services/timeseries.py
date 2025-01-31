@@ -72,24 +72,6 @@ def maybe_upsert_flag_measurements(commit, dataset_names, db_session, report):
             upsert_measurements(db_session, measurements)
 
 
-def find_duplicate_component_ids(components: list[Component], commit: Commit):
-    seen_component_ids = {}
-    for component in components:
-        if component.component_id in seen_component_ids:
-            log.warning(
-                "Duplicate component ID found",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit_id=commit.commitid,
-                    component_id=component.component_id,
-                    first_component_name=seen_component_ids[component.component_id],
-                    duplicate_component_name=component.name,
-                ),
-            )
-        seen_component_ids[component.component_id] = component.name
-    return False
-
-
 def upsert_components_measurements(
     commit: Commit,
     current_yaml: UserYaml,

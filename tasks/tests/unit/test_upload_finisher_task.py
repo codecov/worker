@@ -11,12 +11,14 @@ from shared.yaml import UserYaml
 from database.models.reports import CommitReport
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from database.tests.factories.core import UploadFactory
+from database.tests.factories.timeseries import DatasetFactory
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.log_context import LogContext, set_log_context
 from services.processing.merging import get_joined_flag, update_uploads
 from services.processing.types import MergeResult, ProcessingResult
+from services.timeseries import MeasurementName
 from tasks.upload_finisher import (
     ReportService,
     ShouldCallNotifyResult,
@@ -616,6 +618,8 @@ class TestUploadFinisherTask(object):
     ):
         mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
         mocker.patch("tasks.upload_finisher.update_uploads")
+
+        mocker.patch("tasks.upload_finisher.is_timeseries_enabled", return_value=True)
         mocked_app = mocker.patch.object(
             UploadFinisherTask,
             "app",
@@ -629,6 +633,24 @@ class TestUploadFinisherTask(object):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
+
+        mocker.patch(
+            "tasks.upload_finisher.repository_datasets_query",
+            return_value=[
+                DatasetFactory.create(
+                    repository_id=commit.repository.repoid,
+                    name=MeasurementName.coverage.value,
+                ),
+                DatasetFactory.create(
+                    repository_id=commit.repository.repoid,
+                    name=MeasurementName.flag_coverage.value,
+                ),
+                DatasetFactory.create(
+                    repository_id=commit.repository.repoid,
+                    name=MeasurementName.component_coverage.value,
+                ),
+            ],
+        )
 
         previous_results = [{"upload_id": 0, "arguments": {}, "successful": True}]
         UploadFinisherTask().run_impl(
@@ -645,7 +667,11 @@ class TestUploadFinisherTask(object):
             kwargs={
                 "commitid": commit.commitid,
                 "repoid": commit.repoid,
-                "dataset_names": None,
+                "dataset_names": [
+                    MeasurementName.coverage.value,
+                    MeasurementName.flag_coverage.value,
+                    MeasurementName.component_coverage.value,
+                ],
             }
         )
 
