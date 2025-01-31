@@ -747,30 +747,30 @@ def test_upsert_author_doesnt_exist(dbsession):
 
 
 def test_upsert_author_already_exists(dbsession):
+    username = "username"
+    email = "email@email.com"
+    service = "bitbucket"
+    service_id = "975"
     owner = OwnerFactory.create(
-        service="bitbucket",
-        service_id="975",
-        email="different_email@email.com",
-        username="whoknew",
+        service=service,
+        service_id=service_id,
+        email=email,
+        username=username,
         yaml=dict(a=["12", "3"]),
     )
     dbsession.add(owner)
     dbsession.flush()
-    service = "bitbucket"
-    author_id = "975"
-    username = "username"
-    email = "email"
-    name = "name"
-    author = upsert_author(dbsession, service, author_id, username, email, name)
+
+    author = upsert_author(dbsession, service, service_id, username, None, None)
     dbsession.flush()
     assert author.ownerid == owner.ownerid
     assert author.free == 0
     assert author is not None
-    assert author.service == "bitbucket"
-    assert author.service_id == "975"
+    assert author.service == service
+    assert author.service_id == service_id
     assert author.name == owner.name
-    assert author.email == "different_email@email.com"
-    assert author.username == "whoknew"
+    assert author.email == email
+    assert author.username == username
     assert author.plan_activated_users == []
     assert author.admins == []
     assert author.permission == []
