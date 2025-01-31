@@ -14,7 +14,7 @@ from database.models import Commit, Flake, TestResultReportTotals
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
-from services.activation import activate_user
+from services.activation import activate_user, schedule_new_user_activated_task
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.redis import get_redis_connection
 from services.repository import (
@@ -258,7 +258,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                         user_ownerid=activate_seat_info.author_id,
                     )
                     if successful_activation:
-                        self.schedule_new_user_activated_task(
+                        schedule_new_user_activated_task(
                             activate_seat_info.owner_id,
                             activate_seat_info.author_id,
                         )
