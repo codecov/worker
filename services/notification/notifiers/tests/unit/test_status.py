@@ -1639,7 +1639,7 @@ class TestProjectStatusNotifier(object):
             ),
             head=FullCommit(commit=CommitFactory(), report=Report(totals=head_totals)),
         )
-        settings = {"target": "auto"}
+        settings = {"target": "auto", "threshold": "0"}
         status_mixin = ProjectStatusNotifier(
             repository="repo",
             title="fake-notifier",
@@ -1691,6 +1691,54 @@ class TestProjectStatusNotifier(object):
         )
         expected_result = {
             "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by 0% when compared to adjusted base (50.00%)",
+            "state": "success",
+            "included_helper_text": {},
+        }
+        result = notifier.build_payload(sample_comparison)
+        assert result == expected_result
+        mock_get_impacted_files.assert_called()
+
+    def test_notify_pass_adjust_base_behavior_with_threshold(
+        self, mock_configuration, sample_comparison_negative_change, mocker
+    ):
+        sample_comparison = sample_comparison_negative_change
+        mock_get_impacted_files = mocker.patch.object(
+            ComparisonProxy,
+            "get_impacted_files",
+            return_value={
+                "files": [
+                    {
+                        "base_name": "tests/file1.py",
+                        "head_name": "tests/file1.py",
+                        # Not complete, but we only care about these fields
+                        "removed_diff_coverage": [[1, "h"], [3, "h"], [4, "m"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                    {
+                        "base_name": "tests/file2.go",
+                        "head_name": "tests/file2.go",
+                        "removed_diff_coverage": [[1, "h"]],
+                        "added_diff_coverage": [],
+                        "unexpected_line_changes": [],
+                    },
+                ],
+            },
+        )
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        notifier = ProjectStatusNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={
+                "removed_code_behavior": "adjust_base",
+                "threshold": "5",
+            },
+            notifier_site_settings=True,
+            current_yaml=UserYaml({}),
+            repository_service={},
+        )
+        expected_result = {
+            "message": f"50.00% (-10.00%) compared to {sample_comparison.project_coverage_base.commit.commitid[:7]}, passed because coverage increased by 5.00% when compared to adjusted base (45.00%)",
             "state": "success",
             "included_helper_text": {},
         }
