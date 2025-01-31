@@ -1,6 +1,7 @@
 import logging
 
 from shared.reports.readonly import ReadOnlyReport
+from shared.utils.enums import TaskConfigGroup
 from sqlalchemy.orm import Session
 
 from app import celery_app
@@ -12,8 +13,10 @@ from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
+task_name = f"app.tasks.{TaskConfigGroup.timeseries.value}.UpsertComponentTask"
 
-class UpsertComponentTask(BaseCodecovTask):
+
+class UpsertComponentTask(BaseCodecovTask, name=task_name):
     def run_impl(
         self,
         db_session: Session,
