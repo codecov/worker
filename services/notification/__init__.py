@@ -65,14 +65,16 @@ class NotificationService(object):
         self.decoration_type = decoration_type
         self.repository_service = repository_service
         self.gh_installation_name_to_use = gh_installation_name_to_use
+        self.plan = None  # used for caching the plan / tier information
 
     def _should_use_status_notifier(self, status_type: StatusType) -> bool:
         owner: Owner = self.repository.owner
 
-        plan = Plan.objects.select_related("tier").get(name=owner.plan)
+        if not self.plan:
+            self.plan = Plan.objects.select_related("tier").get(name=owner.plan)
 
         if (
-            plan.tier.tier_name == TierName.TEAM.value
+            self.plan.tier.tier_name == TierName.TEAM.value
             and status_type != StatusType.PATCH.value
         ):
             return False
@@ -88,10 +90,11 @@ class NotificationService(object):
         if owner.service not in ["github", "github_enterprise"]:
             return False
 
-        plan = Plan.objects.select_related("tier").get(name=owner.plan)
+        if not self.plan:
+            self.plan = Plan.objects.select_related("tier").get(name=owner.plan)
 
         if (
-            plan.tier.tier_name == TierName.TEAM.value
+            self.plan.tier.tier_name == TierName.TEAM.value
             and status_type != StatusType.PATCH.value
         ):
             return False

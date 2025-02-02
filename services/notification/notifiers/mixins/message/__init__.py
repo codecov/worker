@@ -2,7 +2,7 @@ import logging
 from typing import Any, Callable, List, Mapping, Optional
 
 from shared.django_apps.core.models import Repository
-from shared.plan.constants import PlanName
+from shared.plan.constants import TierName
 from shared.plan.service import PlanService
 from shared.reports.resources import ReportTotals
 from shared.validation.helpers import LayoutStructure
@@ -91,10 +91,7 @@ class MessageMixin(object):
 
         # Separate PR comment based on plan that can't/won't be tweaked by codecov.yml settings
         owner_plan = PlanService(owner)
-        if owner_plan.plan_name in {
-            PlanName.TEAM_MONTHLY.value,
-            PlanName.TEAM_YEARLY.value,
-        }:
+        if owner_plan.tier_name == TierName.TEAM.value:
             return self._team_plan_notification(
                 comparison=comparison,
                 message=message,
