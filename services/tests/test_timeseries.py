@@ -726,7 +726,9 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 50.0
 
-    def test_commit_measurement_no_datasets(self, dbsession, dataset_names, mocker):
+    def test_commit_measurement_no_datasets(
+        self, mock_storage, dbsession, dataset_names, mocker
+    ):
         mocker.patch(
             "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
             return_value=False,

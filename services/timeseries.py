@@ -86,14 +86,14 @@ def get_relevant_components(
     if not components:
         return []
 
-    components_for_measurement = []
+    components_for_measurement = {}
     for component in components:
         if component.paths or component.flag_regexes:
             flags = component.get_matching_flags(report_flags)
-            components_for_measurement.append(
+            components_for_measurement[component.component_id] = (
                 ComponentForMeasurement(component.component_id, flags, component.paths)
             )
-    return components_for_measurement
+    return list(components_for_measurement.values())
 
 
 def upsert_components_measurements(
