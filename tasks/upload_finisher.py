@@ -12,7 +12,6 @@ from shared.celery_config import (
     compute_comparison_task_name,
     notify_task_name,
     pulls_task_name,
-    timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
 from shared.reports.resources import Report
@@ -44,6 +43,7 @@ from services.repository import get_repo_provider_service
 from services.timeseries import repository_datasets_query
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
+from tasks.save_commit_measurements import save_commit_measurements_task
 from tasks.upload_processor import MAX_RETRIES, UPLOAD_PROCESSING_LOCK_NAME
 
 log = logging.getLogger(__name__)
@@ -154,19 +154,19 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     processing_results,
                     report_code,
                 )
-                dataset_names = [
-                    dataset.name for dataset in repository_datasets_query(repository)
-                ]
                 if is_timeseries_enabled():
-                    self.app.tasks[
-                        timeseries_save_commit_measurements_task_name
-                    ].apply_async(
-                        kwargs=dict(
+                    dataset_names = [
+                        dataset.name
+                        for dataset in repository_datasets_query(repository)
+                    ]
+                    if dataset_names:
+                        task = save_commit_measurements_task.s(
                             commitid=commitid,
                             repoid=repoid,
                             dataset_names=dataset_names,
                         )
-                    )
+                        task.apply_async()
+
                 # Mark the repository as updated so it will appear earlier in the list
                 # of recently-active repositories
                 now = datetime.now(tz=timezone.utc)

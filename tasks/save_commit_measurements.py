@@ -11,6 +11,7 @@ from database.models import Commit, MeasurementName
 from rollouts import PARALLEL_COMPONENT_COMPARISON
 from services.report import ReportService
 from services.timeseries import (
+    get_relevant_components,
     maybe_upsert_coverage_measurement,
     maybe_upsert_flag_measurements,
     repository_datasets_query,
@@ -24,12 +25,7 @@ log = logging.getLogger(__name__)
 
 
 def save_commit_measurements(commit: Commit, dataset_names: Sequence[str]) -> None:
-    if len(dataset_names) == 0:
-        log.debug(
-            "No datasets found for commit",
-            extra=dict(commitid=commit.commitid, repoid=commit.repoid),
-        )
-        return
+    db_session = commit.get_db_session()
 
     current_yaml = get_repo_yaml(commit.repository)
     report_service = ReportService(current_yaml)
@@ -44,34 +40,26 @@ def save_commit_measurements(commit: Commit, dataset_names: Sequence[str]) -> No
         )
         return
 
-    db_session = commit.get_db_session()
-
     maybe_upsert_coverage_measurement(commit, dataset_names, db_session, report)
+
     if MeasurementName.component_coverage.value in dataset_names:
-        components = current_yaml.get_components()
+        report_flags = list(report.flags.keys())
+        components = get_relevant_components(current_yaml, report_flags)
         if components:
             if PARALLEL_COMPONENT_COMPARISON.check_value(commit.repository.repoid):
-                task_signatures = []
-                components = current_yaml.get_components()
-                for component in components:
-                    if component.paths or component.flag_regexes:
-                        report_and_component_matching_flags = (
-                            component.get_matching_flags(list(report.flags.keys()))
-                        )
-                        task_signatures.append(
-                            upsert_component_task.s(
-                                commit.commitid,
-                                commit.repoid,
-                                component.component_id,
-                                report_and_component_matching_flags,
-                                component.paths,
-                            )
-                        )
-                if task_signatures:
-                    task_group = group(task_signatures)
-                    task_group.apply_async()
+                task_signatures = [
+                    upsert_component_task.s(
+                        commit.commitid,
+                        commit.repoid,
+                        component_id=component.component_id,
+                        flags=component.flags,
+                        paths=component.paths,
+                    )
+                    for component in components
+                ]
+                group(task_signatures).apply_async()
             else:
-                upsert_components_measurements(commit, current_yaml, db_session, report)
+                upsert_components_measurements(commit, report, components)
 
     maybe_upsert_flag_measurements(commit, dataset_names, db_session, report)
 
