@@ -216,7 +216,7 @@ async def update_commit_from_provider_info(
             ),
         )
     else:
-        commit_author = get_or_create_author(
+        commit_author = upsert_author(
             db_session,
             commit.repository.service,
             author_info["id"],
@@ -281,37 +281,53 @@ async def update_commit_from_provider_info(
     db_session.commit()
 
 
-def get_or_create_author(
+def upsert_author(
     db_session, service, service_id, username, email=None, name=None
 ) -> Owner:
     query = db_session.query(Owner).filter(
         Owner.service == service, Owner.service_id == str(service_id)
     )
     author = query.first()
-    if author:
-        return author
 
-    db_session.begin(nested=True)
-    try:
-        author = Owner(
-            service=service,
-            service_id=str(service_id),
-            username=username,
-            name=name,
-            email=email,
-            createstamp=datetime.now(),
-        )
-        db_session.add(author)
-        db_session.commit()
-        return author
-    except IntegrityError:
-        log.warning(
-            "IntegrityError in get_or_create_author",
-            extra=dict(service=service, service_id=service_id, username=username),
-        )
-        db_session.rollback()
-        author = query.one()
-        return author
+    if author:
+        needs_update = False
+        db_session.begin(nested=True)
+        if author.username != username and username is not None:
+            author.username = username
+            needs_update = True
+        if author.name != name and name is not None:
+            author.name = name
+            needs_update = True
+        if author.email != email and email is not None:
+            author.email = email
+            needs_update = True
+
+        if needs_update:
+            db_session.commit()
+        else:
+            db_session.rollback()
+    else:
+        db_session.begin(nested=True)
+        try:
+            author = Owner(
+                service=service,
+                service_id=str(service_id),
+                username=username,
+                name=name,
+                email=email,
+                createstamp=datetime.now(),
+            )
+            db_session.add(author)
+            db_session.commit()
+        except IntegrityError:
+            log.warning(
+                "IntegrityError in upsert_author",
+                extra=dict(service=service, service_id=service_id, username=username),
+            )
+            db_session.rollback()
+            author = query.one()
+
+    return author
 
 
 WEBHOOK_EVENTS = {
@@ -541,7 +557,7 @@ async def fetch_and_update_pull_request_information(
     pull.compared_to = compared_to
 
     if pull is not None and not pull.author:
-        pr_author = get_or_create_author(
+        pr_author = upsert_author(
             db_session,
             repository_service.service,
             pull_information["author"]["id"],
