@@ -303,6 +303,7 @@ class StatusProjectMixin(object):
         base_adjusted_coverage = (
             Decimal(base_adjusted_hits / base_adjusted_totals) * 100
         )
+        threshold = self._get_threshold()
 
         head_coverage = Decimal(comparison.head.report.totals.coverage)
         log.info(
@@ -310,12 +311,15 @@ class StatusProjectMixin(object):
             extra=dict(
                 commit=comparison.head.commit.commitid,
                 base_adjusted_coverage=base_adjusted_coverage,
+                threshold=threshold,
                 head_coverage=head_coverage,
                 hits_removed=hits_removed,
                 misses_removed=misses_removed,
                 partials_removed=partials_removed,
             ),
         )
+        base_adjusted_coverage = base_adjusted_coverage - threshold
+
         # the head coverage is rounded to five digits after the dot, using shared.helpers.numeric.ratio
         # so we should round the base adjusted coverage to the same amount of digits after the dot
         # Decimal.quantize: https://docs.python.org/3/library/decimal.html#decimal.Decimal.quantize
@@ -331,13 +335,15 @@ class StatusProjectMixin(object):
                 0,
                 round_number(self.current_yaml, head_coverage - base_adjusted_coverage),
             )
+            message = f", passed because coverage increased by {rounded_difference}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)"
             return (
                 (
                     StatusState.success.value,
-                    f", passed because coverage increased by {rounded_difference}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)",
+                    message,
                 ),
                 helper_text,
             )
+
         # use rounded numbers for messages
         coverage_rounded = round_number(self.current_yaml, head_coverage)
 
