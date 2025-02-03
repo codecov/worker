@@ -29,6 +29,7 @@ class HelperTextKey(str, Enum):
     CUSTOM_TARGET_PATCH = "custom_target_helper_text_patch"
     CUSTOM_TARGET_PROJECT = "custom_target_helper_text_project"
     RCB_INDIRECT_CHANGES = "rcb_indirect_changes_helper_text"
+    INDIRECT_CHANGES_KEY = "indirect_changes_helper_text"
     RCB_ADJUST_BASE = "rcb_adjust_base_helper_text"
 
 
@@ -55,6 +56,7 @@ HELPER_TEXT_MAP = {
     HelperTextKey.CUSTOM_TARGET_PATCH: HelperTextTemplate.CUSTOM_TARGET,
     HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET,
     HelperTextKey.RCB_INDIRECT_CHANGES: HelperTextTemplate.INDIRECT_CHANGES,
+    HelperTextKey.INDIRECT_CHANGES_KEY: HelperTextTemplate.INDIRECT_CHANGES,
     HelperTextKey.RCB_ADJUST_BASE: HelperTextTemplate.RCB_ADJUST_BASE,
 }
 
@@ -178,16 +180,20 @@ class StatusChangesMixin(object):
         return False
 
     def get_changes_status(
-        self, comparison: ComparisonProxy | FilteredComparison
-    ) -> tuple[str, str]:
+        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
+    ) -> StatusResult:
+        included_helper_text = {}
         pull = comparison.pull
         if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
             if not comparison.has_project_coverage_base_report():
                 description = (
                     "Unable to determine changes, no report found at pull request base"
                 )
-                state = StatusState.success.value
-                return state, description
+                return StatusResult(
+                    state=StatusState.success.value,
+                    message=description,
+                    included_helper_text=included_helper_text,
+                )
 
         # filter changes
         changes = comparison.get_changes()
@@ -206,10 +212,26 @@ class StatusChangesMixin(object):
                 if self.notifier_yaml_settings.get("informational")
                 else StatusState.failure.value
             )
-            return state, description
+            if state == StatusState.failure.value:
+                # their comparison failed because of unexpected/indirect changes, give them helper text about it
+                included_helper_text[HelperTextKey.INDIRECT_CHANGES_KEY.value] = (
+                    HELPER_TEXT_MAP[HelperTextKey.INDIRECT_CHANGES_KEY].value.format(
+                        context=self.context,
+                        notification_type=notification_type,
+                    )
+                )
+            return StatusResult(
+                state=state,
+                message=description,
+                included_helper_text=included_helper_text,
+            )
 
         description = "No indirect coverage changes found"
-        return StatusState.success.value, description
+        return StatusResult(
+            state=StatusState.success.value,
+            message=description,
+            included_helper_text=included_helper_text,
+        )
 
 
 class StatusProjectMixin(object):

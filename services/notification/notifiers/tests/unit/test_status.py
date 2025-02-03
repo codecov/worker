@@ -2658,6 +2658,7 @@ class TestChangesStatusNotifier(object):
         expected_result = {
             "message": "No indirect coverage changes found",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2678,6 +2679,7 @@ class TestChangesStatusNotifier(object):
         expected_result = {
             "message": "Please activate this user to display a detailed status check",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -2704,6 +2706,13 @@ class TestChangesStatusNotifier(object):
         expected_result = {
             "message": "3 files have indirect coverage changes not visible in diff",
             "state": "failure",
+            "included_helper_text": {
+                "indirect_changes_helper_text": (
+                    "Your changes status has failed because you have indirect coverage changes. "
+                    "Learn more about [Unexpected Coverage Changes](https://docs.codecov.com/docs/unexpected-coverage-changes) "
+                    "and [reasons for indirect coverage changes](https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes)."
+                )
+            },
         }
         result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result
@@ -2727,6 +2736,7 @@ class TestChangesStatusNotifier(object):
         expected_result = {
             "message": "Unable to determine changes, no report found at pull request base",
             "state": "success",
+            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison)
         assert expected_result == result
@@ -2750,6 +2760,7 @@ class TestChangesStatusNotifier(object):
             "message": "No indirect coverage changes found",
             "state": "success",
             "url": f"test.example.br/gh/{sample_comparison.head.commit.repository.slug}/pull/{sample_comparison.pull.pullid}",
+            "included_helper_text": {},
         }
         result = notifier.notify(sample_comparison)
         assert result == mocked_send_notification.return_value
@@ -2768,6 +2779,10 @@ class TestChangesStatusNotifier(object):
             repository_service=mock_repo_provider,
             decoration_type=Decoration.passing_empty_upload,
         )
-        expected_result = {"state": "success", "message": "Non-testable files changed."}
+        expected_result = {
+            "state": "success",
+            "message": "Non-testable files changed.",
+            "included_helper_text": {},
+        }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result

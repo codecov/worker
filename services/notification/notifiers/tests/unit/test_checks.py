@@ -1345,7 +1345,9 @@ class TestChangesChecksNotifier(object):
             "output": {
                 "title": "No indirect coverage changes found",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nNo indirect coverage changes found",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -1372,7 +1374,9 @@ class TestChangesChecksNotifier(object):
             "output": {
                 "title": "Codecov Report",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_upgrade_payload/{sample_comparison.head.commit.repository.name}/pull/{sample_comparison.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nThe author of this PR, codecov-test-user, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov](test.example.br/members/gh/test_build_upgrade_payload) to display a detailed status check.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
@@ -1401,7 +1405,9 @@ class TestChangesChecksNotifier(object):
             "output": {
                 "title": "3 files have indirect coverage changes not visible in diff",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_with_multiple_changes/{comparison_with_multiple_changes.head.commit.repository.name}/pull/{comparison_with_multiple_changes.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\n3 files have indirect coverage changes not visible in diff",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison_with_multiple_changes)
         assert expected_result == result
@@ -1427,7 +1433,9 @@ class TestChangesChecksNotifier(object):
             "output": {
                 "title": "Unable to determine changes, no report found at pull request base",
                 "summary": f"[View this Pull Request on Codecov](test.example.br/gh/test_build_payload_without_base_report/{sample_comparison_without_base_report.head.commit.repository.name}/pull/{sample_comparison_without_base_report.pull.pullid}?dropdown=coverage&src=pr&el=h1)\n\nUnable to determine changes, no report found at pull request base",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(comparison)
         assert expected_result == result
@@ -1453,7 +1461,9 @@ class TestChangesChecksNotifier(object):
             "output": {
                 "title": "Empty Upload",
                 "summary": "Testable files changed",
+                "annotations": [],
             },
+            "included_helper_text": {},
         }
         result = notifier.build_payload(sample_comparison)
         assert expected_result == result
