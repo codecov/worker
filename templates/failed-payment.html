@@ -11,11 +11,17 @@
 >
   Oops! Let's fix this, {{ name }}
 </h2>
-<p style="text-align: center; font-weight: 400; font-size: 18px; line-height: 27px; color: black">
+<p
+  style="
+    text-align: center;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 27px;
+    color: black;
+  "
+>
   Total: USD
-  <span style="color: rgb(245, 32, 32); font-weight: 700"
-    >${{ amount }}</span
-  >
+  <span style="color: rgb(245, 32, 32); font-weight: 700">${{ amount }}</span>
   <b>|</b> {{ date }}
 </p>
 <div>
@@ -32,8 +38,8 @@
       color: rgb(14, 27, 41);
     "
   >
-    Your ${{ amount }} payment to Functional Software, Inc, dba
-    Sentry has failed
+    Your ${{ amount }} payment to Functional Software, Inc, dba Sentry has
+    failed
   </p>
 </div>
 <p
@@ -46,22 +52,13 @@
     color: black;
   "
 >
-  We were unable to process your 
-  {% if card_type %}
-    {{ card_type | capitalize }}
-  {% elif is_credit_card %}
-    card
-  {% elif is_us_bank_account %}
-    US Bank Account
-    {% if bank_name %} from {{ bank_name }}{% endif %}
-  {% endif %}
-  {% if is_us_bank_account and bank_last_four %}
-    ending in {{ bank_last_four }}
-  {% elif is_credit_card and last_four %}
-    ending in {{ last_four }}
-  {% endif %}. 
-  Please take a moment to double check your payment information 
-  to ensure your account continues to run smoothly.
+  We were unable to process your {% if is_credit_card %} {% if card_type %} {{
+  card_type | capitalize }} {% else %} card {% endif %} {% elif
+  is_us_bank_account %} US Bank Account {% if bank_name %} from {{ bank_name
+  }}{% endif %} {% endif %} {% if is_us_bank_account and bank_last_four %}
+  ending in {{ bank_last_four }} {% elif is_credit_card and last_four %} ending
+  in {{ last_four }} {% endif %}. Please take a moment to double check your
+  payment information to ensure your account continues to run smoothly.
 </p>
 <p style="width: 100%; padding: 35px 0px; text-align: center">
   <a
@@ -89,22 +86,32 @@
     margin-bottom: 20px;
   "
 >
-  <h3 style="font-size: 18px; font-weight: 600; line-height: 27px; color: black;">Why did the payment fail?</h3>
-  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black;">In most cases, a payment might fail due to:</p>
-  <ul style="padding-left: 25px; font-weight: 400; font-size: 18px; line-height: 27px; color: black;">
+  <h3
+    style="font-size: 18px; font-weight: 600; line-height: 27px; color: black"
+  >
+    Why did the payment fail?
+  </h3>
+  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black">
+    In most cases, a payment might fail due to:
+  </p>
+  <ul
+    style="
+      padding-left: 25px;
+      font-weight: 400;
+      font-size: 18px;
+      line-height: 27px;
+      color: black;
+    "
+  >
     <li>An expired card</li>
     <li>Insufficient funds</li>
     <li>Requiring additional authentication</li>
   </ul>
-  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black;">
+  <p style="font-weight: 400; font-size: 18px; line-height: 27px; color: black">
     If you have any questions or need help, please contact us at
     <a
       href="mailto:support@codecov.io"
-      style="
-        color: rgb(0, 113, 194);
-        text-decoration: none;
-        font-weight: 500;
-      "
+      style="color: rgb(0, 113, 194); text-decoration: none; font-weight: 500"
       >support@codecov.io</a
     >
   </p>
