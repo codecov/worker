@@ -154,19 +154,22 @@ class UploadFinisherTask(BaseCodecovTask, name=upload_finisher_task_name):
                     processing_results,
                     report_code,
                 )
-                dataset_names = [
-                    dataset.name for dataset in repository_datasets_query(repository)
-                ]
                 if is_timeseries_enabled():
-                    self.app.tasks[
-                        timeseries_save_commit_measurements_task_name
-                    ].apply_async(
-                        kwargs=dict(
-                            commitid=commitid,
-                            repoid=repoid,
-                            dataset_names=dataset_names,
+                    dataset_names = [
+                        dataset.name
+                        for dataset in repository_datasets_query(repository)
+                    ]
+                    if dataset_names:
+                        self.app.tasks[
+                            timeseries_save_commit_measurements_task_name
+                        ].apply_async(
+                            kwargs=dict(
+                                commitid=commitid,
+                                repoid=repoid,
+                                dataset_names=dataset_names,
+                            )
                         )
-                    )
+
                 # Mark the repository as updated so it will appear earlier in the list
                 # of recently-active repositories
                 now = datetime.now(tz=timezone.utc)
