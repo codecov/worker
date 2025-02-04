@@ -1,145 +1,74 @@
 codecov:
-  token: uuid  # Your private repository token
-  url: "http://codecov.io"  # for Codecov Enterprise customers
-  slug: "owner/repo"  # for Codecov Enterprise customers
-  branch: master  # override the default branch
-  bot: username  # set user whom will be the consumer of oauth requests
-  ci:  # Custom CI domains if Codecov does not identify them automatically
-    - ci.domain.com
-    - "!provider"  # ignore these providers when checking if CI passed
-                 # ex. You may test on Travis, Circle, and AppVeyor, but only need
-                 # to check if Travis passes. Therefore add: !circle and !appveyor
-  notify: # ADVANCED USE ONLY
-    after_n_builds: 2         # number of expected builds to recieve before sending notifications
-                              # after: check ci status unless disabled via require_ci_to_pass
-    require_ci_to_pass: yes   # yes: will delay sending notifications until all ci is finished
-                              # no: will send notifications without checking ci status and wait till "after_n_builds" are uploaded
-    countdown: 12             # number of seconds to wait before first ci build check
-    delay: 4                  # number of seconds to wait between ci build checks
-
-coverage:
-  precision: 2  # 2 = xx.xx%, 0 = xx%
-  round: down # default down
-  range: 50...60 # default 70...90. red...green
-
-  notify:
-    irc:
-      default:
-        server: "chat.freenode.net"
-        branches: null  # all branches by default
-        threshold: 1%
-        message: "Coverage {{changed}} for {{owner}}/{{repo}}"  # customize the message
-        flags: null
-        paths: null
-
-    slack:
-      default:
-        url: "secret:c/nCgqn5v1HY5VFIs9i4W3UY6eleB2rTBdBKK/ilhPR7Ch4N0FE1aO6SRfAxp3Zlm4tLNusaPY7ettH6dTYj/YhiRohxiNqJMJ4L9YQmESo="
-        threshold: 1%
-        branches: null  # all branches by default
-        message: "Coverage {{changed}} for {{owner}}/{{repo}}"  # customize the message
-        attachments: "sunburst, diff"
-        only_pulls: false
-        flags: null
-        paths: null
-
-    email:
-      default:
-        to:
-          - example@domain.com
-          - secondexample@seconddomain.com
-        threshold: 1%
-        only_pulls: false
-        layout: reach, diff, flags
-        flags: null
-        paths: null
-
-    hipchat:
-      default:
-        url: "secret:c/nCgqn5v1HY5VFIs9i4W3UY6eleB2rTBdBKK/ilhPR7Ch4N0FE1aO6SRfAxp3Zlm4tLNusaPY7ettH6dTYj/YhiRohxiNqJMJ4L9YQmESo="
-        threshold: 1%
-        branches: null  # all branches by default
-        notify: false  # if the hipchat message is silent or loud (default false)
-        message: "Coverage {{changed}} for {{owner}}/{{repo}}"  # customize the message
-        flags: null
-        paths: null
-
-    gitter:
-      default:
-        url: "secret:c/nCgqn5v1HY5VFIs9i4W3UY6eleB2rTBdBKK/ilhPR7Ch4N0FE1aO6SRfAxp3Zlm4tLNusaPY7ettH6dTYj/YhiRohxiNqJMJ4L9YQmESo="
-        threshold: 1%
-        branches: null  # all branches by default
-        message: "Coverage {{changed}} for {{owner}}/{{repo}}"  # customize the message
-
-    webhook:
-      _name_:
-        url: "secret:c/nCgqn5v1HY5VFIs9i4W3UY6eleB2rTBdBKK/ilhPR7Ch4N0FE1aO6SRfAxp3Zlm4tLNusaPY7ettH6dTYj/YhiRohxiNqJMJ4L9YQmESo="
-        threshold: 1%
-        branches: null  # all branches by default
-
-  status:
-    project:
-      default:
-        base: parent
-        target: auto
-        threshold: 1%
-        branches:
-          - master
-        if_no_uploads: error
-        if_not_found: success
-        if_ci_failed: error
-        only_pulls: false
-        flags:
-          - integration
-        paths:
-          - folder
-
-    patch:
-      default:
-        base: parent
-        target: 80%
-        branches: null
-        if_no_uploads: success
-        if_not_found: success
-        if_ci_failed: error
-        only_pulls: false
-        flags:
-          - integration
-        paths:
-          - folder
-    
-    changes:
-      default:
-        base: parent
-        branches: null
-        if_no_uploads: error
-        if_not_found: success
-        if_ci_failed: error
-        only_pulls: false
-        flags:
-          - integration
-        paths:
-          - folder
-
-  flags:
-    integration:
-      assume:
-        branches:
-          - master
-      ignore:
-        - app/ui
-
-  ignore: # files and folders for processing
-    - tests/*
-  
-  fixes:
-    - "old_path::new_path"
+    require_ci_to_pass: false
 
 comment:
-  layout: diff, flags, reach
-  branches:
-    - "*"
-  behavior: default # defualt = posts once then update, posts new if delete
-                    # once = post once then updates
-                    # new = delete old, post new
-                    # spammy = post new
+    show_carryforward_flags: true
+
+flags:
+    database:
+        paths:
+            - packages/database/**
+        carryforward: true
+    gateway:
+        paths:
+            - packages/gateway/**
+        carryforward: true
+    lobby:
+        paths:
+            - packages/lobby/**
+        carryforward: true
+    login:
+        paths:
+            - packages/login/**
+        carryforward: true
+    patch:
+        paths:
+            - packages/patch/**
+        carryforward: true
+    persona:
+        paths:
+            - packages/persona/**
+        carryforward: true
+    shard:
+        paths:
+            - packages/shard/**
+        carryforward: true
+    shared:
+        paths:
+            - packages/shared/**
+        carryforward: true
+    transactions:
+        paths:
+            - packages/transactions/**
+        carryforward: true
+    interfaces:
+        paths:
+            - packages/interfaces/**
+        carryforward: false
+    core:
+        paths:
+            - packages/core/**
+        carryforward: true
+
+component_management:
+    default_rules: # default rules that will be inherited by all components
+        statuses:
+            - type: project # in this case every component that doens't have a status defined will have a project type one
+              target: auto
+              branches:
+                  - "!main"
+
+    individual_components:
+        - component_id: module_nps
+          name: Team 2
+          statuses:
+              type: patch
+              target: auto
+          paths:
+              - lib/nps/**
+
+coverage:
+    status:
+        project:
+            default:
+                removed_code_behavior: adjust_base
