@@ -391,7 +391,7 @@ class TestUploadTestFinisherTask(object):
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 4 | 4 | 0 | 0 |
-<details><summary>View the top 3 failed tests by shortest run time</summary>
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
@@ -708,7 +708,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 4 | 4 | 0 | 0 |
-<details><summary>View the top 3 failed tests by shortest run time</summary>
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
@@ -912,7 +912,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 1 | 1 | 0 | 0 |
-<details><summary>{"View the top 1 failed tests by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
+<details><summary>{"View the top 1 failed test(s) by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
 
 > 
 > ```python
@@ -1045,7 +1045,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 4 | 4 | 0 | 0 |
-<details><summary>View the top 3 failed tests by shortest run time</summary>
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
