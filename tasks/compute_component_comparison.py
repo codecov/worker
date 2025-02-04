@@ -104,6 +104,8 @@ class ComputeComponentComparisonTask(BaseCodecovTask, name=task_name):
             db_session, comparison, comparison_proxy, component_dict[component_id]
         )
 
+        log.info("Finished computing component comparison", extra=log_extra)
+
 
 RegisteredComputeComponentComparisonTask = celery_app.register_task(
     ComputeComponentComparisonTask()
