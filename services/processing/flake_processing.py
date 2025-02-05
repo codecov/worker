@@ -25,7 +25,7 @@ def process_flake_for_repo_commit(
         report__commit__repository__repoid=repo_id,
         report__commit__commitid=commit_id,
         state__in=["processed", "v2_finished"],
-    ).all()
+    )
 
     curr_flakes = fetch_curr_flakes(repo_id)
     new_flakes: dict[str, Flake] = dict()
@@ -126,7 +126,7 @@ def get_test_instances(
 
 
 def fetch_curr_flakes(repo_id: int) -> dict[str, Flake]:
-    flakes = Flake.objects.filter(repository_id=repo_id, end_date__isnull=True).all()
+    flakes = Flake.objects.filter(repository_id=repo_id, end_date__isnull=True)
     return {flake.test_id: flake for flake in flakes}
 
 
