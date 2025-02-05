@@ -49,7 +49,7 @@ def run_cleanup(
                 summary[model] = result
 
                 log.info(
-                    f"Finished cleaning up {model.__name__}",
+                    f"Finished cleaning up `{model.__name__}`",
                     extra={
                         "cleaned_models": result.cleaned_models,
                         "cleaned_files": result.cleaned_files,

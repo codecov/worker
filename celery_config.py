@@ -70,6 +70,8 @@ update_branches_task_name = "app.cron.test_instances.BackfillTestInstancesTask"
 
 cache_rollup_cron_task_name = "app.cron.cache_rollup.CacheRollupTask"
 
+regular_cleanup_cron_task_name = "app.cron.cleanup.RegularCleanup"
+
 
 def _beat_schedule():
     beat_schedule = {
@@ -90,6 +92,13 @@ def _beat_schedule():
         "trial_expiration_cron": {
             "task": trial_expiration_cron_task_name,
             "schedule": crontab(minute="0", hour="4"),  # 4 UTC is 12am EDT
+            "kwargs": {
+                "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
+            },
+        },
+        "regular_cleanup": {
+            "task": regular_cleanup_cron_task_name,
+            "schedule": crontab(minute="0", hour="2"),
             "kwargs": {
                 "cron_task_generation_time_iso": BeatLazyFunc(get_utc_now_as_iso_format)
             },

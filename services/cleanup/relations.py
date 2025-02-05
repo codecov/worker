@@ -122,6 +122,7 @@ def build_relation_graph(query: QuerySet) -> list[ModelQueries]:
                     related_model_field = actual_field.name
                     process_relation(model, related_model_field, related_model)
 
+    graph.add(query.model)
     process_model(query.model)
 
     # the topological sort yields models in the order we want to run deletions

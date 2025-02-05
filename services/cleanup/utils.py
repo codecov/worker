@@ -44,3 +44,15 @@ class CleanupResult:
 class CleanupSummary:
     totals: CleanupResult
     summary: dict[type[Model], CleanupResult]
+
+    def add(self, other: "CleanupSummary"):
+        self.totals.cleaned_models += other.totals.cleaned_models
+        self.totals.cleaned_files += other.totals.cleaned_files
+
+        for model, other_result in other.summary.items():
+            if model not in self.summary:
+                self.summary[model] = CleanupResult(0)
+            result = self.summary[model]
+
+            result.cleaned_models += other_result.cleaned_models
+            result.cleaned_files += other_result.cleaned_files

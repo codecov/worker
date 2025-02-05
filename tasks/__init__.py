@@ -39,6 +39,7 @@ from tasks.preprocess_upload import preprocess_upload_task
 from tasks.process_flakes import process_flakes_task
 from tasks.profiling_find_uncollected import find_untotalized_profilings_task
 from tasks.profiling_normalizer import profiling_normalizer_task
+from tasks.regular_cleanup import regular_cleanup_task
 from tasks.save_commit_measurements import save_commit_measurements_task
 from tasks.save_report_results import save_report_results_task
 from tasks.send_email import send_email
