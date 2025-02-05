@@ -47,6 +47,8 @@ TELEMETRY_TIMESCALE_DB = "timeseries"
 
 SKIP_RISKY_MIGRATION_STEPS = get_config("migrations", "skip_risky_steps", default=False)
 
+DEFAULT_PLAN_NAME = get_config("setup", "default_plan_name", default="users-developer")
+
 MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
