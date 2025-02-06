@@ -297,7 +297,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             commit, commit_yaml, payload=payload, _pull=pull, _repo_service=repo_service
         )
 
-        if pull is not None:
+        if pull is not None and repo.private == False:
             log.info(
                 "making TA comment",
                 extra=dict(
