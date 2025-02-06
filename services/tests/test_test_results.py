@@ -209,7 +209,7 @@ def test_notify(mocker):
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.Mock(),
     )
-    tn = TestResultsNotifier(CommitFactory(), None)
+    tn = TestResultsNotifier(CommitFactory(), None, _pull=mock.Mock())
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.Mock()
 
@@ -226,29 +226,13 @@ def test_notify_fail_torngit_error(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.Mock(),
     )
-    tn = TestResultsNotifier(CommitFactory(), None)
+    tn = TestResultsNotifier(CommitFactory(), None, _pull=mock.Mock())
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.Mock(return_value=False)
 
     notification_result = tn.notify()
 
     assert notification_result == NotifierResult.TORNGIT_ERROR
-
-
-def test_notify_fail_no_pull(
-    mocker,
-):
-    mocker.patch("helpers.notifier.get_repo_provider_service", return_value=mock.Mock())
-    mocker.patch(
-        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
-        return_value=None,
-    )
-    tn = TestResultsNotifier(CommitFactory(), None)
-    tn.build_message = mock.Mock()
-    tn.send_to_provider = mock.Mock(return_value=False)
-
-    notification_result = tn.notify()
-    assert notification_result == NotifierResult.NO_PULL
 
 
 @pytest.mark.django_db

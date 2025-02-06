@@ -521,6 +521,47 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         assert expected_result == result
 
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_no_pull(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
+        repoid, commit, pull, _ = test_results_setup
+
+        _ = mocker.patch(
+            "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+            return_value=None,
+        )
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
     @pytest.mark.django_db
     @pytest.mark.integration
     def test_upload_finisher_task_call_no_success(

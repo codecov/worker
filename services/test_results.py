@@ -21,7 +21,7 @@ from database.models import (
     Upload,
     UploadError,
 )
-from helpers.notifier import BaseNotifier
+from helpers.notifier import BaseNotifier, NotifierResult
 from rollouts import FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.processing.types import UploadArguments
@@ -400,6 +400,18 @@ class TestResultsNotifier(BaseNotifier):
             return (False, "torngit_error")
 
         return (True, "comment_posted")
+
+    def notify(self):
+        assert self._pull
+        pull = self._pull
+
+        message = self.build_message()
+
+        sent_to_provider = self.send_to_provider(pull, message)
+        if sent_to_provider == False:
+            return NotifierResult.TORNGIT_ERROR
+
+        return NotifierResult.COMMENT_POSTED
 
 
 def latest_failures_for_commit(
