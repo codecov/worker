@@ -296,6 +296,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         notifier = TestResultsNotifier(
             commit, commit_yaml, payload=payload, _pull=pull, _repo_service=repo_service
         )
+
+        if pull is not None:
+            log.info(
+                "making TA comment",
+                extra=dict(
+                    pullid=pull.database_pull.pullid,
+                    service=repo.service,
+                    slug=f"{repo.owner.username}/{repo.name}",
+                ),
+            )
+
         notifier_result = notifier.notify()
         success = True if notifier_result is NotifierResult.COMMENT_POSTED else False
         TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
