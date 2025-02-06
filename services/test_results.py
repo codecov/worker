@@ -313,7 +313,7 @@ class TestResultsNotifier(BaseNotifier):
                 ]
 
                 top_3_failed_section = wrap_in_details(
-                    f"View the top {min(3, len(failures))} failed tests by shortest run time",
+                    f"View the top {min(3, len(failures))} failed test(s) by shortest run time",
                     "\n".join(failure_content),
                 )
 

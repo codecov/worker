@@ -128,7 +128,7 @@ def test_build_message():
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 3 | 1 | 2 | 3 |
-<details><summary>View the top 1 failed tests by shortest run time</summary>
+<details><summary>View the top 1 failed test(s) by shortest run time</summary>
 
 > 
 > ```python

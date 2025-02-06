@@ -275,7 +275,7 @@ def test_test_analytics(
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 3 | 2 | 1 | 1 |
-<details><summary>View the top 2 failed tests by shortest run time</summary>
+<details><summary>View the top 2 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
