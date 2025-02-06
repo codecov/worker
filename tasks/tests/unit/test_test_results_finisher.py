@@ -459,7 +459,7 @@ class TestUploadTestFinisherTask(object):
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
     @pytest.mark.integration
@@ -776,7 +776,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
         assert expected_result == result
@@ -939,7 +939,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
     @pytest.mark.integration
@@ -1113,7 +1113,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
     @pytest.mark.integration
