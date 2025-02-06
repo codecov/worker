@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock
 
 import pytest
 from shared.torngit.exceptions import TorngitUnauthorizedError
@@ -167,11 +168,17 @@ class TestGHAppWebhooksTask(object):
         assert len(filtered_deliveries) == 3
         assert filtered_deliveries == sample_deliveries[2:5]
 
-    def test_apply_filters_to_deliveries(self, sample_deliveries):
+    @pytest.mark.asyncio
+    async def test_process_delivery_page(self, mocker, sample_deliveries):
+        gh_handler = mocker.MagicMock()
+        gh_handler.request_webhook_redelivery = AsyncMock(return_value=True)
         task = GitHubAppWebhooksCheckTask()
-        filtered_deliveries = list(task.apply_filters_to_deliveries(sample_deliveries))
-        assert len(filtered_deliveries) == 1
-        assert filtered_deliveries[0] == sample_deliveries[2]
+        (
+            successful_redelivery_count,
+            redeliveries_requested,
+        ) = await task.process_delivery_page(gh_handler, sample_deliveries)
+        assert redeliveries_requested == 1
+        assert successful_redelivery_count == 1
 
     @pytest.mark.asyncio
     async def test_request_redeliveries_return_early(self, mocker):
