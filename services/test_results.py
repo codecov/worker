@@ -245,8 +245,8 @@ def messagify_flake(
 
 
 def specific_error_message(upload_error: UploadError) -> str:
-    title = f"### :x: {upload_error.error_code}"
-    if upload_error.error_code == "Unsupported file format":
+    title = f"### :x: {upload_error.error_code.replace('_', ' ').capitalize()}"
+    if upload_error.error_code == "unsupported_file_format":
         description = "\n".join(
             [
                 "Upload processing failed due to unsupported file format. Please review the parser error message:",
@@ -254,7 +254,7 @@ def specific_error_message(upload_error: UploadError) -> str:
                 "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
             ]
         )
-    elif upload_error.error_code == "File not found":
+    elif upload_error.error_code == "file_not_in_storage":
         description = "\n".join(
             [
                 "No result to display due to the CLI not being able to find the file.",
