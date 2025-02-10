@@ -1,12 +1,13 @@
 import os
 
 import database.events  # noqa: F401
-from database.tests.factories import RepositoryFactory
+from database.tests.factories import OwnerFactory, RepositoryFactory
 
 
 def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
     # this prevents the pubsub SDK from trying to load credentials
     os.environ["PUBSUB_EMULATOR_HOST"] = "localhost"
+    publish = mocker.patch("google.cloud.pubsub_v1.PublisherClient.publish")
 
     mock_configuration.set_params(
         {
@@ -20,10 +21,10 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
         }
     )
 
-    publish = mocker.patch("google.cloud.pubsub_v1.PublisherClient.publish")
-
     # this triggers the publish via SQLAlchemy events (after_insert)
-    repo = RepositoryFactory(repoid=91728376, name="test-123")
+    repo = RepositoryFactory(
+        repoid=91728376, name="test-123", owner=OwnerFactory(ownerid=123), private=False
+    )
     dbsession.add(repo)
     dbsession.commit()
 
@@ -31,8 +32,7 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
         "projects/test-project-id/topics/test-topic-id",
         b'{"type": "repo", "sync": "one", "id": 91728376}',
     )
-
-    publish = mocker.patch("google.cloud.pubsub_v1.PublisherClient.publish")
+    publish_calls = publish.call_args_list
 
     # Synchronize object flush for history.deleted to be perceived by sqlalchemy
     dbsession.refresh(repo)
@@ -40,20 +40,26 @@ def test_shelter_repo_sync(dbsession, mock_configuration, mocker):
     # this triggers the publish via SQLAlchemy events (after_update)
     repo.name = "test-456"
     dbsession.commit()
+    dbsession.refresh(repo)
+    assert len(publish_calls) == 2
 
-    # same name shouldn't trigger (after_update)
-    repo.name = "test-456"
+    # Does not trigger another publish with untracked field
+    repo.message = "foo"
     dbsession.commit()
+    dbsession.refresh(repo)
+    assert len(publish_calls) == 2
 
-    # this wouldn't trigger the publish via SQLAlchemy events (after_update) since it's an unimportant attribute
-    repo.activated = True
+    # Triggers call when owner is changed
+    repo.owner = OwnerFactory(ownerid=456)
     dbsession.commit()
+    dbsession.refresh(repo)
+    assert len(publish_calls) == 3
 
-    # this is from the first trigger
-    publish.assert_called_once_with(
-        "projects/test-project-id/topics/test-topic-id",
-        b'{"type": "repo", "sync": "one", "id": 91728376}',
-    )
+    # Triggers call when private is changed
+    repo.private = True
+    dbsession.commit()
+    dbsession.refresh(repo)
+    assert len(publish_calls) == 4
 
 
 def test_repo_sync_when_shelter_disabled(dbsession, mock_configuration, mocker):

@@ -71,7 +71,7 @@ def after_update_repo(mapper, connection, target: Repository):
     state = inspect(target)
 
     for attr in state.attrs:
-        if attr.key in ["name", "upload_token"]:
+        if attr.key in ["name", "upload_token", "ownerid", "private"]:
             history = attr.history
             # Detects if there are changes and if said changes are different.
             # has_changes() is True when you update the an entry with the same value,
