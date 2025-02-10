@@ -1,4 +1,4 @@
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN
 
 from database.enums import TrialStatus
 from database.tests.factories.core import OwnerFactory
@@ -14,7 +14,7 @@ class TestTrialExpiration(object):
         task = TrialExpirationTask()
         assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
-        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_activated_users is None
         assert owner.plan_user_count == 5
         assert owner.stripe_subscription_id is None
@@ -30,7 +30,7 @@ class TestTrialExpiration(object):
         task = TrialExpirationTask()
         assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
-        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_activated_users is None
         assert owner.plan_user_count == 1
         assert owner.stripe_subscription_id is None
@@ -44,7 +44,7 @@ class TestTrialExpiration(object):
         task = TrialExpirationTask()
         assert task.run_impl(dbsession, owner.ownerid) == {"successful": True}
 
-        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_activated_users == [9]
         assert owner.stripe_subscription_id is None
         assert owner.trial_status == TrialStatus.EXPIRED.value

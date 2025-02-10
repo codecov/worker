@@ -1,5 +1,5 @@
 import pytest
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
@@ -141,7 +141,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner is not None
         assert owner.username == "some-org"
         assert owner.plan_provider == "github"
-        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_user_count == 1
         assert owner.plan_activated_users is None
 

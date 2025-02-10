@@ -1,4 +1,4 @@
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 
 from database.models.core import OrganizationLevelToken
 from database.tests.factories.core import OrgLevelTokenFactory, OwnerFactory
@@ -10,10 +10,10 @@ class TestDailyPlanManagerTask(object):
         task = DailyPlanManagerTask()
         # Populate DB
         owner_in_enterprise_plan = OwnerFactory.create(
-            service="github", plan=BillingPlan.enterprise_cloud_monthly.value
+            service="github", plan=PlanName.ENTERPRISE_CLOUD_MONTHLY.value
         )
         owner_not_in_enterprise_plan = OwnerFactory.create(
-            service="github", plan=BillingPlan.users_free.value
+            service="github", plan=DEFAULT_FREE_PLAN
         )
 
         valid_token = OrgLevelTokenFactory.create(owner=owner_in_enterprise_plan)

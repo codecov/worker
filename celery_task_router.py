@@ -1,6 +1,6 @@
 import shared.celery_config as shared_celery_config
-from shared.billing import BillingPlan
 from shared.celery_router import route_tasks_based_on_user_plan
+from shared.plan.constants import DEFAULT_FREE_PLAN
 
 from database.engine import get_db_session
 from database.models.core import Commit, CompareCommit, Owner, Repository
@@ -13,7 +13,7 @@ def _get_user_plan_from_ownerid(db_session, ownerid, *args, **kwargs) -> str:
     result = db_session.query(Owner.plan).filter(Owner.ownerid == ownerid).first()
     if result:
         return result.plan
-    return BillingPlan.users_basic.db_name
+    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_repoid(db_session, repoid, *args, **kwargs) -> str:
@@ -25,7 +25,7 @@ def _get_user_plan_from_repoid(db_session, repoid, *args, **kwargs) -> str:
     )
     if result:
         return result.plan
-    return BillingPlan.users_basic.db_name
+    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_org_ownerid(dbsession, org_ownerid, *args, **kwargs) -> str:
@@ -44,7 +44,7 @@ def _get_user_plan_from_profiling_commit(
     )
     if result:
         return result.plan
-    return BillingPlan.users_basic.db_name
+    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_profiling_upload(
@@ -60,7 +60,7 @@ def _get_user_plan_from_profiling_upload(
     )
     if result:
         return result.plan
-    return BillingPlan.users_basic.db_name
+    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_comparison_id(dbsession, comparison_id, *args, **kwargs) -> str:
@@ -74,7 +74,7 @@ def _get_user_plan_from_comparison_id(dbsession, comparison_id, *args, **kwargs)
     )
     if result:
         return result.plan
-    return BillingPlan.users_basic.db_name
+    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_label_request_id(dbsession, request_id, *args, **kwargs) -> str:
@@ -88,7 +88,7 @@ def _get_user_plan_from_label_request_id(dbsession, request_id, *args, **kwargs)
     )
     if result:
         return result.plan
-    return BillingPlan.users_basic.db_name
+    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_suite_id(dbsession, suite_id, *args, **kwargs) -> str:
@@ -102,7 +102,7 @@ def _get_user_plan_from_suite_id(dbsession, suite_id, *args, **kwargs) -> str:
     )
     if result:
         return result.plan
-    return BillingPlan.users_basic.db_name
+    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_task(dbsession, task_name: str, task_kwargs: dict) -> str:
@@ -139,7 +139,7 @@ def _get_user_plan_from_task(dbsession, task_name: str, task_kwargs: dict) -> st
         shared_celery_config.static_analysis_task_name: _get_user_plan_from_suite_id,
     }
     func_to_use = owner_plan_lookup_funcs.get(
-        task_name, lambda *args, **kwargs: BillingPlan.users_basic.db_name
+        task_name, lambda *args, **kwargs: DEFAULT_FREE_PLAN
     )
     return func_to_use(dbsession, **task_kwargs)
 

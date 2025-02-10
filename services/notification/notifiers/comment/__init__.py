@@ -4,8 +4,8 @@ from typing import Any, Mapping, Optional
 
 import sentry_sdk
 from asgiref.sync import async_to_sync
-from shared.billing import BillingPlan
 from shared.metrics import Counter, inc_counter
+from shared.plan.constants import PlanName
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
@@ -356,8 +356,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
         if (
             not (
-                self.repository.owner.plan == BillingPlan.team_monthly.value
-                or self.repository.owner.plan == BillingPlan.team_yearly.value
+                self.repository.owner.plan == PlanName.TEAM_MONTHLY.value
+                or self.repository.owner.plan == PlanName.TEAM_YEARLY.value
             )
             and self.repository.owner.createstamp
             and self.repository.owner.createstamp > introduction_date

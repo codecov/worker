@@ -9,8 +9,8 @@ from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 from mock import ANY, call
 from prometheus_client import REGISTRY
-from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
+from shared.plan.constants import PlanName
 from shared.utils.test_utils import mock_config_helper
 from sqlalchemy.exc import (
     DBAPIError,
@@ -454,9 +454,9 @@ class TestBaseCodecovRequest(object):
 class TestBaseCodecovTaskApplyAsyncOverride(object):
     @pytest.fixture
     def fake_owners(self, dbsession):
-        owner = OwnerFactory.create(plan=BillingPlan.pr_monthly.db_name)
+        owner = OwnerFactory.create(plan=PlanName.CODECOV_PRO_MONTHLY.value)
         owner_enterprise_cloud = OwnerFactory.create(
-            plan=BillingPlan.enterprise_cloud_yearly.db_name
+            plan=PlanName.ENTERPRISE_CLOUD_YEARLY.value
         )
         dbsession.add(owner)
         dbsession.add(owner_enterprise_cloud)

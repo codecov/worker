@@ -1,6 +1,6 @@
 import logging
 
-from shared.billing import BillingPlan
+from shared.plan.constants import PlanName
 
 from app import celery_app
 from celery_config import trial_expiration_cron_task_name, trial_expiration_task_name
@@ -26,7 +26,7 @@ class TrialExpirationCronTask(CodecovCronTask, name=trial_expiration_cron_task_n
         ongoing_trial_owners_that_should_be_expired = (
             db_session.query(Owner.ownerid)
             .filter(
-                Owner.plan == BillingPlan.users_trial.value,
+                Owner.plan == PlanName.TRIAL.value,
                 Owner.trial_status == TrialStatus.ONGOING.value,
                 Owner.trial_end_date <= now,
             )

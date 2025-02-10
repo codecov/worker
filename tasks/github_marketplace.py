@@ -2,8 +2,8 @@ import logging
 from datetime import datetime
 
 import requests
-from shared.billing import BillingPlan
 from shared.celery_config import ghm_sync_plans_task_name
+from shared.plan.constants import DEFAULT_FREE_PLAN
 
 from app import celery_app
 from database.models import Owner, Repository
@@ -243,7 +243,7 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
 
         if owner:
             # deactivate repos and remove all activated users for this owner
-            owner.plan = BillingPlan.users_basic.value
+            owner.plan = DEFAULT_FREE_PLAN
             owner.plan_user_count = 1
             owner.plan_activated_users = None
 
