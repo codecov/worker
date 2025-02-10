@@ -95,7 +95,7 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             upload.state = "v2_processed"
             new_upload_error = UploadError(
                 upload_id=upload.id,
-                error_code="File not found",
+                error_code="file_not_in_storage",
                 error_params={},
             )
             db_session.add(new_upload_error)
@@ -120,7 +120,7 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             upload.state = "v2_processed"
             new_upload_error = UploadError(
                 upload_id=upload.id,
-                error_code="Unsupported file format",
+                error_code="unsupported_file_format",
                 error_params={"error_message": str(exc)},
             )
             db_session.add(new_upload_error)

@@ -279,7 +279,7 @@ def test_specific_error_message(mocker):
     upload = UploadFactory()
     error = UploadError(
         report_upload=upload,
-        error_code="Unsupported file format",
+        error_code="unsupported_file_format",
         error_params={
             "error_message": "Error parsing JUnit XML in test.xml at 4:32: ParserError: No name found"
         },
