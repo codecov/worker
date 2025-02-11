@@ -14,8 +14,6 @@ dependencies = [
     "codecov-ribs==0.1.18",
     "django>=4.2.16",
     "django-postgres-extra>=2.0.8",
-    "google-cloud-bigquery>=3.27.0",
-    "google-cloud-bigquery-storage>=2.27.0",
     "google-cloud-pubsub>=2.27.1",
     "google-cloud-storage>=2.10.0",
     "grpcio>=1.66.2",
