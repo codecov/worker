@@ -3,15 +3,14 @@ import pytest
 from shared.plan.constants import DEFAULT_FREE_PLAN
 from shared.torngit.exceptions import TorngitClientError
 
-from database.models import UploadError
 from database.tests.factories import (
     CommitFactory,
     OwnerFactory,
     RepositoryFactory,
-    UploadFactory,
 )
 from helpers.notifier import NotifierResult
 from services.test_results import (
+    ErrorPayload,
     FlakeInfo,
     TACommentInDepthInfo,
     TestResultsNotificationFailure,
@@ -271,13 +270,9 @@ def test_specific_error_message(mocker):
         return_value=mock.AsyncMock(),
     )
 
-    upload = UploadFactory()
-    error = UploadError(
-        report_upload=upload,
-        error_code="unsupported_file_format",
-        error_params={
-            "error_message": "Error parsing JUnit XML in test.xml at 4:32: ParserError: No name found"
-        },
+    error = ErrorPayload(
+        "unsupported_file_format",
+        "Error parsing JUnit XML in test.xml at 4:32: ParserError: No name found",
     )
     tn = TestResultsNotifier(CommitFactory(), None, error=error)
     result = tn.error_comment()
