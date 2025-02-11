@@ -199,12 +199,16 @@ def get_plan_url(pull: Pull) -> str:
 
 
 def get_test_analytics_url(repo: Repository, commit: Commit) -> str:
+    if commit.branch is not None:
+        branch_name = quote_plus(commit.branch)
+    else:
+        branch_name = quote_plus(repo.branch)
     return SiteUrls.test_analytics_url.get_url(
         dashboard_base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repo.service),
         username=repo.owner.username,
         project_name=repo.name,
-        branch_name=quote_plus(commit.branch),
+        branch_name=branch_name,
     )
 
 
