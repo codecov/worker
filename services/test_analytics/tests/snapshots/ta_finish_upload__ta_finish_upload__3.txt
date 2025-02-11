@@ -1,0 +1,32 @@
+### :x: File not in storage
+
+> No result to display due to the CLI not being able to find the file.
+> Please ensure the file contains `junit` in the name and automated file search is enabled,
+> or the desired file specified by the `file` and `search_dir` arguments of the CLI.
+
+---
+### :x: 1 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 1 | 1 | 0 | 0 |
+<details><summary>View the full list of 1 :snowflake: flaky tests</summary>
+
+> 
+> ```python
+> computed_0
+> ```
+> 
+> **Flake rate in main:** 100.00% (Passed 0 times, Failed 10 times)
+> <details><summary>Stack Traces | 100s run time</summary>
+> 
+> > 
+> > ```python
+> > No failure message available
+> > ```
+> 
+> </details>
+
+</details>
+
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-user/test-repo/tests/main)
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>
