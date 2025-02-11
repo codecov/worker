@@ -124,10 +124,10 @@ T = TypeVar("T", str, bytes)
 
 @dataclass
 class TestResultsNotificationFailure(Generic[T]):
-    test_id: T
     failure_message: str
     display_name: str
     envs: list[str]
+    test_id: T
     duration_seconds: float
     build_url: str | None = None
 
