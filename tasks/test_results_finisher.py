@@ -21,6 +21,7 @@ from services.repository import (
     get_repo_provider_service,
 )
 from services.seats import ShouldActivateSeat, determine_seat_activation
+from services.test_analytics.ta_finish_upload import new_impl
 from services.test_analytics.ta_metrics import (
     read_failures_summary,
     read_tests_totals_summary,
@@ -116,7 +117,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         commitid: str,
         commit_yaml: UserYaml,
         chain_result: bool,
-        impl_type: Literal["old", "both", "new"],
+        impl_type: Literal["old", "new", "both"],
         **kwargs,
     ) -> FinisherResult:
         log.info("Running test results finishers", extra=self.extra_dict)
@@ -128,9 +129,12 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
         repo = commit.repository
 
-        return self.old_impl(
-            db_session, repo, commit, chain_result, commit_yaml, impl_type
-        )
+        if impl_type == "old" or impl_type == "both":
+            return self.old_impl(
+                db_session, repo, commit, chain_result, commit_yaml, impl_type
+            )
+        else:
+            return new_impl(db_session, repo, commit, commit_yaml, impl_type)
 
     def old_impl(
         self,
