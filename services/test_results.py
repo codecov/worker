@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Sequence
+from typing import Generic, Sequence, TypeVar
 
 from shared.django_apps.codecov_auth.models import Plan
 from shared.plan.constants import TierName
@@ -120,12 +120,15 @@ def generate_test_id(repoid, testsuite, name, flags_hash):
     ).hexdigest()
 
 
+T = TypeVar("T", str, bytes)
+
+
 @dataclass
-class TestResultsNotificationFailure:
+class TestResultsNotificationFailure(Generic[T]):
+    test_id: T
     failure_message: str
     display_name: str
     envs: list[str]
-    test_id: str
     duration_seconds: float
     build_url: str | None = None
 
@@ -137,17 +140,17 @@ class FlakeInfo:
 
 
 @dataclass
-class TACommentInDepthInfo:
-    failures: list[TestResultsNotificationFailure]
-    flaky_tests: dict[str, FlakeInfo]
+class TACommentInDepthInfo(Generic[T]):
+    failures: list[TestResultsNotificationFailure[T]]
+    flaky_tests: dict[T, FlakeInfo]
 
 
 @dataclass
-class TestResultsNotificationPayload:
+class TestResultsNotificationPayload(Generic[T]):
     failed: int
     passed: int
     skipped: int
-    info: TACommentInDepthInfo | None = None
+    info: TACommentInDepthInfo[T] | None = None
 
 
 def wrap_in_details(summary: str, content: str):
@@ -194,7 +197,7 @@ def display_duration(f: float) -> str:
 
 
 def generate_failure_info(
-    fail: TestResultsNotificationFailure,
+    fail: TestResultsNotificationFailure[T],
 ):
     if fail.failure_message is not None:
         failure_message = fail.failure_message
@@ -215,7 +218,7 @@ def generate_view_test_analytics_line(commit: Commit) -> str:
 
 
 def messagify_failure(
-    failure: TestResultsNotificationFailure,
+    failure: TestResultsNotificationFailure[T],
 ) -> str:
     test_name = wrap_in_code(failure.display_name.replace("\x1f", " "))
     formatted_duration = display_duration(failure.duration_seconds)
@@ -228,7 +231,7 @@ def messagify_failure(
 
 
 def messagify_flake(
-    flaky_failure: TestResultsNotificationFailure,
+    flaky_failure: TestResultsNotificationFailure[T],
     flake_info: FlakeInfo,
 ) -> str:
     test_name = wrap_in_code(flaky_failure.display_name.replace("\x1f", " "))
@@ -271,8 +274,8 @@ def specific_error_message(upload_error: UploadError) -> str:
 
 
 @dataclass
-class TestResultsNotifier(BaseNotifier):
-    payload: TestResultsNotificationPayload | None = None
+class TestResultsNotifier(BaseNotifier, Generic[T]):
+    payload: TestResultsNotificationPayload[T] | None = None
     error: UploadError | None = None
 
     def build_message(self) -> str:
