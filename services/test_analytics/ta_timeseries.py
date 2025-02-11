@@ -21,16 +21,17 @@ LOWER_BOUND_NUM_DAYS = 60
 
 
 def get_flaky_tests_set(repo_id: int) -> set[bytes]:
-    return set(
-        Flake.objects.filter(repoid=repo_id, end_date__isnull=True)
+    return {
+        bytes(test_id)
+        for test_id in Flake.objects.filter(repoid=repo_id, end_date__isnull=True)
         .values_list("test_id", flat=True)
         .distinct()
-    )
+    }
 
 
 def get_flaky_tests_dict(repo_id: int) -> dict[bytes, FlakeInfo]:
     return {
-        flake.test_id: FlakeInfo(flake.fail_count, flake.count)
+        bytes(flake.test_id): FlakeInfo(flake.fail_count, flake.count)
         for flake in Flake.objects.filter(repoid=repo_id, end_date__isnull=True)
     }
 
