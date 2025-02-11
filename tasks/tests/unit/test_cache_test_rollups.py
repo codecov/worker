@@ -240,3 +240,26 @@ class TestCacheTestRollupsTask:
                 repository_id=self.repo.repoid, branch="main"
             ).first()
             assert obj.last_rollup_date == dt.date.today()
+
+    def test_cache_test_rollups_both(self, mock_storage, transactional_db, mocker):
+        mock_cache_rollups = mocker.patch("tasks.cache_test_rollups.cache_rollups")
+        task = CacheTestRollupsTask()
+        mocker.patch.object(task, "run_impl_within_lock")
+        self.repo = RepositoryFactory()
+        with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
+            _ = task.run_impl(
+                _db_session=None,
+                repoid=self.repo.repoid,
+                branch="main",
+                update_date=True,
+                impl_type="both",
+            )
+
+        mock_cache_rollups.assert_has_calls(
+            [
+                mocker.call(self.repo.repoid, "main"),
+                mocker.call(self.repo.repoid, None),
+            ]
+        )
+
+        task.run_impl_within_lock.assert_called_once()

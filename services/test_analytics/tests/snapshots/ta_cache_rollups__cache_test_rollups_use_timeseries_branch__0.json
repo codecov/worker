@@ -1,0 +1,43 @@
+{
+  "computed_name": [
+    "computed_name",
+    "computed_name2"
+  ],
+  "flags": [
+    [
+      "test-rollups"
+    ],
+    [
+      "test-rollups",
+      "test-rollups2"
+    ]
+  ],
+  "failing_commits": [
+    0,
+    1
+  ],
+  "last_duration": [
+    100.0,
+    1.0
+  ],
+  "avg_duration": [
+    100.0,
+    50.5
+  ],
+  "pass_count": [
+    1,
+    1
+  ],
+  "fail_count": [
+    0,
+    1
+  ],
+  "flaky_fail_count": [
+    0,
+    0
+  ],
+  "skip_count": [
+    0,
+    0
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "computed_name": [
+    "computed_name",
+    "computed_name2"
+  ],
+  "flags": [
+    [
+      "test-rollups"
+    ],
+    [
+      "test-rollups2"
+    ]
+  ],
+  "failing_commits": [
+    1,
+    2
+  ],
+  "last_duration": [
+    100.0,
+    200.0
+  ],
+  "avg_duration": [
+    100.0,
+    200.0
+  ],
+  "pass_count": [
+    0,
+    0
+  ],
+  "fail_count": [
+    1,
+    2
+  ],
+  "flaky_fail_count": [
+    0,
+    0
+  ],
+  "skip_count": [
+    0,
+    0
+  ],
+  "updated_at": [
+    "2025-01-01T00:00:00+00:00",
+    "2025-01-01T00:00:00+00:00"
+  ],
+  "timestamp_bin": [
+    "2024-12-31",
+    "2024-12-31"
+  ]
+}

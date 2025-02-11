@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import Literal
 
 import polars as pl
 import shared.storage
@@ -11,6 +12,7 @@ from shared.django_apps.reports.models import LastCacheRollupDate
 from app import celery_app
 from django_scaffold import settings
 from services.redis import get_redis_connection
+from services.test_analytics.ta_cache_rollups import cache_rollups
 from tasks.base import BaseCodecovTask
 
 # Reminder: `a BETWEEN x AND y` is equivalent to `a >= x AND a <= y`
@@ -106,13 +108,25 @@ LEFT JOIN flags_cte USING (test_id)
 
 class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
     def run_impl(
-        self, _db_session, repoid: int, branch: str, update_date: bool = True, **kwargs
+        self,
+        _db_session,
+        repoid: int,
+        branch: str,
+        update_date: bool = True,
+        impl_type: Literal["old", "new", "both"] = "old",
+        **kwargs,
     ):
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(
                 f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
             ):
+                if impl_type == "new" or impl_type == "both":
+                    cache_rollups(repoid, branch)
+                    cache_rollups(repoid, None)
+                    if impl_type == "new":
+                        return {"success": True}
+
                 self.run_impl_within_lock(repoid, branch)
 
                 if update_date:
@@ -121,7 +135,6 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                         branch=branch,
                         defaults={"last_rollup_date": dt.date.today()},
                     )
-
                 return {"success": True}
         except LockError:
             return {"in_progress": True}
