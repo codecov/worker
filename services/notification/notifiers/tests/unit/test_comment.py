@@ -4,7 +4,7 @@ from typing import List
 from unittest.mock import PropertyMock, patch
 
 import pytest
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile
 from shared.reports.types import Change, LineSession, ReportLine, ReportTotals
@@ -5460,9 +5460,7 @@ class TestCommentNotifierWelcome:
             after_introduction_date
         )
 
-        sample_comparison.head.commit.repository.owner.plan = (
-            BillingPlan.team_yearly.value
-        )
+        sample_comparison.head.commit.repository.owner.plan = PlanName.TEAM_YEARLY.value
 
         dbsession.add_all(
             [
@@ -5483,9 +5481,7 @@ class TestCommentNotifierWelcome:
         result = notifier.build_message(sample_comparison)
         assert PROJECT_COVERAGE_CTA not in result
 
-        sample_comparison.head.commit.repository.owner.plan = (
-            BillingPlan.users_free.value
-        )
+        sample_comparison.head.commit.repository.owner.plan = DEFAULT_FREE_PLAN
 
         dbsession.add(sample_comparison.head.commit.repository.owner)
         dbsession.flush()

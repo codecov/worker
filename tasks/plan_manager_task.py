@@ -1,6 +1,6 @@
 import logging
 
-from shared.billing import BillingPlan
+from shared.plan.constants import PlanName
 from sqlalchemy.orm import Session
 
 from app import celery_app
@@ -15,8 +15,8 @@ log = logging.getLogger(__name__)
 # TODO: Move to shared (celery_config)
 class DailyPlanManagerTask(CodecovCronTask, name=daily_plan_manager_task_name):
     PLANS_THAT_CAN_HAVE_ORG_LEVEL_TOKENS = [
-        BillingPlan.enterprise_cloud_monthly.value,
-        BillingPlan.enterprise_cloud_yearly.value,
+        PlanName.ENTERPRISE_CLOUD_MONTHLY.value,
+        PlanName.ENTERPRISE_CLOUD_YEARLY.value,
     ]
 
     @classmethod

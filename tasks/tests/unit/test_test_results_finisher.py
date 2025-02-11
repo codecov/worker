@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from mock import AsyncMock
-from shared.billing import BillingPlan
+from shared.plan.constants import PlanName
 from shared.torngit.exceptions import TorngitClientError
 
 from database.enums import ReportType
@@ -645,7 +645,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         repo = dbsession.query(Repository).filter(Repository.repoid == repoid).first()
         repo.owner.plan_activated_users = []
-        repo.owner.plan = BillingPlan.pr_monthly.value
+        repo.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
         repo.private = True
         dbsession.flush()
 
