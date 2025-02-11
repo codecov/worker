@@ -1,5 +1,5 @@
 import pytest
-from shared.plan.constants import DEFAULT_FREE_PLAN
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
@@ -64,7 +64,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "paid"
 
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate is True
         assert owner.plan_user_count == 10
@@ -102,7 +102,7 @@ class TestGHMarketplaceSyncPlansTask(object):
 
         assert owner is not None
         assert owner.username == "cc-test"
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate is True
         assert owner.plan_user_count == 10
@@ -164,7 +164,7 @@ class TestGHMarketplaceSyncPlansTask(object):
             username="cc-test",
             service="github",
             service_id="3877742",
-            plan="users",
+            plan=PlanName.GHM_PLAN_NAME.value,
             plan_provider="github",
             plan_auto_activate=True,
             plan_user_count=10,
@@ -216,7 +216,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner is not None
         assert owner.username == "cc-test"
         assert owner.plan_provider == "github"
-        assert owner.plan == "users-basic"
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_user_count == 1
         assert owner.plan_activated_users is None
 
@@ -250,7 +250,7 @@ class TestGHMarketplaceSyncPlansTask(object):
             username="test2",
             service="github",
             service_id="781233",
-            plan="users",
+            plan=PlanName.GHM_PLAN_NAME.value,
             plan_provider="github",
             plan_auto_activate=True,
             plan_user_count=10,
@@ -271,7 +271,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         owners = dbsession.query(Owner).filter(Owner.service_id.in_(["2", "4"])).all()
         assert owners is not None
         for owner in owners:
-            assert owner.plan == "users"
+            assert owner.plan == PlanName.GHM_PLAN_NAME.value
             assert owner.plan_provider == "github"
             assert owner.plan_auto_activate == True
             assert owner.plan_user_count == 12

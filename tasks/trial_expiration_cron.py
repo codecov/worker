@@ -26,7 +26,7 @@ class TrialExpirationCronTask(CodecovCronTask, name=trial_expiration_cron_task_n
         ongoing_trial_owners_that_should_be_expired = (
             db_session.query(Owner.ownerid)
             .filter(
-                Owner.plan == PlanName.TRIAL.value,
+                Owner.plan == PlanName.TRIAL_PLAN_NAME.value,
                 Owner.trial_status == TrialStatus.ONGOING.value,
                 Owner.trial_end_date <= now,
             )

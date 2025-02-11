@@ -51,7 +51,7 @@ def test_seat_billing_plan(dbsession):
     dbsession.flush()
 
     pull.repository.private = True
-    pull.repository.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
+    pull.repository.owner.plan = PlanName.CODECOV_PRO_MONTHLY_LEGACY.value
     dbsession.flush()
 
     enriched_pull = EnrichedPull(

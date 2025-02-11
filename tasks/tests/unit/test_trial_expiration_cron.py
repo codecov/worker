@@ -24,20 +24,20 @@ class TestTrialExpirationCheck(object):
             username="one",
             trial_status=TrialStatus.ONGOING.value,
             trial_end_date=yesterday,
-            plan=PlanName.TRIAL.value,
+            plan=PlanName.TRIAL_PLAN_NAME.value,
         )
         second_ongoing_owner_that_should_expire = OwnerFactory.create(
             username="two",
             trial_status=TrialStatus.ONGOING.value,
             trial_end_date=yesterday,
-            plan=PlanName.TRIAL.value,
+            plan=PlanName.TRIAL_PLAN_NAME.value,
         )
         # These are to represent other types of owners we could face that we should not see
         ongoing_owner_that_should_not_expire = OwnerFactory.create(
             username="three",
             trial_status=TrialStatus.ONGOING.value,
             trial_end_date=tomorrow,
-            plan=PlanName.TRIAL.value,
+            plan=PlanName.TRIAL_PLAN_NAME.value,
         )
         expired_basic_owner = OwnerFactory.create(
             trial_status=TrialStatus.EXPIRED.value,
