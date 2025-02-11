@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 import sentry_sdk
+from django.db import transaction
 from shared.config import get_config
 from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
@@ -16,9 +17,9 @@ from database.models import (
 )
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
+from services.test_analytics.ta_timeseries import get_flaky_tests_set, insert_testrun
 from services.test_results import get_flake_set
 from services.yaml import read_yaml_field
-from ta_storage.bq import BQDriver
 from ta_storage.pg import PGDriver
 from tasks.base import BaseCodecovTask
 
@@ -38,6 +39,7 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
         commitid: str,
         commit_yaml: dict[str, Any],
         argument: UploadArguments,
+        use_timeseries: bool = False,
         **kwargs,
     ) -> bool:
         log.info("Received TA processing task")
@@ -68,6 +70,7 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             branch,
             upload,
             should_delete_archive,
+            use_timeseries,
         )
         if result:
             successful = True
@@ -83,6 +86,7 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
         branch: str,
         upload: Upload,
         should_delete_archive: bool,
+        use_timeseries: bool,
     ) -> bool:
         upload_id = upload.id
 
@@ -127,28 +131,14 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
             db_session.commit()
             return False
         else:
-            flaky_test_set = get_flake_set(db_session, upload.report.commit.repoid)
-            pg = PGDriver(db_session, flaky_test_set)
-            bq_enabled = False
-            if get_config("services", "bigquery", "enabled", default=False):
-                bq = BQDriver()
-                bq_enabled = True
+            if not use_timeseries:
+                flaky_test_set = get_flake_set(db_session, upload.report.commit.repoid)
+                pg = PGDriver(db_session, flaky_test_set)
 
-            for parsing_info in parsing_infos:
-                framework = parsing_info["framework"]
-                testruns = parsing_info["testruns"]
-                pg.write_testruns(
-                    None,
-                    repoid,
-                    commitid,
-                    branch,
-                    upload,
-                    framework,
-                    testruns,
-                )
-
-                if bq_enabled:
-                    bq.write_testruns(
+                for parsing_info in parsing_infos:
+                    framework = parsing_info["framework"]
+                    testruns = parsing_info["testruns"]
+                    pg.write_testruns(
                         None,
                         repoid,
                         commitid,
@@ -157,14 +147,34 @@ class TAProcessorTask(BaseCodecovTask, name=ta_processor_task_name):
                         framework,
                         testruns,
                     )
-
-            upload.state = "v2_processed"
-            db_session.commit()
-
-            if should_delete_archive:
-                self.delete_archive(archive_service, upload)
             else:
-                archive_service.write_file(upload.storage_path, bytes(readable_file))
+                flaky_test_set = get_flaky_tests_set(upload.report.commit.repoid)
+
+                for parsing_info in parsing_infos:
+                    insert_testrun(
+                        timestamp=upload.created_at,
+                        repo_id=upload.report.commit.repoid,
+                        commit_sha=upload.report.commit.commitid,
+                        branch=upload.report.commit.branch,
+                        upload_id=upload.id,
+                        flags=upload.flag_names,
+                        parsing_info=parsing_info,
+                        flaky_test_ids=flaky_test_set,
+                    )
+
+            if not use_timeseries:
+                upload.state = "v2_processed"
+
+                db_session.commit()
+
+                if should_delete_archive:
+                    self.delete_archive(archive_service, upload)
+                else:
+                    archive_service.write_file(
+                        upload.storage_path, bytes(readable_file)
+                    )
+            else:
+                transaction.commit()
 
         return True
 

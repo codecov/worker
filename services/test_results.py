@@ -126,8 +126,8 @@ class TestResultsNotificationFailure:
     failure_message: str
     display_name: str
     envs: list[str]
-    test_id: str
-    duration_seconds: float
+    test_id: bytes | str
+    duration_seconds: float | None
     build_url: str | None = None
 
 
@@ -140,7 +140,7 @@ class FlakeInfo:
 @dataclass
 class TACommentInDepthInfo:
     failures: list[TestResultsNotificationFailure]
-    flaky_tests: dict[str, FlakeInfo]
+    flaky_tests: dict[bytes | str, FlakeInfo]
 
 
 @dataclass
@@ -186,7 +186,9 @@ def wrap_in_code(content: str) -> str:
         return f"\n```python\n{content}\n```\n"
 
 
-def display_duration(f: float) -> str:
+def display_duration(f: float | None) -> str:
+    if f is None:
+        return "N/A"
     before_dot, after_dot = str(f).split(".")
     if len(before_dot) > 3:
         return before_dot
