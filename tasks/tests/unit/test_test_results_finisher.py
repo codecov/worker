@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from mock import AsyncMock
-from shared.plan.constants import PlanName
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 from shared.torngit.exceptions import TorngitClientError
 
 from database.enums import ReportType
@@ -1159,7 +1159,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
     @pytest.mark.integration
     @pytest.mark.django_db
-    @pytest.mark.parametrize("plan", ["users-basic", "users-pr-inappm"])
+    @pytest.mark.parametrize("plan", [DEFAULT_FREE_PLAN, "users-pr-inappm"])
     def test_upload_finisher_task_call_main_with_plan(
         self,
         mocker,

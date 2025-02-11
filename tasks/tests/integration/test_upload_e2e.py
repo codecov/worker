@@ -21,6 +21,7 @@ from services.redis import get_redis_connection
 from services.report import ReportService
 from tasks.tests.utils import hook_repo_provider, hook_session, run_tasks
 from tasks.upload import upload_task
+from tests.helpers import mock_all_plans_and_tiers
 
 
 def write_raw_upload(
@@ -171,6 +172,7 @@ def test_full_upload(
     mock_storage,
     mock_configuration,
 ):
+    mock_all_plans_and_tiers()
     setup_mocks(mocker, dbsession, mock_configuration, mock_repo_provider)
 
     repository = RepositoryFactory.create()
@@ -377,6 +379,7 @@ def test_full_carryforward(
     mock_storage,
     mock_configuration,
 ):
+    mock_all_plans_and_tiers()
     user_yaml = {"flag_management": {"default_rules": {"carryforward": True}}}
     setup_mocks(
         mocker, dbsession, mock_configuration, mock_repo_provider, user_yaml=user_yaml

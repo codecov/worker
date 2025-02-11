@@ -22,6 +22,7 @@ from database.models.core import (
 from database.tests.factories import OwnerFactory, RepositoryFactory
 from tasks.sync_repo_languages_gql import SyncRepoLanguagesGQLTask
 from tasks.sync_repos import SyncReposTask
+from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
 
@@ -458,6 +459,7 @@ class TestSyncReposTaskUnit(object):
     @respx.mock
     @pytest.mark.django_db(databases={"default"})
     def test_only_public_repos_not_in_db(self, dbsession):
+        mock_all_plans_and_tiers()
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -497,6 +499,7 @@ class TestSyncReposTaskUnit(object):
         mock_owner_provider,
         mock_redis,
     ):
+        mock_all_plans_and_tiers()
         user = OwnerFactory.create(
             organizations=[],
             service="github",
@@ -597,10 +600,12 @@ class TestSyncReposTaskUnit(object):
     @reuse_cassette(
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_sync_repos_using_integration_no_repos.yaml"
     )
+    @pytest.mark.django_db(databases={"default"})
     def test_sync_repos_using_integration_no_repos(
         self,
         dbsession,
     ):
+        mock_all_plans_and_tiers()
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -660,12 +665,14 @@ class TestSyncReposTaskUnit(object):
             SoftTimeLimitExceeded(),
         ],
     )
+    @pytest.mark.django_db(databases={"default"})
     def test_sync_repos_list_repos_error(
         self,
         dbsession,
         mock_owner_provider,
         list_repos_error,
     ):
+        mock_all_plans_and_tiers()
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -720,7 +727,9 @@ class TestSyncReposTaskUnit(object):
         "tasks/tests/unit/cassetes/test_sync_repos_task/TestSyncReposTaskUnit/test_only_public_repos_not_in_db.yaml"
     )
     @respx.mock
+    @pytest.mark.django_db(databases={"default"})
     def test_insert_repo_and_call_repo_sync_languages(self, dbsession):
+        mock_all_plans_and_tiers()
         token = "ecd73a086eadc85db68747a66bdbd662a785a072"
         user = OwnerFactory.create(
             organizations=[],
@@ -926,6 +935,7 @@ class TestSyncReposTaskUnit(object):
 
         mocked_app.tasks[sync_repo_languages_task_name].apply_async.assert_not_called()
 
+    @pytest.mark.django_db(databases={"default"})
     def test_sync_repos_using_integration_affected_repos_known(
         self,
         mocker,
@@ -933,6 +943,7 @@ class TestSyncReposTaskUnit(object):
         mock_owner_provider,
         mock_redis,
     ):
+        mock_all_plans_and_tiers()
         user = OwnerFactory.create(
             organizations=[],
             service="github",

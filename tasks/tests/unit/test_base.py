@@ -22,6 +22,7 @@ from sqlalchemy.exc import (
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
 from tasks.base import BaseCodecovRequest, BaseCodecovTask
 from tasks.base import celery_app as base_celery_app
+from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
 
@@ -538,9 +539,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_no_override(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {
@@ -583,9 +586,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_override_from_celery(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {
@@ -628,9 +633,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_override_from_upload(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {

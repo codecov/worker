@@ -1,6 +1,6 @@
 from shared.django_apps.codecov_auth.models import BillingRate
 from shared.django_apps.codecov_auth.tests.factories import PlanFactory, TierFactory
-from shared.plan.constants import PlanName, PlanPrice, TierName
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName, PlanPrice, TierName
 
 
 def mock_all_plans_and_tiers():
@@ -20,7 +20,7 @@ def mock_all_plans_and_tiers():
 
     basic_tier = TierFactory(tier_name=TierName.BASIC.value)
     PlanFactory(
-        name=PlanName.BASIC_PLAN_NAME.value,
+        name=DEFAULT_FREE_PLAN,
         tier=basic_tier,
         marketing_name="Developer",
         benefits=[
@@ -30,17 +30,6 @@ def mock_all_plans_and_tiers():
         ],
         monthly_uploads_limit=250,
     )
-    PlanFactory(
-        name=PlanName.FREE_PLAN_NAME.value,
-        tier=basic_tier,
-        marketing_name="Developer",
-        benefits=[
-            "Up to 1 user",
-            "Unlimited public repositories",
-            "Unlimited private repositories",
-        ],
-    )
-
     pro_tier = TierFactory(tier_name=TierName.PRO.value)
     PlanFactory(
         name=PlanName.CODECOV_PRO_MONTHLY.value,
