@@ -5,7 +5,6 @@ from shared.plan.constants import DEFAULT_FREE_PLAN
 from database.engine import get_db_session
 from database.models.core import Commit, CompareCommit, Owner, Repository
 from database.models.labelanalysis import LabelAnalysisRequest
-from database.models.profiling import ProfilingCommit, ProfilingUpload
 from database.models.staticanalysis import StaticAnalysisSuite
 
 
@@ -30,37 +29,6 @@ def _get_user_plan_from_repoid(db_session, repoid, *args, **kwargs) -> str:
 
 def _get_user_plan_from_org_ownerid(dbsession, org_ownerid, *args, **kwargs) -> str:
     return _get_user_plan_from_ownerid(dbsession, ownerid=org_ownerid)
-
-
-def _get_user_plan_from_profiling_commit(
-    dbsession, profiling_id, *args, **kwargs
-) -> str:
-    result = (
-        dbsession.query(Owner.plan)
-        .join(ProfilingCommit.repository)
-        .join(Repository.owner)
-        .filter(ProfilingCommit.id == profiling_id)
-        .first()
-    )
-    if result:
-        return result.plan
-    return DEFAULT_FREE_PLAN
-
-
-def _get_user_plan_from_profiling_upload(
-    dbsession, profiling_upload_id, *args, **kwargs
-) -> str:
-    result = (
-        dbsession.query(Owner.plan)
-        .join(ProfilingUpload.profiling_commit)
-        .join(ProfilingCommit.repository)
-        .join(Repository.owner)
-        .filter(ProfilingUpload.id == profiling_upload_id)
-        .first()
-    )
-    if result:
-        return result.plan
-    return DEFAULT_FREE_PLAN
 
 
 def _get_user_plan_from_comparison_id(dbsession, comparison_id, *args, **kwargs) -> str:
@@ -126,11 +94,6 @@ def _get_user_plan_from_task(dbsession, task_name: str, task_kwargs: dict) -> st
         shared_celery_config.pulls_task_name: _get_user_plan_from_repoid,
         shared_celery_config.upload_finisher_task_name: _get_user_plan_from_repoid,  # didn't want to directly import the task module
         shared_celery_config.manual_upload_completion_trigger_task_name: _get_user_plan_from_repoid,
-        # from profiling_commitid
-        shared_celery_config.profiling_collection_task_name: _get_user_plan_from_profiling_commit,
-        shared_celery_config.profiling_summarization_task_name: _get_user_plan_from_profiling_commit,
-        # from profiling_upload_id
-        shared_celery_config.profiling_normalization_task_name: _get_user_plan_from_profiling_upload,
         # from comparison_id
         shared_celery_config.compute_comparison_task_name: _get_user_plan_from_comparison_id,
         # from label_request_id
