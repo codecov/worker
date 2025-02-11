@@ -51,6 +51,7 @@ from tasks.notify import (
     _possibly_refresh_previous_selection,
     get_ta_relevant_context,
 )
+from tests.helpers import mock_all_plans_and_tiers
 
 
 def _start_upload_flow(mocker):
@@ -213,9 +214,11 @@ class TestNotifyTaskHelpers(object):
         )
         assert not mock_schedule_new_user_activated_task.called
 
+    @pytest.mark.django_db(databases={"default"})
     def test_determine_decoration_type_from_pull_attempt_activation(
         self, dbsession, mocker, enriched_pull, with_sql_functions
     ):
+        mock_all_plans_and_tiers()
         pr_author = OwnerFactory.create(
             username=enriched_pull.provider_pull["author"]["username"],
             service_id=enriched_pull.provider_pull["author"]["id"],

@@ -1,5 +1,6 @@
 import mock
 import pytest
+from shared.plan.constants import DEFAULT_FREE_PLAN
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import UploadError
@@ -240,9 +241,9 @@ def test_notify_fail_torngit_error(
     "config,feature_flag,private,plan,ex_result",
     [
         (False, True, False, "users-inappm", False),
-        (True, True, True, "users-basic", True),
-        (True, False, False, "users-basic", True),
-        (True, False, True, "users-basic", False),
+        (True, True, True, DEFAULT_FREE_PLAN, True),
+        (True, False, False, DEFAULT_FREE_PLAN, True),
+        (True, False, True, DEFAULT_FREE_PLAN, False),
         (True, False, False, "users-inappm", True),
         (True, False, True, "users-inappm", True),
     ],

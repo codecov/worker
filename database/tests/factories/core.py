@@ -5,7 +5,7 @@ from uuid import uuid4
 import factory
 from factory import Factory
 from shared.django_apps.codecov_auth.models import Plan, Tier
-from shared.plan.constants import PlanName, TierName
+from shared.plan.constants import DEFAULT_FREE_PLAN, TierName
 
 from database import enums, models
 from services.encryption import encryptor
@@ -51,7 +51,7 @@ class OwnerFactory(Factory):
     trial_status = enums.TrialStatus.NOT_STARTED.value
     trial_fired_by = None
     upload_token_required_for_public_repos = False
-    plan = PlanName.BASIC_PLAN_NAME.value
+    plan = DEFAULT_FREE_PLAN
 
     oauth_token = factory.LazyAttribute(
         lambda o: encrypt_oauth_token(o.unencrypted_oauth_token)
@@ -325,7 +325,7 @@ class PlanFactory(Factory):
     marketing_name = factory.Faker("catch_phrase")
     max_seats = 1
     monthly_uploads_limit = None
-    name = PlanName.BASIC_PLAN_NAME.value
+    name = DEFAULT_FREE_PLAN
     paid_plan = False
     stripe_id = None
 
