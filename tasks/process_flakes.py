@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from redis import Redis
 from redis.exceptions import LockError
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import celery_app
 from services.processing.flake_processing import process_flake_for_repo_commit
 from services.redis import get_redis_connection
+from services.test_analytics.ta_process_flakes import process_flakes_for_repo
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
         *,
         repo_id: int,
         commit_id: str,
+        impl_type: Literal["old", "new", "both"] = "old",
         **kwargs: Any,
     ):
         """
@@ -78,8 +80,13 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
             extra=dict(repoid=repo_id, commit=commit_id),
         )
 
+        if impl_type == "new" or impl_type == "both":
+            process_flakes_for_repo(repo_id)
+            if impl_type == "new":
+                return {"successful": True}
+
         redis_client = get_redis_connection()
-        lock_name = f"flake_lock:{repo_id}"
+        lock_name = LOCK_NAME.format(repo_id)
 
         process_func = process_flake_for_repo_commit
 

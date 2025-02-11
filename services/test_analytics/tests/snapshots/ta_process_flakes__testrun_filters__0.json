@@ -1,0 +1,22 @@
+{
+  "test1": {
+    "count": 6,
+    "fail_count": 2,
+    "recent_passes_count": 1
+  },
+  "test3": {
+    "count": 1,
+    "fail_count": 1,
+    "recent_passes_count": 0
+  },
+  "test4": {
+    "count": 1,
+    "fail_count": 1,
+    "recent_passes_count": 0
+  },
+  "test5": {
+    "count": 1,
+    "fail_count": 1,
+    "recent_passes_count": 0
+  }
+}
