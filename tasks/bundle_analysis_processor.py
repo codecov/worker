@@ -30,6 +30,8 @@ bundle_analysis_processor_task_name = (
 class BundleAnalysisProcessorTask(
     BaseCodecovTask, name=bundle_analysis_processor_task_name
 ):
+    max_retries = 5
+
     def run_impl(
         self,
         db_session,
@@ -75,7 +77,7 @@ class BundleAnalysisProcessorTask(
                     previous_result,
                 )
         except LockRetry as retry:
-            self.retry(max_retries=5, countdown=retry.countdown)
+            self.retry(countdown=retry.countdown)
 
     def process_impl_within_lock(
         self,
@@ -139,9 +141,22 @@ class BundleAnalysisProcessorTask(
             result: ProcessingResult = report_service.process_upload(
                 commit, upload, compare_sha
             )
-            if result.error and result.error.is_retryable and self.request.retries == 0:
-                # retryable error and no retry has already be scheduled
-                self.retry(max_retries=5, countdown=20)
+            if (
+                result.error
+                and result.error.is_retryable
+                and self.request.retries < self.max_retries
+            ):
+                log.warn(
+                    "Attempting to retry bundle analysis upload",
+                    extra=dict(
+                        repoid=repoid,
+                        commit=commitid,
+                        commit_yaml=commit_yaml,
+                        params=params,
+                        result=result.as_dict(),
+                    ),
+                )
+                self.retry(countdown=30 * (2**self.request.retries))
             result.update_upload(carriedforward=carriedforward)
 
             processing_results.append(result.as_dict())

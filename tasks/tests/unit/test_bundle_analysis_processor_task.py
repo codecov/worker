@@ -176,7 +176,7 @@ def test_bundle_analysis_processor_task_error(
 
     assert commit.state == "error"
     assert upload.state == "error"
-    retry.assert_called_once_with(countdown=20, max_retries=5)
+    retry.assert_called_once_with(countdown=30)
 
 
 def test_bundle_analysis_processor_task_general_error(
@@ -362,7 +362,7 @@ def test_bundle_analysis_processor_task_locked(
     assert result is None
 
     assert upload.state == "started"
-    retry.assert_called_once_with(countdown=ANY, max_retries=5)
+    retry.assert_called_once_with(countdown=ANY)
 
 
 def test_bundle_analysis_process_upload_rate_limit_error(
@@ -431,7 +431,7 @@ def test_bundle_analysis_process_upload_rate_limit_error(
 
     assert commit.state == "error"
     assert upload.state == "error"
-    retry.assert_called_once_with(countdown=20, max_retries=5)
+    retry.assert_called_once_with(countdown=30)
 
 
 def test_bundle_analysis_process_associate_no_parent_commit_id(
