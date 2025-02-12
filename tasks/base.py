@@ -267,9 +267,9 @@ class BaseCodecovTask(celery_app.Task):
             db_session = get_db_session()
 
             log_context = LogContext(
-                repo_id=kwargs.get("repoid"),
+                repo_id=kwargs.get("repoid") or kwargs.get("repo_id"),
                 owner_id=kwargs.get("ownerid"),
-                commit_sha=kwargs.get("commitid"),
+                commit_sha=kwargs.get("commitid") or kwargs.get("commit_id"),
             )
 
             task = get_current_task()
