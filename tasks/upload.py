@@ -31,7 +31,7 @@ from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
-from rollouts import NEW_TA_TASKS
+from rollouts import NEW_TA_TASKS, TA_TIMESERIES
 from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
@@ -825,6 +825,23 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "commitid": commit.commitid,
                 "commit_yaml": commit_yaml,
             }
+
+            if (
+                get_config("setup", "timeseries", "enabled", default=False)
+                and get_config("setup", "test_analytics", "enabled", default=False)
+                and TA_TIMESERIES.check_value(commit.repoid)
+            ):
+                ta_proc_group += [
+                    ta_processor_task.s(
+                        repoid=commit.repoid,
+                        commitid=commit.commitid,
+                        commit_yaml=commit_yaml,
+                        argument=argument,
+                        use_timeseries=True,
+                    )
+                    for argument in argument_list
+                ]
+
             ta_finisher_kwargs = TestResultsFlow.save_to_kwargs(ta_finisher_kwargs)
             ta_finisher_task_sig = ta_finisher_task.s(**ta_finisher_kwargs)
 

@@ -2,14 +2,12 @@ import base64
 import json
 import zlib
 from pathlib import Path
-from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from google.protobuf.json_format import MessageToDict
+from shared.django_apps.timeseries.models import Testrun
 from shared.storage.exceptions import FileNotInStorageError
 from time_machine import travel
 
-import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from database.models import CommitReport, DailyTestRollup, Test, TestInstance
 from database.tests.factories import (
     CommitFactory,
@@ -20,14 +18,6 @@ from database.tests.factories import (
 from tasks.ta_processor import TAProcessorTask
 
 here = Path(__file__)
-
-
-@pytest.fixture()
-def mock_bigquery_service():
-    with patch("ta_storage.bq.get_bigquery_service") as mock:
-        service = MagicMock()
-        mock.return_value = service
-        yield service
 
 
 class TestUploadTestProcessorTask(object):
@@ -41,13 +31,8 @@ class TestUploadTestProcessorTask(object):
         codecov_vcr,
         mock_storage,
         celery_app,
-        mock_bigquery_service,
         snapshot,
     ):
-        mock_configuration.set_params(
-            mock_configuration.params | {"services": {"bigquery": {"enabled": True}}}
-        )
-
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         assert len(tests) == 0
@@ -147,23 +132,6 @@ class TestUploadTestProcessorTask(object):
         }
         assert snapshot("bin") == mock_storage.read_file("archive", url)
 
-        mock_bigquery_service.write.assert_called_once_with(
-            "codecov_prod", "testruns", ta_testrun_pb2, ANY
-        )
-
-        # this gets the bytes argument to the write call
-        # it gets the first call
-        # then it gets the args because call is a tuple (name, args, kwargs)
-        # then it gets the 3rd item in the args tuple which is the bytes arg
-        testruns = [
-            MessageToDict(
-                ta_testrun_pb2.TestRun.FromString(testrun_bytes),
-                preserving_proto_field_name=True,
-            )
-            for testrun_bytes in mock_bigquery_service.mock_calls[0][1][3]
-        ]
-        assert snapshot("json") == sorted(testruns, key=lambda x: x["name"])
-
     @pytest.mark.integration
     def test_ta_processor_task_error_parsing_file(
         self,
@@ -175,7 +143,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.json") as f:
@@ -228,7 +195,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.json") as f:
@@ -278,7 +244,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         celery_app,
         snapshot,
-        mock_bigquery_service,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mock_storage.write_file(
@@ -336,7 +301,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
@@ -386,7 +350,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
@@ -439,3 +402,93 @@ class TestUploadTestProcessorTask(object):
 
         assert result is True
         assert upload.state == "v2_processed"
+
+    @pytest.mark.integration
+    @travel("2025-01-01T00:00:00Z", tick=False)
+    @pytest.mark.django_db(databases=["timeseries", "test_analytics"], transaction=True)
+    def test_ta_processor_task_call_use_timeseries(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        celery_app,
+        snapshot,
+    ):
+        tests = dbsession.query(Test).all()
+        test_instances = dbsession.query(TestInstance).all()
+        assert len(tests) == 0
+        assert len(test_instances) == 0
+
+        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        with open(here.parent.parent / "samples" / "sample_test.json") as f:
+            content = f.read()
+            mock_storage.write_file("archive", url, content)
+
+        repo = RepositoryFactory.create(
+            repoid=1,
+            owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            owner__username="joseph-sentry",
+            owner__service="github",
+            name="codecov-demo",
+        )
+        dbsession.add(repo)
+        dbsession.flush()
+        commit = CommitFactory.create(
+            message="hello world",
+            commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+            repository=repo,
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        report = ReportFactory.create(commit=commit)
+        dbsession.add(report)
+        dbsession.flush()
+        upload = UploadFactory.create(storage_path=url, report=report)
+        dbsession.add(upload)
+        dbsession.flush()
+        upload.id_ = 1
+        dbsession.flush()
+
+        argument = {"url": url, "upload_id": upload.id_}
+        mocker.patch.object(TAProcessorTask, "app", celery_app)
+
+        result = TAProcessorTask().run_impl(
+            dbsession,
+            repoid=upload.report.commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+            argument=argument,
+            use_timeseries=True,
+        )
+
+        assert result is True
+        assert upload.state != "v2_processed"
+
+        testruns = Testrun.objects.filter(repo_id=upload.report.commit.repoid)
+        testruns = [
+            {
+                "test_id": bytes(testrun.test_id).hex(),
+                "outcome": testrun.outcome,
+                "duration_seconds": testrun.duration_seconds,
+                "failure_message": testrun.failure_message,
+                "upload_id": testrun.upload_id,
+                "computed_name": testrun.computed_name,
+                "name": testrun.name,
+                "classname": testrun.classname,
+                "testsuite": testrun.testsuite,
+                "flags_hash": bytes(testrun.flags_hash).hex()
+                if testrun.flags_hash
+                else None,
+                "flags": testrun.flags,
+                "repo_id": testrun.repo_id,
+                "commit_sha": testrun.commit_sha,
+                "branch": testrun.branch,
+            }
+            for testrun in testruns
+        ]
+        assert snapshot("json") == {
+            "testruns": sorted(testruns, key=lambda x: x["test_id"]),
+        }
+        assert snapshot("bin") == mock_storage.read_file("archive", url)
