@@ -27,7 +27,6 @@ from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.log_context import LogContext, set_log_context
-from services.archive import ArchiveService
 from services.redis import get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
@@ -1194,95 +1193,6 @@ class TestUploadTaskUnit(object):
         ]
         res = list(upload_args.arguments_list())
         assert res == [{"url": "http://example.first.com"}, {"and_another": "one"}]
-
-    def test_normalize_upload_arguments_no_changes(
-        self, dbsession, mock_redis, mock_storage
-    ):
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
-        arguments_with_redis_key = {"reportid": reportid, "random": "argument"}
-        upload_args = UploadContext(
-            repoid=commit.repoid,
-            commitid=commit.commitid,
-            redis_connection=mock_redis,
-        )
-        result = upload_args.normalize_arguments(
-            commit,
-            arguments_with_redis_key,
-        )
-
-        assert result == {
-            "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
-            "random": "argument",
-            "flags": [],
-        }
-
-    def test_normalize_upload_arguments_token_removal(
-        self, dbsession, mock_redis, mock_storage
-    ):
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
-        previous_arguments = {"reportid": reportid, "token": "value"}
-        upload_args = UploadContext(
-            repoid=commit.repoid,
-            commitid=commit.commitid,
-            redis_connection=mock_redis,
-        )
-        result = upload_args.normalize_arguments(
-            commit,
-            previous_arguments,
-        )
-
-        assert result == {
-            "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
-            "flags": [],
-        }
-
-    def test_normalize_upload_arguments(
-        self, dbsession, mock_redis, mock_storage, mocker
-    ):
-        mocked_now = mocker.patch.object(ArchiveService, "get_now")
-        mocked_now.return_value = datetime(2019, 12, 3)
-        mock_redis.keys["commit_chunks.something"] = b"Some weird value"
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        repo_hash = ArchiveService.get_archive_hash(commit.repository)
-        reportid = "5fbeee8b-5a41-4925-b59d-470b9d171235"
-        arguments_with_redis_key = {
-            "redis_key": "commit_chunks.something",
-            "reportid": reportid,
-            "random": "argument",
-        }
-        upload_args = UploadContext(
-            repoid=commit.repoid,
-            commitid=commit.commitid,
-            redis_connection=mock_redis,
-        )
-        result = upload_args.normalize_arguments(
-            commit,
-            arguments_with_redis_key,
-        )
-
-        assert result == {
-            "url": f"v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt",
-            "reportid": "5fbeee8b-5a41-4925-b59d-470b9d171235",
-            "random": "argument",
-            "flags": [],
-        }
-        assert "archive" in mock_storage.storage
-        assert (
-            f"v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt"
-            in mock_storage.storage["archive"]
-        )
-        content = mock_storage.storage["archive"][
-            f"v4/raw/2019-12-03/{repo_hash}/{commit.commitid}/{reportid}.txt"
-        ]
-        assert b"Some weird value" == content
 
     @pytest.mark.django_db
     def test_schedule_task_with_one_task(self, dbsession, mocker, mock_repo_provider):
