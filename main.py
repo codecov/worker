@@ -8,11 +8,8 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
 django.setup()
 
-# -*- coding: utf-8 -*-
 import logging  # noqa: E402
-import os  # noqa: E402
 import sys  # noqa: E402
-import typing  # noqa: E402
 
 import click  # noqa: E402
 import shared.storage  # noqa: E402
@@ -79,23 +76,23 @@ def setup_worker():
 
     start_prometheus(9996, registry=registry)  # 9996 is an arbitrary port number
 
-    # this storage client is only used to create the bucket so it doesn't need to be
-    # aware of the repoid
-    storage_client = shared.storage.get_appropriate_storage_service()
-    minio_config = get_config("services", "minio")
-    bucket_name = get_config("services", "minio", "bucket", default="archive")
-    auto_create_bucket = get_config(
-        "services", "minio", "auto_create_bucket", default=False
-    )
-    region = minio_config.get("region", "us-east-1")
-    try:
-        # note that this is a departure from the old default behavior.
-        # This is intended as the bucket will exist in most cases where IAC or manual setup is used
-        if auto_create_bucket:
-            storage_client.create_root_storage(bucket_name, region)
+    minio_config = get_config("services", "minio", default={})
+    auto_create_bucket = minio_config.get("auto_create_bucket", False)
+    if auto_create_bucket:
+        try:
+            bucket_name = minio_config.get("bucket", "archive")
+            region = minio_config.get("region", "us-east-1")
+
+            # note that this is a departure from the old default behavior.
+            # This is intended as the bucket will exist in most cases where IAC or manual setup is used
             log.info("Initializing bucket %s", bucket_name)
-    except BucketAlreadyExistsError:
-        pass
+
+            # this storage client is only used to create the bucket so it doesn't need to be
+            # aware of the repoid
+            storage_client = shared.storage.get_appropriate_storage_service()
+            storage_client.create_root_storage(bucket_name, region)
+        except BucketAlreadyExistsError:
+            pass
 
     startup_license_logging()
 
@@ -112,7 +109,7 @@ def setup_worker():
     default=["celery"],
     help="Queues to listen to for this worker",
 )
-def worker(name, concurrency, debug, queue):
+def worker(name: str, concurrency: int, debug: bool, queue: list[str]):
     setup_worker()
     args = [
         "worker",
@@ -125,25 +122,28 @@ def worker(name, concurrency, debug, queue):
     ]
     if get_config("setup", "celery_queues_enabled", default=True):
         actual_queues = _get_queues_param_from_queue_input(queue)
-        args += [
-            "-Q",
-            actual_queues,
-        ]
+        args += ["-Q", actual_queues]
+
     if get_config("setup", "celery_beat_enabled", default=True):
         args += ["-B", "-s", "/home/codecov/celerybeat-schedule"]
+
     return app.celery_app.worker_main(argv=args)
 
 
-def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:
+def _get_queues_param_from_queue_input(queues: list[str]) -> str:
     # We always run the health_check queue to make sure the healthcheck is performed
     # And also to avoid that queue fillign up with no workers to consume from it
-    # this should support if one wants to pass comma separated values
-    # since in the end all is joined again
+
+    # Support passing comma separated values, as those will be split again:
     joined_queues = ",".join(queues)
     enterprise_queues = ["enterprise_" + q for q in joined_queues.split(",")]
-    return ",".join(
-        [joined_queues, *enterprise_queues, BaseCeleryConfig.health_check_default_queue]
-    )
+    all_queues = [
+        joined_queues,
+        *enterprise_queues,
+        BaseCeleryConfig.health_check_default_queue,
+    ]
+
+    return ",".join(all_queues)
 
 
 def main():
