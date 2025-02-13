@@ -14,7 +14,6 @@ from database.enums import CompareCommitState
 from database.models import CompareCommit
 from services.archive import ArchiveService
 from services.comparison.changes import get_changes
-from services.comparison.overlays import get_overlay
 from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
 from services.repository import get_repo_provider_service
 
@@ -72,7 +71,6 @@ class ComparisonProxy(object):
         self._behind_by = None
         self._branch = None
         self._archive_service = None
-        self._overlays = {}
         self.context = context or ComparisonContext()
         self._cached_reports_uploaded_per_flag: list[ReportUploadedCount] | None = None
 
@@ -281,11 +279,6 @@ class ComparisonProxy(object):
                 self.repository_service.get_commit_statuses
             )(self.head.commit.commitid)
         return self._existing_statuses
-
-    def get_overlay(self, overlay_type, **kwargs):
-        if overlay_type not in self._overlays:
-            self._overlays[overlay_type] = get_overlay(overlay_type, self, **kwargs)
-        return self._overlays[overlay_type]
 
     @sentry_sdk.trace
     def get_impacted_files(self) -> dict:
