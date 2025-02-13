@@ -33,7 +33,8 @@ def write_raw_upload(
     upload_json: dict | None = None,
 ):
     report_id = uuid4().hex
-    written_path = archive_service.write_raw_upload(commitid, report_id, contents)
+    written_path = f"upload/{report_id}.txt"
+    archive_service.write_file(written_path, contents)
 
     upload_json = upload_json or {}
     upload_json.update({"reportid": report_id, "url": written_path})
