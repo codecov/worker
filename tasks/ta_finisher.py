@@ -303,13 +303,6 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
             repo_service, commit, commit_yaml
         )
 
-        if pull:
-            seat_activation_result = self.seat_activation(
-                db_session, pull, commit, commit_yaml, repo_service
-            )
-            if seat_activation_result:
-                return seat_activation_result
-
         upload_error = (
             db_session.query(UploadError)
             .filter(UploadError.upload_id.in_(uploads.keys()))
@@ -323,33 +316,47 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
                 "queue_notify": True,
             }
 
-        payload = TestResultsNotificationPayload(
-            totals.failed, totals.passed, totals.skipped, info
-        )
-        notifier = TestResultsNotifier(
-            commit,
-            commit_yaml,
-            payload=payload,
-            _pull=pull,
-            _repo_service=repo_service,
-            error=upload_error,
-        )
-        notifier_result = notifier.notify()
+        if pull:
+            seat_activation_result = self.seat_activation(
+                db_session, pull, commit, commit_yaml, repo_service
+            )
+            if seat_activation_result:
+                return seat_activation_result
+
+            payload = TestResultsNotificationPayload(
+                totals.failed, totals.passed, totals.skipped, info
+            )
+            notifier = TestResultsNotifier(
+                commit,
+                commit_yaml,
+                payload=payload,
+                _pull=pull,
+                _repo_service=repo_service,
+                error=upload_error,
+            )
+            notifier_result = notifier.notify()
+
+            success = (
+                True if notifier_result is NotifierResult.COMMENT_POSTED else False
+            )
+            TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
+        else:
+            success = False
+            notifier_result = NotifierResult.NO_PULL
+
+        self.extra_dict["success"] = success
+        self.extra_dict["notifier_result"] = notifier_result.value
+
         for upload in uploads.values():
             upload.state = "v2_finished"
         db_session.commit()
 
         queue_optional_tasks(repo, commit, commit_yaml, branch)
 
-        success = True if notifier_result is NotifierResult.COMMENT_POSTED else False
-        TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
-
-        self.extra_dict["success"] = success
-        self.extra_dict["notifier_result"] = notifier_result.value
         log.info("Finished test results notify", extra=self.extra_dict)
 
         return {
-            "notify_attempted": True,
+            "notify_attempted": notifier_result is NotifierResult.COMMENT_POSTED,
             "notify_succeeded": success,
             "queue_notify": not info,
         }

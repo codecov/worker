@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     "shared.django_apps.compare",
     "shared.django_apps.core",
     "shared.django_apps.labelanalysis",
-    "shared.django_apps.profiling",
     "shared.django_apps.reports",
     "shared.django_apps.staticanalysis",
 ]

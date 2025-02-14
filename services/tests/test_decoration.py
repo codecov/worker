@@ -13,7 +13,7 @@ from shared.django_apps.reports.tests.factories import CommitReportFactory
 from shared.django_apps.reports.tests.factories import (
     UploadFactory as DjangoUploadFactory,
 )
-from shared.plan.constants import PlanName
+from shared.plan.constants import DEFAULT_FREE_PLAN
 from shared.plan.service import PlanService
 from shared.upload.utils import UploaderType, insert_coverage_measurement
 from shared.utils.test_utils import mock_config_helper
@@ -229,7 +229,7 @@ class TestDecorationServiceTestCase(object):
         dbsession.add(pr_author)
         dbsession.flush()
 
-        enriched_pull.database_pull.repository.owner.plan = "users-basic"
+        enriched_pull.database_pull.repository.owner.plan = DEFAULT_FREE_PLAN
         enriched_pull.database_pull.repository.private = True
 
         commit = CommitFactory.create(
@@ -356,7 +356,7 @@ class TestDecorationServiceTestCase(object):
         dbsession.add(pr_author)
         dbsession.flush()
 
-        enriched_pull.database_pull.repository.owner.plan = "users-basic"
+        enriched_pull.database_pull.repository.owner.plan = DEFAULT_FREE_PLAN
         enriched_pull.database_pull.repository.private = True
 
         commit = CommitFactory.create(
@@ -392,7 +392,7 @@ class TestDecorationServiceTestCase(object):
             trial_status=TrialStatus.EXPIRED.value,
             trial_start_date=datetime.now() + timedelta(days=-10),
             trial_end_date=datetime.now() + timedelta(days=-2),
-            plan=PlanName.BASIC_PLAN_NAME.value,
+            plan=DEFAULT_FREE_PLAN,
         )
         repository = DjangoRepositoryFactory(
             author=owner,
@@ -507,7 +507,7 @@ class TestDecorationServiceTestCase(object):
             owner__username="drazisil-org",
             owner__service="github",
             owner__unencrypted_oauth_token="testtfasdfasdflxuu2kfer2ef23",
-            owner__plan=PlanName.BASIC_PLAN_NAME.value,
+            owner__plan=DEFAULT_FREE_PLAN,
             private=True,
         )
         dbsession.add(repository)
@@ -706,11 +706,11 @@ class TestDecorationServiceTestCase(object):
         )
 
     @pytest.mark.django_db
-    def test_get_decoration_type_should_attempt_pr_author_auto_activation_users_free(
+    def test_get_decoration_type_should_attempt_pr_author_auto_activation_users_developer(
         self, dbsession, mocker, enriched_pull
     ):
-        enriched_pull.database_pull.repository.owner.plan = "users-free"
-        enriched_pull.database_pull.repository.owner.plan_user_count = 5
+        enriched_pull.database_pull.repository.owner.plan = DEFAULT_FREE_PLAN
+        enriched_pull.database_pull.repository.owner.plan_user_count = 1
         enriched_pull.database_pull.repository.owner.plan_activated_users = []
         enriched_pull.database_pull.repository.owner.plan_auto_activate = True
 
@@ -961,7 +961,7 @@ class TestDecorationServiceGitLabTestCase(object):
             trial_status=TrialStatus.EXPIRED.value,
             trial_start_date=datetime.now() + timedelta(days=-10),
             trial_end_date=datetime.now() + timedelta(days=-2),
-            plan=PlanName.BASIC_PLAN_NAME.value,
+            plan=DEFAULT_FREE_PLAN,
         )
         repository = DjangoRepositoryFactory(
             author=owner,

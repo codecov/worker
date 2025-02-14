@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 
 from celery_config import trial_expiration_task_name
 from database.enums import TrialStatus
@@ -24,40 +24,40 @@ class TestTrialExpirationCheck(object):
             username="one",
             trial_status=TrialStatus.ONGOING.value,
             trial_end_date=yesterday,
-            plan=BillingPlan.users_trial.value,
+            plan=PlanName.TRIAL_PLAN_NAME.value,
         )
         second_ongoing_owner_that_should_expire = OwnerFactory.create(
             username="two",
             trial_status=TrialStatus.ONGOING.value,
             trial_end_date=yesterday,
-            plan=BillingPlan.users_trial.value,
+            plan=PlanName.TRIAL_PLAN_NAME.value,
         )
         # These are to represent other types of owners we could face that we should not see
         ongoing_owner_that_should_not_expire = OwnerFactory.create(
             username="three",
             trial_status=TrialStatus.ONGOING.value,
             trial_end_date=tomorrow,
-            plan=BillingPlan.users_trial.value,
+            plan=PlanName.TRIAL_PLAN_NAME.value,
         )
         expired_basic_owner = OwnerFactory.create(
             trial_status=TrialStatus.EXPIRED.value,
             trial_end_date=yesterday,
-            plan=BillingPlan.users_basic.value,
+            plan=DEFAULT_FREE_PLAN,
         )
         expired_paid_owner = OwnerFactory.create(
             trial_status=TrialStatus.EXPIRED.value,
             trial_end_date=yesterday,
-            plan=BillingPlan.pr_monthly.value,
+            plan=PlanName.CODECOV_PRO_MONTHLY.value,
         )
         cannot_trial_paid_owner = OwnerFactory.create(
             trial_status=TrialStatus.CANNOT_TRIAL.value,
             trial_end_date=yesterday,
-            plan=BillingPlan.pr_monthly.value,
+            plan=PlanName.CODECOV_PRO_MONTHLY.value,
         )
         not_started_basic_owner = OwnerFactory.create(
             trial_status=TrialStatus.NOT_STARTED.value,
             trial_end_date=None,
-            plan=BillingPlan.users_basic.value,
+            plan=DEFAULT_FREE_PLAN,
         )
         dbsession.add(ongoing_owner_that_should_expire)
         dbsession.add(second_ongoing_owner_that_should_expire)

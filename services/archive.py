@@ -86,8 +86,7 @@ class ArchiveService(object):
     ) -> None:
         """
         Writes a generic file to the archive -- it's typically recommended to
-        not use this in lieu of the convenience methods write_raw_upload and
-        write_chunks
+        not use this in lieu of the convenience method `write_chunks`
         """
         self.storage.write_file(
             self.root,
@@ -96,29 +95,6 @@ class ArchiveService(object):
             reduced_redundancy=reduced_redundancy,
             is_already_gzipped=is_already_gzipped,
         )
-
-    def write_raw_upload(
-        self, commit_sha, report_id, data, *, is_already_gzipped=False
-    ) -> str:
-        """
-        Convenience write method, writes a raw upload to a destination.
-        Returns the path it writes.
-        """
-        # create a custom report path for a raw upload.
-        # write the file.
-        path = "/".join(
-            (
-                "v4/raw",
-                self.get_now().strftime("%Y-%m-%d"),
-                self.storage_hash,
-                commit_sha,
-                "%s.txt" % report_id,
-            )
-        )
-
-        self.write_file(path, data, is_already_gzipped=is_already_gzipped)
-
-        return path
 
     def write_computed_comparison(self, comparison, data) -> str:
         path = MinioEndpoints.computed_comparison.get_path(

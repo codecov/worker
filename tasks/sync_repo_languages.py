@@ -3,7 +3,6 @@ import logging
 from asgiref.sync import async_to_sync
 from shared.celery_config import sync_repo_languages_task_name
 from shared.torngit.exceptions import TorngitError
-from sqlalchemy import String
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
@@ -24,7 +23,7 @@ REPOSITORY_LANGUAGE_SYNC_THRESHOLD = 7
 
 class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name):
     def run_impl(
-        self, db_session: Session, repoid: String, manual_trigger=False, *args, **kwargs
+        self, db_session: Session, repoid: int, manual_trigger=False, *args, **kwargs
     ):
         repository = db_session.query(Repository).get(repoid)
         if repository is None:

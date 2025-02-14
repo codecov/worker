@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from mock import AsyncMock
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 from shared.torngit.exceptions import TorngitClientError
 
 from database.enums import ReportType
@@ -391,7 +391,7 @@ class TestUploadTestFinisherTask(object):
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 4 | 4 | 0 | 0 |
-<details><summary>View the top 3 failed tests by shortest run time</summary>
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
@@ -459,7 +459,7 @@ class TestUploadTestFinisherTask(object):
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
     @pytest.mark.integration
@@ -518,6 +518,47 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
                 "branch": "main",
             },
         )
+
+        assert expected_result == result
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_no_pull(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
+        mock_feature.check_value.return_value = False
+
+        repoid, commit, pull, _ = test_results_setup
+
+        _ = mocker.patch(
+            "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+            return_value=None,
+        )
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            "queue_notify": False,
+        }
 
         assert expected_result == result
 
@@ -604,7 +645,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         repo = dbsession.query(Repository).filter(Repository.repoid == repoid).first()
         repo.owner.plan_activated_users = []
-        repo.owner.plan = BillingPlan.pr_monthly.value
+        repo.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
         repo.private = True
         dbsession.flush()
 
@@ -708,7 +749,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 4 | 4 | 0 | 0 |
-<details><summary>View the top 3 failed tests by shortest run time</summary>
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
@@ -776,7 +817,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
         assert expected_result == result
@@ -912,7 +953,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 1 | 1 | 0 | 0 |
-<details><summary>{"View the top 1 failed tests by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
+<details><summary>{"View the top 1 failed test(s) by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
 
 > 
 > ```python
@@ -939,7 +980,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
     @pytest.mark.integration
@@ -1045,7 +1086,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 4 | 4 | 0 | 0 |
-<details><summary>View the top 3 failed tests by shortest run time</summary>
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
@@ -1113,12 +1154,12 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
         )
 
     @pytest.mark.integration
     @pytest.mark.django_db
-    @pytest.mark.parametrize("plan", ["users-basic", "users-pr-inappm"])
+    @pytest.mark.parametrize("plan", [DEFAULT_FREE_PLAN, "users-pr-inappm"])
     def test_upload_finisher_task_call_main_with_plan(
         self,
         mocker,

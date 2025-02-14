@@ -284,38 +284,58 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     "queue_notify": False,
                 }
 
-        flaky_tests = dict()
-        if should_do_flaky_detection(repo, commit_yaml):
-            flaky_tests = self.get_flaky_tests(db_session, repoid, failures)
+            flaky_tests = dict()
+            if should_do_flaky_detection(repo, commit_yaml):
+                flaky_tests = self.get_flaky_tests(db_session, repoid, failures)
 
-        failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
-        info = TACommentInDepthInfo(failures, flaky_tests)
-        payload = TestResultsNotificationPayload(
-            failed_tests, passed_tests, skipped_tests, info
-        )
-        notifier = TestResultsNotifier(
-            commit, commit_yaml, payload=payload, _pull=pull, _repo_service=repo_service
-        )
-        notifier_result = notifier.notify()
-        success = True if notifier_result is NotifierResult.COMMENT_POSTED else False
-        TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
-
-        if len(flaky_tests):
-            log.info(
-                "Detected failure on test that has been identified as flaky",
-                extra=dict(
-                    success=success,
-                    notifier_result=notifier_result.value,
-                    test_ids=list(flaky_tests.keys()),
-                ),
+            failures = sorted(failures, key=lambda x: x.duration_seconds)[:3]
+            info = TACommentInDepthInfo(failures, flaky_tests)
+            payload = TestResultsNotificationPayload(
+                failed_tests, passed_tests, skipped_tests, info
             )
+            notifier = TestResultsNotifier(
+                commit,
+                commit_yaml,
+                payload=payload,
+                _pull=pull,
+                _repo_service=repo_service,
+            )
+
+            if repo.private == False:
+                log.info(
+                    "making TA comment",
+                    extra=dict(
+                        pullid=pull.database_pull.pullid,
+                        service=repo.service,
+                        slug=f"{repo.owner.username}/{repo.name}",
+                    ),
+                )
+            notifier_result = notifier.notify()
+            success = (
+                True if notifier_result is NotifierResult.COMMENT_POSTED else False
+            )
+            TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
+            if len(flaky_tests):
+                log.info(
+                    "Detected failure on test that has been identified as flaky",
+                    extra=dict(
+                        success=success,
+                        notifier_result=notifier_result.value,
+                        test_ids=list(flaky_tests.keys()),
+                    ),
+                )
+            attempted = True
+        else:
+            success = False
+            attempted = False
+            notifier_result = NotifierResult.NO_PULL
 
         self.extra_dict["success"] = success
         self.extra_dict["notifier_result"] = notifier_result.value
         log.info("Finished test results notify", extra=self.extra_dict)
 
         return {
-            "notify_attempted": True,
+            "notify_attempted": attempted,
             "notify_succeeded": success,
             "queue_notify": False,
         }

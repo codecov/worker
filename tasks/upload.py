@@ -32,11 +32,10 @@ from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from rollouts import NEW_TA_TASKS
-from services.archive import ArchiveService
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
 from services.processing.types import UploadArguments
-from services.redis import download_archive_from_redis, get_redis_connection
+from services.redis import get_redis_connection
 from services.report import (
     BaseReportService,
     NotReadyToBuildReportYetError,
@@ -164,38 +163,14 @@ class UploadContext:
             for arg in arguments:
                 yield orjson.loads(arg)
 
-    def normalize_arguments(self, commit: Commit, arguments: UploadArguments):
-        """
-        Normalizes and validates the argument list from the user.
 
-        Does things like:
-
-            - replacing a redis-stored value with a storage one (by doing an upload)
-            - Removing unnecessary sensitive information for the arguments
-        """
-        commit_sha = commit.commitid
-        reportid = arguments.get("reportid")
-        if redis_key := arguments.pop("redis_key", None):
-            archive_service = ArchiveService(commit.repository)
-            content = download_archive_from_redis(self.redis_connection, redis_key)
-            written_path = archive_service.write_raw_upload(
-                commit_sha, reportid, content
-            )
-            log.info(
-                "Writing report content from redis to storage",
-                extra=dict(path=written_path),
-            )
-            arguments["url"] = written_path
-        arguments.pop("token", None)
-
-        flags: list | str | None = arguments.get("flags")
-        if not flags:
-            flags = []
-        elif isinstance(flags, str):
-            flags = [flag.strip() for flag in flags.split(",")]
-        arguments["flags"] = flags
-
-        return arguments
+def normalize_flags(arguments: UploadArguments):
+    flags: list | str | None = arguments.get("flags")
+    if not flags:
+        flags = []
+    elif isinstance(flags, str):
+        flags = [flag.strip() for flag in flags.split(",")]
+    arguments["flags"] = flags
 
 
 def _should_debounce_processing(upload_context: UploadContext) -> Optional[float]:
@@ -605,7 +580,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         upload_flag_map: dict[Upload, list | str | None] = {}
 
         for arguments in upload_context.arguments_list():
-            arguments = upload_context.normalize_arguments(commit, arguments)
+            arguments.pop("token", None)
+            normalize_flags(arguments)
+
             if "upload_id" not in arguments:
                 upload = report_service.create_report_upload(arguments, commit_report)
                 arguments["upload_id"] = upload.id_

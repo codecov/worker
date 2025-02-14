@@ -12,7 +12,6 @@ from shared.reports.resources import Report
 from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
 from services.comparison import ComparisonProxy
-from services.comparison.overlays import OverlayType
 from services.comparison.types import ReportUploadedCount
 from services.notification.notifiers.mixins.message.helpers import (
     diff_to_string,
@@ -44,8 +43,6 @@ def get_section_class_from_layout_name(layout_name):
         return ReachSectionWriter
     if layout_name == "footer":
         return FooterSectionWriter
-    if layout_name == "betaprofiling":
-        return ImpactedEntrypointsSectionWriter
     if layout_name == "announcements":
         return AnnouncementSectionWriter
     if layout_name in ["header", "newheader", "condensed_header"]:
@@ -209,22 +206,6 @@ class HeaderSectionWriter(BaseSectionWriter):
                 f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {pull_head} to get more accurate results."
             )
 
-        if self.settings.get("show_critical_paths"):
-            all_potentially_affected_critical_files = set(
-                (diff["files"] if diff else {}).keys()
-            ) | set(c.path for c in changes or [])
-            overlay = comparison.get_overlay(OverlayType.line_execution_count)
-            files_in_critical = set(
-                overlay.search_files_for_critical_changes(
-                    all_potentially_affected_critical_files
-                )
-            )
-            if files_in_critical:
-                yield ("")
-                yield (
-                    "Changes have been made to critical files, which contain lines commonly executed in production. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
-                )
-
         for msg in self._possibly_include_test_result_setup_confirmation(comparison):
             yield msg
 
@@ -277,19 +258,6 @@ class AnnouncementSectionWriter(BaseSectionWriter):
                     return True
 
         return False
-
-
-class ImpactedEntrypointsSectionWriter(BaseSectionWriter):
-    def do_write_section(self, comparison, diff, changes, links, behind_by=None):
-        overlay = comparison.get_overlay(OverlayType.line_execution_count)
-        impacted_endpoints = overlay.find_impacted_endpoints()
-        if impacted_endpoints:
-            yield "| Related Entrypoints |"
-            yield "|---|"
-            for endpoint in impacted_endpoints:
-                yield (f"|{endpoint['group_name']}|")
-        elif impacted_endpoints is not None:
-            yield "This change has been scanned for critical changes. [Learn more](https://docs.codecov.com/docs/impact-analysis)"
 
 
 class FooterSectionWriter(BaseSectionWriter):
@@ -405,11 +373,6 @@ class NewFilesSectionWriter(BaseSectionWriter):
             limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
             mentioned = []
             files_in_critical = set()
-            if self.settings.get("show_critical_paths", False):
-                overlay = comparison.get_overlay(OverlayType.line_execution_count)
-                files_in_critical = set(
-                    overlay.search_files_for_critical_changes(all_files)
-                )
 
             def tree_cell(typ, path, metrics, _=None):
                 if path not in mentioned:
@@ -486,11 +449,6 @@ class FileSectionWriter(BaseSectionWriter):
             limit = int(self.layout.split(":")[1] if ":" in self.layout else 10)
             mentioned = []
             files_in_critical = set()
-            if self.settings.get("show_critical_paths", False):
-                overlay = comparison.get_overlay(OverlayType.line_execution_count)
-                files_in_critical = set(
-                    overlay.search_files_for_critical_changes(all_files)
-                )
 
             def tree_cell(typ, path, metrics, _=None):
                 if path not in mentioned:

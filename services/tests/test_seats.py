@@ -1,5 +1,5 @@
 import pytest
-from shared.billing import BillingPlan
+from shared.plan.constants import PlanName
 
 from database.tests.factories import OwnerFactory, PullFactory
 from services.repository import EnrichedPull
@@ -51,7 +51,7 @@ def test_seat_billing_plan(dbsession):
     dbsession.flush()
 
     pull.repository.private = True
-    pull.repository.owner.plan = BillingPlan.users_monthly.value
+    pull.repository.owner.plan = PlanName.CODECOV_PRO_MONTHLY_LEGACY.value
     dbsession.flush()
 
     enriched_pull = EnrichedPull(
@@ -72,7 +72,7 @@ def test_seat_no_author(dbsession):
     dbsession.flush()
 
     pull.repository.private = True
-    pull.repository.owner.plan = BillingPlan.pr_monthly.value
+    pull.repository.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
     dbsession.flush()
 
     enriched_pull = EnrichedPull(
@@ -93,7 +93,7 @@ def test_seat_author_in_org(dbsession):
     dbsession.flush()
 
     pull.repository.private = True
-    pull.repository.owner.plan = BillingPlan.pr_monthly.value
+    pull.repository.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
     pull.repository.owner.service = "github"
     dbsession.flush()
 
@@ -122,7 +122,7 @@ def test_seat_author_not_in_org(dbsession):
     dbsession.flush()
 
     pull.repository.private = True
-    pull.repository.owner.plan = BillingPlan.pr_monthly.value
+    pull.repository.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
     pull.repository.owner.service = "github"
     dbsession.flush()
 
@@ -148,7 +148,7 @@ def test_seat_author_auto_activate(dbsession):
     dbsession.flush()
 
     pull.repository.private = True
-    pull.repository.owner.plan = BillingPlan.pr_monthly.value
+    pull.repository.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
     pull.repository.owner.plan_auto_activate = True
     pull.repository.owner.service = "github"
     dbsession.flush()

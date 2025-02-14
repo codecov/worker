@@ -275,7 +275,7 @@ def test_test_analytics(
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 3 | 2 | 1 | 1 |
-<details><summary>View the top 2 failed tests by shortest run time</summary>
+<details><summary>View the top 2 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
@@ -309,5 +309,5 @@ def test_test_analytics(
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{short_form_service_name}/{upload.report.commit.repository.owner.username}/{upload.report.commit.repository.name}/tests/{upload.report.commit.branch})
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)""",
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
     )

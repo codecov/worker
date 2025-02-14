@@ -2,7 +2,7 @@ import json
 from unittest.mock import PropertyMock, call
 
 from mock import MagicMock, patch
-from shared.plan.constants import PlanName
+from shared.plan.constants import DEFAULT_FREE_PLAN
 from shared.reports.types import ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
@@ -244,7 +244,7 @@ class TestAccountModels(object):
         dbsession.refresh(account)
         assert account.name == "test_name"
         assert account.is_active is True
-        assert account.plan == PlanName.BASIC_PLAN_NAME.value
+        assert account.plan == DEFAULT_FREE_PLAN
         assert account.plan_seat_count == 1
         assert account.free_seat_count == 0
         assert account.plan_auto_activate is True

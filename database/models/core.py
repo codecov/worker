@@ -5,7 +5,7 @@ from datetime import datetime
 from functools import cached_property
 from typing import Optional
 
-from shared.plan.constants import PlanName
+from shared.plan.constants import DEFAULT_FREE_PLAN
 from sqlalchemy import Column, ForeignKey, Index, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, backref, relationship, validates
@@ -62,7 +62,7 @@ class Account(CodecovBaseModel, MixinBaseClassNoExternalID):
     plan = Column(
         types.String(50),
         nullable=False,
-        default=PlanName.BASIC_PLAN_NAME.value,  # TODO: UPDATE WITH NEW FREE PLAN NAME
+        default=DEFAULT_FREE_PLAN,
     )
     plan_seat_count = Column(types.SmallInteger, nullable=False, default=1)
     free_seat_count = Column(types.SmallInteger, nullable=False, default=0)

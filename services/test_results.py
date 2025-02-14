@@ -21,7 +21,7 @@ from database.models import (
     Upload,
     UploadError,
 )
-from helpers.notifier import BaseNotifier
+from helpers.notifier import BaseNotifier, NotifierResult
 from rollouts import FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.processing.types import UploadArguments
@@ -212,7 +212,7 @@ def generate_failure_info(
 def generate_view_test_analytics_line(commit: Commit) -> str:
     repo = commit.repository
     test_analytics_url = get_test_analytics_url(repo, commit)
-    return f"\nTo view more test analytics, go to the [Test Analytics Dashboard]({test_analytics_url})\n:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"
+    return f"\nTo view more test analytics, go to the [Test Analytics Dashboard]({test_analytics_url})\n<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>"
 
 
 def messagify_failure(
@@ -245,8 +245,8 @@ def messagify_flake(
 
 
 def specific_error_message(upload_error: UploadError) -> str:
-    title = f"### :x: {upload_error.error_code}"
-    if upload_error.error_code == "Unsupported file format":
+    title = f"### :x: {upload_error.error_code.replace('_', ' ').capitalize()}"
+    if upload_error.error_code == "unsupported_file_format":
         description = "\n".join(
             [
                 "Upload processing failed due to unsupported file format. Please review the parser error message:",
@@ -254,7 +254,7 @@ def specific_error_message(upload_error: UploadError) -> str:
                 "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
             ]
         )
-    elif upload_error.error_code == "File not found":
+    elif upload_error.error_code == "file_not_in_storage":
         description = "\n".join(
             [
                 "No result to display due to the CLI not being able to find the file.",
@@ -313,7 +313,7 @@ class TestResultsNotifier(BaseNotifier):
                 ]
 
                 top_3_failed_section = wrap_in_details(
-                    f"View the top {min(3, len(failures))} failed tests by shortest run time",
+                    f"View the top {min(3, len(failures))} failed test(s) by shortest run time",
                     "\n".join(failure_content),
                 )
 
@@ -400,6 +400,18 @@ class TestResultsNotifier(BaseNotifier):
             return (False, "torngit_error")
 
         return (True, "comment_posted")
+
+    def notify(self):
+        assert self._pull
+        pull = self._pull
+
+        message = self.build_message()
+
+        sent_to_provider = self.send_to_provider(pull, message)
+        if sent_to_provider == False:
+            return NotifierResult.TORNGIT_ERROR
+
+        return NotifierResult.COMMENT_POSTED
 
 
 def latest_failures_for_commit(

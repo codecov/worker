@@ -1,5 +1,5 @@
 from freezegun import freeze_time
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
@@ -10,7 +10,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
     def test_create_or_update_to_free_plan_known_user(self, dbsession, mocker):
         owner = OwnerFactory.create(
             service="github",
-            plan="users",
+            plan=PlanName.GHM_PLAN_NAME.value,
             plan_user_count=2,
             plan_activated_users=[1, 2],
         )
@@ -27,7 +27,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         )
 
         assert not ghm_service.get_user.called
-        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_user_count == 1
         assert owner.plan_activated_users is None
 
@@ -72,7 +72,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
     def test_create_or_update_plan_known_user_with_plan(self, dbsession, mocker):
         owner = OwnerFactory.create(
             service="github",
-            plan="users-basic",
+            plan=DEFAULT_FREE_PLAN,
             plan_user_count=10,
             plan_activated_users=[34123, 231, 2314212],
             stripe_customer_id="cus_123",
@@ -94,7 +94,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         )
 
         assert not ghm_service.get_user.called
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate == True
         assert owner.plan_activated_users is None
@@ -130,7 +130,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         )
 
         assert not ghm_service.get_user.called
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate == True
         assert owner.plan_activated_users is None
@@ -164,7 +164,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.username == username
         assert owner.name == name
         assert owner.email == email
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate == True
         assert owner.plan_user_count == 5

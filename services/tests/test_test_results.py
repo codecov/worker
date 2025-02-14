@@ -1,5 +1,6 @@
 import mock
 import pytest
+from shared.plan.constants import DEFAULT_FREE_PLAN
 from shared.torngit.exceptions import TorngitClientError
 
 from database.models import UploadError
@@ -128,7 +129,7 @@ def test_build_message():
 | Tests completed | Failed | Passed | Skipped |
 |---|---|---|---|
 | 3 | 1 | 2 | 3 |
-<details><summary>View the top 1 failed tests by shortest run time</summary>
+<details><summary>View the top 1 failed test(s) by shortest run time</summary>
 
 > 
 > ```python
@@ -149,7 +150,7 @@ def test_build_message():
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/thing%2Fthing)
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"""
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>"""
     )
 
 
@@ -199,7 +200,7 @@ def test_build_message_with_flake():
 </details>
 
 To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/{services_short_dict.get(commit.repository.service)}/{commit.repository.owner.username}/{commit.repository.name}/tests/{commit.branch})
-:loudspeaker:  Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/304)"""
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>"""
     )
 
 
@@ -209,7 +210,7 @@ def test_notify(mocker):
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.Mock(),
     )
-    tn = TestResultsNotifier(CommitFactory(), None)
+    tn = TestResultsNotifier(CommitFactory(), None, _pull=mock.Mock())
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.Mock()
 
@@ -226,7 +227,7 @@ def test_notify_fail_torngit_error(
         "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
         return_value=mock.Mock(),
     )
-    tn = TestResultsNotifier(CommitFactory(), None)
+    tn = TestResultsNotifier(CommitFactory(), None, _pull=mock.Mock())
     tn.build_message = mock.Mock()
     tn.send_to_provider = mock.Mock(return_value=False)
 
@@ -235,30 +236,14 @@ def test_notify_fail_torngit_error(
     assert notification_result == NotifierResult.TORNGIT_ERROR
 
 
-def test_notify_fail_no_pull(
-    mocker,
-):
-    mocker.patch("helpers.notifier.get_repo_provider_service", return_value=mock.Mock())
-    mocker.patch(
-        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
-        return_value=None,
-    )
-    tn = TestResultsNotifier(CommitFactory(), None)
-    tn.build_message = mock.Mock()
-    tn.send_to_provider = mock.Mock(return_value=False)
-
-    notification_result = tn.notify()
-    assert notification_result == NotifierResult.NO_PULL
-
-
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "config,feature_flag,private,plan,ex_result",
     [
         (False, True, False, "users-inappm", False),
-        (True, True, True, "users-basic", True),
-        (True, False, False, "users-basic", True),
-        (True, False, True, "users-basic", False),
+        (True, True, True, DEFAULT_FREE_PLAN, True),
+        (True, False, False, DEFAULT_FREE_PLAN, True),
+        (True, False, True, DEFAULT_FREE_PLAN, False),
         (True, False, False, "users-inappm", True),
         (True, False, True, "users-inappm", True),
     ],
@@ -295,7 +280,7 @@ def test_specific_error_message(mocker):
     upload = UploadFactory()
     error = UploadError(
         report_upload=upload,
-        error_code="Unsupported file format",
+        error_code="unsupported_file_format",
         error_params={
             "error_message": "Error parsing JUnit XML in test.xml at 4:32: ParserError: No name found"
         },

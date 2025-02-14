@@ -1,6 +1,6 @@
 import logging
 
-from shared.billing import BillingPlan
+from shared.plan.constants import DEFAULT_FREE_PLAN
 
 from app import celery_app
 from celery_config import trial_expiration_task_name
@@ -21,7 +21,7 @@ class TrialExpirationTask(BaseCodecovTask, name=trial_expiration_task_name):
         log.info(
             "Expiring owner's trial and setting back to basic plan", extra=log_extra
         )
-        owner.plan = BillingPlan.users_basic.value
+        owner.plan = DEFAULT_FREE_PLAN
         owner.plan_activated_users = (
             [owner.trial_fired_by] if owner.trial_fired_by else None
         )

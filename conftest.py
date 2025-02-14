@@ -71,12 +71,6 @@ def engine(request, sqlalchemy_db, sqlalchemy_connect_url, app_config):
     if not database_exists(database_url):
         raise RuntimeError(f"SQLAlchemy cannot connect to DB at {database_url}")
 
-    Base.metadata.tables["profiling_profilingcommit"].create(
-        bind=engine, checkfirst=True
-    )
-    Base.metadata.tables["profiling_profilingupload"].create(
-        bind=engine, checkfirst=True
-    )
     Base.metadata.tables["timeseries_measurement"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["timeseries_dataset"].create(bind=engine, checkfirst=True)
 

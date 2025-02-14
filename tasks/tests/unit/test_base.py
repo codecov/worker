@@ -9,8 +9,8 @@ from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 from mock import ANY, call
 from prometheus_client import REGISTRY
-from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
+from shared.plan.constants import PlanName
 from shared.utils.test_utils import mock_config_helper
 from sqlalchemy.exc import (
     DBAPIError,
@@ -22,6 +22,7 @@ from sqlalchemy.exc import (
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
 from tasks.base import BaseCodecovRequest, BaseCodecovTask
 from tasks.base import celery_app as base_celery_app
+from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
 
@@ -454,9 +455,9 @@ class TestBaseCodecovRequest(object):
 class TestBaseCodecovTaskApplyAsyncOverride(object):
     @pytest.fixture
     def fake_owners(self, dbsession):
-        owner = OwnerFactory.create(plan=BillingPlan.pr_monthly.db_name)
+        owner = OwnerFactory.create(plan=PlanName.CODECOV_PRO_MONTHLY.value)
         owner_enterprise_cloud = OwnerFactory.create(
-            plan=BillingPlan.enterprise_cloud_yearly.db_name
+            plan=PlanName.ENTERPRISE_CLOUD_YEARLY.value
         )
         dbsession.add(owner)
         dbsession.add(owner_enterprise_cloud)
@@ -538,9 +539,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_no_override(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {
@@ -583,9 +586,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_override_from_celery(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {
@@ -628,9 +633,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_override_from_upload(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {

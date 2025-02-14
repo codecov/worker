@@ -15,7 +15,7 @@ class RegularCleanupTask(BaseCodecovTask, name=regular_cleanup_cron_task_name):
     acks_late = True  # retry the task when the worker dies for whatever reason
     max_retries = None  # aka, no limit on retries
 
-    def run_cron_task(self, _db_session, *args, **kwargs) -> CleanupSummary:
+    def run_impl(self, _db_session, *args, **kwargs) -> CleanupSummary:
         try:
             return run_regular_cleanup()
         except SoftTimeLimitExceeded:
