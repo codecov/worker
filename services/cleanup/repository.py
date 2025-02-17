@@ -99,8 +99,4 @@ def start_repo_cleanup(repo_id: int) -> tuple[bool, int]:
             image_token=new_token,
         )
 
-    # The equivalent of `SET NULL`:
-    # TODO: maybe turn this into a `MANUAL_CLEANUP`?
-    Repository.objects.filter(fork=repo_id).update(fork=None)
-
     return (True, shadow_owner.ownerid)

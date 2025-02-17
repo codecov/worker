@@ -7,18 +7,20 @@ import sentry_sdk
 from django.db.models import Model, Q, QuerySet
 from shared.bundle_analysis import StoragePaths
 from shared.django_apps.compare.models import CommitComparison
-from shared.django_apps.core.models import Commit, Pull
+from shared.django_apps.core.models import Commit, Pull, Repository
 from shared.django_apps.profiling.models import ProfilingUpload
 from shared.django_apps.reports.models import CommitReport, ReportDetails
 from shared.django_apps.reports.models import ReportSession as Upload
 from shared.django_apps.staticanalysis.models import StaticAnalysisSingleFileSnapshot
+from shared.django_apps.timeseries.models import Dataset, Measurement
 from shared.storage.exceptions import FileNotInStorageError
+from shared.timeseries.helpers import is_timeseries_enabled
 from shared.utils.sessions import SessionType
 
 from services.archive import ArchiveService, MinioEndpoints
 from services.cleanup.utils import CleanupContext, CleanupResult
 
-MANUAL_QUERY_CHUNKSIZE = 5_000
+MANUAL_QUERY_CHUNKSIZE = 1_000
 DELETE_FILES_BATCHSIZE = 50
 
 
@@ -30,6 +32,9 @@ def cleanup_files_batched(
         try:
             return context.storage.delete_file(bucket_path[0], bucket_path[1])
         except FileNotInStorageError:
+            return False
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
             return False
 
     iter = ((bucket, path) for bucket, paths in buckets_paths.items() for path in paths)
@@ -189,6 +194,32 @@ def cleanup_upload(context: CleanupContext, query: QuerySet) -> CleanupResult:
     return CleanupResult(cleaned_models, cleaned_files)
 
 
+def cleanup_repository(context: CleanupContext, query: QuerySet) -> CleanupResult:
+    # The equivalent of `SET NULL`:
+    Repository.objects.filter(fork__in=query).update(fork=None)
+
+    # Cleans up all the `timeseries` stuff:
+    if is_timeseries_enabled():
+        by_owner: dict[int, list[int]] = defaultdict(list)
+        all_repo_ids: list[int] = []
+        for owner_id, repo_id in query.values_list("ownerid", "repoid"):
+            by_owner[owner_id].append(repo_id)
+            all_repo_ids.append(repo_id)
+
+        datasets = Dataset.objects.filter(repository_id__in=all_repo_ids)
+        datasets._for_write = True
+        datasets._raw_delete(datasets.db)
+        for owner_id, repo_ids in by_owner.items():
+            measurements = Measurement.objects.filter(
+                owner_id=owner_id,
+                repo_id__in=repo_ids,
+            )
+            measurements._for_write = True
+            measurements._raw_delete(measurements.db)
+
+    return CleanupResult(query._raw_delete(query.db))
+
+
 # All the models that need custom python code for deletions so a bulk `DELETE` query does not work.
 MANUAL_CLEANUP: dict[
     type[Model], Callable[[CleanupContext, QuerySet], CleanupResult]
@@ -203,4 +234,5 @@ MANUAL_CLEANUP: dict[
     StaticAnalysisSingleFileSnapshot: partial(
         cleanup_with_storage_field, "content_location"
     ),
+    Repository: cleanup_repository,
 }

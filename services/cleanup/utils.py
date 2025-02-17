@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 
 import shared.storage
+from django.db import transaction
 from django.db.models import Model
 from shared.api_archive.storage import StorageService
 from shared.config import get_config
@@ -32,6 +33,25 @@ def cleanup_context():
         yield context
     finally:
         context.threadpool.shutdown()
+
+
+@contextmanager
+def with_autocommit():
+    conn = transaction.get_connection()
+    # if we are in an `atomic` block, we cannot mess with the autocommit flag
+    if conn.in_atomic_block:
+        yield
+        return
+
+    try:
+        autocommit = conn.get_autocommit()
+        if autocommit != True:
+            # we first have to commit an implicitly running transaction
+            conn.commit()
+            conn.set_autocommit(True)
+        yield
+    finally:
+        conn.set_autocommit(autocommit)
 
 
 @dataclasses.dataclass

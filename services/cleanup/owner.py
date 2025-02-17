@@ -30,8 +30,6 @@ def clear_owner_references(owner_id: int):
     This clears the `ownerid` from various DB arrays where it is being referenced.
     """
 
-    # TODO: Some of these UPDATEs are horribly slow because of missing indices.
-    # In particular, filtering by `Commit.author` takes an incredibly long time.
     OwnerProfile.objects.filter(default_org=owner_id).update(default_org=None)
     Owner.objects.filter(bot=owner_id).update(bot=None)
     Repository.objects.filter(bot=owner_id).update(bot=None)
