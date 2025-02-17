@@ -1,16 +1,23 @@
+import contextlib
 import logging
 
 from django.db.models.query import QuerySet
 
 from services.cleanup.models import MANUAL_CLEANUP
 from services.cleanup.relations import build_relation_graph
-from services.cleanup.utils import CleanupResult, CleanupSummary, cleanup_context
+from services.cleanup.utils import (
+    CleanupContext,
+    CleanupResult,
+    CleanupSummary,
+    cleanup_context,
+)
 
 log = logging.getLogger(__name__)
 
 
 def run_cleanup(
     query: QuerySet,
+    context: CleanupContext | None = None,
 ) -> CleanupSummary:
     """
     Cleans up all the models and storage files reachable from the given `QuerySet`.
@@ -26,7 +33,8 @@ def run_cleanup(
     cleaned_models = 0
     cleaned_files = 0
 
-    with cleanup_context() as context:
+    cm = contextlib.nullcontext(context) if context else cleanup_context()
+    with cm as context:
         for relation in models_to_cleanup:
             model = relation.model
             result = CleanupResult(0)
