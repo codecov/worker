@@ -202,7 +202,7 @@ def cleanup_repository(context: CleanupContext, query: QuerySet) -> CleanupResul
     if is_timeseries_enabled():
         by_owner: dict[int, list[int]] = defaultdict(list)
         all_repo_ids: list[int] = []
-        for owner_id, repo_id in query.values_list("ownerid", "repoid"):
+        for owner_id, repo_id in query.values_list("author_id", "repoid"):
             by_owner[owner_id].append(repo_id)
             all_repo_ids.append(repo_id)
 
