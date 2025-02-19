@@ -305,9 +305,11 @@ class BundleAnalysisReportService(BaseReportService):
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
+            error_type = type(e).__name__
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="parser_error",
                 plugin_name=plugin_name,
+                error_type=error_type,
             ).inc()
             log.error(
                 "Unable to parse upload for bundle analysis",
@@ -315,7 +317,7 @@ class BundleAnalysisReportService(BaseReportService):
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
-                    error_type=type(e).__name__,
+                    error_type=error_type,
                 ),
             )
             return ProcessingResult(
