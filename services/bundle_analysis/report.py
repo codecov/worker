@@ -275,7 +275,7 @@ class BundleAnalysisReportService(BaseReportService):
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
-        except FileNotInStorageError:
+        except FileNotInStorageError as e:
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="file_not_in_storage",
                 plugin_name="n/a",
