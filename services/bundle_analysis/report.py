@@ -37,6 +37,7 @@ BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER = Counter(
     [
         "result",
         "plugin_name",
+        "error_type",
     ],
 )
 
@@ -101,6 +102,7 @@ class ProcessingResult:
         BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
             result="upload_error" if self.error else "processed",
             plugin_name="n/a",
+            error_type=self.error.code if self.error else "n/a",
         ).inc()
         db_session.flush()
 
@@ -273,10 +275,11 @@ class BundleAnalysisReportService(BaseReportService):
 
             # save the bundle report back to storage
             bundle_loader.save(bundle_report, commit_report.external_id)
-        except FileNotInStorageError:
+        except FileNotInStorageError as e:
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="file_not_in_storage",
                 plugin_name="n/a",
+                error_type=type(e).__name__,
             ).inc()
             return ProcessingResult(
                 upload=upload,
@@ -292,6 +295,7 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="rate_limit_error",
                 plugin_name=plugin_name,
+                error_type=type(e).__name__,
             ).inc()
             return ProcessingResult(
                 upload=upload,
@@ -305,14 +309,20 @@ class BundleAnalysisReportService(BaseReportService):
         except Exception as e:
             # Metrics to count number of parsing errors of bundle files by plugins
             plugin_name = getattr(e, "bundle_analysis_plugin_name", "unknown")
+            error_type = type(e).__name__
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="parser_error",
                 plugin_name=plugin_name,
+                error_type=error_type,
             ).inc()
             log.error(
                 "Unable to parse upload for bundle analysis",
                 exc_info=True,
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                    error_type=error_type,
+                ),
             )
             return ProcessingResult(
                 upload=upload,
@@ -445,10 +455,11 @@ class BundleAnalysisReportService(BaseReportService):
                 upload=upload,
                 commit=commit,
             )
-        except Exception:
+        except Exception as e:
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="parser_error",
                 plugin_name="n/a",
+                error_type=type(e).__name__,
             ).inc()
             return ProcessingResult(
                 upload=upload,
