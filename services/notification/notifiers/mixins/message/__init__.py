@@ -10,7 +10,6 @@ from shared.validation.helpers import LayoutStructure
 from database.models.core import Owner
 from helpers.environment import is_enterprise
 from helpers.metrics import metrics
-from rollouts import SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
@@ -187,20 +186,7 @@ class MessageMixin(object):
                         section_writer,
                     )
 
-        self._possibly_write_impact_analysis_deprecation(comparison, write)
-
         return [m for m in message if m is not None]
-
-    def _possibly_write_impact_analysis_deprecation(self, comparison, write):
-        # CAN BE REMOVED AFTER January 31st 2025
-        # Will only be shown to orgs specified in the feature flag override.
-        repo: Repository = comparison.head.commit.repository
-        if SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG.check_value(
-            identifier=repo.repoid, default=False
-        ):
-            write(
-                ":warning: Impact Analysis from Codecov is deprecated and will be sunset on Jan 31 2025. [See more](https://docs.codecov.com/docs/impact-analysis)"
-            )
 
     def _possibly_write_install_app(
         self, comparison: ComparisonProxy, write: Callable

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List
-from unittest.mock import PropertyMock, patch
+from unittest.mock import PropertyMock
 
 import pytest
 from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
@@ -21,7 +21,6 @@ from shared.yaml import UserYaml
 from database.models.core import Commit, GithubAppInstallation, Pull, Repository
 from database.tests.factories import RepositoryFactory
 from database.tests.factories.core import CommitFactory, OwnerFactory, PullFactory
-from rollouts import SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG
 from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, FullCommit, ReportUploadedCount
 from services.decoration import Decoration
@@ -681,11 +680,6 @@ class TestCommentNotifier(object):
             == ":warning: Please install the !['codecov app svg image'](https://github.com/codecov/engineering-team/assets/152432831/e90313f4-9d3a-4b63-8b54-cfe14e7ec20d) to ensure uploads and comments are reliably processed by Codecov."
         )
 
-    @patch.object(
-        SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG,
-        "check_value",
-        return_value=True,
-    )
     @pytest.mark.django_db
     def test_build_message(
         self, dbsession, mock_configuration, mock_repo_provider, sample_comparison
@@ -756,7 +750,6 @@ class TestCommentNotifier(object):
             f"[{sample_comparison.project_coverage_base.commit.commitid[:7]}...{sample_comparison.head.commit.commitid[:7]}](test.example.br/gh/{repository.slug}/pull/{pull.pullid}?dropdown=coverage&src=pr&el=lastupdated). "
             f"Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
-            ":warning: Impact Analysis from Codecov is deprecated and will be sunset on Jan 31 2025. [See more](https://docs.codecov.com/docs/impact-analysis)",
         ]
         for exp, res in zip(expected_result, result):
             assert exp == res
@@ -3530,9 +3523,6 @@ class TestAnnouncementsSectionWriter(object):
 
 
 class TestNewFooterSectionWriter(object):
-    @patch.object(
-        SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG, "check_value", return_value=True
-    )
     def test_footer_section_writer_in_github(self, mocker):
         writer = NewFooterSectionWriter(
             mocker.MagicMock(),
@@ -4096,9 +4086,6 @@ class TestCommentNotifierInNewLayout(object):
         ]
         assert result == expected_result
 
-    @patch.object(
-        SHOW_IMPACT_ANALYSIS_DEPRECATION_MSG, "check_value", return_value=True
-    )
     @pytest.mark.django_db
     def test_build_message_team_plan_customer_all_lines_covered(
         self,
@@ -4138,7 +4125,6 @@ class TestCommentNotifierInNewLayout(object):
             ":white_check_mark: All tests successful. No failed tests found.",
             "",
             ":loudspeaker: Thoughts on this report? [Let us know!](https://github.com/codecov/feedback/issues/255)",
-            ":warning: Impact Analysis from Codecov is deprecated and will be sunset on Jan 31 2025. [See more](https://docs.codecov.com/docs/impact-analysis)",
         ]
         assert result == expected_result
 
