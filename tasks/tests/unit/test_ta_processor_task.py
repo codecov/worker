@@ -2,14 +2,11 @@ import base64
 import json
 import zlib
 from pathlib import Path
-from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from google.protobuf.json_format import MessageToDict
 from shared.storage.exceptions import FileNotInStorageError
 from time_machine import travel
 
-import generated_proto.testrun.ta_testrun_pb2 as ta_testrun_pb2
 from database.models import CommitReport, DailyTestRollup, Test, TestInstance
 from database.tests.factories import (
     CommitFactory,
@@ -20,14 +17,6 @@ from database.tests.factories import (
 from tasks.ta_processor import TAProcessorTask
 
 here = Path(__file__)
-
-
-@pytest.fixture()
-def mock_bigquery_service():
-    with patch("ta_storage.bq.get_bigquery_service") as mock:
-        service = MagicMock()
-        mock.return_value = service
-        yield service
 
 
 class TestUploadTestProcessorTask(object):
@@ -41,13 +30,8 @@ class TestUploadTestProcessorTask(object):
         codecov_vcr,
         mock_storage,
         celery_app,
-        mock_bigquery_service,
         snapshot,
     ):
-        mock_configuration.set_params(
-            mock_configuration.params | {"services": {"bigquery": {"enabled": True}}}
-        )
-
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
         assert len(tests) == 0
@@ -147,23 +131,6 @@ class TestUploadTestProcessorTask(object):
         }
         assert snapshot("bin") == mock_storage.read_file("archive", url)
 
-        mock_bigquery_service.write.assert_called_once_with(
-            "codecov_prod", "testruns", ta_testrun_pb2, ANY
-        )
-
-        # this gets the bytes argument to the write call
-        # it gets the first call
-        # then it gets the args because call is a tuple (name, args, kwargs)
-        # then it gets the 3rd item in the args tuple which is the bytes arg
-        testruns = [
-            MessageToDict(
-                ta_testrun_pb2.TestRun.FromString(testrun_bytes),
-                preserving_proto_field_name=True,
-            )
-            for testrun_bytes in mock_bigquery_service.mock_calls[0][1][3]
-        ]
-        assert snapshot("json") == sorted(testruns, key=lambda x: x["name"])
-
     @pytest.mark.integration
     def test_ta_processor_task_error_parsing_file(
         self,
@@ -175,7 +142,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.json") as f:
@@ -228,7 +194,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         with open(here.parent.parent / "samples" / "sample_test.json") as f:
@@ -278,7 +243,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         celery_app,
         snapshot,
-        mock_bigquery_service,
     ):
         url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         mock_storage.write_file(
@@ -336,7 +300,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
@@ -386,7 +349,6 @@ class TestUploadTestProcessorTask(object):
         mock_storage,
         mock_redis,
         celery_app,
-        mock_bigquery_service,
     ):
         tests = dbsession.query(Test).all()
         test_instances = dbsession.query(TestInstance).all()
