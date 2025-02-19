@@ -37,6 +37,7 @@ BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER = Counter(
     [
         "result",
         "plugin_name",
+        "error_type",
     ],
 )
 
@@ -101,6 +102,7 @@ class ProcessingResult:
         BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
             result="upload_error" if self.error else "processed",
             plugin_name="n/a",
+            error_type=self.error.code if self.error else "n/a",
         ).inc()
         db_session.flush()
 
@@ -277,6 +279,7 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="file_not_in_storage",
                 plugin_name="n/a",
+                error_type=type(e).__name__,
             ).inc()
             return ProcessingResult(
                 upload=upload,
@@ -292,6 +295,7 @@ class BundleAnalysisReportService(BaseReportService):
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="rate_limit_error",
                 plugin_name=plugin_name,
+                error_type=type(e).__name__,
             ).inc()
             return ProcessingResult(
                 upload=upload,
@@ -451,10 +455,11 @@ class BundleAnalysisReportService(BaseReportService):
                 upload=upload,
                 commit=commit,
             )
-        except Exception:
+        except Exception as e:
             BUNDLE_ANALYSIS_REPORT_PROCESSOR_COUNTER.labels(
                 result="parser_error",
                 plugin_name="n/a",
+                error_type=type(e).__name__,
             ).inc()
             return ProcessingResult(
                 upload=upload,
