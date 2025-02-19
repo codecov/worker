@@ -218,7 +218,6 @@ test_env.install_cli:
 test_env.container_prepare:
 	apt-get update
 	apt-get install -y git build-essential netcat-traditional
-	make test_env.install_cli
 	git config --global --add safe.directory /worker
 
 test_env.container_check_db:
@@ -230,17 +229,6 @@ test_env.run_unit:
 
 test_env.run_integration:
 	docker-compose exec worker make test.integration
-
-test_env.upload:
-	docker-compose exec worker make test_env.container_upload_test_results CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
-	docker-compose exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
-
-test_env.container_upload:
-	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml --disable-search
-	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml --disable-search
-
-test_env.container_upload_test_results:
-	codecovcli -v -u ${CODECOV_URL} do-upload --report-type test_results || true
 
 test_env:
 	TIMESERIES_ENABLED=true make test_env.up
