@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 @sentry_sdk.trace
 def merge_reports(
     commit_yaml: UserYaml,
-    master_report: Report,
+    master_report: EditableReport,
     intermediate_reports: list[IntermediateReport],
 ) -> tuple[Report, MergeResult]:
     session_mapping: dict[int, int] = dict()

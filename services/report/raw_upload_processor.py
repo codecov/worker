@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 
 import sentry_sdk
+from shared.reports.editable import EditableReport
 from shared.reports.resources import Report
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
@@ -112,7 +113,7 @@ def process_raw_upload(
 
 @sentry_sdk.trace
 def clear_carryforward_sessions(
-    original_report: Report,
+    original_report: EditableReport,
     to_merge_report: Report,
     to_merge_flags: list[str],
     current_yaml: UserYaml,
@@ -161,11 +162,14 @@ def clear_carryforward_sessions(
     if session_ids_to_partially_delete:
         all_labels = get_all_report_labels(to_merge_report)
         original_report.delete_labels(session_ids_to_partially_delete, all_labels)
-        for s in session_ids_to_partially_delete:
-            labels_now = get_labels_per_session(original_report, s)
-            if not labels_now:
-                actually_fully_deleted_sessions.add(s)
-                original_report.delete_session(s)
+        fully_deleted_sessions = [
+            s
+            for s in session_ids_to_partially_delete
+            if not get_labels_per_session(original_report, s)
+        ]
+        if fully_deleted_sessions:
+            original_report.delete_multiple_sessions(fully_deleted_sessions)
+            actually_fully_deleted_sessions.update(fully_deleted_sessions)
 
     return SessionAdjustmentResult(
         sorted(actually_fully_deleted_sessions),
