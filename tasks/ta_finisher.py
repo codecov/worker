@@ -45,7 +45,10 @@ from services.test_results import (
 from tasks.base import BaseCodecovTask
 from tasks.cache_test_rollups import cache_test_rollups_task
 from tasks.notify import notify_task
-from tasks.process_flakes import process_flakes_task
+from tasks.process_flakes import (
+    NEW_KEY,
+    process_flakes_task,
+)
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +92,7 @@ def queue_optional_tasks(
 
     if should_do_flaky_detection(repo, commit_yaml):
         if commit.merged is True or branch == repo.branch:
-            redis_client.set(f"flake_uploads:{repo.repoid}", 0)
+            redis_client.rpush(NEW_KEY.format(repo.repoid), commit.commitid)
             process_flakes_task_sig = process_flakes_task.s(
                 repo_id=repo.repoid,
                 commit_id=commit.commitid,

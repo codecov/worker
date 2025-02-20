@@ -1,8 +1,10 @@
 import logging
 from typing import Any
 
+from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import process_flakes_task_name
+from sqlalchemy.orm import Session
 
 from app import celery_app
 from services.processing.flake_processing import process_flake_for_repo_commit
@@ -13,6 +15,26 @@ log = logging.getLogger(__name__)
 
 
 FLAKE_EXPIRY_COUNT = 30
+LOCK_NAME = "flake_lock:{}"
+NEW_KEY = "flake_uploads_list:{}"
+OLD_KEY = "flake_uploads:{}"
+
+
+def get_redis_val(redis_client: Redis, repo_id: int) -> tuple[list[bytes], bool]:
+    commit_ids = redis_client.lpop(NEW_KEY.format(repo_id), 10)
+    if commit_ids is None:
+        commit_ids = []
+
+    current_commit = False
+    with redis_client.pipeline() as pipe:
+        # can't use getdel because the value of the key is not a string
+        pipe.get(OLD_KEY.format(repo_id))
+        pipe.delete(OLD_KEY.format(repo_id))
+        commit_id = pipe.execute()
+        if commit_id[0] is not None:
+            current_commit = True
+
+    return commit_ids, current_commit
 
 
 class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
@@ -22,7 +44,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
 
     def run_impl(
         self,
-        _db_session: Any,
+        _db_session: Session,
         *,
         repo_id: int,
         commit_id: str,
@@ -58,13 +80,26 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
 
         redis_client = get_redis_connection()
         lock_name = f"flake_lock:{repo_id}"
+
+        process_func = process_flake_for_repo_commit
+
         try:
             with redis_client.lock(
-                lock_name, timeout=max(300, self.hard_time_limit_task), blocking=False
+                lock_name,
+                timeout=max(300, self.hard_time_limit_task),
+                blocking_timeout=3,
             ):
-                while redis_client.get(f"flake_uploads:{repo_id}") is not None:
-                    redis_client.delete(f"flake_uploads:{repo_id}")
-                    process_flake_for_repo_commit(repo_id, commit_id)
+                while True:
+                    commit_ids, current_commit = get_redis_val(redis_client, repo_id)
+                    if not commit_ids and not current_commit:
+                        break
+
+                    for commitid in commit_ids:
+                        process_func(repo_id, commitid.decode())
+
+                    if current_commit:
+                        process_func(repo_id, commit_id)
+
         except LockError:
             log.warning("Unable to acquire process flakeslock for key %s.", lock_name)
             return {"successful": False}
