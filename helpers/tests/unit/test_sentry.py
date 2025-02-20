@@ -1,6 +1,6 @@
 import os
 
-from helpers.sentry import before_send, initialize_sentry
+from helpers.sentry import initialize_sentry
 
 
 class TestSentry(object):
@@ -16,7 +16,6 @@ class TestSentry(object):
         assert initialize_sentry() is None
         mocked_init.assert_called_with(
             "this_dsn",
-            before_send=before_send,
             release="worker-FAKE_VERSION_FOR_YOU",
             sample_rate=1.0,
             traces_sample_rate=1.0,
