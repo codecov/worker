@@ -363,7 +363,7 @@ class BaseCodecovTask(celery_app.Task):
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """
-        Includes SoftTimeoutLimitException, for example
+        Includes SoftTimeLimitExceeded, for example
         """
         res = super().on_failure(exc, task_id, args, kwargs, einfo)
         self.task_failure_counter.inc()
