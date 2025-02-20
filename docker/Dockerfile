@@ -6,9 +6,8 @@ ARG BERGLAS_VERSION=2.0.6
 FROM us-docker.pkg.dev/berglas/berglas/berglas:$BERGLAS_VERSION as berglas
 
 FROM $REQUIREMENTS_IMAGE as app
-COPY . /worker
 WORKDIR /worker
-RUN pip install setuptools==72.1.0
+ADD . /worker
 RUN chmod +x worker.sh
 ARG RELEASE_VERSION
 ENV RELEASE_VERSION=$RELEASE_VERSION
@@ -20,7 +19,6 @@ FROM app as cloud
 COPY --chmod=755 --from=berglas /bin/berglas /usr/local/bin/berglas
 
 FROM app as self-hosted
-RUN pip uninstall -y typing
 ENV RUN_ENV="ENTERPRISE"
 
 
