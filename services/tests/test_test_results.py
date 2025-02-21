@@ -238,27 +238,21 @@ def test_notify_fail_torngit_error(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "config,feature_flag,private,plan,ex_result",
+    "config,private,plan,ex_result",
     [
-        (False, True, False, "users-inappm", False),
-        (True, True, True, DEFAULT_FREE_PLAN, True),
-        (True, False, False, DEFAULT_FREE_PLAN, True),
-        (True, False, True, DEFAULT_FREE_PLAN, False),
-        (True, False, False, "users-inappm", True),
-        (True, False, True, "users-inappm", True),
+        (False, False, "users-inappm", False),
+        (True, True, DEFAULT_FREE_PLAN, False),
+        (True, False, DEFAULT_FREE_PLAN, True),
+        (True, False, "users-inappm", True),
+        (True, True, "users-inappm", True),
     ],
 )
-def test_should_do_flake_detection(
-    dbsession, mocker, config, feature_flag, private, plan, ex_result
-):
+def test_should_do_flake_detection(dbsession, mocker, config, private, plan, ex_result):
     mock_all_plans_and_tiers()
     owner = OwnerFactory(plan=plan)
     repo = RepositoryFactory(private=private, owner=owner)
     dbsession.add(repo)
     dbsession.flush()
-
-    mocked_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-    mocked_feature.check_value.return_value = feature_flag
 
     yaml = {"test_analytics": {"flake_detection": config}}
 

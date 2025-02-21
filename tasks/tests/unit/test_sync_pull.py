@@ -23,7 +23,7 @@ here = Path(__file__)
 
 @pytest.fixture
 def repository(dbsession) -> Repository:
-    repository = RepositoryFactory.create()
+    repository = RepositoryFactory.create(owner__plan="users-inappm")
     dbsession.add(repository)
     dbsession.flush()
     return repository
@@ -72,8 +72,6 @@ def test_update_pull_commits_merged(
     pull,
 ):
     mock_all_plans_and_tiers()
-    mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-    mock_feature.check_value.return_value = True
 
     pull.state = "merged"
     pullid = pull.pullid
@@ -518,9 +516,7 @@ def test_trigger_ai_pr_review(
 @pytest.mark.django_db
 def test_trigger_process_flakes(dbsession, mocker, flake_detection, repository):
     mock_all_plans_and_tiers()
-    current_yaml = UserYaml.from_dict(dict())
-    mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-    mock_feature.check_value.return_value = True
+
     current_yaml = UserYaml.from_dict(
         {
             "test_analytics": {
