@@ -28,11 +28,13 @@ jobs:
 
   build:
     name: Build Worker
-    uses: codecov/gha-workflows/.github/workflows/build-app.yml@v1.2.27
+    uses: codecov/gha-workflows/.github/workflows/build-app.yml@v1.2.33
 
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
+      cache_file: "uv.lock"
+
 
   codecovstartup:
     name: Codecov Startup
@@ -44,7 +46,7 @@ jobs:
   test:
     name: Test
     needs: [build]
-    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.30
+    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.33
 
     secrets: inherit
     with:
@@ -54,10 +56,11 @@ jobs:
     name: Build Self Hosted Worker
     needs: [build, test]
 
-    uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.27
+    uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.33
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
+      cache_file: "uv.lock"
 
   staging:
     name: Push Staging Image
