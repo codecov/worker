@@ -3,7 +3,7 @@ import json
 import zlib
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from time_machine import travel
@@ -24,14 +24,6 @@ from tasks.ta_processor import TAProcessorTask
 from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
-
-
-@pytest.fixture(autouse=True)
-def mock_bigquery_service():
-    with patch("ta_storage.bq.get_bigquery_service") as mock:
-        service = MagicMock()
-        mock.return_value = service
-        yield service
 
 
 @pytest.fixture
