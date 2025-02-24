@@ -72,6 +72,7 @@ def test_results_setup(mocker, dbsession):
         repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
         repository__owner__username="test-username",
         repository__owner__service="github",
+        repository__owner__plan=PlanName.CODECOV_PRO_MONTHLY.value,
         repository__name="test-repo-name",
     )
     commit.branch = "main"
@@ -238,6 +239,7 @@ def test_results_setup_no_instances(mocker, dbsession):
         repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
         repository__owner__username="joseph-sentry",
         repository__owner__service="github",
+        repository__owner__plan=PlanName.CODECOV_PRO_MONTHLY.value,
         repository__name="codecov-demo",
     )
     commit.branch = "main"
@@ -356,9 +358,6 @@ class TestUploadTestFinisherTask(object):
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, pull, _ = test_results_setup
 
         result = TestResultsFinisherTask().run_impl(
@@ -477,9 +476,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, _, test_instances = test_results_setup
 
         for instance in test_instances:
@@ -536,9 +532,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, pull, _ = test_results_setup
 
         _ = mocker.patch(
@@ -577,9 +570,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         mock_repo_provider_comments,
         test_results_setup_no_instances,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, pull, _ = test_results_setup_no_instances
 
         result = TestResultsFinisherTask().run_impl(
@@ -638,9 +628,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, pull, _ = test_results_setup
 
         repo = dbsession.query(Repository).filter(Repository.repoid == repoid).first()
@@ -711,9 +698,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, pull, _ = test_results_setup
 
         pull.commentid = 1
@@ -837,9 +821,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, _, _ = test_results_setup
 
         mock_repo_provider_comments.post_comment.side_effect = TorngitClientError
@@ -890,9 +871,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         count,
         recent_passes_count,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = True
-
         repoid, commit, pull, test_instances = test_results_setup
 
         for i, instance in enumerate(test_instances):
@@ -1055,9 +1033,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         mock_repo_provider_comments,
         test_results_setup,
     ):
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = False
-
         repoid, commit, pull, test_instances = test_results_setup
 
         for instance in test_instances:
@@ -1175,8 +1150,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         plan,
     ):
         mocker.patch.object(TestResultsFinisherTask, "get_flaky_tests")
-        mock_feature = mocker.patch("services.test_results.FLAKY_TEST_DETECTION")
-        mock_feature.check_value.return_value = True
+
         commit_yaml = {
             "codecov": {
                 "max_report_age": False,
@@ -1207,11 +1181,16 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
 
         assert expected_result == result
 
-        test_results_mock_app.tasks[
-            "app.tasks.flakes.ProcessFlakesTask"
-        ].apply_async.assert_called_with(
-            kwargs={
-                "repo_id": repoid,
-                "commit_id": commit.commitid,
-            },
-        )
+        if plan == PlanName.CODECOV_PRO_MONTHLY.value:
+            test_results_mock_app.tasks[
+                "app.tasks.flakes.ProcessFlakesTask"
+            ].apply_async.assert_called_with(
+                kwargs={
+                    "repo_id": repoid,
+                    "commit_id": commit.commitid,
+                },
+            )
+        else:
+            test_results_mock_app.tasks[
+                "app.tasks.flakes.ProcessFlakesTask"
+            ].apply_async.assert_not_called()

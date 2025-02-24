@@ -22,7 +22,6 @@ from database.models import (
     UploadError,
 )
 from helpers.notifier import BaseNotifier, NotifierResult
-from rollouts import FLAKY_TEST_DETECTION
 from services.license import requires_license
 from services.processing.types import UploadArguments
 from services.report import BaseReportService
@@ -475,12 +474,9 @@ def should_do_flaky_detection(repo: Repository, commit_yaml: UserYaml) -> bool:
     has_flaky_configured = read_yaml_field(
         commit_yaml, ("test_analytics", "flake_detection"), True
     )
-    feature_enabled = FLAKY_TEST_DETECTION.check_value(
-        identifier=repo.repoid, default=True
-    )
     has_valid_plan_repo_or_owner = not_private_and_free_or_team(repo)
 
-    return has_flaky_configured and (feature_enabled or has_valid_plan_repo_or_owner)
+    return has_flaky_configured and has_valid_plan_repo_or_owner
 
 
 def get_flake_set(db_session: Session, repoid: int) -> set[str]:
