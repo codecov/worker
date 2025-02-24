@@ -15,7 +15,7 @@ from shared.celery_config import (
     timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
-from shared.reports.resources import Report
+from shared.reports.editable import EditableReport
 from shared.timeseries.helpers import is_timeseries_enabled
 from shared.torngit.exceptions import TorngitError
 from shared.yaml import UserYaml
@@ -388,10 +388,14 @@ def perform_report_merging(
     commit_yaml: UserYaml,
     commit: Commit,
     processing_results: list[ProcessingResult],
-) -> Report:
-    master_report = report_service.get_existing_report_for_commit(commit)
+) -> EditableReport:
+    master_report: EditableReport | None
+    # its unclear how to express the generic `report_class`
+    master_report = report_service.get_existing_report_for_commit(
+        commit, report_class=EditableReport
+    )  # type: ignore
     if master_report is None:
-        master_report = Report()
+        master_report = EditableReport()
 
     upload_ids = [
         upload["upload_id"] for upload in processing_results if upload["successful"]
