@@ -13,15 +13,12 @@ Code for Background Workers of Codecov. This is built on top of the `celery` asy
 
 ### Setting Virtual Env
 
-Before starting, we suggest using a virtual environment for this project. It eases testing in general at least.
+This repo is set up with `direnv`, which will automatically
+create a virtualenv in `.venv` and activate the environment
+when you `cd` into the directory in your console.
 
-If you already know how to do it (and how you like it), just do what you already do. If you dont know how to do it, we suggest the following steps:
-
-- `python3 -m venv workerenv`
-- `cd workerenv`
-- `source bin/activate`
-
-Then you should clone this project when inside `workerenv` folder.
+Please take a look at [direnv](https://github.com/direnv/direnv/blob/master/docs/installation.md)
+for more installation information.
 
 ### Installing dependencies
 
@@ -33,20 +30,23 @@ Make sure to:
 To install the dependencies, run
 
 ```
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Environment variables
 
 In order to successfully run `make push`, you'll need to define the `CODECOV_WORKER_GCR_REPO_BASE` variable. See its use in [`Makefile`](Makefile) to understand what it's used for. An example is `gcr.io/your-project-here/codecov`. Codecov internal users, see [the env setup documentation](https://www.notion.so/sentry/Environment-variables-for-building-pushing-Docker-images-locally-3159e90c5e6f4db4bfbde8800cdad2c0?pvs=4) for our canonical defaults.
 
-### Running Tests
+### Running Tests Locally
 
-Then, try to run tests to see if the code is working. First get some postgres database running. Anything is fine. I like to spin a `postgres` docker (`docker run -d -p 5432:5432 postgres:9.6.16`). Then do
+Simply:
 
 ```
-make test
+make test_env
 ```
+
+What this does is start a few dependent databases with `docker-compose`,
+then it runs the tests in the `worker` docker container.
 
 ### Linting and Import Sorts
 
@@ -85,13 +85,14 @@ If you are unsure whether you need to change that version at a given moment, the
 
 ## Upgrading Dependencies
 
-This repository uses `pip-tools` to manage dependencies, so make sure you've installed it with `pip install pip-tools`. To add or update dependencies, change `requirements.in`, Then run
+This repository uses `uv` to manage dependencies.
+Make your dependency updates to `pyproject.toml` then run:
 
 ```
 make update-requirements
 ```
 
-Do not change `requirements.txt` directly
+to update the `uv.lock` file.
 
 ### After deploying
 
@@ -100,7 +101,7 @@ If you are deploying or helping with a deploy, make sure to:
 1. Watch logs (on datadog and sentry)
 2. Monitor error rates and timing graphs on the dashboards we have set up
 
-As the deployer, it is your responsability to make sure the system is working as expected post-deploy. If not, you might need to do a rollback.
+As the deployer, it is your responsibility to make sure the system is working as expected post-deploy. If not, you might need to do a rollback.
 
 ## Code Structure
 
