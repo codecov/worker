@@ -6,8 +6,8 @@ ARG BERGLAS_VERSION=2.0.6
 FROM us-docker.pkg.dev/berglas/berglas/berglas:$BERGLAS_VERSION as berglas
 
 FROM $REQUIREMENTS_IMAGE as app
-COPY . /worker
-WORKDIR /worker
+COPY . /app/apps/worker
+WORKDIR /app/apps/worker
 RUN pip install setuptools==72.1.0
 RUN chmod +x worker.sh
 ARG RELEASE_VERSION
