@@ -8,7 +8,7 @@ services:
       - redis
       - timescale
     volumes:
-      - ./:/worker
+      - ./:/app/apps/worker
       - ./docker/test_codecov_config.yml:/config/codecov.yml
     environment:
       - SETUP__TIMESERIES__ENABLED=${TIMESERIES_ENABLED-true}
