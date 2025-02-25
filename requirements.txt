@@ -75,11 +75,11 @@ codecov-ribs==0.1.18
     #   shared
 colour==0.1.5
     # via shared
-coverage==7.5.0
+coverage[toml]==7.5.0
     # via
     #   -r requirements.in
     #   pytest-cov
-cryptography==43.0.1
+cryptography==44.0.1
     # via shared
 deprecated==1.2.15
     # via
@@ -89,7 +89,7 @@ distlib==0.3.7
     # via virtualenv
 distro==1.8.0
     # via openai
-django==4.2.16
+django==4.2.18
     # via
     #   -r requirements.in
     #   django-model-utils
@@ -113,7 +113,7 @@ filelock==3.12.4
     # via virtualenv
 freezegun==1.5.0
     # via pytest-freezegun
-google-api-core==2.23.0
+google-api-core[grpc]==2.23.0
     # via
     #   google-cloud-bigquery
     #   google-cloud-bigquery-storage
@@ -153,7 +153,7 @@ google-resumable-media==2.7.2
     # via
     #   google-cloud-bigquery
     #   google-cloud-storage
-googleapis-common-protos==1.66.0
+googleapis-common-protos[grpc]==1.66.0
     # via
     #   google-api-core
     #   grpc-google-iam-v1
@@ -196,7 +196,7 @@ importlib-metadata==8.5.0
     # via opentelemetry-api
 iniconfig==1.1.1
     # via pytest
-jinja2==3.1.4
+jinja2==3.1.5
     # via -r requirements.in
 jmespath==0.10.0
     # via
@@ -367,19 +367,17 @@ requests==2.32.3
     #   stripe
 respx==0.20.2
     # via -r requirements.in
-rfc3986==1.4.0
+rfc3986[idna2008]==1.4.0
     # via httpx
 rsa==4.7.2
     # via google-auth
 s3transfer==0.10.1
     # via boto3
-sentry-sdk==2.13.0
+sentry-sdk[celery]==2.13.0
     # via
     #   -r requirements.in
     #   shared
-setuptools==75.7.0
-    # via nodeenv
-shared @ https://github.com/codecov/shared/archive/47fa7fd405cd4a37ab6df9f200d6b600795f2786.tar.gz#egg=shared
+shared @ https://github.com/codecov/shared/archive/47fa7fd405cd4a37ab6df9f200d6b600795f2786.tar.gz
     # via -r requirements.in
 six==1.16.0
     # via
@@ -411,15 +409,15 @@ statsd==3.3.0
     # via -r requirements.in
 stripe==11.4.1
     # via -r requirements.in
-test-results-parser @ https://github.com/codecov/test-results-parser/archive/190bbc8a911099749928e13d5fe57f6027ca1e74.tar.gz#egg=test-results-parser
+test-results-parser @ https://github.com/codecov/test-results-parser/archive/190bbc8a911099749928e13d5fe57f6027ca1e74.tar.gz
     # via -r requirements.in
 text-unidecode==1.3
     # via faker
 time-machine==2.14.1
     # via -r requirements.in
-timestring @ https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz#egg=timestring
+timestring @ https://github.com/codecov/timestring/archive/d37ceacc5954dff3b5bd2f887936a98a668dda42.tar.gz
     # via -r requirements.in
-tqdm==4.66.1
+tqdm==4.66.3
     # via openai
 typing-extensions==4.12.2
     # via
@@ -444,7 +442,7 @@ vine==5.1.0
     #   amqp
     #   celery
     #   kombu
-virtualenv==20.24.5
+virtualenv==20.26.6
     # via pre-commit
 wcwidth==0.2.5
     # via prompt-toolkit
