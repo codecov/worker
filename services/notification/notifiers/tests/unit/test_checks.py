@@ -847,7 +847,11 @@ class TestPatchChecksNotifier(object):
         third_file.append(101, ReportLine.create(coverage=1, sessions=[[0, 1]]))
         third_file.append(102, ReportLine.create(coverage=1, sessions=[[0, 1]]))
         third_file.append(103, ReportLine.create(coverage=1, sessions=[[0, 1]]))
-        sample_comparison.project_coverage_base.report.append(third_file)
+        report = sample_comparison.project_coverage_base.report.inner_report
+        report.append(third_file)
+        sample_comparison.project_coverage_base.report = (
+            ReadOnlyReport.create_from_report(report)
+        )
         notifier = PatchChecksNotifier(
             repository=sample_comparison.head.commit.repository,
             title="default",
