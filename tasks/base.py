@@ -9,6 +9,8 @@ from django.db import transaction as django_transaction
 from shared.celery_router import route_tasks_based_on_user_plan
 from shared.metrics import Counter, Histogram
 from shared.timeseries.helpers import is_timeseries_enabled
+from shared.torngit import AdditionalData
+from shared.torngit.base import TorngitBaseAdapter
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -19,10 +21,20 @@ from sqlalchemy.exc import (
 from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
+from database.enums import CommitErrorTypes
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    Commit,
+    Repository,
+)
 from helpers.checkpoint_logger import from_kwargs as load_checkpoints_from_kwargs
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
+from helpers.clock import get_seconds_to_next_hour
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.log_context import LogContext, set_log_context
+from helpers.save_commit_error import save_commit_error
 from helpers.telemetry import TimeseriesTimer, log_simple_metric
+from services.repository import get_repo_provider_service
 
 log = logging.getLogger("worker")
 
@@ -375,3 +387,51 @@ class BaseCodecovTask(celery_app.Task):
             TestResultsFlow.log(TestResultsFlow.CELERY_FAILURE)
 
         return res
+
+    def get_repo_provider_service(
+        self,
+        repository: Repository,
+        installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        additional_data: AdditionalData = None,
+        commit: Commit = None,
+    ) -> TorngitBaseAdapter:
+        try:
+            return get_repo_provider_service(
+                repository, installation_name_to_use, additional_data
+            )
+        except RepositoryWithoutValidBotError:
+            save_commit_error(
+                commit,
+                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+                error_params=dict(repoid=commit.repoid),
+            )
+            log.warning(
+                "Unable to reach git provider because repo doesn't have a valid bot"
+            )
+        except NoConfiguredAppsAvailable as exp:
+            if exp.rate_limited_count > 0:
+                # There's at least 1 app that we can use to communicate with GitHub,
+                # but this app happens to be rate limited now. We try again later.
+                # Min wait time of 1 minute
+                retry_delay_seconds = max(60, get_seconds_to_next_hour())
+                log.warning(
+                    "Unable to get repo provider service due to rate limits. Retrying again later.",
+                    extra=dict(
+                        apps_available=exp.apps_count,
+                        apps_rate_limited=exp.rate_limited_count,
+                        apps_suspended=exp.suspended_count,
+                        countdown_seconds=retry_delay_seconds,
+                    ),
+                )
+            else:
+                log.warning(
+                    "Unable to get repo provider service. Apps appear to be suspended.",
+                    extra=dict(
+                        apps_available=exp.apps_count,
+                        apps_rate_limited=exp.rate_limited_count,
+                        apps_suspended=exp.suspended_count,
+                        countdown_seconds=retry_delay_seconds,
+                    ),
+                )
+        except Exception as e:
+            log.exception("Uncaught exception when trying to get repository service")
