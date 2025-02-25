@@ -28,7 +28,8 @@ from database.enums import CommitErrorTypes, ReportType
 from database.models import Commit, CommitReport, Repository, RepositoryFlag, Upload
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.clock import get_seconds_to_next_hour
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from rollouts import NEW_TA_TASKS
@@ -427,6 +428,34 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 "Unable to reach git provider because repo doesn't have a valid bot",
                 extra=upload_context.log_extra(),
             )
+        except NoConfiguredAppsAvailable as exp:
+            if exp.rate_limited_count > 0:
+                # There's at least 1 app that we can use to communicate with GitHub,
+                # but this app happens to be rate limited now. We try again later.
+                # Min wait time of 1 minute
+                retry_delay_seconds = max(60, get_seconds_to_next_hour())
+                log.warning(
+                    "Unable to get repository service due to rate limited apps. Retrying",
+                    extra=dict(
+                        apps_available=exp.apps_count,
+                        apps_rate_limited=exp.rate_limited_count,
+                        apps_suspended=exp.suspended_count,
+                        countdown_seconds=retry_delay_seconds,
+                    ),
+                )
+                self.retry(
+                    countdown=retry_delay_seconds,
+                    kwargs=upload_context.kwargs_for_retry(kwargs),
+                )
+            else:
+                log.warning(
+                    "Unable to get repository service due to NoConfiguredAppsAvailable exception. Attempting to continue",
+                    extra=dict(
+                        apps_available=exp.apps_count,
+                        apps_rate_limited=exp.rate_limited_count,
+                        apps_suspended=exp.suspended_count,
+                    ),
+                )
         except TorngitRepoNotFoundError:
             log.warning(
                 "Unable to reach git provider because this specific bot/integration can't see that repository",
