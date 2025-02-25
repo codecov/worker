@@ -25,7 +25,7 @@ from database.tests.factories import CommitFactory, OwnerFactory, RepositoryFact
 from database.tests.factories.core import ReportFactory
 from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.log_context import LogContext, set_log_context
 from services.redis import get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
@@ -934,6 +934,42 @@ class TestUploadTaskIntegration(object):
             mocker.ANY,
         )
         assert not mocked_fetch_yaml.called
+
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
+    def test_upload_task_no_configured_apps_available_rate_limit(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        mock_redis,
+        mock_storage,
+        celery_app,
+    ):
+        mocked_schedule_task = mocker.patch.object(UploadTask, "schedule_task")
+        mocker.patch.object(UploadTask, "app", celery_app)
+        mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
+        mock_get_repo_service.side_effect = NoConfiguredAppsAvailable(
+            apps_count=2,
+            rate_limited_count=1,
+            suspended_count=1,
+        )
+
+        commit = CommitFactory.create(
+            message="",
+            parent_commit_id=None,
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+            repository__owner__username="ThiagoCodecov",
+            repository__yaml={"codecov": {"max_report_age": "764y ago"}},
+            repository__name="example-python",
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+
+        with pytest.raises(Retry):
+            UploadTask().run_impl(dbsession, commit.repoid, commit.commitid)
 
     @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_bot_no_permissions(
