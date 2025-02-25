@@ -1,0 +1,87 @@
+[project]
+name = "worker"
+version = "0.1.0"
+description = "The codecov worker"
+readme = "README.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "asgiref>=3.7.2",
+    "analytics-python==1.3.0b1",
+    "billiard>=4.2.1",
+    "boto3>=1.34",
+    "celery>=5.3.6",
+    "click>=8.1.7",
+    "codecov-ribs==0.1.18",
+    "django>=4.2.16",
+    "django-postgres-extra>=2.0.8",
+    "google-cloud-bigquery>=3.27.0",
+    "google-cloud-bigquery-storage>=2.27.0",
+    "google-cloud-pubsub>=2.27.1",
+    "google-cloud-storage>=2.10.0",
+    "grpcio>=1.66.2",
+    "httpx>0.23.1",
+    "jinja2>=3.1.3",
+    "lxml>=5.3.0",
+    "mmh3>=5.0.1",
+    "multidict>=6.1.0",
+    "openai>=1.2.4",
+    "orjson>=3.10.11",
+    "polars==1.12.0",
+    "proto-plus>=1.25.0",
+    "psycopg2-binary>=2.9.10",
+    "protobuf>=5.29.2",
+    "pydantic>=2.9.0",
+    "pyjwt>=2.4.0",
+    "python-dateutil>=2.9.0.post0",
+    "python-json-logger>=0.1.11",
+    "python-redis-lock>=4.0.0",
+    "pyyaml>=6.0.1",
+    "redis>=4.4.4",
+    "regex>=2023.12.25",
+    "requests>=2.32.0",
+    "sentry-sdk>=2.13.0",
+    "shared",
+    "sqlalchemy==1.3.*",
+    "sqlparse==0.5.0",
+    "statsd>=3.3.0",
+    "stripe>=11.4.1",
+    "test-results-parser",
+    "timestring",
+    "zstandard>=0.23.0",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []
+
+[tool.uv]
+dev-dependencies = [
+    "coverage>=7.5.0",
+    "factory-boy>=3.2.0",
+    "mock>=4.0.3",
+    "pre-commit>=3.4.0",
+    "pytest>=8.1.1",
+    "pytest-asyncio>=0.14.0",
+    "pytest-celery>=0.0.0",
+    "pytest-cov>=6.0.0",
+    "pytest-django>=4.7.0",
+    "pytest-freezegun>=0.4.2",
+    "pytest-insta>=0.3.0",
+    "pytest-mock>=1.13.0",
+    "pytest-sqlalchemy>=0.2.1",
+    "respx>=0.20.2",
+    "sqlalchemy-utils>=0.41.2",
+    "time-machine>=2.16.0",
+    # NOTE: some weird interaction between existing `vcrpy` snapshots and the way
+    # `oauth2` / `minio` deal with requests forces us to downgrade `urllib3`:
+    "urllib3==1.26.19",
+    "vcrpy==4.1.*",
+]
+
+[tool.uv.sources]
+timestring = { git = "https://github.com/codecov/timestring", rev = "d37ceacc5954dff3b5bd2f887936a98a668dda42" }
+test-results-parser = { git = "https://github.com/codecov/test-results-parser", rev = "190bbc8a911099749928e13d5fe57f6027ca1e74" }
+shared = { git = "https://github.com/codecov/shared", rev = "47fa7fd405cd4a37ab6df9f200d6b600795f2786" }
