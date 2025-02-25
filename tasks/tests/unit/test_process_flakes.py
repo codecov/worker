@@ -1,6 +1,7 @@
 import datetime as dt
 from collections import defaultdict
 
+import pytest
 import time_machine
 from shared.django_apps.core.models import Commit
 from shared.django_apps.core.tests.factories import CommitFactory, RepositoryFactory
@@ -26,8 +27,14 @@ from services.processing.flake_processing import (
 )
 from services.redis import get_redis_connection
 from tasks.process_flakes import (
+    NEW_KEY,
+    OLD_KEY,
     ProcessFlakesTask,
+    process_flakes_task,
 )
+from tests.helpers import mock_all_plans_and_tiers
+
+pytestmark = pytest.mark.django_db
 
 
 class RepoSimulator:
@@ -42,7 +49,9 @@ class RepoSimulator:
         self.test_map = defaultdict(lambda: TestFactory(id=self.test_count))
 
     def run_task(self, repo_id: int, commit_id: str):
-        self.redis.set(f"flake_uploads:{self.repo.repoid}", 0)
+        self.redis.delete(NEW_KEY.format(repo_id))
+        self.redis.delete(OLD_KEY.format(repo_id))
+        self.redis.rpush(NEW_KEY.format(repo_id), commit_id)
         ProcessFlakesTask().run_impl(None, repo_id=repo_id, commit_id=commit_id)
 
     def create_commit(self) -> Commit:
@@ -277,7 +286,7 @@ def test_upsert_failed_flakes(transactional_db):
     assert r.flaky_fail_count == 1
 
 
-def test_upsert_failed_flakes_rollup_is_none(transactional_db):
+def test_upsert_failed_flakes_rollup_is_none():
     repo = RepositoryFactory()
     repo.save()
     commit = CommitFactory()
@@ -328,7 +337,7 @@ def test_it_creates_flakes_from_processed_uploads(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_does_not_create_flakes_from_flake_processed_uploads(transactional_db):
+def test_it_does_not_create_flakes_from_flake_processed_uploads():
     rs = RepoSimulator()
     c1 = rs.create_commit()
     rs.add_test_instance(c1, state="v2_processed")
@@ -445,3 +454,48 @@ def test_it_creates_rollups(transactional_db):
         assert rollups[3].fail_count == 1
         assert rollups[3].flaky_fail_count == 1
         assert rollups[3].date == dt.date.today()
+
+
+def test_it_locks(mocker):
+    mock_all_plans_and_tiers()
+    result2 = None
+
+    def first_call(repo_id: int, commit_id: str):
+        nonlocal result2
+        if result2 is None:
+            result2 = process_flakes_task.s(
+                repo_id=repo_id,
+                commit_id=commit_id,
+                use_timeseries=False,
+            ).apply()
+        return None
+
+    mock_process = mocker.patch(
+        "tasks.process_flakes.process_flake_for_repo_commit",
+        side_effect=first_call,
+    )
+
+    redis_client = get_redis_connection()
+    repo_id = 1
+    commit_ids = ["abc123", "def456", "ghi789"]
+
+    redis_client.delete(OLD_KEY.format(repo_id))
+    redis_client.delete(NEW_KEY.format(repo_id))
+    for commit_id in commit_ids:
+        redis_client.rpush(NEW_KEY.format(repo_id), commit_id)
+
+    result1 = process_flakes_task.s(
+        repo_id=repo_id,
+        commit_id=commit_ids[0],
+        use_timeseries=False,
+    ).apply()
+
+    assert result1 is not None
+    assert result2 is not None
+    assert result1.get() == {"successful": True}
+    assert result2.get() == {"successful": False}
+
+    assert mock_process.call_count == len(commit_ids)
+    mock_process.assert_has_calls(
+        [mocker.call(repo_id, commit_id) for commit_id in commit_ids]
+    )
