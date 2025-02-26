@@ -89,7 +89,7 @@ This repository uses `uv` to manage dependencies.
 Make your dependency updates to `pyproject.toml` then run:
 
 ```
-make update-requirements
+uv sync
 ```
 
 to update the `uv.lock` file.

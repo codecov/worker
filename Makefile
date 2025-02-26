@@ -57,11 +57,6 @@ test.integration:
 	COVERAGE_CORE=sysmon pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml -o junit_family=legacy
 
 
-update-requirements:
-	pip install uv==0.5.9
-	uv pip compile requirements.in -o requirements.txt
-
-
 lint.install:
 	echo "Installing..."
 	pip install -Iv ruff
