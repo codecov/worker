@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 from lxml import etree
-from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
-from shared.reports.types import ReportTotals
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import LineSession, ReportLine, ReportTotals
 from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 

@@ -2,8 +2,8 @@ import json
 
 import pytest
 from mock import MagicMock, patch
-from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint
+from shared.reports.resources import Report, ReportFile
+from shared.reports.types import CoverageDatapoint, LineSession, ReportLine
 
 from database.models.labelanalysis import LabelAnalysisRequest
 from database.tests.factories import RepositoryFactory
