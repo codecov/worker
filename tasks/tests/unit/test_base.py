@@ -19,7 +19,10 @@ from sqlalchemy.exc import (
     StatementError,
 )
 
+from database.enums import CommitErrorTypes
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from tasks.base import BaseCodecovRequest, BaseCodecovTask
 from tasks.base import celery_app as base_celery_app
 from tests.helpers import mock_all_plans_and_tiers
@@ -55,7 +58,7 @@ class SampleTaskWithArbitraryError(
     def run_impl(self, dbsession):
         raise self.error
 
-    def retry(self):
+    def retry(self, countdown=None):
         # Fake retry method
         raise Retry()
 
@@ -69,7 +72,7 @@ class SampleTaskWithArbitraryPostgresError(
     def run_impl(self, dbsession):
         raise DBAPIError("statement", "params", self.error)
 
-    def retry(self):
+    def retry(self, countdown=None):
         # Fake retry method
         raise Retry()
 
@@ -305,6 +308,69 @@ class TestBaseCodecovTask(object):
 
         assert mock_django_commit.call_args_list == [call()]
         assert mock_wrap_up.call_args_list == [call(dbsession)]
+
+    def test_get_repo_provider_service_working(self, mocker):
+        mock_repo_provider = mocker.MagicMock()
+        mock_get_repo_provider_service = mocker.patch(
+            "tasks.base.get_repo_provider_service", return_value=mock_repo_provider
+        )
+
+        task = BaseCodecovTask()
+        mock_repo = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo) == mock_repo_provider
+        mock_get_repo_provider_service.assert_called_with(
+            mock_repo, GITHUB_APP_INSTALLATION_DEFAULT_NAME, None
+        )
+
+    def test_get_repo_provider_service_rate_limited(self, mocker):
+        mocker.patch(
+            "tasks.base.get_repo_provider_service",
+            side_effect=NoConfiguredAppsAvailable(
+                apps_count=2,
+                rate_limited_count=2,
+                suspended_count=0,
+            ),
+        )
+        mocker.patch("tasks.base.get_seconds_to_next_hour", return_value=120)
+
+        task = BaseCodecovTask()
+        mock_retry = mocker.patch.object(task, "retry")
+        mock_repo = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo) is None
+        task.retry.assert_called_with(countdown=120)
+
+    def test_get_repo_provider_service_suspended(self, mocker):
+        mocker.patch(
+            "tasks.base.get_repo_provider_service",
+            side_effect=NoConfiguredAppsAvailable(
+                apps_count=2,
+                rate_limited_count=0,
+                suspended_count=2,
+            ),
+        )
+        mocker.patch("tasks.base.get_seconds_to_next_hour", return_value=120)
+
+        task = BaseCodecovTask()
+        mock_repo = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo) is None
+
+    def test_get_repo_provider_service_no_valid_bot(self, mocker):
+        mocker.patch(
+            "tasks.base.get_repo_provider_service",
+            side_effect=RepositoryWithoutValidBotError(),
+        )
+        mock_save_commit_error = mocker.patch("tasks.base.save_commit_error")
+
+        task = BaseCodecovTask()
+        mock_repo = mocker.MagicMock()
+        mock_repo.repoid = 5
+        mock_commit = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo, commit=mock_commit) is None
+        mock_save_commit_error.assert_called_with(
+            mock_commit,
+            error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+            error_params=dict(repoid=5),
+        )
 
 
 @pytest.mark.django_db(databases={"default", "timeseries"})
