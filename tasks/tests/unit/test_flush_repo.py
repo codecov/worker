@@ -25,7 +25,7 @@ from services.cleanup.utils import CleanupResult, CleanupSummary
 from tasks.flush_repo import FlushRepoTask
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(databases=["timeseries", "default"])
 def test_flush_repo_nothing(mock_storage):
     repo = RepositoryFactory()
 
@@ -40,7 +40,7 @@ def test_flush_repo_nothing(mock_storage):
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(databases=["timeseries", "default"])
 def test_flush_repo_few_of_each_only_db_objects(mock_storage):
     repo = RepositoryFactory()
     flag = RepositoryFlagFactory(repository=repo)
@@ -84,7 +84,7 @@ def test_flush_repo_few_of_each_only_db_objects(mock_storage):
     )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(databases=["timeseries", "default"])
 def test_flush_repo_little_bit_of_everything(mocker, mock_storage):
     repo = RepositoryFactory()
     archive_service = ArchiveService(repo)

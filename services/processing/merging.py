@@ -3,7 +3,7 @@ import logging
 from decimal import Decimal
 
 import sentry_sdk
-from shared.reports.editable import EditableReport, EditableReportFile
+from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportTotals
 from shared.yaml import UserYaml
@@ -44,7 +44,7 @@ def merge_reports(
             master_report = report
             continue
 
-        change_sessionid(report, old_sessionid, new_sessionid)
+        report.change_sessionid(old_sessionid, new_sessionid)
         session = report.sessions[new_sessionid]
 
         _session_id, session = master_report.add_session(
@@ -166,45 +166,6 @@ def make_upload_totals(
         partials=totals.partials,
         files=totals.files,
     )
-
-
-@sentry_sdk.trace
-def change_sessionid(report: EditableReport, old_id: int, new_id: int):
-    """
-    Modifies the `EditableReport`, changing the session with `old_id` to have `new_id` instead.
-    This patches up all the references to that session across all files and line records.
-
-    In particular, it changes the id in all the `LineSession`s and `CoverageDatapoint`s,
-    and does the equivalent of `calculate_present_sessions`.
-    """
-    session = report.sessions[new_id] = report.sessions.pop(old_id)
-    session.id = new_id
-
-    report_file: EditableReportFile
-    for report_file in report._chunks:
-        if report_file is None:
-            continue
-
-        all_sessions = set()
-
-        for idx, _line in enumerate(report_file._lines):
-            if not _line:
-                continue
-
-            # this turns the line into an actual `ReportLine`
-            line = report_file._lines[idx] = report_file._line(_line)
-
-            for session in line.sessions:
-                if session.id == old_id:
-                    session.id = new_id
-                all_sessions.add(session.id)
-
-            if line.datapoints:
-                for point in line.datapoints:
-                    if point.sessionid == old_id:
-                        point.sessionid = new_id
-
-        report_file._details["present_sessions"] = all_sessions
 
 
 def get_joined_flag(commit_yaml: UserYaml, flags: list[str]) -> bool:
