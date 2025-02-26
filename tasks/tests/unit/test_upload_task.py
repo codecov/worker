@@ -484,7 +484,7 @@ class TestUploadTaskIntegration(object):
         }
 
         mocker.patch(
-            "tasks.upload.get_repo_provider_service",
+            "tasks.base.get_repo_provider_service",
             return_value=mock_repo_provider_service,
         )
         mocker.patch("tasks.upload.hasattr", return_value=False)
@@ -888,7 +888,7 @@ class TestUploadTaskIntegration(object):
             {"build": "part2", "url": "url2"},
         ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
+        mock_get_repo_service = mocker.patch("tasks.base.get_repo_provider_service")
         mock_get_repo_service.side_effect = RepositoryWithoutValidBotError()
         commit = CommitFactory.create(
             message="",
@@ -955,7 +955,7 @@ class TestUploadTaskIntegration(object):
             {"build": "part2", "url": "url2"},
         ]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
-        mock_get_repo_service = mocker.patch("tasks.upload.get_repo_provider_service")
+        mock_get_repo_service = mocker.patch("tasks.base.get_repo_provider_service")
         mock_get_repo_service.side_effect = TorngitRepoNotFoundError(
             "fake_response", "message"
         )
@@ -1198,7 +1198,8 @@ class TestUploadTaskUnit(object):
     def test_schedule_task_with_one_task(self, dbsession, mocker, mock_repo_provider):
         _start_upload_flow(mocker)
         mocker.patch(
-            "tasks.upload.get_repo_provider_service", return_value=mock_repo_provider
+            "tasks.base.get_repo_provider_service",
+            return_value=mock_repo_provider,
         )
         mocker.patch(
             "tasks.upload.UploadTask.possibly_setup_webhooks", return_value=True
