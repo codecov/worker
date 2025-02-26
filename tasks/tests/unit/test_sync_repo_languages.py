@@ -25,7 +25,7 @@ def setup_with_languages(mocker, mock_repo_provider):
 
     mock_repo_provider.get_repo_languages.return_value = LIST_WITH_INTERSECTION
     mocker.patch(
-        f"tasks.{TaskConfigGroup.sync_repo_languages.value}.get_repo_provider_service",
+        "tasks.base.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -36,7 +36,7 @@ def setup_with_null_languages(mocker, mock_repo_provider):
 
     mock_repo_provider.get_repo_languages.return_value = None
     mocker.patch(
-        f"tasks.{TaskConfigGroup.sync_repo_languages.value}.get_repo_provider_service",
+        "tasks.base.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -47,7 +47,7 @@ def setup_with_languages_bitbucket(mocker, mock_repo_provider):
 
     mock_repo_provider.get_repo_languages.return_value = ["javascript"]
     mocker.patch(
-        f"tasks.{TaskConfigGroup.sync_repo_languages.value}.get_repo_provider_service",
+        "tasks.base.get_repo_provider_service",
         return_value=mock_repo_provider,
     )
 
@@ -129,9 +129,10 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert (
-            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) is None
-        )
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True,
+            "synced": False,
+        }
 
     def test_languages_no_intersection_and_synced_beyond_threshold(
         self, dbsession, setup_with_languages
@@ -163,9 +164,10 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert (
-            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) is None
-        )
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True,
+            "synced": False,
+        }
 
     def test_languages_intersection_and_synced_beyond_threshold(
         self, dbsession, setup_with_null_languages
@@ -179,9 +181,10 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert (
-            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) is None
-        )
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True,
+            "synced": False,
+        }
 
     def test_languages_intersection_and_synced_beyond_threshold_with_languages(
         self, dbsession, setup_with_languages
@@ -195,9 +198,10 @@ class TestSyncRepoLanguages(object):
         dbsession.flush()
 
         task = SyncRepoLanguagesTask()
-        assert (
-            task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) is None
-        )
+        assert task.run_impl(dbsession, repoid=repo.repoid, manual_trigger=False) == {
+            "successful": True,
+            "synced": False,
+        }
 
     def test_languages_intersection_and_synced_with_manual_trigger(
         self, dbsession, setup_with_languages
