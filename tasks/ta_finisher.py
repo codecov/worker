@@ -316,7 +316,13 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
                 "queue_notify": True,
             }
 
-        if pull:
+        if not pull:
+            success = False
+            notifier_result = NotifierResult.NO_PULL
+        elif not commit_yaml.read_yaml_field("comment", _else=True):
+            success = False
+            notifier_result = NotifierResult.NO_COMMENT
+        else:
             seat_activation_result = self.seat_activation(
                 db_session, pull, commit, commit_yaml, repo_service
             )
@@ -340,9 +346,6 @@ class TAFinisherTask(BaseCodecovTask, name=ta_finisher_task_name):
                 True if notifier_result is NotifierResult.COMMENT_POSTED else False
             )
             TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_NOTIFY)
-        else:
-            success = False
-            notifier_result = NotifierResult.NO_PULL
 
         self.extra_dict["success"] = success
         self.extra_dict["notifier_result"] = notifier_result.value

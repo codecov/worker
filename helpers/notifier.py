@@ -22,6 +22,7 @@ class NotifierResult(Enum):
     COMMENT_POSTED = "comment_posted"
     TORNGIT_ERROR = "torngit_error"
     NO_PULL = "no_pull"
+    NO_COMMENT = "no_comment"
 
 
 @dataclass

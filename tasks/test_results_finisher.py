@@ -243,7 +243,15 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             repo_service, commit, commit_yaml
         )
 
-        if pull is not None:
+        if not pull:
+            success = False
+            attempted = False
+            notifier_result = NotifierResult.NO_PULL
+        elif not commit_yaml.read_yaml_field("comment", _else=True):
+            success = False
+            attempted = False
+            notifier_result = NotifierResult.NO_COMMENT
+        else:
             activate_seat_info = determine_seat_activation(pull)
 
             should_show_upgrade_message = True
@@ -325,10 +333,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     ),
                 )
             attempted = True
-        else:
-            success = False
-            attempted = False
-            notifier_result = NotifierResult.NO_PULL
 
         self.extra_dict["success"] = success
         self.extra_dict["notifier_result"] = notifier_result.value
