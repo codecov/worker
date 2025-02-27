@@ -43,10 +43,6 @@ build.portable:
 		--build-arg COMMIT_SHA="${sha}" \
 		--build-arg RELEASE_VERSION="${release_version}"
 
-lint:
-	make lint.install
-	make lint.run
-
 test:
 	COVERAGE_CORE=sysmon pytest --cov=./ --junitxml=junit.xml -o junit_family=legacy
 
@@ -56,10 +52,22 @@ test.unit:
 test.integration:
 	COVERAGE_CORE=sysmon pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml -o junit_family=legacy
 
+lint:
+	make lint.install
+	make lint.run
 
+# used for CI
 lint.install:
 	echo "Installing..."
 	pip install -Iv ruff
+
+lint.local:
+	make lint.install.local
+	make lint.run
+
+lint.install.local:
+	echo "Installing..."
+	uv add --dev ruff
 
 # The preferred method (for now) w.r.t. fixable rules is to manually update the makefile
 # with --fix and re-run 'make lint.' Since ruff is constantly adding rules this is a slight

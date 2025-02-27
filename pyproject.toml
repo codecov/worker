@@ -73,6 +73,7 @@ dev-dependencies = [
     "pytest-mock>=1.13.0",
     "pytest-sqlalchemy>=0.2.1",
     "respx>=0.20.2",
+    "ruff>=0.9.8",
     "sqlalchemy-utils>=0.41.2",
     "time-machine>=2.16.0",
     # NOTE: some weird interaction between existing `vcrpy` snapshots and the way
