@@ -24,13 +24,11 @@ from shared.yaml.user_yaml import OwnerContext
 from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.enums import CommitErrorTypes, ReportType
+from database.enums import ReportType
 from database.models import Commit, CommitReport, Repository, RepositoryFlag, Upload
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
-from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
-from helpers.save_commit_error import save_commit_error
 from rollouts import NEW_TA_TASKS
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
@@ -44,7 +42,6 @@ from services.report import (
 from services.repository import (
     create_webhook_on_provider,
     fetch_commit_yaml_and_possibly_store,
-    get_repo_provider_service,
     gitlab_webhook_update,
     possibly_update_commit_from_provider_info,
 )
@@ -405,44 +402,33 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         repository_service = None
 
         was_updated, was_setup = False, False
-        try:
-            installation_name_to_use = get_installation_name_for_owner_for_task(
-                self.name, repository.owner
-            )
-            repository_service = get_repo_provider_service(
-                repository, installation_name_to_use=installation_name_to_use
-            )
-            was_updated = possibly_update_commit_from_provider_info(
-                commit, repository_service
-            )
-            was_setup = self.possibly_setup_webhooks(commit, repository_service)
-        except RepositoryWithoutValidBotError:
-            save_commit_error(
-                commit,
-                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
-                error_params=dict(repoid=repoid, repository_service=repository_service),
-            )
-
-            log.warning(
-                "Unable to reach git provider because repo doesn't have a valid bot",
-                extra=upload_context.log_extra(),
-            )
-        except TorngitRepoNotFoundError:
-            log.warning(
-                "Unable to reach git provider because this specific bot/integration can't see that repository",
-                extra=upload_context.log_extra(),
-            )
-        except TorngitClientError:
-            log.warning(
-                "Unable to reach git provider because there was a 4xx error",
-                extra=upload_context.log_extra(),
-                exc_info=True,
-            )
+        installation_name_to_use = get_installation_name_for_owner_for_task(
+            self.name, repository.owner
+        )
+        repository_service = self.get_repo_provider_service(
+            repository, installation_name_to_use=installation_name_to_use, commit=commit
+        )
 
         if repository_service:
             commit_yaml = fetch_commit_yaml_and_possibly_store(
                 commit, repository_service
             )
+            try:
+                was_updated = possibly_update_commit_from_provider_info(
+                    commit, repository_service
+                )
+                was_setup = self.possibly_setup_webhooks(commit, repository_service)
+            except TorngitRepoNotFoundError:
+                log.warning(
+                    "Unable to reach git provider because this specific bot/integration can't see that repository",
+                    extra=upload_context.log_extra(),
+                )
+            except TorngitClientError:
+                log.warning(
+                    "Unable to reach git provider because there was a 4xx error",
+                    extra=upload_context.log_extra(),
+                    exc_info=True,
+                )
         else:
             context = OwnerContext(
                 owner_onboarding_date=repository.owner.createstamp,
