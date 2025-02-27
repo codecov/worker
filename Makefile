@@ -213,7 +213,7 @@ test_env.install_cli:
 test_env.container_prepare:
 	apt-get update
 	apt-get install -y git build-essential netcat-traditional
-	git config --global --add safe.directory /worker || true
+	git config --global --add safe.directory /apps/app/worker || true
 
 test_env.container_check_db:
 	while ! nc -vz postgres 5432; do sleep 1; echo "waiting for postgres"; done
