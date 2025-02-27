@@ -8,7 +8,6 @@ from sqlalchemy.orm.session import Session
 from app import celery_app
 from database.models.core import Repository
 from helpers.clock import get_utc_now
-from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from services.repository import get_repo_provider_service
 from tasks.base import BaseCodecovTask
@@ -46,45 +45,50 @@ class SyncRepoLanguagesTask(BaseCodecovTask, name=sync_repo_languages_task_name)
             and len(desired_languages_intersection) == 0
         ) or manual_trigger
 
+        if not should_sync_languages:
+            return {"successful": True, "synced": False}
+
+        log_extra = dict(
+            owner_id=repository.ownerid or "",
+            repository_id=repository.repoid,
+        )
+        log.info("Syncing repository languages", extra=log_extra)
+
+        installation_name_to_use = get_installation_name_for_owner_for_task(
+            self.name, repository.owner
+        )
+        repository_service = get_repo_provider_service(
+            repository, installation_name_to_use=installation_name_to_use
+        )
+        if not repository_service:
+            log.warning(
+                "Failed to create repository_service. Exiting",
+                extra=log_extra,
+            )
+            return {"successful": False, "error": "no_repo_service"}
+
+        is_bitbucket_call = (
+            repository.owner.service == "bitbucket"
+            or repository.owner.service == "bitbucket_server"
+        )
         try:
-            if should_sync_languages:
-                log_extra = dict(
-                    owner_id=repository.ownerid or "",
-                    repository_id=repository.repoid,
+            if is_bitbucket_call:
+                languages = async_to_sync(repository_service.get_repo_languages)(
+                    token=None, language=repository.language
                 )
-                log.info("Syncing repository languages", extra=log_extra)
-                installation_name_to_use = get_installation_name_for_owner_for_task(
-                    self.name, repository.owner
-                )
-                repository_service = get_repo_provider_service(
-                    repository, installation_name_to_use=installation_name_to_use
-                )
-                is_bitbucket_call = (
-                    repository.owner.service == "bitbucket"
-                    or repository.owner.service == "bitbucket_server"
-                )
-                if is_bitbucket_call:
-                    languages = async_to_sync(repository_service.get_repo_languages)(
-                        token=None, language=repository.language
-                    )
-                else:
-                    languages = async_to_sync(repository_service.get_repo_languages)()
-                repository.languages = languages
-                repository.languages_last_updated = now
-                db_session.flush()
-                return {"successful": True}
+            else:
+                languages = async_to_sync(repository_service.get_repo_languages)()
+            repository.languages = languages
+            repository.languages_last_updated = now
         except TorngitError:
             log.warning(
                 "Unable to find languages for this repository",
                 extra=dict(repoid=repoid),
             )
             return {"successful": False, "error": "no_repo_in_provider"}
-        except RepositoryWithoutValidBotError:
-            log.warning(
-                "No valid bot found for repo",
-                extra=dict(repoid=repoid),
-            )
-            return {"successful": False, "error": "no_bot"}
+
+        db_session.flush()
+        return {"successful": True}
 
 
 RegisteredSyncRepoLanguagesTask = celery_app.register_task(SyncRepoLanguagesTask())
