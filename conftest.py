@@ -204,6 +204,8 @@ def mock_configuration(mocker):
                 "hash_key": "88f572f4726e4971827415efa8867978",
                 "secret_access_key": "codecov-default-secret",
                 "verify_ssl": False,
+                "host": "minio",
+                "port": 9000,
             },
             "smtp": {
                 "host": "mailhog",
