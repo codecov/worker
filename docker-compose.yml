@@ -51,7 +51,10 @@ services:
       - MINIO_ACCESS_KEY=codecov-default-key
       - MINIO_SECRET_KEY=codecov-default-secret
     volumes:
-      - archive-volume:/export
+      - type: tmpfs
+        target: /export
+        tmpfs:
+          size: 256M
   redis:
     image: redis:6-alpine
 
