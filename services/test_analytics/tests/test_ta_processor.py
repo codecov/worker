@@ -8,7 +8,7 @@ from shared.django_apps.reports.tests.factories import (
     UploadFactory,
     UploadFlagMembershipFactory,
 )
-from shared.django_apps.timeseries.models import Testrun
+from shared.django_apps.ta_timeseries.models import Testrun
 from shared.storage.exceptions import FileNotInStorageError
 
 from services.processing.types import UploadArguments
@@ -20,7 +20,7 @@ def sample_test_json_path():
     return Path(__file__).parent / "samples" / "sample_test.json"
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db(databases=["default", "ta_timeseries"])
 @pytest.mark.parametrize("update_state", [True, False])
 def test_ta_processor_impl_no_upload_id(update_state):
     repository = RepositoryFactory.create()
@@ -40,7 +40,7 @@ def test_ta_processor_impl_no_upload_id(update_state):
     assert result is False
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db(databases=["default", "ta_timeseries"])
 @pytest.mark.parametrize("update_state", [True, False])
 def test_ta_processor_impl_already_processed(update_state):
     repository = RepositoryFactory.create()
@@ -87,7 +87,7 @@ def test_ta_processor_impl_no_storage_path(storage):
 
 
 @pytest.mark.parametrize("storage_path", [None, "path/to/nonexistent.xml"])
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db(databases=["default", "ta_timeseries"])
 def test_ta_processor_impl_file_not_found(storage, storage_path):
     repository = RepositoryFactory.create()
     commit = CommitFactory.create(repository=repository, branch="main")
@@ -114,7 +114,7 @@ def test_ta_processor_impl_file_not_found(storage, storage_path):
     assert error.error_params == {}
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db(databases=["default", "ta_timeseries"])
 def test_ta_processor_impl_parsing_error(storage):
     repository = RepositoryFactory.create()
     commit = CommitFactory.create(repository=repository, branch="main")
@@ -143,7 +143,7 @@ def test_ta_processor_impl_parsing_error(storage):
     }
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db(databases=["default", "ta_timeseries"])
 def test_ta_processor_impl_success_delete_archive(storage, sample_test_json_path):
     repository = RepositoryFactory.create()
     commit = CommitFactory.create(repository=repository, branch="main")
@@ -181,7 +181,7 @@ def test_ta_processor_impl_success_delete_archive(storage, sample_test_json_path
         storage.read_file("archive", "path/to/valid.json")
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db(databases=["default", "ta_timeseries"])
 def test_ta_processor_impl_success_keep_archive(storage, sample_test_json_path):
     repository = RepositoryFactory.create()
     commit = CommitFactory.create(repository=repository, branch="main")

@@ -10,8 +10,9 @@ import yaml
 from shared.config import _get_config_instance
 from shared.django_apps.reports.models import UploadError
 from shared.django_apps.reports.tests.factories import UploadFactory
-from shared.django_apps.timeseries.models import Testrun
-from shared.storage.exceptions import FileNotInStorageError
+from shared.django_apps.ta_timeseries.models import Testrun
+from shared.storage import get_appropriate_storage_service
+from shared.storage.exceptions import BucketAlreadyExistsError, FileNotInStorageError
 
 from services.archive import ArchiveService
 from services.test_analytics.ta_processing import (
@@ -24,18 +25,47 @@ from services.test_analytics.ta_processing import (
 from services.yaml import UserYaml
 
 
-@pytest.fixture
+@pytest.fixture()
 def custom_config(tmp_path):
     config_instance = _get_config_instance()
-    config_instance._params = None
+    saved_config = config_instance._params
 
     file_path = tmp_path / "codecov.yml"
     os.environ["CODECOV_YML"] = str(file_path)
 
-    def set(custom_config: dict[Any, Any]):
-        file_path.write_text(yaml.dump(custom_config))
+    _conf = config_instance._params or {}
 
-    return set
+    def set(custom_config: dict[Any, Any]):
+        # clear cache
+        config_instance._params = None
+
+        # for overwrites
+        _conf.update(custom_config)
+        file_path.write_text(yaml.dump(_conf))
+
+    yield set
+
+    os.environ.pop("CODECOV_YML")
+    config_instance._params = saved_config
+
+
+@pytest.fixture(autouse=True)
+def minio_service(custom_config):
+    conf = {
+        "services": {
+            "minio": {
+                "port": 9000,
+            },
+        }
+    }
+
+    custom_config(conf)
+
+    storage = get_appropriate_storage_service(1)
+    try:
+        storage.create_root_storage()
+    except BucketAlreadyExistsError:
+        pass
 
 
 @pytest.mark.django_db
@@ -128,7 +158,7 @@ def test_rewrite_or_delete_upload_does_not_delete(custom_config):
 
     custom_config(conf)
 
-    upload = UploadFactory(storage_path="http://url")
+    upload = UploadFactory(storage_path="http_url")
     archive_service = ArchiveService(upload.report.commit.repository)
 
     archive_service.write_file(upload.storage_path, b"test")
@@ -164,7 +194,7 @@ def test_rewrite_or_delete_upload_rewrites(custom_config):
     assert archive_service.read_file(upload.storage_path) == b"rewritten"
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db(databases=["default", "ta_timeseries"])
 def test_insert_testruns_timeseries(snapshot):
     parsing_infos: list[test_results_parser.ParsingInfo] = [
         {
