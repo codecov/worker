@@ -27,6 +27,7 @@ from database.models import (
 from helpers.metrics import metrics
 from services.archive import ArchiveService
 from services.processing.types import UploadArguments
+from services.test_analytics.ta_processor import ta_processor_impl
 from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -144,9 +145,19 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
         commitid: str,
         commit_yaml,
         arguments_list: list[UploadArguments],
+        new_impl: bool = False,
         **kwargs,
     ) -> bool:
-        log.info("Received upload test result processing task")
+        if new_impl:
+            for argument in arguments_list:
+                ta_processor_impl(
+                    repoid=repoid,
+                    commitid=commitid,
+                    commit_yaml=commit_yaml,
+                    argument=argument,
+                )
+
+            return True
 
         commit_yaml = UserYaml(commit_yaml)
         repoid = int(repoid)
