@@ -1,20 +1,18 @@
 import logging
 from typing import Any
 
-import shared.storage
-from shared.django_apps.core.models import Commit
 from shared.django_apps.reports.models import ReportSession
 from shared.storage.exceptions import FileNotInStorageError
 from test_results_parser import parse_raw_upload
 
+from services.archive import ArchiveService
 from services.processing.types import UploadArguments
 from services.test_analytics.ta_processing import (
-    delete_archive,
     get_ta_processing_info,
     handle_file_not_found,
     handle_parsing_error,
     insert_testruns_timeseries,
-    should_delete_archive,
+    rewrite_or_delete_upload,
 )
 
 log = logging.getLogger(__name__)
@@ -52,14 +50,10 @@ def ta_processor_impl(
 
     ta_proc_info = get_ta_processing_info(repoid, commitid, commit_yaml)
 
-    storage_service = shared.storage.get_appropriate_storage_service(
-        ta_proc_info.repository.repoid
-    )
+    archive_service = ArchiveService(ta_proc_info.repository)
 
     try:
-        payload_bytes = storage_service.read_file(
-            ta_proc_info.bucket_name, upload.storage_path
-        )
+        payload_bytes = archive_service.read_file(upload.storage_path)
     except FileNotInStorageError:
         if update_state:
             handle_file_not_found(upload)
@@ -72,19 +66,15 @@ def ta_processor_impl(
             handle_parsing_error(upload, exc)
         return False
 
-    branch = Commit.objects.get(id=upload.report.commit_id).branch
-
-    insert_testruns_timeseries(repoid, commitid, branch, upload, parsing_infos)
+    insert_testruns_timeseries(
+        repoid, commitid, ta_proc_info.branch, upload, parsing_infos
+    )
 
     if update_state:
         upload.state = "processed"
         upload.save()
 
-        if should_delete_archive(ta_proc_info.user_yaml):
-            delete_archive(storage_service, upload, ta_proc_info.bucket_name)
-        else:
-            storage_service.write_file(
-                ta_proc_info.bucket_name, upload.storage_path, bytes(readable_file)
-            )
-
+        rewrite_or_delete_upload(
+            archive_service, ta_proc_info.user_yaml, upload, readable_file
+        )
     return True
