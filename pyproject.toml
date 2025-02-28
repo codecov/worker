@@ -79,7 +79,7 @@ dev-dependencies = [
     # NOTE: some weird interaction between existing `vcrpy` snapshots and the way
     # `oauth2` / `minio` deal with requests forces us to downgrade `urllib3`:
     "urllib3==1.26.19",
-    "vcrpy==4.1.*",
+    "vcrpy>=6.0.0",
 ]
 
 [tool.uv.sources]
