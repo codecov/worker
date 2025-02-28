@@ -2,8 +2,8 @@ import json
 
 import pytest
 from mock import patch
-from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint
+from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.types import CoverageDatapoint, LineSession
 
 from database.models.labelanalysis import LabelAnalysisRequest
 from database.tests.factories import RepositoryFactory

@@ -278,9 +278,6 @@ def mock_archive_storage(mocker):
     )
     storage_server = MemoryStorageService({})
     mocker.patch(
-        "shared.api_archive.archive.StorageService", return_value=storage_server
-    )
-    mocker.patch(
         "shared.storage.get_appropriate_storage_service", return_value=storage_server
     )
     return storage_server

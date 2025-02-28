@@ -5,13 +5,13 @@ from contextlib import contextmanager
 import shared.storage
 from django.db import transaction
 from django.db.models import Model
-from shared.api_archive.storage import StorageService
 from shared.config import get_config
+from shared.storage.base import BaseStorageService
 
 
 class CleanupContext:
     threadpool: ThreadPoolExecutor
-    storage: StorageService
+    storage: BaseStorageService
     default_bucket: str
     bundleanalysis_bucket: str
 
