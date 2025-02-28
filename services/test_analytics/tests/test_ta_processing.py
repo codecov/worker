@@ -1,207 +1,247 @@
+from __future__ import annotations
+
+import os
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from typing import Any
 
 import pytest
 import test_results_parser
-from shared.config import ConfigHelper
-from shared.django_apps.core.tests.factories import CommitFactory, RepositoryFactory
+import yaml
+from shared.config import _get_config_instance
 from shared.django_apps.reports.models import UploadError
-from shared.django_apps.reports.tests.factories import (
-    RepositoryFlagFactory,
-    UploadFactory,
-    UploadFlagMembershipFactory,
-)
-from shared.django_apps.test_analytics.models import Flake
+from shared.django_apps.reports.tests.factories import UploadFactory
 from shared.django_apps.timeseries.models import Testrun
 from shared.storage.exceptions import FileNotInStorageError
-from shared.yaml import UserYaml
 
+from services.archive import ArchiveService
 from services.test_analytics.ta_processing import (
-    TAProcInfo,
-    delete_archive,
-    get_ta_processing_info,
     handle_file_not_found,
     handle_parsing_error,
     insert_testruns_timeseries,
-    should_delete_archive,
+    rewrite_or_delete_upload,
+    should_delete_archive_settings,
 )
-from services.test_analytics.ta_timeseries import calc_test_id
+from services.yaml import UserYaml
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
-def test_get_ta_processing_info():
-    repository = RepositoryFactory.create()
-    commit = CommitFactory.create(repository=repository, branch="main")
+@pytest.fixture
+def custom_config(tmp_path):
+    config_instance = _get_config_instance()
+    config_instance._params = None
 
-    result = get_ta_processing_info(repository.repoid, commit.commitid, {})
+    file_path = tmp_path / "codecov.yml"
+    os.environ["CODECOV_YML"] = str(file_path)
 
-    assert isinstance(result, TAProcInfo)
-    assert result.repository == repository
-    assert result.branch == "main"
-    assert isinstance(result.user_yaml, UserYaml)
+    def set(custom_config: dict[Any, Any]):
+        file_path.write_text(yaml.dump(custom_config))
 
-
-@pytest.mark.django_db(databases=["default", "timeseries"])
-def test_get_ta_processing_info_no_branch():
-    repository = RepositoryFactory.create()
-    commit = CommitFactory.create(repository=repository, branch=None)
-
-    commit_yaml = {"codecov": {"notify": {"after_n_builds": 1}}}
-
-    with pytest.raises(ValueError, match="Branch is None"):
-        get_ta_processing_info(repository.repoid, commit.commitid, commit_yaml)
+    return set
 
 
-def test_should_delete_archive_config_enabled():
-    mock_config = ConfigHelper()
-    mock_config.set_params({"services": {"minio": {"expire_raw_after_n_days": 7}}})
-
-    with patch("services.test_analytics.ta_processing.get_config", return_value=7):
-        assert should_delete_archive(UserYaml({})) is True
-
-
-def test_should_delete_archive_yaml_disabled():
-    mock_config = ConfigHelper()
-    mock_config.set_params({"services": {"minio": {}}})
-
-    with patch("services.test_analytics.ta_processing.get_config", return_value=None):
-        user_yaml = UserYaml({"codecov": {"archive": {"uploads": False}}})
-        assert should_delete_archive(user_yaml) is True
-
-
-def test_should_delete_archive_yaml_enabled():
-    mock_config = ConfigHelper()
-    mock_config.set_params({"services": {"minio": {}}})
-
-    with patch("services.test_analytics.ta_processing.get_config", return_value=None):
-        user_yaml = UserYaml({"codecov": {"archive": {"uploads": True}}})
-        assert should_delete_archive(user_yaml) is False
-
-
-@pytest.mark.django_db(databases=["default", "timeseries"])
-def test_delete_archive(storage):
-    repository = RepositoryFactory.create()
-    commit = CommitFactory.create(repository=repository)
-    upload = UploadFactory.create(
-        report__commit=commit, storage_path="path/to/archive.xml"
-    )
-
-    storage.write_file("archive", "path/to/archive.xml", b"test content")
-
-    delete_archive(storage, upload, "archive")
-
-    with pytest.raises(FileNotInStorageError):
-        storage.read_file("archive", "path/to/archive.xml")
-
-
-@pytest.mark.django_db(databases=["default", "timeseries"])
-def test_delete_archive_http_path(storage):
-    repository = RepositoryFactory.create()
-    commit = CommitFactory.create(repository=repository)
-    upload = UploadFactory.create(
-        report__commit=commit, storage_path="http://example.com/archive.xml"
-    )
-
-    storage.write_file("archive", "path/to/archive.xml", b"test content")
-
-    delete_archive(storage, upload, "archive")
-
-    assert storage.read_file("archive", "path/to/archive.xml") == b"test content"
-
-
-@pytest.mark.django_db(databases=["default", "timeseries"])
+@pytest.mark.django_db
 def test_handle_file_not_found():
-    repository = RepositoryFactory.create()
-    commit = CommitFactory.create(repository=repository)
-    upload = UploadFactory.create(report__commit=commit, state="started")
+    upload = UploadFactory()
 
     handle_file_not_found(upload)
 
-    upload.refresh_from_db()
     assert upload.state == "processed"
 
-    error = UploadError.objects.get(report_session=upload)
+    error = UploadError.objects.filter(report_session=upload).first()
+    assert error is not None
     assert error.error_code == "file_not_in_storage"
-    assert error.error_params == {}
 
 
-@pytest.mark.django_db(databases=["default", "timeseries"])
-def test_handle_parsing_error():
-    repository = RepositoryFactory.create()
-    commit = CommitFactory.create(repository=repository)
-    upload = UploadFactory.create(report__commit=commit, state="started")
+@pytest.mark.django_db
+def test_parsing_error():
+    upload = UploadFactory()
 
-    test_exception = ValueError("Test error")
-    mock_capture_exception = MagicMock()
+    handle_parsing_error(upload, Exception("test string"))
 
-    with patch("sentry_sdk.capture_exception", mock_capture_exception):
-        handle_parsing_error(upload, test_exception)
-
-    upload.refresh_from_db()
     assert upload.state == "processed"
 
-    error = UploadError.objects.get(report_session=upload)
+    error = UploadError.objects.filter(report_session=upload).first()
+    assert error is not None
     assert error.error_code == "unsupported_file_format"
-    assert error.error_params == {"error_message": "Test error"}
+    assert error.error_params["error_message"] == "test string"
 
-    mock_capture_exception.assert_called_once_with(
-        test_exception, tags={"upload_state": "started"}
+
+@pytest.mark.parametrize(
+    "expire_raw,uploads,result",
+    [
+        (None, None, False),
+        (7, None, True),
+        (True, None, True),
+        (None, False, True),
+    ],
+)
+def test_should_delete_archive(expire_raw, uploads, result, custom_config):
+    custom_config(
+        {
+            "services": {
+                "minio": {"expire_raw_after_n_days": expire_raw},
+            }
+        }
     )
+
+    fake_yaml = UserYaml.from_dict(
+        {"codecov": {"archive": {"uploads": uploads}}} if uploads is not None else {}
+    )
+    assert should_delete_archive_settings(fake_yaml) == result
+
+
+@pytest.mark.django_db
+def test_rewrite_or_delete_upload_deletes(custom_config):
+    conf = {
+        "services": {
+            "minio": {
+                "port": 9000,
+                "expire_raw_after_n_days": 1,
+            },
+        }
+    }
+
+    custom_config(conf)
+
+    upload = UploadFactory(storage_path="url")
+    archive_service = ArchiveService(upload.report.commit.repository)
+
+    archive_service.write_file(upload.storage_path, b"test")
+
+    rewrite_or_delete_upload(
+        archive_service, UserYaml.from_dict({}), upload, b"rewritten"
+    )
+
+    with pytest.raises(FileNotInStorageError):
+        archive_service.read_file(upload.storage_path)
+
+
+@pytest.mark.django_db
+def test_rewrite_or_delete_upload_does_not_delete(custom_config):
+    conf = {
+        "services": {
+            "minio": {
+                "port": 9000,
+                "expire_raw_after_n_days": 1,
+            },
+        }
+    }
+
+    custom_config(conf)
+
+    upload = UploadFactory(storage_path="http://url")
+    archive_service = ArchiveService(upload.report.commit.repository)
+
+    archive_service.write_file(upload.storage_path, b"test")
+
+    rewrite_or_delete_upload(
+        archive_service, UserYaml.from_dict({}), upload, b"rewritten"
+    )
+
+    assert archive_service.read_file(upload.storage_path) == b"test"
+
+
+@pytest.mark.django_db
+def test_rewrite_or_delete_upload_rewrites(custom_config):
+    conf = {
+        "services": {
+            "minio": {
+                "port": 9000,
+            },
+        }
+    }
+
+    custom_config(conf)
+
+    upload = UploadFactory(storage_path="url")
+    archive_service = ArchiveService(upload.report.commit.repository)
+
+    archive_service.write_file(upload.storage_path, b"test")
+
+    rewrite_or_delete_upload(
+        archive_service, UserYaml.from_dict({}), upload, b"rewritten"
+    )
+
+    assert archive_service.read_file(upload.storage_path) == b"rewritten"
 
 
 @pytest.mark.django_db(databases=["default", "timeseries"])
-def test_insert_testruns_timeseries():
-    repository = RepositoryFactory.create()
-    commit = CommitFactory.create(repository=repository)
-    flag = RepositoryFlagFactory.create(repository=repository, flag_name="unit")
-    upload = UploadFactory.create(report__commit=commit)
-    UploadFlagMembershipFactory.create(report_session=upload, flag=flag, id=upload.id)
+def test_insert_testruns_timeseries(snapshot):
+    parsing_infos: list[test_results_parser.ParsingInfo] = [
+        {
+            "framework": "Pytest",
+            "testruns": [
+                {
+                    "name": "test_1_name",
+                    "classname": "test_1_classname",
+                    "duration": 1,
+                    "outcome": "pass",
+                    "testsuite": "test_1_testsuite",
+                    "failure_message": None,
+                    "filename": "test_1_file",
+                    "build_url": "test_1_build_url",
+                    "computed_name": "test_1_computed_name",
+                }
+            ],
+        },
+        {
+            "framework": "Pytest",
+            "testruns": [
+                {
+                    "name": "test_2_name",
+                    "classname": "test_2_classname",
+                    "duration": 1,
+                    "outcome": "failure",
+                    "testsuite": "test_2_testsuite",
+                    "failure_message": "test_2_failure_message",
+                    "filename": "test_2_file",
+                    "build_url": "test_2_build_url",
+                    "computed_name": "test_2",
+                }
+            ],
+        },
+    ]
 
-    test_id = calc_test_id("test_name", "test_classname", "test_suite")
-    flaky_test_ids = {test_id}
-
-    Flake.objects.create(
-        repoid=repository.repoid,
-        test_id=test_id,
-        end_date=None,
-        start_date=datetime.now(),
-        count=0,
-        fail_count=0,
-        recent_passes_count=0,
-        flags_id=None,
-    )
-
-    testrun: test_results_parser.Testrun = {
-        "name": "test_name",
-        "classname": "test_classname",
-        "testsuite": "test_suite",
-        "computed_name": "computed_name",
-        "duration": 1.0,
-        "outcome": "pass",
-        "failure_message": None,
-        "filename": "test_filename",
-        "build_url": None,
-    }
-
-    parsing_info: test_results_parser.ParsingInfo = {
-        "framework": "Pytest",
-        "testruns": [testrun],
-    }
-
-    parsing_infos = [parsing_info]
+    upload = UploadFactory()
+    upload.report.commit.repository.repoid = 1
+    upload.report.commit.commitid = "123"
+    upload.report.commit.branch = "main"
+    upload.id = 1
+    upload.created_at = datetime(2025, 1, 1, 0, 0, 0)
 
     insert_testruns_timeseries(
-        repository.repoid, commit.commitid, commit.branch, upload, parsing_infos
+        repoid=upload.report.commit.repository.repoid,
+        commitid=upload.report.commit.commitid,
+        branch=upload.report.commit.branch,
+        upload=upload,
+        parsing_infos=parsing_infos,
     )
 
-    testrun_db = Testrun.objects.get(
-        name="test_name",
-        classname="test_classname",
-        testsuite="test_suite",
+    testruns = Testrun.objects.filter(upload_id=upload.id)
+    assert testruns.count() == 2
+
+    testruns_list = list(
+        testruns.values(
+            "timestamp",
+            "test_id",
+            "name",
+            "classname",
+            "testsuite",
+            "computed_name",
+            "outcome",
+            "duration_seconds",
+            "failure_message",
+            "framework",
+            "filename",
+            "repo_id",
+            "commit_sha",
+            "branch",
+            "flags",
+            "upload_id",
+        )
     )
-    assert testrun_db.branch == commit.branch
-    assert testrun_db.upload_id == upload.id
-    assert testrun_db.flags == upload.flag_names
-    assert testrun_db.duration_seconds == 1.0
-    assert testrun_db.outcome == "pass"
-    assert bytes(testrun_db.test_id) in flaky_test_ids
+
+    for testrun in testruns_list:
+        testrun["timestamp"] = testrun["timestamp"].isoformat()
+        testrun["test_id"] = testrun["test_id"].hex()
+
+    assert snapshot("json") == testruns_list

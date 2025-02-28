@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import pytest
 from shared.django_apps.core.tests.factories import CommitFactory, RepositoryFactory
@@ -17,13 +17,7 @@ from services.test_analytics.ta_processor import ta_processor_impl
 
 @pytest.fixture
 def sample_test_json_path():
-    return os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
-        "tasks",
-        "tests",
-        "samples",
-        "sample_test.json",
-    )
+    return Path(__file__).parent / "samples" / "sample_test.json"
 
 
 @pytest.mark.django_db(databases=["default", "timeseries"])
