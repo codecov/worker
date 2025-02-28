@@ -13,6 +13,7 @@ fi
 if [ "$RUN_ENV" = "ENTERPRISE" ] || [ "$RUN_ENV" = "DEV" ]; then
     python manage.py migrate
     python manage.py migrate --database "timeseries"
+    python manage.py migrate --database "ta_timeseries"
 fi
 
 if [ -z "$1" ];
