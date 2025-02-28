@@ -49,8 +49,6 @@ from tasks.sync_repo_languages import sync_repo_language_task
 from tasks.sync_repo_languages_gql import sync_repo_languages_gql_task
 from tasks.sync_repos import sync_repos_task
 from tasks.sync_teams import sync_teams_task
-from tasks.ta_finisher import ta_finisher_task
-from tasks.ta_processor import ta_processor_task
 from tasks.test_results_finisher import test_results_finisher_task
 from tasks.test_results_processor import test_results_processor_task
 from tasks.timeseries_backfill import (
