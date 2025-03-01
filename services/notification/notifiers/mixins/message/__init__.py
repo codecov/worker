@@ -42,7 +42,7 @@ class MessageMixin(object):
         Parameters:
             yaml_settings: YAML settings for notifier
 
-                Note: Github Checks Notifers are initialized with "status" YAML settings.
+                Note: Github Checks Notifiers are initialized with "status" YAML settings.
                       Thus, the comment block of the codecov YAML is passed as the "yaml_settings" parameter for these Notifiers.
 
         """
@@ -185,6 +185,26 @@ class MessageMixin(object):
                         write,
                         section_writer,
                     )
+            extra_message = []
+
+            if not self.repository.test_analytics_enabled:
+                extra_message.append(
+                    "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+                )
+            if not self.repository.bundle_analysis_enabled and set(
+                {"javascript", "typescript"}
+            ).intersection(self.repository.languages or {}):
+                extra_message.append(
+                    "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+                )
+
+            if extra_message:
+                for i in [
+                    "🚀 New features to boost your workflow:",
+                    "",
+                    *extra_message,
+                ]:
+                    write(i)
 
         return [m for m in message if m is not None]
 
