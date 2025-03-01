@@ -187,22 +187,23 @@ class MessageMixin(object):
                     )
             extra_message = []
 
-            if not self.repository.test_analytics_enabled:
-                extra_message.append(
-                    "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
-                )
-            if not self.repository.bundle_analysis_enabled and set(
-                {"javascript", "typescript"}
-            ).intersection(self.repository.languages or {}):
-                extra_message.append(
-                    "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
-                )
+            # if not self.repository.test_analytics_enabled:
+            extra_message.append(
+                "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+            )
+            # if not self.repository.bundle_analysis_enabled and set(
+            #     {"javascript", "typescript"}
+            # ).intersection(self.repository.languages or {}):
+            extra_message.append(
+                "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+            )
 
             if extra_message:
                 for i in [
-                    "🚀 New features to boost your workflow:",
+                    "<details><summary>🚀 New features to boost your workflow: </summary>",
                     "",
                     *extra_message,
+                    "</details>",
                 ]:
                     write(i)
 
