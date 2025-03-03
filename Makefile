@@ -207,7 +207,7 @@ shell:
 
 test_env.up:
 	env | grep GITHUB > .testenv; true
-	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose up -d
+	docker-compose up -d
 
 test_env.prepare:
 	docker-compose exec worker make test_env.container_prepare
@@ -234,7 +234,7 @@ test_env.run_integration:
 	docker-compose exec worker make test.integration
 
 test_env:
-	TIMESERIES_ENABLED=true make test_env.up
+	make test_env.up
 	make test_env.prepare
 	make test_env.check_db
 	make test_env.run_unit
