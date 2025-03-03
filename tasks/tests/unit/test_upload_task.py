@@ -424,12 +424,14 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report_code=None,
+            impl_type="old",
         )
         kwargs = dict(
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             checkpoints_TestResultsFlow=None,
+            impl_type="old",
         )
 
         kwargs[_kwargs_key(TestResultsFlow)] = mocker.ANY
@@ -448,7 +450,7 @@ class TestUploadTaskIntegration(object):
         celery_app,
     ):
         chain = mocker.patch("tasks.upload.chain")
-        _ = mocker.patch("tasks.upload.NEW_TA_TASKS.check_value", return_value=True)
+        _ = mocker.patch("tasks.upload.NEW_TA_TASKS.check_value", return_value="both")
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
         jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
@@ -533,37 +535,19 @@ class TestUploadTaskIntegration(object):
                 }
             ],
             report_code=None,
+            impl_type="both",
         )
         kwargs = dict(
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
             checkpoints_TestResultsFlow=None,
-        )
-
-        new_task = test_results_processor_task.s(
-            False,
-            repoid=commit.repoid,
-            commitid=commit.commitid,
-            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            arguments_list=[
-                {
-                    "url": storage_path,
-                    "flags": [],
-                    "build_code": "some_random_build",
-                    "upload_id": upload.id,
-                    "upload_pk": upload.id,
-                }
-            ],
-            report_code=None,
-            new_impl=True,
+            impl_type="both",
         )
 
         kwargs[_kwargs_key(TestResultsFlow)] = mocker.ANY
         notify_sig = test_results_finisher_task.signature(kwargs=kwargs)
-        chain.assert_has_calls(
-            [call(processor_sig, notify_sig), call(new_task)], any_order=True
-        )
+        chain.assert_has_calls([call(processor_sig, notify_sig)], any_order=True)
 
     def test_upload_task_call_no_jobs(
         self,
