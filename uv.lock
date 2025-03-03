@@ -1,6 +1,10 @@
 version = 1
 revision = 1
 requires-python = "==3.13.*"
+resolution-markers = [
+    "platform_python_implementation != 'PyPy'",
+    "platform_python_implementation == 'PyPy'",
+]
 
 [[package]]
 name = "amplitude-analytics"
@@ -1885,17 +1889,17 @@ wheels = [
 
 [[package]]
 name = "vcrpy"
-version = "4.1.1"
+version = "7.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyaml" },
-    { name = "six" },
+    { name = "urllib3" },
     { name = "wrapt" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/08/38f7af57d0d40c2aa292a6d3221a9dbb6a2733d33a4d77e4942b0791213e/vcrpy-4.1.1.tar.gz", hash = "sha256:57095bf22fc0a2d99ee9674cdafebed0f3ba763018582450706f7d3a74fff599", size = 78193 }
+sdist = { url = "https://files.pythonhosted.org/packages/25/d3/856e06184d4572aada1dd559ddec3bedc46df1f2edc5ab2c91121a2cccdb/vcrpy-7.0.0.tar.gz", hash = "sha256:176391ad0425edde1680c5b20738ea3dc7fb942520a48d2993448050986b3a50", size = 85502 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6e/62/571e9fa5c2a2c986c001d1be99403a5e800d2e72b905e6b1e951148c75c9/vcrpy-4.1.1-py2.py3-none-any.whl", hash = "sha256:12c3fcdae7b88ecf11fc0d3e6d77586549d4575a2ceee18e82eee75c1f626162", size = 40513 },
+    { url = "https://files.pythonhosted.org/packages/13/5d/1f15b252890c968d42b348d1e9b0aa12d5bf3e776704178ec37cceccdb63/vcrpy-7.0.0-py2.py3-none-any.whl", hash = "sha256:55791e26c18daa363435054d8b35bd41a4ac441b6676167635d1b37a71dbe124", size = 42321 },
 ]
 
 [[package]]
@@ -2066,7 +2070,7 @@ dev = [
     { name = "sqlalchemy-utils", specifier = ">=0.41.2" },
     { name = "time-machine", specifier = ">=2.16.0" },
     { name = "urllib3", specifier = "==1.26.19" },
-    { name = "vcrpy", specifier = "==4.1.*" },
+    { name = "vcrpy", specifier = ">=6.0.0" },
 ]
 
 [[package]]
