@@ -9,8 +9,8 @@ setup:
     enabled: true
 
 services:
-  database_url: postgres://postgres:password@postgres:5432/postgres
-  timeseries_database_url: postgres://postgres:password@timescale:5432/postgres
+  database_url: postgresql://postgres:password@postgres:5432/postgres
+  timeseries_database_url: postgresql://postgres:password@timescale:5432/postgres
   redis_url: redis://redis:6379
   minio:
     hash_key: testixik8qdauiab1yiffydimvi72ekq # never change this
