@@ -78,12 +78,12 @@ session_factory = SessionFactory(
     database_url=get_config(
         "services",
         "database_url",
-        default="postgres://postgres:@postgres:5432/postgres",
+        default="postgresql://postgres:@postgres:5432/postgres",
     ),
     timeseries_database_url=get_config(
         "services",
         "timeseries_database_url",
-        default="postgres://postgres:@timescale:5432/postgres",
+        default="postgresql://postgres:@timescale:5432/postgres",
     ),
 )
 
