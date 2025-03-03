@@ -2,8 +2,7 @@ import uuid
 
 from sqlalchemy import Column, types
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, declarative_base
 
 from helpers.clock import get_utc_now
 
