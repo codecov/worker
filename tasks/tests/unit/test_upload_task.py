@@ -31,8 +31,6 @@ from services.redis import get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
-from tasks.ta_finisher import ta_finisher_task
-from tasks.ta_processor import ta_processor_task
 from tasks.test_results_finisher import test_results_finisher_task
 from tasks.test_results_processor import test_results_processor_task
 from tasks.upload import UploadContext, UploadTask
@@ -449,7 +447,7 @@ class TestUploadTaskIntegration(object):
         mock_redis,
         celery_app,
     ):
-        chord = mocker.patch("tasks.upload.chord")
+        chain = mocker.patch("tasks.upload.chain")
         _ = mocker.patch("tasks.upload.NEW_TA_TASKS.check_value", return_value=True)
         storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
         redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
@@ -520,17 +518,21 @@ class TestUploadTaskIntegration(object):
         uploads = commit_report.uploads
         assert len(uploads) == 1
         upload = dbsession.query(Upload).filter_by(report_id=commit_report.id).first()
-        processor_sig = ta_processor_task.s(
+        processor_sig = test_results_processor_task.s(
+            False,
             repoid=commit.repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": "1y ago"}},
-            argument={
-                "url": storage_path,
-                "flags": [],
-                "build_code": "some_random_build",
-                "upload_id": upload.id,
-                "upload_pk": upload.id,
-            },
+            arguments_list=[
+                {
+                    "url": storage_path,
+                    "flags": [],
+                    "build_code": "some_random_build",
+                    "upload_id": upload.id,
+                    "upload_pk": upload.id,
+                }
+            ],
+            report_code=None,
         )
         kwargs = dict(
             repoid=commit.repoid,
@@ -539,9 +541,29 @@ class TestUploadTaskIntegration(object):
             checkpoints_TestResultsFlow=None,
         )
 
+        new_task = test_results_processor_task.s(
+            False,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            arguments_list=[
+                {
+                    "url": storage_path,
+                    "flags": [],
+                    "build_code": "some_random_build",
+                    "upload_id": upload.id,
+                    "upload_pk": upload.id,
+                }
+            ],
+            report_code=None,
+            new_impl=True,
+        )
+
         kwargs[_kwargs_key(TestResultsFlow)] = mocker.ANY
-        notify_sig = ta_finisher_task.signature(kwargs=kwargs)
-        chord.assert_called_with([processor_sig], notify_sig)
+        notify_sig = test_results_finisher_task.signature(kwargs=kwargs)
+        chain.assert_has_calls(
+            [call(processor_sig, notify_sig), call(new_task)], any_order=True
+        )
 
     def test_upload_task_call_no_jobs(
         self,

@@ -49,8 +49,6 @@ from services.test_results import TestResultsReportService
 from tasks.base import BaseCodecovTask
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
-from tasks.ta_finisher import ta_finisher_task
-from tasks.ta_processor import ta_processor_task
 from tasks.test_results_finisher import test_results_finisher_task
 from tasks.test_results_processor import test_results_processor_task
 from tasks.upload_finisher import upload_finisher_task
@@ -773,49 +771,48 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
     ):
-        if NEW_TA_TASKS.check_value(commit.repoid):
-            ta_proc_group = [
-                ta_processor_task.s(
-                    repoid=commit.repoid,
-                    commitid=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    argument=argument,
-                )
-                for argument in argument_list
-            ]
-            ta_finisher_kwargs = {
-                "repoid": commit.repoid,
-                "commitid": commit.commitid,
-                "commit_yaml": commit_yaml,
-            }
-            ta_finisher_kwargs = TestResultsFlow.save_to_kwargs(ta_finisher_kwargs)
-            ta_finisher_task_sig = ta_finisher_task.s(**ta_finisher_kwargs)
+        task_group = [
+            test_results_processor_task.s(
+                repoid=commit.repoid,
+                commitid=commit.commitid,
+                commit_yaml=commit_yaml,
+                arguments_list=list(chunk),
+                report_code=commit_report.code,
+            )
+            for chunk in itertools.batched(argument_list, CHUNK_SIZE)
+        ]
 
-            return chord(ta_proc_group, ta_finisher_task_sig).apply_async()
-        else:
-            task_group = [
+        task_group[0].args = (False,)
+
+        finisher_kwargs = {
+            "repoid": commit.repoid,
+            "commitid": commit.commitid,
+            "commit_yaml": commit_yaml,
+        }
+        finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
+        task_group.append(
+            test_results_finisher_task.signature(kwargs=finisher_kwargs),
+        )
+        first_chain_result = chain(*task_group).apply_async()
+
+        if NEW_TA_TASKS.check_value(commit.repoid):
+            new_task_group = [
                 test_results_processor_task.s(
                     repoid=commit.repoid,
                     commitid=commit.commitid,
                     commit_yaml=commit_yaml,
                     arguments_list=list(chunk),
                     report_code=commit_report.code,
+                    new_impl=True,
                 )
                 for chunk in itertools.batched(argument_list, CHUNK_SIZE)
             ]
 
-            task_group[0].args = (False,)
+            new_task_group[0].args = (False,)
 
-            finisher_kwargs = {
-                "repoid": commit.repoid,
-                "commitid": commit.commitid,
-                "commit_yaml": commit_yaml,
-            }
-            finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
-            task_group.append(
-                test_results_finisher_task.signature(kwargs=finisher_kwargs),
-            )
-            return chain(*task_group).apply_async()
+            _ = chain(*new_task_group).apply_async()
+
+        return first_chain_result
 
     def possibly_carryforward_bundle_report(
         self,
