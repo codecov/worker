@@ -3055,6 +3055,63 @@ class TestFileSectionWriter(object):
             "... and [3 files with indirect coverage changes](pull.link/indirect-changes?src=pr&el=tree-more)",
         ]
 
+    @pytest.mark.parametrize(
+        "test_analytics_enabled,bundle_analysis_enabled",
+        [(False, False), (False, True), (True, False), (True, True)],
+    )
+    @pytest.mark.django_db
+    def test_build_cross_pollination_message(
+        self,
+        dbsession,
+        mock_configuration,
+        mock_repo_provider,
+        sample_comparison,
+        test_analytics_enabled,
+        bundle_analysis_enabled,
+    ):
+        mock_all_plans_and_tiers()
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = "test.example.br"
+        comparison = sample_comparison
+        comparison.pull.is_first_coverage_pull = False
+        notifier = CommentNotifier(
+            repository=sample_comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            repository_service=mock_repo_provider,
+        )
+        repository = sample_comparison.head.commit.repository
+        if bundle_analysis_enabled:
+            repository.languages = ["javascript"]
+        if test_analytics_enabled:
+            repository.test_analytics_enabled = False
+        dbsession.flush()
+        result = notifier.build_message(comparison)
+
+        header = "<details><summary>🚀 New features to boost your workflow: </summary>"
+        ta_message = "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+        ba_message = "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+
+        end_of_message = []
+
+        if test_analytics_enabled or bundle_analysis_enabled:
+            end_of_message += [header, ""]
+            assert header in result
+
+        if test_analytics_enabled:
+            end_of_message.append(ta_message)
+            assert ta_message in result
+
+        if bundle_analysis_enabled:
+            end_of_message.append(ba_message)
+            assert ba_message in result
+
+        if len(end_of_message):
+            assert result[-1] == "</details>"
+        else:
+            assert result[-1] == ""
+
     def test_get_tree_cell(self):
         typ = "added"
         path = "path/to/test_file.go"
