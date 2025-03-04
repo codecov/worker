@@ -185,27 +185,8 @@ class MessageMixin(object):
                         write,
                         section_writer,
                     )
-            extra_message = []
 
-            # if not self.repository.test_analytics_enabled:
-            extra_message.append(
-                "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
-            )
-            # if not self.repository.bundle_analysis_enabled and set(
-            #     {"javascript", "typescript"}
-            # ).intersection(self.repository.languages or {}):
-            extra_message.append(
-                "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
-            )
-
-            if extra_message:
-                for i in [
-                    "<details><summary>🚀 New features to boost your workflow: </summary>",
-                    "",
-                    *extra_message,
-                    "</details>",
-                ]:
-                    write(i)
+        self.write_cross_pollination_message(write=write)
 
         return [m for m in message if m is not None]
 
@@ -324,3 +305,27 @@ class MessageMixin(object):
             "layout", ""
         ) or "condensed_footer" in settings.get("layout", ""):
             return "newfooter"
+
+    def write_cross_pollination_message(self, write: Callable):
+        extra_message = []
+
+        if not self.repository.test_analytics_enabled:
+            extra_message.append(
+                "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+            )
+
+        if not self.repository.bundle_analysis_enabled and set(
+            {"javascript", "typescript"}
+        ).intersection(self.repository.languages or {}):
+            extra_message.append(
+                "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+            )
+
+        if extra_message:
+            for i in [
+                "<details><summary>🚀 New features to boost your workflow: </summary>",
+                "",
+                *extra_message,
+                "</details>",
+            ]:
+                write(i)
