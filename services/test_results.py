@@ -6,7 +6,7 @@ from typing import Sequence
 from shared.django_apps.codecov_auth.models import Plan
 from shared.plan.constants import TierName
 from shared.yaml import UserYaml
-from sqlalchemy import desc, distinct, func
+from sqlalchemy import desc, func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.session import Session
 
@@ -450,12 +450,19 @@ def latest_failures_for_commit(
 def get_test_summary_for_commit(
     db_session: Session, repo_id: int, commit_sha: str
 ) -> dict[str, int]:
-    return dict(
-        db_session.query(
-            TestInstance.outcome, func.count(distinct(TestInstance.test_id))
-        )
+    cte = (
+        db_session.query(TestInstance)
+        .join(TestInstance.upload)
+        .options(joinedload(TestInstance.test))
         .filter(TestInstance.repoid == repo_id, TestInstance.commitid == commit_sha)
-        .group_by(TestInstance.outcome)
+        .order_by(TestInstance.test_id)
+        .order_by(desc(Upload.created_at))
+        .distinct(TestInstance.test_id)
+        .cte(name="latest_test_instances")
+    )
+    return dict(
+        db_session.query(cte.c.outcome, func.count(cte.c.test_id))
+        .group_by(cte.c.outcome)
         .all()
     )
 
