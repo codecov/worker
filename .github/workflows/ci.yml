@@ -35,13 +35,6 @@ jobs:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
       cache_file: "uv.lock"
 
-  codecovstartup:
-    name: Codecov Startup
-    needs: build
-    uses: codecov/gha-workflows/.github/workflows/codecov-startup.yml@v1.2.33
-
-    secrets: inherit
-
   test:
     name: Test
     needs: [build]
