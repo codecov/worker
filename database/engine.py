@@ -54,7 +54,7 @@ class SessionFactory:
             timeseries_engine = self.timeseries_engine
 
             class RoutingSession(Session):
-                def get_bind(self, mapper=None, clause=None):
+                def get_bind(self, mapper=None, clause=None, **kwargs):
                     if mapper is not None and issubclass(
                         mapper.class_, TimeseriesBaseModel
                     ):
@@ -78,12 +78,12 @@ session_factory = SessionFactory(
     database_url=get_config(
         "services",
         "database_url",
-        default="postgres://postgres:@postgres:5432/postgres",
+        default="postgresql://postgres:@postgres:5432/postgres",
     ),
     timeseries_database_url=get_config(
         "services",
         "timeseries_database_url",
-        default="postgres://postgres:@timescale:5432/postgres",
+        default="postgresql://postgres:@timescale:5432/postgres",
     ),
 )
 
