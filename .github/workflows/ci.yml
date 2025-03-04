@@ -35,7 +35,6 @@ jobs:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
       cache_file: "uv.lock"
 
-
   codecovstartup:
     name: Codecov Startup
     needs: build
@@ -91,3 +90,4 @@ jobs:
     with:
       push_rolling: true
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
+      cache_file: "uv.lock"
