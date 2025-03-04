@@ -3060,7 +3060,7 @@ class TestFileSectionWriter(object):
         [(False, False), (False, True), (True, False), (True, True)],
     )
     @pytest.mark.django_db
-    def test_build_message_new_feature_message(
+    def test_build_cross_pollination_message(
         self,
         dbsession,
         mock_configuration,
