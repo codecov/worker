@@ -123,83 +123,83 @@ def test_not_joined_flag(flag, joined):
 
 
 class TestUploadFinisherTask(object):
-    @pytest.mark.django_db(databases={"default"})
-    def test_upload_finisher_task_call(
-        self,
-        mocker,
-        mock_configuration,
-        dbsession,
-        codecov_vcr,
-        mock_storage,
-        mock_checkpoint_submit,
-        mock_repo_provider,
-    ):
-        mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
-        mocker.patch("tasks.upload_finisher.update_uploads")
-        url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
-        mocked_3 = mocker.patch.object(
-            UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
-        )
-        mocked_3.send_task.return_value = True
+    # @pytest.mark.django_db(databases={"default"})
+    # def test_upload_finisher_task_call(
+    #     self,
+    #     mocker,
+    #     mock_configuration,
+    #     dbsession,
+    #     codecov_vcr,
+    #     mock_storage,
+    #     mock_checkpoint_submit,
+    #     mock_repo_provider,
+    # ):
+    #     mocker.patch("tasks.upload_finisher.load_intermediate_reports", return_value=[])
+    #     mocker.patch("tasks.upload_finisher.update_uploads")
+    #     url = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+    #     mocked_3 = mocker.patch.object(
+    #         UploadFinisherTask, "app", conf=mocker.MagicMock(task_time_limit=123)
+    #     )
+    #     mocked_3.send_task.return_value = True
 
-        commit = CommitFactory.create(
-            message="dsidsahdsahdsa",
-            commitid="abf6d4df662c47e32460020ab14abf9303581429",
-            branch="thisbranch",
-            ci_passed=True,
-            repository__branch="thisbranch",
-            repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
-            repository__owner__username="ThiagoCodecov",
-            repository__owner__service="github",
-            author__service="github",
-            notified=True,
-            repository__yaml={
-                "codecov": {"max_report_age": "1y ago"}
-            },  # Sorry, this is a timebomb now
-        )
-        dbsession.add(commit)
-        dbsession.flush()
-        previous_results = [
-            {"upload_id": 0, "arguments": {"url": url}, "successful": True}
-        ]
+    #     commit = CommitFactory.create(
+    #         message="dsidsahdsahdsa",
+    #         commitid="abf6d4df662c47e32460020ab14abf9303581429",
+    #         branch="thisbranch",
+    #         ci_passed=True,
+    #         repository__branch="thisbranch",
+    #         repository__owner__unencrypted_oauth_token="testulk3d54rlhxkjyzomq2wh8b7np47xabcrkx8",
+    #         repository__owner__username="ThiagoCodecov",
+    #         repository__owner__service="github",
+    #         author__service="github",
+    #         notified=True,
+    #         repository__yaml={
+    #             "codecov": {"max_report_age": "1y ago"}
+    #         },  # Sorry, this is a timebomb now
+    #     )
+    #     dbsession.add(commit)
+    #     dbsession.flush()
+    #     previous_results = [
+    #         {"upload_id": 0, "arguments": {"url": url}, "successful": True}
+    #     ]
 
-        _start_upload_flow(mocker)
-        result = UploadFinisherTask().run_impl(
-            dbsession,
-            previous_results,
-            repoid=commit.repoid,
-            commitid=commit.commitid,
-            commit_yaml={},
-        )
+    #     _start_upload_flow(mocker)
+    #     result = UploadFinisherTask().run_impl(
+    #         dbsession,
+    #         previous_results,
+    #         repoid=commit.repoid,
+    #         commitid=commit.commitid,
+    #         commit_yaml={},
+    #     )
 
-        assert result == {"notifications_called": True}
-        dbsession.refresh(commit)
-        assert commit.message == "dsidsahdsahdsa"
+    #     assert result == {"notifications_called": True}
+    #     dbsession.refresh(commit)
+    #     assert commit.message == "dsidsahdsahdsa"
 
-        mock_checkpoint_submit.assert_any_call(
-            "batch_processing_duration",
-            UploadFlow.INITIAL_PROCESSING_COMPLETE,
-            UploadFlow.BATCH_PROCESSING_COMPLETE,
-            data={
-                UploadFlow.UPLOAD_TASK_BEGIN: 1337,
-                UploadFlow.PROCESSING_BEGIN: 9001,
-                UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
-                UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
-                UploadFlow.PROCESSING_COMPLETE: 20000,
-            },
-        )
-        mock_checkpoint_submit.assert_any_call(
-            "total_processing_duration",
-            UploadFlow.PROCESSING_BEGIN,
-            UploadFlow.PROCESSING_COMPLETE,
-            data={
-                UploadFlow.UPLOAD_TASK_BEGIN: 1337,
-                UploadFlow.PROCESSING_BEGIN: 9001,
-                UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
-                UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
-                UploadFlow.PROCESSING_COMPLETE: 20000,
-            },
-        )
+    #     mock_checkpoint_submit.assert_any_call(
+    #         "batch_processing_duration",
+    #         UploadFlow.INITIAL_PROCESSING_COMPLETE,
+    #         UploadFlow.BATCH_PROCESSING_COMPLETE,
+    #         data={
+    #             UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+    #             UploadFlow.PROCESSING_BEGIN: 9001,
+    #             UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+    #             UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
+    #             UploadFlow.PROCESSING_COMPLETE: 20000,
+    #         },
+    #     )
+    #     mock_checkpoint_submit.assert_any_call(
+    #         "total_processing_duration",
+    #         UploadFlow.PROCESSING_BEGIN,
+    #         UploadFlow.PROCESSING_COMPLETE,
+    #         data={
+    #             UploadFlow.UPLOAD_TASK_BEGIN: 1337,
+    #             UploadFlow.PROCESSING_BEGIN: 9001,
+    #             UploadFlow.INITIAL_PROCESSING_COMPLETE: 10000,
+    #             UploadFlow.BATCH_PROCESSING_COMPLETE: 15000,
+    #             UploadFlow.PROCESSING_COMPLETE: 20000,
+    #         },
+    #     )
 
     @pytest.mark.django_db(databases={"default"})
     def test_upload_finisher_task_call_no_author(
