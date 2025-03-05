@@ -17,7 +17,7 @@ jobs:
       - name: Install Static Analysis Tools
         run: |
           pip install mypy==1.15.0
-          pip install ruff==0.3.3
+          pip install ruff==0.9.8
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
@@ -28,10 +28,6 @@ jobs:
         run: |
           curl -o overwatch-cli https://overwatch.codecov.dev/linux/cli
           chmod +x overwatch-cli
-      - name: Print Python3 Version
-        run: python3 --version
-      - name: Print Python Version
-        run: python --version
       - name: Run Overwatch CLI
         run: |
           ./overwatch-cli \
