@@ -32,4 +32,4 @@ jobs:
             --organization-slug codecov \
             python \
             --python-path $(which python3) \
-            --tool ruff
+            --tool mypy
