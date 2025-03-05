@@ -309,17 +309,16 @@ class MessageMixin(object):
     def write_cross_pollination_message(self, write: Callable):
         extra_message = []
 
+        ta_message = "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+        ba_message = "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+
         if not self.repository.test_analytics_enabled:
-            extra_message.append(
-                "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
-            )
+            extra_message.append(ta_message)
 
         if not self.repository.bundle_analysis_enabled and set(
             {"javascript", "typescript"}
         ).intersection(self.repository.languages or {}):
-            extra_message.append(
-                "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
-            )
+            extra_message.append(ba_message)
 
         if extra_message:
             for i in [
