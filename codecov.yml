@@ -12,10 +12,14 @@ component_management:
     - component_id: actual_code
       name: NonTestCode
       paths:
-        - "!conftest.py"
-        - "!**/conftest.py"
-        - "!**tests**/test_*.py"
-        - "!database/tests/factories/**"
+          - "!conftest.py"
+          - "!**/conftest.py"
+          - "!**tests**/test_*.py"
+          - "!database/tests/factories/**"
+      statuses:
+        - removed_code_behaviour: "adjust_base"
+          target: "auto"
+          type: "project"
     - component_id: no_tasks
       name: OutsideTasks
       paths:
