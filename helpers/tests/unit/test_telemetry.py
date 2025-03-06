@@ -1,18 +1,20 @@
 import asyncio
 import threading
 from datetime import datetime, timezone
-from unittest.mock import Mock
 
 import pytest
-from shared.django_apps.pg_telemetry.models import SimpleMetric as PgSimpleMetric
-from shared.django_apps.ts_telemetry.models import SimpleMetric as TsSimpleMetric
 
-from database.models import Commit
 from database.tests.factories.core import CommitFactory, OwnerFactory, RepositoryFactory
-from helpers.telemetry import MetricContext, TimeseriesTimer, fire_and_forget
+from helpers.log_context import LogContext, set_log_context
+from helpers.telemetry import (
+    TimeseriesTimer,
+    attempt_log_simple_metric,
+    fire_and_forget,
+    log_simple_metric,
+)
 
 
-def make_metric_context(dbsession):
+def populate_log_context(dbsession):
     owner = OwnerFactory.create(
         service="github",
         username="codecove2e",
@@ -39,11 +41,14 @@ def make_metric_context(dbsession):
     dbsession.expire(repo)
     dbsession.expire(commit)
 
-    return MetricContext(
+    log_context = LogContext(
         commit_sha=commit.commitid,
+        commit_id=commit.id_,
         repo_id=repo.repoid,
         owner_id=owner.ownerid,
     )
+    set_log_context(log_context)
+    return log_context
 
 
 @pytest.mark.asyncio
@@ -83,75 +88,33 @@ async def test_fire_and_forget():
     assert fired_function_ran.is_set()
 
 
-class TestMetricContext:
-    def test_populate_complete(self, dbsession, mocker):
-        mc = make_metric_context(dbsession)
-        assert mc.repo_id is not None
-        assert mc.owner_id is not None
-        assert mc.commit_sha is not None
-        assert mc.repo_slug is None
-        assert mc.owner_slug is None
-        assert mc.commit_id is None
-        assert mc.commit_slug is None
-        assert mc.populated == False
-
-        mocker.patch("helpers.telemetry.get_db_session", return_value=dbsession)
-        mc.populate()
-
-        assert mc.repo_slug == "github/codecove2e/example-python"
-        assert mc.owner_slug == "github/codecove2e"
-        assert (
-            mc.commit_slug
-            == "github/codecove2e/example-python/c5b67303452bbff57cc1f49984339cde39eb1db5"
-        )
-        assert mc.commit_id is not None
-
-    def test_populate_no_repo(self, dbsession, mocker):
-        mc = make_metric_context(dbsession)
-        mc.repo_id = None
-
-        mocker.patch("helpers.telemetry.get_db_session", return_value=dbsession)
-        mc.populate()
-
-        assert mc.repo_slug is None
-        assert mc.owner_slug == "github/codecove2e"
-        assert mc.commit_slug is None
-        assert mc.commit_id is None
-
-    @pytest.mark.django_db(databases={"default", "timeseries"})
+class TestLoggingMetrics:
+    @pytest.mark.django_db(databases={"default"})
     def test_log_simple_metric(self, dbsession, mocker):
-        mc = make_metric_context(dbsession)
+        log_context = populate_log_context(dbsession)
 
         desired_time = datetime.now().replace(tzinfo=timezone.utc)
-        mock_datetime = mocker.patch("helpers.telemetry.datetime")
+        mock_datetime = mocker.patch("django.utils.timezone")
         mock_datetime.now.return_value = desired_time
 
-        mocker.patch("helpers.telemetry.get_db_session", return_value=dbsession)
-        mc.log_simple_metric("test", 5.0)
+        mock_model_create = mocker.patch(
+            "helpers.telemetry.PgSimpleMetric.objects.create"
+        )
+        log_simple_metric("test", 5.0)
 
-        """
-        fetched_pg = PgSimpleMetric.objects.get(timestamp=desired_time)
-        assert fetched_pg.name == "test"
-        assert fetched_pg.value == 5.0
-        assert fetched_pg.timestamp == desired_time
-        assert fetched_pg.repo_id == mc.repo_id
-        assert fetched_pg.owner_id == mc.owner_id
-        assert fetched_pg.commit_id == mc.commit_id
-
-        fetched_ts = TsSimpleMetric.objects.get(timestamp=desired_time)
-        assert fetched_ts.name == "test"
-        assert fetched_ts.value == 5.0
-        assert fetched_ts.timestamp == desired_time
-        assert fetched_ts.repo_slug == mc.repo_slug
-        assert fetched_ts.owner_slug == mc.owner_slug
-        assert fetched_ts.commit_slug == mc.commit_slug
-        """
+        mock_model_create.assert_called_with(
+            name="test",
+            value=5.0,
+            timestamp=desired_time,
+            repo_id=log_context.repo_id,
+            owner_id=log_context.owner_id,
+            commit_id=log_context.commit_id,
+        )
 
     @pytest.mark.asyncio
     async def test_attempt_log_simple_metric(self, dbsession, mocker):
-        mc = make_metric_context(dbsession)
-        mock_fn = mocker.patch.object(mc, "log_simple_metric")
-        mc.attempt_log_simple_metric("test", 5.0)
+        mock_fn = mocker.patch("helpers.telemetry.log_simple_metric")
+        attempt_log_simple_metric("test", 5.0)
 
         # Yield control so asyncio will go to the next task (logging the metric)
         await asyncio.sleep(0)
@@ -162,7 +125,7 @@ class TestMetricContext:
 
 class TestTimeseriesTimer:
     def test_sync(self, dbsession, mocker):
-        mc = Mock()
+        mock_fn = mocker.patch("helpers.telemetry.log_simple_metric")
         time1 = datetime.fromisoformat("2023-11-21").replace(tzinfo=timezone.utc)
         time2 = datetime.fromisoformat("2023-11-22").replace(tzinfo=timezone.utc)
         time3 = datetime.fromisoformat("2023-11-23").replace(tzinfo=timezone.utc)
@@ -170,15 +133,15 @@ class TestTimeseriesTimer:
         mock_datetime = mocker.patch("helpers.telemetry.datetime")
         mock_datetime.now.side_effect = [time1, time2, time3]
 
-        with TimeseriesTimer(mc, "test_sync_timer", sync=True):
+        with TimeseriesTimer("test_sync_timer", sync=True):
             pass
 
         expected_value = 86400  # seconds in a day
-        assert ("test_sync_timer", expected_value) in mc.log_simple_metric.call_args
+        assert ("test_sync_timer", expected_value) in mock_fn.call_args
 
     @pytest.mark.asyncio
     async def test_async(self, dbsession, mocker):
-        mc = Mock()
+        mock_fn = mocker.patch("helpers.telemetry.attempt_log_simple_metric")
         time1 = datetime.fromisoformat("2023-11-21").replace(tzinfo=timezone.utc)
         time2 = datetime.fromisoformat("2023-11-22").replace(tzinfo=timezone.utc)
         time3 = datetime.fromisoformat("2023-11-23").replace(tzinfo=timezone.utc)
@@ -186,11 +149,11 @@ class TestTimeseriesTimer:
         mock_datetime = mocker.patch("helpers.telemetry.datetime")
         mock_datetime.now.side_effect = [time1, time2, time3]
 
-        with TimeseriesTimer(mc, "test_sync_timer", sync=False):
+        with TimeseriesTimer("test_sync_timer", sync=False):
             pass
 
         expected_value = 86400  # seconds in a day
         assert (
             "test_sync_timer",
             expected_value,
-        ) in mc.attempt_log_simple_metric.call_args
+        ) in mock_fn.call_args

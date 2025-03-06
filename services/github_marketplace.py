@@ -10,7 +10,6 @@ log = logging.getLogger(__name__)
 
 
 class GitHubMarketplaceService(object):
-
     """
     Static ids for each of Codecov's plans on GitHub marketplace
     """

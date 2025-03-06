@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import status_set_error_task_name
 from shared.helpers.yaml import default_if_true
 from shared.utils.urls import make_url
@@ -19,7 +20,7 @@ class StatusSetErrorTask(BaseCodecovTask, name=status_set_error_task_name):
     Set commit status upon error
     """
 
-    async def run_async(self, db_session, repoid, commitid, *, message=None, **kwargs):
+    def run_impl(self, db_session, repoid, commitid, *, message=None, **kwargs):
         log.info(
             "Set error",
             extra=dict(repoid=repoid, commitid=commitid, description=message),
@@ -34,13 +35,13 @@ class StatusSetErrorTask(BaseCodecovTask, name=status_set_error_task_name):
         commit = commits.first()
         assert commit, "Commit not found in database."
         repo_service = get_repo_provider_service(commit.repository)
-        current_yaml = await get_current_yaml(commit, repo_service)
+        current_yaml = async_to_sync(get_current_yaml)(commit, repo_service)
         settings = read_yaml_field(current_yaml, ("coverage", "status"))
 
         status_set = False
 
         if settings and any(settings.values()):
-            statuses = await repo_service.get_commit_statuses(commitid)
+            statuses = async_to_sync(repo_service.get_commit_statuses)(commitid)
             url = make_url(repo_service, "commit", commitid)
             for context in ("project", "patch", "changes"):
                 if settings.get(context):
@@ -58,12 +59,8 @@ class StatusSetErrorTask(BaseCodecovTask, name=status_set_error_task_name):
                             message or "Coverage not measured fully because CI failed"
                         )
                         if context in statuses:
-                            await repo_service.set_commit_status(
-                                commit=commitid,
-                                status=state,
-                                context=context,
-                                description=message,
-                                url=url,
+                            async_to_sync(repo_service.set_commit_status)(
+                                commitid, state, context, message, url
                             )
                             status_set = True
                             log.info(

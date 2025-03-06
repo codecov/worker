@@ -11,7 +11,7 @@ epoch := $(shell date +"%s")
 
 AR_REPO ?= codecov/worker
 DOCKERHUB_REPO ?= codecov/self-hosted-worker
-REQUIREMENTS_TAG := requirements-v1-$(shell sha1sum requirements.txt | cut -d ' ' -f 1)-$(shell sha1sum docker/Dockerfile.requirements | cut -d ' ' -f 1)
+REQUIREMENTS_TAG := requirements-v1-$(shell sha1sum uv.lock | cut -d ' ' -f 1)-$(shell sha1sum docker/Dockerfile.requirements | cut -d ' ' -f 1)
 VERSION := release-${sha}
 CODECOV_UPLOAD_TOKEN ?= "notset"
 CODECOV_STATIC_TOKEN ?= "notset"
@@ -22,7 +22,7 @@ export WORKER_DOCKER_VERSION=${VERSION}
 export CODECOV_TOKEN=${CODECOV_UPLOAD_TOKEN}
 
 # Codecov CLI version to use
-CODECOV_CLI_VERSION := 0.4.1
+CODECOV_CLI_VERSION := 0.5.1
 
 build:
 	$(MAKE) build.requirements
@@ -43,38 +43,44 @@ build.portable:
 		--build-arg COMMIT_SHA="${sha}" \
 		--build-arg RELEASE_VERSION="${release_version}"
 
+test:
+	COVERAGE_CORE=sysmon pytest --cov=./ --junitxml=junit.xml -o junit_family=legacy
+
+test.unit:
+	COVERAGE_CORE=sysmon pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml --junitxml=unit.junit.xml -o junit_family=legacy
+
+test.integration:
+	COVERAGE_CORE=sysmon pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml --junitxml=integration.junit.xml -o junit_family=legacy
+
 lint:
 	make lint.install
 	make lint.run
 
-test:
-	python -m pytest --cov=./
-
-test.unit:
-	python -m pytest --cov=./ -m "not integration" --cov-report=xml:unit.coverage.xml
-
-test.integration:
-	python -m pytest --cov=./ -m "integration" --cov-report=xml:integration.coverage.xml
-
-
-update-requirements:
-	pip install pip-tools==6.1.0
-	pip-compile requirements.in
-
-
+# used for CI
 lint.install:
 	echo "Installing..."
-	pip install -Iv black==22.3.0 isort
+	pip install -Iv ruff
 
+lint.local:
+	make lint.install.local
+	make lint.run
+
+lint.install.local:
+	echo "Installing..."
+	uv add --dev ruff
+
+# The preferred method (for now) w.r.t. fixable rules is to manually update the makefile
+# with --fix and re-run 'make lint.' Since ruff is constantly adding rules this is a slight
+# amount of "needed" friction imo.
 lint.run:
-	black .
-	isort --profile black .
+	ruff check
+	ruff format
 
 lint.check:
 	echo "Linting..."
-	black --check .
-	echo "Sorting..."
-	isort --profile black --check .
+	ruff check
+	echo "Formatting..."
+	ruff format --check
 
 build.requirements:
 	# if docker pull succeeds, we have already build this version of
@@ -96,6 +102,10 @@ build.app:
 	docker build -f docker/Dockerfile . \
 		-t ${AR_REPO}:latest \
 		-t ${AR_REPO}:${VERSION} \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
+		--label "org.opencontainers.image.revision"="$(full_sha)" \
+		--label "org.opencontainers.image.source"="github.com/codecov/worker" \
 		--build-arg REQUIREMENTS_IMAGE=${AR_REPO}:${REQUIREMENTS_TAG} \
 		--build-arg RELEASE_VERSION=${VERSION} \
 		--build-arg BUILD_ENV=cloud
@@ -116,6 +126,8 @@ build.self-hosted-runtime:
 	docker build -f docker/Dockerfile . \
 		-t ${DOCKERHUB_REPO}:latest \
 		-t ${DOCKERHUB_REPO}:${VERSION} \
+		--label "org.label-schema.vendor"="Codecov" \
+		--label "org.label-schema.version"="${release_version}-${sha}" \
 		--build-arg REQUIREMENTS_IMAGE=${AR_REPO}:${REQUIREMENTS_TAG} \
         --build-arg RELEASE_VERSION=${VERSION} \
         --build-arg BUILD_ENV=self-hosted-runtime
@@ -190,9 +202,12 @@ push.self-hosted-rolling:
 	docker push ${DOCKERHUB_REPO}:rolling_no_dependencies
 	docker push ${DOCKERHUB_REPO}:rolling
 
+shell:
+	docker-compose exec worker bash
+
 test_env.up:
 	env | grep GITHUB > .testenv; true
-	TIMESERIES_ENABLED=${TIMESERIES_ENABLED} docker-compose up -d
+	docker-compose up -d
 
 test_env.prepare:
 	docker-compose exec worker make test_env.container_prepare
@@ -204,9 +219,9 @@ test_env.install_cli:
 	pip install --no-cache-dir codecov-cli==$(CODECOV_CLI_VERSION)
 
 test_env.container_prepare:
-	apk add -U curl git build-base jq
-	make test_env.install_cli
-	git config --global --add safe.directory /worker
+	apt-get update
+	apt-get install -y git build-essential netcat-traditional
+	git config --global --add safe.directory /apps/app/worker || true
 
 test_env.container_check_db:
 	while ! nc -vz postgres 5432; do sleep 1; echo "waiting for postgres"; done
@@ -217,43 +232,6 @@ test_env.run_unit:
 
 test_env.run_integration:
 	docker-compose exec worker make test.integration
-
-test_env.upload:
-	docker-compose exec worker make test_env.container_upload CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN} CODECOV_URL=${CODECOV_URL}
-
-test_env.container_upload:
-	codecovcli -u ${CODECOV_URL} do-upload --flag latest-uploader-overall
-	codecovcli -u ${CODECOV_URL} do-upload --flag unit --file unit.coverage.xml
-	codecovcli -u ${CODECOV_URL} do-upload --flag integration --file integration.coverage.xml
-
-test_env.static_analysis:
-	docker-compose exec worker make test_env.container_static_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
-
-test_env.label_analysis:
-	docker-compose exec worker make test_env.container_label_analysis CODECOV_STATIC_TOKEN=${CODECOV_STATIC_TOKEN}
-
-test_env.ats:
-	docker-compose exec worker make test_env.container_ats CODECOV_UPLOAD_TOKEN=${CODECOV_UPLOAD_TOKEN}
-
-test_env.container_static_analysis:
-	codecovcli -u ${CODECOV_URL} static-analysis --token=${CODECOV_STATIC_TOKEN}
-
-test_env.container_label_analysis:
-	codecovcli -u ${CODECOV_URL} label-analysis --base-sha=${merge_sha} --token=${CODECOV_STATIC_TOKEN}
-
-test_env.container_ats:
-	codecovcli -u ${CODECOV_URL} --codecov-yml-path=codecov_cli.yml do-upload --plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels --fail-on-error
-
-test_env.run_mutation:
-	docker-compose exec worker make test_env.container_mutation
-
-test_env.container_mutation:
-	apk add git
-	git diff origin/main ${full_sha} > data.patch
-	pip install mutmut[patch]
-	mutmut run --use-patch-file data.patch || true
-	mkdir /tmp/artifacts;
-	mutmut junitxml > /tmp/artifacts/mut.xml
 
 test_env:
 	make test_env.up

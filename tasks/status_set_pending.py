@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import status_set_pending_task_name
 from shared.helpers.yaml import default_if_true
 from shared.utils.match import match
@@ -23,7 +24,7 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
 
     throws = (AssertionError,)
 
-    async def run_async(
+    def run_impl(
         self, db_session, repoid, commitid, branch, on_a_pull_request, *args, **kwargs
     ):
         log.info(
@@ -41,9 +42,9 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
 
         # check that repo is in beta
         redis_connection = get_redis_connection()
-        assert redis_connection.sismember(
-            "beta.pending", repoid
-        ), "Pending disabled. Please request to be in beta."
+        assert redis_connection.sismember("beta.pending", repoid), (
+            "Pending disabled. Please request to be in beta."
+        )
 
         commits = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
@@ -51,13 +52,13 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
         commit = commits.first()
         assert commit, "Commit not found in database."
         repo_service = get_repo_provider_service(commit.repository)
-        current_yaml = await get_current_yaml(commit, repo_service)
+        current_yaml = async_to_sync(get_current_yaml)(commit, repo_service)
         settings = read_yaml_field(current_yaml, ("coverage", "status"))
 
         status_set = False
 
         if settings and any(settings.values()):
-            statuses = await repo_service.get_commit_statuses(commitid)
+            statuses = async_to_sync(repo_service.get_commit_statuses)(commitid)
             url = make_url(repo_service, "commit", commitid)
 
             for context in ("project", "patch", "changes"):
@@ -68,25 +69,25 @@ class StatusSetPendingTask(BaseCodecovTask, name=status_set_pending_task_name):
                                 context,
                                 ("/" + key if key != "default" else ""),
                             )
-                            assert match(
-                                config.get("branches"), branch or ""
-                            ), "Ignore setting pending status on branch"
+                            assert match(config.get("branches"), branch or ""), (
+                                "Ignore setting pending status on branch"
+                            )
                             assert (
                                 on_a_pull_request
                                 if config.get("only_pulls", False)
                                 else True
                             ), "Set pending only on pulls"
-                            assert config.get(
-                                "set_pending", True
-                            ), "Pending status disabled in YAML"
+                            assert config.get("set_pending", True), (
+                                "Pending status disabled in YAML"
+                            )
                             assert title not in statuses, "Pending status already set"
 
-                            await repo_service.set_commit_status(
-                                commit=commitid,
-                                status="pending",
-                                context=title,
-                                description="Collecting reports and waiting for CI to complete",
-                                url=url,
+                            async_to_sync(repo_service.set_commit_status)(
+                                commitid,
+                                "pending",
+                                title,
+                                "Collecting reports and waiting for CI to complete",
+                                url,
                             )
                             status_set = True
                             log.info(

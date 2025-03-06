@@ -1,11 +1,10 @@
-from database.enums import Decoration, Notification
-from services.notification.notifiers.base import Comparison
-from services.notification.notifiers.mixins.status import StatusPatchMixin
+from database.enums import Notification
+from services.comparison import ComparisonProxy, FilteredComparison
+from services.notification.notifiers.mixins.status import StatusPatchMixin, StatusResult
 from services.notification.notifiers.status.base import StatusNotifier
 
 
 class PatchStatusNotifier(StatusPatchMixin, StatusNotifier):
-
     """This status analyzes the git patch and sees covered lines within it
 
     Attributes:
@@ -18,18 +17,24 @@ class PatchStatusNotifier(StatusPatchMixin, StatusNotifier):
     """
 
     context = "patch"
+    notification_type_display_name = "status"
 
     @property
     def notification_type(self) -> Notification:
         return Notification.status_patch
 
-    async def build_payload(self, comparison: Comparison):
+    def build_payload(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> StatusResult:
         if self.is_empty_upload():
             state, message = self.get_status_check_for_empty_upload()
-            return {"state": state, "message": message}
+            result = StatusResult(state=state, message=message, included_helper_text={})
+            return result
 
-        state, message = await self.get_patch_status(comparison)
+        result = self.get_patch_status(
+            comparison, notification_type=self.notification_type_display_name
+        )
         if self.should_use_upgrade_decoration():
-            message = self.get_upgrade_message()
+            result["message"] = self.get_upgrade_message()
 
-        return {"state": state, "message": message}
+        return result

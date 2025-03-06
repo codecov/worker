@@ -1,8 +1,13 @@
 import logging
+from typing import Optional
 
 from shared.torngit.exceptions import TorngitClientError
 
-from services.notification.notifiers.base import AbstractBaseNotifier
+from services.comparison import ComparisonProxy
+from services.notification.notifiers.base import (
+    AbstractBaseNotifier,
+    NotificationResult,
+)
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +20,11 @@ class ChecksWithFallback(AbstractBaseNotifier):
     Note: This class is not meant to store results.
     """
 
-    def __init__(self, checks_notifier, status_notifier):
+    def __init__(
+        self,
+        checks_notifier: AbstractBaseNotifier,
+        status_notifier: AbstractBaseNotifier,
+    ):
         self._checks_notifier = checks_notifier
         self._status_notifier = status_notifier
         self._decoration_type = checks_notifier.decoration_type
@@ -42,27 +51,38 @@ class ChecksWithFallback(AbstractBaseNotifier):
     def decoration_type(self):
         return self._decoration_type
 
-    def store_results(self, comparison, res):
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
-    async def notify(self, comparison):
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         try:
-            res = await self._checks_notifier.notify(comparison)
+            res = self._checks_notifier.notify(
+                comparison, status_or_checks_helper_text=status_or_checks_helper_text
+            )
             if not res.notification_successful and (
                 res.explanation == "no_pull_request"
                 or res.explanation == "pull_request_not_in_provider"
                 or res.explanation == "pull_request_closed"
+                or res.explanation == "preexisting_commit_status"
             ):
-                log.debug(
+                log.info(
                     "Couldn't use checks notifier, falling back to status notifiers",
                     extra=dict(
                         notifier=self._checks_notifier.name,
                         repoid=comparison.head.commit.repoid,
                         notifier_title=self._checks_notifier.title,
                         commit=comparison.head.commit,
+                        explanation=res.explanation,
                     ),
                 )
-                res = await self._status_notifier.notify(comparison)
+                res = self._status_notifier.notify(
+                    comparison,
+                    status_or_checks_helper_text=status_or_checks_helper_text,
+                )
             return res
         except TorngitClientError as e:
             if e.code == 403:
@@ -75,5 +95,8 @@ class ChecksWithFallback(AbstractBaseNotifier):
                         commit=comparison.head.commit,
                     ),
                 )
-                return await self._status_notifier.notify(comparison)
+                return self._status_notifier.notify(
+                    comparison,
+                    status_or_checks_helper_text=status_or_checks_helper_text,
+                )
             raise e

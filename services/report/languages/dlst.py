@@ -1,37 +1,27 @@
-import typing
 from io import BytesIO
 
-from shared.reports.resources import Report
-from shared.reports.types import ReportLine
+import sentry_sdk
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilderSession
 
 
 class DLSTProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content[-7:] == b"covered")
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
+        return content[-7:] == b"covered"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
-        return from_string(content, report_builder.create_report_builder_session(name))
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_string(content, report_builder_session)
 
 
-def from_string(string, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid, filename = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
-        report_builder_session.filepath,
-    )
+def from_string(string: bytes, report_builder_session: ReportBuilderSession) -> None:
+    filename = report_builder_session.filepath
     if filename:
         # src/file.lst => src/file.d
-        filename = path_fixer("%sd" % filename[:-3])
+        filename = report_builder_session.path_fixer("%sd" % filename[:-3])
 
     if not filename:
         # file.d => src/file.d
@@ -40,21 +30,22 @@ def from_string(string, report_builder_session: ReportBuilderSession) -> Report:
         if filename.startswith("source "):
             filename = filename[7:]
 
-        filename = path_fixer(filename)
-        if not filename:
-            return None
+    _file = report_builder_session.create_coverage_file(filename)
+    if _file is None:
+        return None
 
-    _file = report_builder_session.file_class(
-        filename, ignore=ignored_lines.get(filename)
-    )
     for ln, encoded_line in enumerate(BytesIO(string), start=1):
         line = encoded_line.decode(errors="replace").rstrip("\n")
         try:
             coverage = int(line.split("|", 1)[0].strip())
-            _file[ln] = ReportLine.create(coverage, None, [[sessionid, coverage]])
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    coverage,
+                ),
+            )
         except Exception:
             # not a vaild line
             pass
 
     report_builder_session.append(_file)
-    return report_builder_session.output_report()

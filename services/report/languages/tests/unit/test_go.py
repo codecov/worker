@@ -3,8 +3,9 @@ from shared.reports.types import ReportTotals
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages import go
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 txt = b"""mode: atomic
 source:1.1,1.10 1 1
@@ -119,17 +120,11 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = go.from_txt(txt, report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        go.from_txt(txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "source": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
@@ -149,15 +144,12 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = go.from_txt(huge_txt, report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        go.from_txt(huge_txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        expected_result_archive = {
+
+        assert processed_report["archive"] == {
             "path/file.go": [
                 (18, 0, None, [[0, 0, None, None, None]], None, None),
                 (19, 0, None, [[0, 0, None, None, None]], None, None),
@@ -358,7 +350,6 @@ class TestGo(BaseTestCase):
             ]
         }
 
-        assert expected_result_archive == processed_report["archive"]
         assert report.totals == ReportTotals(
             files=1,
             lines=196,
@@ -379,19 +370,15 @@ class TestGo(BaseTestCase):
         def fixes(path):
             return None if "ignore" in path else path
 
-        report_builder = ReportBuilder(
-            current_yaml={"parsers": {"go": {"partials_as_hits": True}}},
-            sessionid=0,
+        report_builder_session = create_report_builder_session(
             path_fixer=fixes,
-            ignored_lines={},
+            current_yaml={"parsers": {"go": {"partials_as_hits": True}}},
         )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = go.from_txt(huge_txt, report_builder_session)
+        go.from_txt(huge_txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        print(processed_report["archive"])
-        expected_result_archive = {
+
+        assert processed_report["archive"] == {
             "path/file.go": [
                 (18, 0, None, [[0, 0, None, None, None]], None, None),
                 (19, 0, None, [[0, 0, None, None, None]], None, None),
@@ -592,8 +579,6 @@ class TestGo(BaseTestCase):
             ]
         }
 
-        assert expected_result_archive == processed_report["archive"]
-        print(report.totals)
         assert report.totals == ReportTotals(
             files=1,
             lines=196,
@@ -624,7 +609,7 @@ class TestGo(BaseTestCase):
             [2, 24, 1],
             [24, None, 0],
         ]
-        assert go.combine_partials([(2, 2, 1), (2, 2, 0)]) == None
+        assert go.combine_partials([(2, 2, 1), (2, 2, 0)]) is None
         assert go.combine_partials([(0, None, 28), (0, None, 0)]) == [[0, None, 28]]
         assert go.combine_partials([(2, 35, 1), (35, None, 1)]) == [[2, None, 1]]
         assert go.combine_partials([(2, 35, "1/2"), (35, None, "1/2")]) == [
@@ -656,26 +641,32 @@ class TestGo(BaseTestCase):
             [6, 10, 0],
         ]  # inner overlay
 
-    def test_report_line_missing_number_of_statements_count_new_line(self):
-        def fixes(path):
-            return None if "ignore" in path else path
-
-        line = b"path/file.go:242.63,244.3path/file.go:242.63,244.3 1 0"
+    @pytest.mark.parametrize(
+        "line",
+        [
+            # b"path/file.go20.46 2 0", # this is actually skipped over
+            b"path/file.go:53",
+            b"path/file.go:185.129.6 1 0",
+            b"path/file.go:1917,1915.57 2 0",
+            b"path/file.go:115corrupt-path/file.go:115.11,116.13 1 3",
+            b"path/file.go:178.43corrupt-path/file.go:186.2,186.15 1 0",
+            b"path/file.go:65.17corrupt-path/file.go:648.41,650.34 2 0",
+            b"path/file.go:185.16,187.3 1corrupt-path/file.go:702.2,702.11 1 0",
+            b"path/file.go:651.41,653.34 2corrupt-path/file.go:49.121,56.16 2 3",
+            b"path/file.go:242.63,244.3path/file.go:242.63,244.3 1 0",
+        ],
+    )
+    def test_corrupt_report_line(self, line: bytes):
+        report_builder_session = create_report_builder_session()
 
         with pytest.raises(CorruptRawReportError) as ex:
-            report_builder = ReportBuilder(
-                current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-            )
-            report_builder_session = report_builder.create_report_builder_session(
-                "filename"
-            )
             go.from_txt(line, report_builder_session)
 
         assert (
             ex.value.corruption_error
-            == "Missing numberOfStatements count\n at the end of the line, or they are not given in the right format"
+            == "Go coverage line does not match expected format"
         )
         assert (
             ex.value.expected_format
-            == "name.go:line.column,line.column numberOfStatements count"
+            == "name.go:line.column,line.column numberOfStatements hits"
         )

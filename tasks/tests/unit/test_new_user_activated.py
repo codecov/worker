@@ -1,4 +1,3 @@
-from asyncio import Future
 from datetime import datetime
 
 import pytest
@@ -12,6 +11,7 @@ from database.tests.factories import (
     RepositoryFactory,
 )
 from tasks.new_user_activated import NewUserActivatedTask
+from tests.helpers import mock_all_plans_and_tiers
 
 
 @pytest.fixture
@@ -45,6 +45,11 @@ def pull(dbsession):
 
 
 class TestNewUserActivatedTaskUnit(object):
+    @pytest.fixture(autouse=True)
+    def mock_all_plans_and_tiers(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
     def test_get_pulls_authored_by_user_none(self, dbsession, pull):
         org_ownerid = pull.repository.ownerid
         user_ownerid_with_no_pulls = 12312412
@@ -53,6 +58,7 @@ class TestNewUserActivatedTaskUnit(object):
         )
         assert res == []
 
+    @pytest.mark.django_db
     def test_get_pulls_authored_by_user(self, dbsession, pull):
         pull_by_other_author = PullFactory.create(
             repository=pull.repository,
@@ -73,6 +79,7 @@ class TestNewUserActivatedTaskUnit(object):
         assert authored_pull.state == "open"
         assert authored_pull.author.ownerid == user_ownerid
 
+    @pytest.mark.django_db
     def test_is_org_on_pr_plan_gitlab_subgroup(self, dbsession, with_sql_functions):
         root_group = OwnerFactory.create(
             username="root_group",
@@ -95,11 +102,11 @@ class TestNewUserActivatedTaskUnit(object):
         res = NewUserActivatedTask().is_org_on_pr_plan(dbsession, subgroup.ownerid)
         assert res is True
 
-    @pytest.mark.asyncio
-    async def test_org_not_found(self, mocker, dbsession):
+    @pytest.mark.django_db
+    def test_org_not_found(self, mocker, dbsession):
         unknown_org_ownerid = 404123
         user_ownerid = 123
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, unknown_org_ownerid, user_ownerid
         )
         assert res == {
@@ -108,11 +115,11 @@ class TestNewUserActivatedTaskUnit(object):
             "reason": "org not on pr author billing plan",
         }
 
-    @pytest.mark.asyncio
-    async def test_org_not_on_pr_plan(self, mocker, dbsession, pull):
+    @pytest.mark.django_db
+    def test_org_not_on_pr_plan(self, mocker, dbsession, pull):
         pull.repository.owner.plan = "users-inappm"
         dbsession.flush()
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -121,25 +128,12 @@ class TestNewUserActivatedTaskUnit(object):
             "reason": "org not on pr author billing plan",
         }
 
-    @pytest.mark.asyncio
-    async def test_org_not_on_pr_plan(self, mocker, dbsession, pull):
-        pull.repository.owner.plan = "users-inappm"
-        dbsession.flush()
-        res = await NewUserActivatedTask().run_async(
-            dbsession, pull.repository.owner.ownerid, pull.author.ownerid
-        )
-        assert res == {
-            "notifies_scheduled": False,
-            "pulls_notified": [],
-            "reason": "org not on pr author billing plan",
-        }
-
-    @pytest.mark.asyncio
-    async def test_no_commit_notifications_found(self, mocker, dbsession, pull):
+    @pytest.mark.django_db
+    def test_no_commit_notifications_found(self, mocker, dbsession, pull):
         mocked_possibly_resend_notifications = mocker.patch(
             "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications"
         )
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -149,13 +143,13 @@ class TestNewUserActivatedTaskUnit(object):
         }
         assert not mocked_possibly_resend_notifications.called
 
-    @pytest.mark.asyncio
-    async def test_no_head_commit_on_pull(self, mocker, dbsession, pull):
+    @pytest.mark.django_db
+    def test_no_head_commit_on_pull(self, mocker, dbsession, pull):
         pull.head = None
         mocked_possibly_resend_notifications = mocker.patch(
             "tasks.new_user_activated.NewUserActivatedTask.possibly_resend_notifications"
         )
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -165,8 +159,8 @@ class TestNewUserActivatedTaskUnit(object):
         }
         assert not mocked_possibly_resend_notifications.called
 
-    @pytest.mark.asyncio
-    async def test_commit_notifications_all_standard(self, mocker, dbsession, pull):
+    @pytest.mark.django_db
+    def test_commit_notifications_all_standard(self, mocker, dbsession, pull):
         pull_head_commit = pull.get_head_commit()
         cn1 = CommitNotificationFactory.create(
             commit=pull_head_commit,
@@ -184,7 +178,7 @@ class TestNewUserActivatedTaskUnit(object):
         dbsession.add(cn2)
         dbsession.flush()
 
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
         assert res == {
@@ -193,10 +187,8 @@ class TestNewUserActivatedTaskUnit(object):
             "reason": "no pulls/pull notifications met criteria",
         }
 
-    @pytest.mark.asyncio
-    async def test_commit_notifications_resend_single_pull(
-        self, mocker, dbsession, pull
-    ):
+    @pytest.mark.django_db
+    def test_commit_notifications_resend_single_pull(self, mocker, dbsession, pull):
         pull_head_commit = pull.get_head_commit()
         cn1 = CommitNotificationFactory.create(
             commit=pull_head_commit,
@@ -220,7 +212,7 @@ class TestNewUserActivatedTaskUnit(object):
             tasks={"app.tasks.notify.Notify": mocker.MagicMock()},
         )
 
-        res = await NewUserActivatedTask().run_async(
+        res = NewUserActivatedTask().run_impl(
             dbsession, pull.repository.owner.ownerid, pull.author.ownerid
         )
 

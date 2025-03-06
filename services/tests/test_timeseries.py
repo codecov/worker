@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-from time import time
 
 import pytest
+from celery import group
 from shared.reports.readonly import ReadOnlyReport
 from shared.reports.resources import Report, ReportFile, ReportLine
 from shared.utils.sessions import Session
@@ -14,10 +14,11 @@ from database.tests.factories.timeseries import DatasetFactory, MeasurementFacto
 from services.timeseries import (
     backfill_batch_size,
     delete_repository_data,
+    delete_repository_measurements,
     repository_commits_query,
     repository_datasets_query,
-    save_commit_measurements,
 )
+from tasks.save_commit_measurements import save_commit_measurements
 
 
 @pytest.fixture
@@ -68,8 +69,7 @@ def sample_report_for_components():
     return report
 
 
-@pytest.fixture
-def repository(dbsession):
+def _create_repository(dbsession):
     repository = RepositoryFactory.create()
     dbsession.add(repository)
     dbsession.flush()
@@ -97,11 +97,24 @@ def repository(dbsession):
     return repository
 
 
+@pytest.fixture
+def repository(dbsession):
+    return _create_repository(dbsession)
+
+
+@pytest.fixture
+def dataset_names():
+    return [
+        MeasurementName.coverage.value,
+        MeasurementName.flag_coverage.value,
+        MeasurementName.component_coverage.value,
+    ]
+
+
 class TestTimeseriesService(object):
     def test_insert_commit_measurement(
-        self, dbsession, sample_report, repository, mocker
+        self, dbsession, sample_report, repository, dataset_names, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -111,7 +124,7 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
         measurement = (
             dbsession.query(Measurement)
@@ -135,8 +148,9 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 60.0
 
-    def test_save_commit_measurements_no_report(self, dbsession, repository, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+    def test_save_commit_measurements_no_report(
+        self, dbsession, repository, dataset_names, mocker
+    ):
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=None,
@@ -146,7 +160,7 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
         measurement = (
             dbsession.query(Measurement)
@@ -161,9 +175,8 @@ class TestTimeseriesService(object):
         assert measurement is None
 
     def test_update_commit_measurement(
-        self, dbsession, sample_report, repository, mocker
+        self, dbsession, sample_report, repository, dataset_names, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -186,7 +199,7 @@ class TestTimeseriesService(object):
         dbsession.add(measurement)
         dbsession.flush()
 
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
         measurements = (
             dbsession.query(Measurement)
@@ -212,9 +225,8 @@ class TestTimeseriesService(object):
         assert measurement.value == 60.0
 
     def test_commit_measurement_insert_flags(
-        self, dbsession, sample_report, repository, mocker
+        self, dbsession, sample_report, repository, dataset_names, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -236,7 +248,7 @@ class TestTimeseriesService(object):
         dbsession.add(repository_flag2)
         dbsession.flush()
 
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
         measurement = (
             dbsession.query(Measurement)
@@ -285,9 +297,8 @@ class TestTimeseriesService(object):
         assert measurement.value == 100.0
 
     def test_commit_measurement_update_flags(
-        self, dbsession, sample_report, repository, mocker
+        self, dbsession, sample_report, repository, dataset_names, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -335,7 +346,7 @@ class TestTimeseriesService(object):
         dbsession.add(measurement2)
         dbsession.flush()
 
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
         measurement = (
             dbsession.query(Measurement)
@@ -384,9 +395,12 @@ class TestTimeseriesService(object):
         assert measurement.value == 100.0
 
     def test_commit_measurement_insert_components(
-        self, dbsession, sample_report_for_components, repository, mocker
+        self, dbsession, sample_report_for_components, repository, dataset_names, mocker
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(
@@ -398,7 +412,7 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
         yaml_dict = {
             "component_management": {
                 "default_rules": {
@@ -413,6 +427,12 @@ class TestTimeseriesService(object):
                         "flag_regexes": [r"random-.*"],
                     },
                     {
+                        "component_id": "all_settings",
+                        "name": "all settings",
+                        "flag_regexes": [],
+                        "paths": [r"folder/*"],
+                    },
+                    {  # testing duplicate component on purpose this was causing crashes
                         "component_id": "all_settings",
                         "name": "all settings",
                         "flag_regexes": [],
@@ -434,7 +454,7 @@ class TestTimeseriesService(object):
             }
         }
         get_repo_yaml.return_value = UserYaml(yaml_dict)
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
         # 1 for coverage, 3 for flags, 4 for valid components
         assert len(dbsession.query(Measurement).all()) == 8
@@ -548,7 +568,7 @@ class TestTimeseriesService(object):
             )
             .one_or_none()
         )
-        assert path_not_found_measurements == None
+        assert path_not_found_measurements is None
 
         empty_path_measurements = (
             dbsession.query(Measurement)
@@ -560,12 +580,26 @@ class TestTimeseriesService(object):
             )
             .one_or_none()
         )
-        assert empty_path_measurements == None
+        assert empty_path_measurements is None
 
-    def test_commit_measurement_update_component(
-        self, dbsession, sample_report_for_components, repository, mocker
+    def test_commit_measurement_update_component_parallel(
+        self,
+        sample_report_for_components,
+        repository,
+        dataset_names,
+        mocker,
+        mock_repo_provider,
     ):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+        dbsession = repository.get_db_session()
+        mocker.patch.object(dbsession, "close")
+        mocker.patch("tasks.base.get_db_session", return_value=dbsession)
+        mocker.patch.object(group, "apply_async", group.apply)
+
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=True,
+        )
+
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(
@@ -577,7 +611,65 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
+        get_current_yaml = mocker.patch("tasks.upsert_component.get_repo_yaml")
+        yaml_dict = {
+            "component_management": {
+                "individual_components": [
+                    {
+                        "component_id": "test-component-123",
+                        "name": "test component",
+                        "flag_regexes": ["random-flago-987"],
+                        "paths": [r"folder/*"],
+                    },
+                ],
+            }
+        }
+        get_repo_yaml.return_value = UserYaml(yaml_dict)
+        get_current_yaml.return_value = UserYaml(yaml_dict)
+
+        save_commit_measurements(commit, dataset_names=dataset_names)
+
+        # Want to commit here to have the results persisted properly.
+        # Otherwise the results aren't going to be reflected in the select below.
+        # dbsession.commit()
+
+        measurements = (
+            dbsession.query(Measurement)
+            .filter_by(name=MeasurementName.component_coverage.value)
+            .all()
+        )
+
+        assert len(measurements) == 1
+        dbsession.add(commit)
+        assert measurements[0].name == MeasurementName.component_coverage.value
+        assert measurements[0].owner_id == commit.repository.ownerid
+        assert measurements[0].repo_id == commit.repoid
+        assert measurements[0].measurable_id == "test-component-123"
+        assert measurements[0].commit_sha == commit.commitid
+        assert measurements[0].timestamp.replace(
+            tzinfo=timezone.utc
+        ) == commit.timestamp.replace(tzinfo=timezone.utc)
+
+    def test_commit_measurement_update_component(
+        self, dbsession, sample_report_for_components, repository, dataset_names, mocker
+    ):
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_for_components
+            ),
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
         yaml_dict = {
             "component_management": {
                 "individual_components": [
@@ -605,9 +697,13 @@ class TestTimeseriesService(object):
         dbsession.add(measurement)
         dbsession.flush()
 
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
-        measurements = (
+        # Want to commit here to have the results persisted properly.
+        # Otherwise the results aren't going to be reflected in the select below.
+        dbsession.commit()
+
+        measurement = (
             dbsession.query(Measurement)
             .filter_by(
                 name=MeasurementName.component_coverage.value,
@@ -615,14 +711,14 @@ class TestTimeseriesService(object):
                 timestamp=commit.timestamp,
                 measurable_id="test-component-123",
             )
-            .all()
+            .one_or_none()
         )
 
-        assert len(measurements) == 1
-        measurement = measurements[0]
+        assert measurement
         assert measurement.name == MeasurementName.component_coverage.value
         assert measurement.owner_id == commit.repository.ownerid
         assert measurement.repo_id == commit.repoid
+        assert measurement.measurable_id == "test-component-123"
         assert measurement.commit_sha == commit.commitid
         assert measurement.timestamp.replace(
             tzinfo=timezone.utc
@@ -630,8 +726,13 @@ class TestTimeseriesService(object):
         assert measurement.branch == "foo"
         assert measurement.value == 50.0
 
-    def test_commit_measurement_no_datasets(self, dbsession, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+    def test_commit_measurement_no_datasets(
+        self, mock_storage, dbsession, dataset_names, mocker
+    ):
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
 
         repository = RepositoryFactory.create()
         dbsession.add(repository)
@@ -641,7 +742,7 @@ class TestTimeseriesService(object):
         dbsession.add(commit)
         dbsession.flush()
 
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=[])
 
         assert dbsession.query(Measurement).count() == 0
 
@@ -696,35 +797,88 @@ class TestTimeseriesService(object):
             MeasurementName.component_coverage.value,
         ]
 
-    def test_backfill_batch_size(self, repository):
-        batch_size = backfill_batch_size(repository)
+    def test_backfill_batch_size(self, repository, mocker):
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
+        dbsession = repository.get_db_session()
+        coverage_dataset = (
+            dbsession.query(Dataset.name)
+            .filter_by(
+                repository_id=repository.repoid, name=MeasurementName.coverage.value
+            )
+            .first()
+        )
+        flag_coverage_dataset = (
+            dbsession.query(Dataset.name)
+            .filter_by(
+                repository_id=repository.repoid,
+                name=MeasurementName.flag_coverage.value,
+            )
+            .first()
+        )
+        component_coverage_dataset = (
+            dbsession.query(Dataset.name)
+            .filter_by(
+                repository_id=repository.repoid,
+                name=MeasurementName.component_coverage.value,
+            )
+            .first()
+        )
+
+        # Initially batch size is 500 for all measurement names
+        batch_size = backfill_batch_size(repository, coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, flag_coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, component_coverage_dataset)
         assert batch_size == 500
 
         dbsession = repository.get_db_session()
-        flag = RepositoryFlagFactory(repository=repository, flag_name="flag1")
-        dbsession.add(flag)
+        flag1 = RepositoryFlagFactory(repository=repository, flag_name="flag1")
+        flag2 = RepositoryFlagFactory(repository=repository, flag_name="flag2")
+        dbsession.add(flag1)
+        dbsession.add(flag2)
         dbsession.flush()
 
-        batch_size = backfill_batch_size(repository)
+        # Adding flags should only affect flag coverage measurement
+        batch_size = backfill_batch_size(repository, coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, flag_coverage_dataset)
+        assert batch_size == 250
+        batch_size = backfill_batch_size(repository, component_coverage_dataset)
         assert batch_size == 500
 
-        flag = RepositoryFlagFactory(repository=repository, flag_name="flag2")
-        dbsession.add(flag)
-        dbsession.flush()
+        get_repo_yaml = mocker.patch("services.timeseries.get_repo_yaml")
+        yaml_dict = {
+            "component_management": {
+                "default_rules": {
+                    "paths": [r".*\.go"],
+                    "flag_regexes": [r"test-flag-*"],
+                },
+                "individual_components": [
+                    {"component_id": "component_1"},
+                    {"component_id": "component_2"},
+                    {"component_id": "component_3"},
+                    {"component_id": "component_4"},
+                    {"component_id": "component_5"},
+                ],
+            }
+        }
+        get_repo_yaml.return_value = UserYaml(yaml_dict)
 
-        batch_size = backfill_batch_size(repository)
+        # Adding componets should only affect component coverage measurement
+        batch_size = backfill_batch_size(repository, coverage_dataset)
+        assert batch_size == 500
+        batch_size = backfill_batch_size(repository, flag_coverage_dataset)
         assert batch_size == 250
+        batch_size = backfill_batch_size(repository, component_coverage_dataset)
+        assert batch_size == 100
 
-        for i in range(8):
-            flag = RepositoryFlagFactory(repository=repository, flag_name="flag2")
-            dbsession.add(flag)
-            dbsession.flush()
-
-        batch_size = backfill_batch_size(repository)
-        assert batch_size == 50
-
-    def test_delete_repository_data(self, dbsession, sample_report, repository, mocker):
-        mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
+    def test_delete_repository_data(
+        self, dbsession, sample_report, repository, dataset_names, mocker
+    ):
         mocker.patch(
             "services.report.ReportService.get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -733,11 +887,11 @@ class TestTimeseriesService(object):
         commit = CommitFactory.create(branch="foo", repository=repository)
         dbsession.add(commit)
         dbsession.flush()
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
         commit = CommitFactory.create(branch="bar", repository=repository)
         dbsession.add(commit)
         dbsession.flush()
-        save_commit_measurements(commit)
+        save_commit_measurements(commit, dataset_names=dataset_names)
 
         assert (
             dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
@@ -759,3 +913,245 @@ class TestTimeseriesService(object):
             dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
             == 0
         )
+
+    def test_delete_repository_data_side_effects(
+        self, dbsession, sample_report, repository, dataset_names, mocker
+    ):
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=False,
+        )
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(sample_report),
+        )
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+        save_commit_measurements(commit, dataset_names=dataset_names)
+        commit = CommitFactory.create(branch="bar", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+        save_commit_measurements(commit, dataset_names=dataset_names)
+
+        # Another unrelated repository, make sure that this one isn't deleted as a side effect
+        other_repository = _create_repository(dbsession)
+        other_commit = CommitFactory.create(branch="foo", repository=other_repository)
+        dbsession.add(other_commit)
+        dbsession.flush()
+        save_commit_measurements(other_commit, dataset_names=dataset_names)
+        other_commit = CommitFactory.create(branch="bar", repository=other_repository)
+        dbsession.add(other_commit)
+        dbsession.flush()
+        save_commit_measurements(other_commit, dataset_names=dataset_names)
+
+        assert (
+            dbsession.query(Dataset)
+            .filter_by(repository_id=other_repository.repoid)
+            .count()
+            != 0
+        )
+        assert (
+            dbsession.query(Measurement)
+            .filter_by(repo_id=other_repository.repoid)
+            .count()
+            != 0
+        )
+
+        delete_repository_data(repository)
+
+        # Intended repo data/measurement is deleted
+        assert (
+            dbsession.query(Dataset).filter_by(repository_id=repository.repoid).count()
+            == 0
+        )
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == 0
+        )
+
+        # Other repo data/measurement is not deleted
+        assert (
+            dbsession.query(Dataset)
+            .filter_by(repository_id=other_repository.repoid)
+            .count()
+            != 0
+        )
+        assert (
+            dbsession.query(Measurement)
+            .filter_by(repo_id=other_repository.repoid)
+            .count()
+            != 0
+        )
+
+    def test_delete_repository_data_measurements_only(
+        self,
+        dbsession,
+        sample_report_for_components,
+        repository,
+        dataset_names,
+        mocker,
+        mock_repo_provider,
+    ):
+        def validate_invariants(repository, other_repository):
+            assert (
+                dbsession.query(Dataset)
+                .filter_by(repository_id=repository.repoid)
+                .count()
+                == 3
+            )
+            assert (
+                dbsession.query(Dataset)
+                .filter_by(repository_id=other_repository.repoid)
+                .count()
+                == 3
+            )
+            # 2x(1 coverage, 3 flag coverage, 4 component coverage)
+            assert (
+                dbsession.query(Measurement)
+                .filter_by(repo_id=other_repository.repoid)
+                .count()
+                == 16
+            )
+
+        mocker.patch(
+            "tasks.save_commit_measurements.PARALLEL_COMPONENT_COMPARISON.check_value",
+            return_value=True,
+        )
+        dbsession = repository.get_db_session()
+        mocker.patch.object(dbsession, "close")
+        mocker.patch("tasks.base.get_db_session", return_value=dbsession)
+        mocker.patch.object(group, "apply_async", group.apply)
+
+        mocker.patch(
+            "services.report.ReportService.get_existing_report_for_commit",
+            return_value=ReadOnlyReport.create_from_report(
+                sample_report_for_components
+            ),
+        )
+
+        get_repo_yaml = mocker.patch("tasks.save_commit_measurements.get_repo_yaml")
+        get_current_yaml = mocker.patch("tasks.upsert_component.get_repo_yaml")
+        yaml_dict = {
+            "component_management": {
+                "default_rules": {
+                    "paths": [r".*\.go"],
+                    "flag_regexes": [r"test-flag-*"],
+                },
+                "individual_components": [
+                    {"component_id": "python_files", "paths": [r".*\.py"]},
+                    {"component_id": "rules_from_default"},
+                    {
+                        "component_id": "i_have_flags",
+                        "flag_regexes": [r"random-.*"],
+                    },
+                    {
+                        "component_id": "all_settings",
+                        "name": "all settings",
+                        "flag_regexes": [],
+                        "paths": [r"folder/*"],
+                    },
+                ],
+            }
+        }
+        get_repo_yaml.return_value = UserYaml(yaml_dict)
+        get_current_yaml.return_value = UserYaml(yaml_dict)
+
+        commit = CommitFactory.create(branch="foo", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+        save_commit_measurements(commit, dataset_names=dataset_names)
+        commit = CommitFactory.create(branch="bar", repository=repository)
+        dbsession.add(commit)
+        dbsession.flush()
+        save_commit_measurements(commit, dataset_names=dataset_names)
+
+        # Another unrelated repository, make sure that this one isn't deleted as a side effect
+        other_repository = _create_repository(dbsession)
+        other_commit = CommitFactory.create(branch="foo", repository=other_repository)
+        dbsession.add(other_commit)
+        dbsession.flush()
+        save_commit_measurements(other_commit, dataset_names=dataset_names)
+        other_commit = CommitFactory.create(branch="bar", repository=other_repository)
+        dbsession.add(other_commit)
+        dbsession.flush()
+        save_commit_measurements(other_commit, dataset_names=dataset_names)
+
+        flag_ids = set(
+            [
+                flag.measurable_id
+                for flag in (
+                    dbsession.query(Measurement).filter_by(
+                        repo_id=repository.repoid,
+                        name=MeasurementName.flag_coverage.value,
+                    )
+                )
+            ]
+        )
+
+        m = dbsession.query(Measurement).filter_by(repo_id=repository.repoid).all()
+
+        # 2x(1 coverage, 3 flag coverage, 4 component coverage) = 16
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == 16
+        )
+        validate_invariants(repository, other_repository)
+
+        # Delete the coverage type
+        delete_repository_measurements(
+            repository, MeasurementName.coverage.value, f"{repository.repoid}"
+        )
+
+        # 2x(0 coverage, 3 flag coverage, 4 component coverage) = 14
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == 14
+        )
+        validate_invariants(repository, other_repository)
+
+        # Delete the flag coverages
+        expected_measurement_count = 14
+        for flag_id in flag_ids:
+            assert (
+                dbsession.query(Measurement)
+                .filter_by(repo_id=repository.repoid)
+                .count()
+                == expected_measurement_count
+            )
+            validate_invariants(repository, other_repository)
+            delete_repository_measurements(
+                repository, MeasurementName.flag_coverage.value, f"{flag_id}"
+            )
+            # Lose a flag coverage measurement from each commit (ie total should be 2 less)
+            expected_measurement_count -= 2
+
+        # 2x(0 coverage, 0 flag coverage, 4 component coverage) = 8
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == expected_measurement_count
+        )
+        validate_invariants(repository, other_repository)
+
+        for component in yaml_dict["component_management"]["individual_components"]:
+            assert (
+                dbsession.query(Measurement)
+                .filter_by(repo_id=repository.repoid)
+                .count()
+                == expected_measurement_count
+            )
+            validate_invariants(repository, other_repository)
+            component_id = component["component_id"]
+            delete_repository_measurements(
+                repository, MeasurementName.component_coverage.value, component_id
+            )
+            # Lose a component coverage measurement from each commit (ie total should be 2 less)
+            expected_measurement_count -= 2
+
+        # 2x(0 coverage, 0 flag coverage, 0 component coverage) = 0
+        assert (
+            dbsession.query(Measurement).filter_by(repo_id=repository.repoid).count()
+            == expected_measurement_count
+        )
+        validate_invariants(repository, other_repository)

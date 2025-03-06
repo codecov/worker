@@ -7,7 +7,6 @@ from services.urls import get_commit_url, get_graph_url
 
 
 class SlackNotifier(RequestsYamlBasedNotifier):
-
     BASE_MESSAGE = " ".join(
         [
             "Coverage for <{head_url}|{owner_username}/{repo_name}>",
@@ -24,25 +23,23 @@ class SlackNotifier(RequestsYamlBasedNotifier):
     def notification_type(self) -> Notification:
         return Notification.slack
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: Comparison) -> dict:
         message = self.generate_message(comparison)
         compare_dict = self.generate_compare_dict(comparison)
         color = "good" if compare_dict["notation"] in ("", "+") else "bad"
-        attachments = []
-        if self.notifier_yaml_settings.get("attachments"):
-            for attachment_type in self.notifier_yaml_settings["attachments"]:
-                if attachment_type == "sunburst":
-                    attachments.append(
-                        {
-                            "fallback": "Commit sunburst attachment",
-                            "color": color,
-                            "title": "Commit Sunburst",
-                            "title_link": get_commit_url(comparison.head.commit),
-                            "image_url": get_graph_url(
-                                comparison.head.commit, "sunburst.svg", size=100
-                            ),
-                        }
-                    )
+        attachments = [
+            {
+                "fallback": "Commit sunburst attachment",
+                "color": color,
+                "title": "Commit Sunburst",
+                "title_link": get_commit_url(comparison.head.commit),
+                "image_url": get_graph_url(
+                    comparison.head.commit, "sunburst.svg", size=100
+                ),
+            }
+            for attachment_type in self.notifier_yaml_settings.get("attachments", [])
+            if attachment_type == "sunburst"
+        ]
         return {
             "text": message,
             "author_name": "Codecov",

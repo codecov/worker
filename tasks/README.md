@@ -2,33 +2,14 @@
 
 The actual tasks that power the worker live on this folder.
 
-The task system is powered by [celery](https://docs.celeryproject.org/en/latest/index.html), we are currently on version 4.4 (but check the [requirements](../requirements.in)
+The task system is powered by [celery](https://docs.celeryproject.org/en/latest/index.html).
 
 If you don't understand tasks well, you can see them as the Django (or your favorite web framework) views from this system. They are the entrypoint to talking to the workers.
 
 ## Existing tasks
 
-As of 2020-08-14 the following tasks are available:
-
-* app.tasks.sync_teams.SyncTeams
-* app.tasks.sync_repos.SyncRepos
-* app.tasks.delete_owner.DeleteOwner
-* app.tasks.notify.Notify
-* app.tasks.pulls.Sync
-* app.tasks.status.SetError
-* app.tasks.status.SetPending
-* app.tasks.upload.Upload
-* app.tasks.archive.MigrateToArchive
-* app.tasks.bot.VerifyBot
-* app.tasks.comment.Comment
-* app.tasks.flush_repo.FlushRepo
-* app.tasks.ghm_sync_plans.SyncPlans
-* app.tasks.send_email.SendEmail
-* app.tasks.remove_webhook.RemoveOldHook
-* app.tasks.synchronize.Synchronize
-* app.tasks.new_user_activated.NewUserActivated
-
-You should be able to see documentation on their purpose and usage on their docstrings
+Please take a look at the code in this directory (the `tasks` directory)
+to get all the tasks defined.
 
 ## Rules about tasks
 
@@ -74,7 +55,7 @@ When adding a new task, you will already have a ton you need to do. But be sure 
 3. Don't start scheduling things to it right away (see point above about the system being asychronous)
 4. Make sure celery displays it when spinning up the system on your local machine
 
-You should be able to copy-paste any of the tasks when creating your own, but the important entrypoint of the task is the `run_async` function.
+You should be able to copy-paste any of the tasks when creating your own, but the important entrypoint of the task is the `run_impl` function.
 
 It needs to have
 
@@ -86,7 +67,7 @@ It needs to have
 * In the end, your function signature should look a bit like this:
 
 ```
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,

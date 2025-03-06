@@ -1,0 +1,3 @@
+-- ReportDetails
+DELETE
+FROM "reports_reportdetails";

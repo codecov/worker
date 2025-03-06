@@ -9,11 +9,10 @@ from services.urls import get_commit_url
 
 
 class GitterNotifier(RequestsYamlBasedNotifier):
-
     # TODO (Thiago): Fix base message
     BASE_MESSAGE = " ".join(
         [
-            "Coverage " "{comparison_string}on `{head_branch}` is `{head_totals_c}%`",
+            "Coverage {comparison_string}on `{head_branch}` is `{head_totals_c}%`",
             "via {head_url}",
         ]
     )
@@ -24,7 +23,7 @@ class GitterNotifier(RequestsYamlBasedNotifier):
     def notification_type(self) -> Notification:
         return Notification.gitter
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: Comparison) -> dict:
         compare_dict = self.generate_compare_dict(comparison)
         message = self.generate_message(comparison)
         head_commit = comparison.head.commit

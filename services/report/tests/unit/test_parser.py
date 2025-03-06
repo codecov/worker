@@ -1,5 +1,3 @@
-from io import BytesIO
-
 from services.report.parser import LegacyReportParser
 
 simple_content = b"""./codecov.yaml
@@ -401,7 +399,7 @@ class TestParser(object):
             cases_little_mor_ridiculous
         )
         assert res.has_toc()
-        assert res.toc.getvalue() == b"\n".join(
+        assert res.toc == b"\n".join(
             [
                 b"./codecov.yaml",
                 b"Makefile",
@@ -439,7 +437,7 @@ class TestParser(object):
     def test_cases_no_eof_end(self):
         res = LegacyReportParser().parse_raw_report_from_bytes(cases_no_eof_end)
         assert res.has_toc()
-        assert res.toc.getvalue() == b"\n".join(
+        assert res.toc == b"\n".join(
             [
                 b"./codecov.yaml",
                 b"Makefile",
@@ -471,7 +469,7 @@ class TestParser(object):
             cases_emptylines_betweenpath_and_content
         )
         assert res.has_toc()
-        assert res.toc.getvalue() == b"\n".join(
+        assert res.toc == b"\n".join(
             [
                 b"p2/redis/b_test.go",
                 b"p1/driver.go",
@@ -507,7 +505,7 @@ github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
         )
         assert res.has_toc()
         assert would_be_simple_content_res.has_toc()
-        assert res.toc.getvalue() == would_be_simple_content_res.toc.getvalue()
+        assert res.toc == would_be_simple_content_res.toc
         assert not res.has_env()
         assert not would_be_simple_content_res.has_env()
         assert not res.has_report_fixes()
@@ -535,7 +533,7 @@ github.com/mypath/bugsbunny.go:20.36,22.17 2 1"""
         )
         assert res.has_toc()
         assert would_be_simple_content_res.has_toc()
-        assert res.toc.getvalue() == would_be_simple_content_res.toc.getvalue()
+        assert res.toc == would_be_simple_content_res.toc
         assert not res.has_env()
         assert not would_be_simple_content_res.has_env()
         assert not res.has_report_fixes()

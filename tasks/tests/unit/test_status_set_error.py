@@ -12,8 +12,7 @@ here = Path(__file__)
 
 
 class TestSetErrorTaskUnit(object):
-    @pytest.mark.asyncio
-    async def test_no_status(self, mocker, mock_configuration, dbsession):
+    def test_no_status(self, mocker, mock_configuration, dbsession):
         mocked_1 = mocker.patch("tasks.status_set_error.get_repo_provider_service")
         repo = mocker.MagicMock(
             service="github",
@@ -30,11 +29,10 @@ class TestSetErrorTaskUnit(object):
         dbsession.flush()
         repoid = commit.repoid
         commitid = commit.commitid
-        res = await StatusSetErrorTask().run_async(dbsession, repoid, commitid)
+        res = StatusSetErrorTask().run_impl(dbsession, repoid, commitid)
         assert not repo.set_commit_status.called
         assert res == {"status_set": False}
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "context, cc_status_exists",
         [
@@ -46,7 +44,7 @@ class TestSetErrorTaskUnit(object):
             ("changes", False),
         ],
     )
-    async def test_set_error(
+    def test_set_error(
         self, context, cc_status_exists, mocker, mock_configuration, dbsession
     ):
         statuses = [
@@ -93,22 +91,19 @@ class TestSetErrorTaskUnit(object):
         dbsession.flush()
         repoid = commit.repoid
         commitid = commit.commitid
-        await StatusSetErrorTask().run_async(dbsession, repoid, commitid)
+        StatusSetErrorTask().run_impl(dbsession, repoid, commitid)
         if cc_status_exists:
             repo.set_commit_status.assert_called_with(
-                commit=commitid,
-                status="error",
-                context="codecov/" + context,
-                description="Coverage not measured fully because CI failed",
-                url=f"https://codecov.io/gh/owner/repo/commit/{commitid}",
+                commitid,
+                "error",
+                "codecov/" + context,
+                "Coverage not measured fully because CI failed",
+                f"https://codecov.io/gh/owner/repo/commit/{commitid}",
             )
         else:
             assert not repo.set_commit_status.called
 
-    @pytest.mark.asyncio
-    async def test_set_error_custom_message(
-        self, mocker, mock_configuration, dbsession
-    ):
+    def test_set_error_custom_message(self, mocker, mock_configuration, dbsession):
         context = "project"
         statuses = [
             {
@@ -153,14 +148,14 @@ class TestSetErrorTaskUnit(object):
         repoid = commit.repoid
         commitid = commit.commitid
         custom_message = "Uh-oh. This is bad."
-        await StatusSetErrorTask().run_async(
+        StatusSetErrorTask().run_impl(
             dbsession, repoid, commitid, message=custom_message
         )
 
         repo.set_commit_status.assert_called_with(
-            commit=commitid,
-            status="error",
-            context="codecov/" + context,
-            description=custom_message,
-            url=f"https://codecov.io/gh/owner/repo/commit/{commitid}",
+            commitid,
+            "error",
+            "codecov/" + context,
+            custom_message,
+            f"https://codecov.io/gh/owner/repo/commit/{commitid}",
         )

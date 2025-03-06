@@ -8,50 +8,38 @@ on:
       - main
       - staging
   pull_request:
+  merge_group:
 
 permissions:
-  contents: 'read'
-  id-token: 'write'
+  contents: "read"
+  id-token: "write"
+  issues: "write"
+  pull-requests: "write"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-
 jobs:
   lint:
     name: Run Lint
-    uses: codecov/gha-workflows/.github/workflows/lint.yml@v1.2.12
+
+    uses: codecov/gha-workflows/.github/workflows/lint.yml@v1.2.33
 
   build:
     name: Build Worker
-    uses: codecov/gha-workflows/.github/workflows/build-app.yml@v1.2.12
+    uses: codecov/gha-workflows/.github/workflows/build-app.yml@v1.2.33
+
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
-
-
-  codecovstartup:
-    name: Codecov Startup
-    needs: build
-    uses: codecov/gha-workflows/.github/workflows/codecov-startup.yml@v1.2.12
-    secrets: inherit
-
-  ats:
-    name: ATS
-    needs: [build]
-    if: ${{ !github.event.pull_request.head.repo.fork && github.repository_owner == 'codecov' }}
-    uses: codecov/gha-workflows/.github/workflows/run-ats.yml@v1.2.12
-    secrets: inherit
-    with:
-      repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
-      codecov_cli_upload_args: '--plugin pycoverage --plugin compress-pycoverage --flag onlysomelabels'
-      app_container_name: worker
+      cache_file: "uv.lock"
 
   test:
     name: Test
     needs: [build]
-    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.12
+    uses: codecov/gha-workflows/.github/workflows/run-tests.yml@v1.2.33
+
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
@@ -59,16 +47,18 @@ jobs:
   build-self-hosted:
     name: Build Self Hosted Worker
     needs: [build, test]
-    uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.12
+
+    uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.33
     secrets: inherit
     with:
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
+      cache_file: "uv.lock"
 
   staging:
     name: Push Staging Image
     needs: [build, test]
     if: ${{ github.event_name == 'push' && (github.event.ref == 'refs/heads/main' || github.event.ref == 'refs/heads/staging') && github.repository_owner == 'codecov' }}
-    uses: codecov/gha-workflows/.github/workflows/push-env.yml@v1.2.12
+    uses: codecov/gha-workflows/.github/workflows/push-env.yml@v1.2.33
     secrets: inherit
     with:
       environment: staging
@@ -76,9 +66,9 @@ jobs:
 
   production:
     name: Push Production Image
-    needs: [ build, test ]
-    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/prod') && github.repository_owner == 'codecov' }}
-    uses: codecov/gha-workflows/.github/workflows/push-env.yml@v1.2.12
+    needs: [build, test]
+    if: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/main' && github.repository_owner == 'codecov' }}
+    uses: codecov/gha-workflows/.github/workflows/push-env.yml@v1.2.33
     secrets: inherit
     with:
       environment: production
@@ -86,49 +76,11 @@ jobs:
 
   self-hosted:
     name: Push Self Hosted Image
-    needs: [ build-self-hosted, test ]
+    needs: [build-self-hosted, test]
     secrets: inherit
-    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/prod') && github.repository_owner == 'codecov' }}
-    uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.12
+    if: ${{ github.event_name == 'push' && github.event.ref == 'refs/heads/main' && github.repository_owner == 'codecov' }}
+    uses: codecov/gha-workflows/.github/workflows/self-hosted.yml@v1.2.33
     with:
       push_rolling: true
       repo: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
-
-  mutation:
-    name: Run Mutations
-    needs: [build]
-    runs-on: ubuntu-latest
-    env:
-      AR_REPO: ${{ vars.CODECOV_IMAGE_V2 || 'codecov/self-hosted-worker' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Cache App
-        id: cache-app
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-app
-        with:
-          path: |
-            app.tar
-          key: ${{ runner.os }}-${{ env.cache-name }}-${{ github.run_id }}
-      - name: Load built image
-        run: |
-          docker load --input app.tar
-      - name: Install docker compose
-        run: |
-          sudo curl -SL https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-      - name: Bring test env up
-        run: |
-          make test_env.up
-      - name: Prepare for tests
-        run: |
-          make test_env.prepare
-      - name: Run mutations
-        run: |
-          make test_env.run_mutation
-
-
+      cache_file: "uv.lock"

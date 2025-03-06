@@ -1,0 +1,337 @@
+-- TestInstance
+DELETE
+FROM "reports_testinstance"
+WHERE "reports_testinstance"."repoid" IN (%s);
+
+
+-- DailyTestRollup
+DELETE
+FROM "reports_dailytestrollups"
+WHERE "reports_dailytestrollups"."repoid" IN (%s);
+
+
+-- UserMeasurement
+DELETE
+FROM "user_measurements"
+WHERE "user_measurements"."repo_id" IN (%s);
+
+
+-- CacheConfig
+DELETE
+FROM "bundle_analysis_cacheconfig"
+WHERE "bundle_analysis_cacheconfig"."repo_id" IN (%s);
+
+
+-- RepositoryToken
+DELETE
+FROM "codecov_auth_repositorytoken"
+WHERE "codecov_auth_repositorytoken"."repoid" IN (%s);
+
+
+-- Branch
+DELETE
+FROM "branches"
+WHERE "branches"."repoid" IN (%s);
+
+
+-- FlagComparison
+DELETE
+FROM "compare_flagcomparison"
+WHERE "compare_flagcomparison"."repositoryflag_id" IN
+    (SELECT U0."id"
+     FROM "reports_repositoryflag" U0
+     WHERE U0."repository_id" IN (%s));
+
+
+-- ComponentComparison
+DELETE
+FROM "compare_componentcomparison"
+WHERE "compare_componentcomparison"."commit_comparison_id" IN
+    (SELECT V0."id"
+     FROM "compare_commitcomparison" V0
+     WHERE V0."base_commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+DELETE
+FROM "compare_componentcomparison"
+WHERE "compare_componentcomparison"."commit_comparison_id" IN
+    (SELECT V0."id"
+     FROM "compare_commitcomparison" V0
+     WHERE V0."compare_commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+
+
+-- CommitNotification
+DELETE
+FROM "commit_notifications"
+WHERE "commit_notifications"."commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- CommitError
+DELETE
+FROM "core_commiterror"
+WHERE "core_commiterror"."commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- LabelAnalysisProcessingError
+DELETE
+FROM "labelanalysis_labelanalysisprocessingerror"
+WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" IN
+    (SELECT V0."id"
+     FROM "labelanalysis_labelanalysisrequest" V0
+     WHERE V0."base_commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+DELETE
+FROM "labelanalysis_labelanalysisprocessingerror"
+WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" IN
+    (SELECT V0."id"
+     FROM "labelanalysis_labelanalysisrequest" V0
+     WHERE V0."head_commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+
+
+-- ReportResults
+DELETE
+FROM "reports_reportresults"
+WHERE "reports_reportresults"."report_id" IN
+    (SELECT V0."id"
+     FROM "reports_commitreport" V0
+     WHERE V0."commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+
+
+-- ReportDetails
+DELETE
+FROM "reports_reportdetails"
+WHERE "reports_reportdetails"."report_id" IN
+    (SELECT V0."id"
+     FROM "reports_commitreport" V0
+     WHERE V0."commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+
+
+-- ReportLevelTotals
+DELETE
+FROM "reports_reportleveltotals"
+WHERE "reports_reportleveltotals"."report_id" IN
+    (SELECT V0."id"
+     FROM "reports_commitreport" V0
+     WHERE V0."commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+
+
+-- UploadError
+DELETE
+FROM "reports_uploaderror"
+WHERE "reports_uploaderror"."upload_id" IN
+    (SELECT W0."id"
+     FROM "reports_upload" W0
+     WHERE W0."report_id" IN
+         (SELECT V0."id"
+          FROM "reports_commitreport" V0
+          WHERE V0."commit_id" IN
+              (SELECT U0."id"
+               FROM "commits" U0
+               WHERE U0."repoid" IN (%s))));
+
+
+-- UploadFlagMembership
+DELETE
+FROM "reports_uploadflagmembership"
+WHERE "reports_uploadflagmembership"."flag_id" IN
+    (SELECT U0."id"
+     FROM "reports_repositoryflag" U0
+     WHERE U0."repository_id" IN (%s));
+
+
+-- UploadLevelTotals
+DELETE
+FROM "reports_uploadleveltotals"
+WHERE "reports_uploadleveltotals"."upload_id" IN
+    (SELECT W0."id"
+     FROM "reports_upload" W0
+     WHERE W0."report_id" IN
+         (SELECT V0."id"
+          FROM "reports_commitreport" V0
+          WHERE V0."commit_id" IN
+              (SELECT U0."id"
+               FROM "commits" U0
+               WHERE U0."repoid" IN (%s))));
+
+
+-- TestResultReportTotals
+DELETE
+FROM "reports_testresultreporttotals"
+WHERE "reports_testresultreporttotals"."report_id" IN
+    (SELECT V0."id"
+     FROM "reports_commitreport" V0
+     WHERE V0."commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+
+
+-- StaticAnalysisSuiteFilepath
+DELETE
+FROM "staticanalysis_staticanalysissuitefilepath"
+WHERE "staticanalysis_staticanalysissuitefilepath"."file_snapshot_id" IN
+    (SELECT U0."id"
+     FROM "staticanalysis_staticanalysissinglefilesnapshot" U0
+     WHERE U0."repository_id" IN (%s));
+
+
+-- Pull
+DELETE
+FROM "pulls"
+WHERE "pulls"."repoid" IN (%s);
+
+
+-- ProfilingUpload
+DELETE
+FROM "profiling_profilingupload"
+WHERE "profiling_profilingupload"."profiling_commit_id" IN
+    (SELECT U0."id"
+     FROM "profiling_profilingcommit" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- TestFlagBridge
+DELETE
+FROM "reports_test_results_flag_bridge"
+WHERE "reports_test_results_flag_bridge"."test_id" IN
+    (SELECT U0."id"
+     FROM "reports_test" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- Flake
+DELETE
+FROM "reports_flake"
+WHERE "reports_flake"."repoid" IN (%s);
+
+
+-- LastCacheRollupDate
+DELETE
+FROM "reports_lastrollupdate"
+WHERE "reports_lastrollupdate"."repoid" IN (%s);
+
+
+-- CommitComparison
+DELETE
+FROM "compare_commitcomparison"
+WHERE "compare_commitcomparison"."base_commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+DELETE
+FROM "compare_commitcomparison"
+WHERE "compare_commitcomparison"."compare_commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- LabelAnalysisRequest
+DELETE
+FROM "labelanalysis_labelanalysisrequest"
+WHERE "labelanalysis_labelanalysisrequest"."base_commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+DELETE
+FROM "labelanalysis_labelanalysisrequest"
+WHERE "labelanalysis_labelanalysisrequest"."head_commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- ReportSession
+DELETE
+FROM "reports_upload"
+WHERE "reports_upload"."report_id" IN
+    (SELECT V0."id"
+     FROM "reports_commitreport" V0
+     WHERE V0."commit_id" IN
+         (SELECT U0."id"
+          FROM "commits" U0
+          WHERE U0."repoid" IN (%s)));
+
+
+-- StaticAnalysisSuite
+DELETE
+FROM "staticanalysis_staticanalysissuite"
+WHERE "staticanalysis_staticanalysissuite"."commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- StaticAnalysisSingleFileSnapshot
+DELETE
+FROM "staticanalysis_staticanalysissinglefilesnapshot"
+WHERE "staticanalysis_staticanalysissinglefilesnapshot"."repository_id" IN (%s);
+
+
+-- ProfilingCommit
+DELETE
+FROM "profiling_profilingcommit"
+WHERE "profiling_profilingcommit"."repoid" IN (%s);
+
+
+-- RepositoryFlag
+DELETE
+FROM "reports_repositoryflag"
+WHERE "reports_repositoryflag"."repository_id" IN (%s);
+
+
+-- Test
+DELETE
+FROM "reports_test"
+WHERE "reports_test"."repoid" IN (%s);
+
+
+-- ReducedError
+DELETE
+FROM "reports_reducederror"
+WHERE "reports_reducederror"."repoid" IN (%s);
+
+
+-- CommitReport
+DELETE
+FROM "reports_commitreport"
+WHERE "reports_commitreport"."commit_id" IN
+    (SELECT U0."id"
+     FROM "commits" U0
+     WHERE U0."repoid" IN (%s));
+
+
+-- Commit
+DELETE
+FROM "commits"
+WHERE "commits"."repoid" IN (%s);
+
+
+-- Repository
+DELETE
+FROM "repos"
+WHERE "repos"."repoid" = %s;

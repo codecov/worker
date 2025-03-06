@@ -13,8 +13,7 @@ username = "test_username"
 
 @pytest.mark.integration
 class TestSendEmailTask:
-    @pytest.mark.asyncio
-    async def test_send_email_integration(
+    def test_send_email_integration(
         self,
         mocker,
         dbsession,
@@ -38,12 +37,12 @@ class TestSendEmailTask:
 
         assert res.status_code == 200
 
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession,
-            owner.ownerid,
+            owner.email,
+            "TestSubject",
             "test",
             "test@codecov.io",
-            "TestSubject",
             username=owner.username,
         )
 
@@ -80,7 +79,7 @@ class TestSendEmailTask:
             "",
         ]
         assert mail_body[7:-1] == [
-            'Content-Type: text/text/html; charset="utf-8"',
+            'Content-Type: text/html; charset="utf-8"',
             "Content-Transfer-Encoding: 7bit",
             "MIME-Version: 1.0",
             "",

@@ -1,63 +1,68 @@
 import logging
+from typing import Optional
 
 from redis.exceptions import LockError
-from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
-from shared.validation.exceptions import InvalidYamlException
-from shared.yaml import UserYaml
+from shared.torngit.base import TorngitBaseAdapter
 
 from app import celery_app
 from database.enums import CommitErrorTypes
 from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
 from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import (
+    fetch_commit_yaml_and_possibly_store,
     get_repo_provider_service,
     possibly_update_commit_from_provider_info,
 )
-from services.yaml import save_repo_yaml_to_database_if_needed
-from services.yaml.fetcher import fetch_commit_yaml_from_provider
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
 
 class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"):
-
     """
     The main goal for this task is to carry forward flags from previous uploads
     and save the new carried-forawrded upload in the db,as a pre-step for
     uploading a report to codecov
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,
         repoid: int,
         commitid: str,
-        report_code: str,
+        report_code: Optional[str] = None,
         **kwargs,
     ):
         log.info(
             "Received preprocess upload task",
             extra=dict(repoid=repoid, commit=commitid, report_code=report_code),
         )
-        lock_name = f"preprocess_upload_lock_{repoid}_{commitid}"
+        lock_name = f"preprocess_upload_lock_{repoid}_{commitid}_{report_code}"
         redis_connection = get_redis_connection()
+        # This task only needs to run once per commit (per report_code)
+        # To generate the report. So if one is already running we don't need another
+        if redis_connection.get(lock_name):
+            log.info(
+                "PreProcess task is already running",
+                extra=dict(commit=commitid, repoid=repoid),
+            )
+            return {"preprocessed_upload": False, "reason": "already_running"}
         try:
             with redis_connection.lock(
                 lock_name,
                 timeout=60 * 5,
-                blocking_timeout=5,
+                blocking_timeout=None,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
                     report_code=report_code,
-                    **kwargs,
                 )
         except LockError:
             log.warning(
@@ -69,55 +74,63 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                     lock_name=lock_name,
                 ),
             )
-            return {"preprocessed_upload": False}
+            return {"preprocessed_upload": False, "reason": "unable_to_acquire_lock"}
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
-        *,
         db_session,
         repoid,
         commitid,
         report_code,
-        **kwargs,
     ):
-        commits = db_session.query(Commit).filter(
-            Commit.repoid == repoid, Commit.commitid == commitid
+        commit = (
+            db_session.query(Commit)
+            .filter(Commit.repoid == repoid, Commit.commitid == commitid)
+            .first()
         )
-        commit = commits.first()
         assert commit, "Commit not found in database."
-
-        repository = commit.repository
-        repository_service = self.get_repo_service(commit)
+        installation_name_to_use = get_installation_name_for_owner_for_task(
+            self.name, commit.repository.owner
+        )
+        repository_service = self.get_repo_service(commit, installation_name_to_use)
+        if repository_service is None:
+            log.warning(
+                "Failed to get repository_service",
+                extra=dict(commit=commitid, repo=repoid),
+            )
+            return {
+                "preprocessed_upload": False,
+                "updated_commit": False,
+                "error": "Failed to get repository_service",
+            }
         # Makes sure that we can properly carry forward reports
         # By populating the commit info (if needed)
-        updated_commit = await possibly_update_commit_from_provider_info(
+        updated_commit = possibly_update_commit_from_provider_info(
             commit=commit, repository_service=repository_service
         )
-        if repository_service:
-            commit_yaml = await self.fetch_commit_yaml_and_possibly_store(
-                commit, repository_service
-            )
-        else:
-            commit_yaml = UserYaml.get_final_yaml(
-                owner_yaml=repository.owner.yaml,
-                repo_yaml=repository.yaml,
-                commit_yaml=None,
-                ownerid=repository.owner.ownerid,
-            )
-        report_service = ReportService(commit_yaml)
-        commit_report = await report_service.initialize_and_save_report(
-            commit, report_code
+        commit_yaml = fetch_commit_yaml_and_possibly_store(commit, repository_service)
+        report_service = ReportService(
+            commit_yaml, gh_app_installation_name=installation_name_to_use
         )
+        # For parallel upload processing experiment, saving the report to GCS happens here
+        commit_report = report_service.initialize_and_save_report(commit, report_code)
+        # Persist changes from within the lock
+        db_session.flush()
         return {
             "preprocessed_upload": True,
             "reportid": str(commit_report.external_id),
             "updated_commit": updated_commit,
         }
 
-    def get_repo_service(self, commit):
+    def get_repo_service(
+        self, commit: Commit, installation_name_to_use: str
+    ) -> Optional[TorngitBaseAdapter]:
         repository_service = None
         try:
-            repository_service = get_repo_provider_service(commit.repository, commit)
+            repository_service = get_repo_provider_service(
+                commit.repository,
+                installation_name_to_use=installation_name_to_use,
+            )
         except RepositoryWithoutValidBotError:
             save_commit_error(
                 commit,
@@ -130,64 +143,8 @@ class PreProcessUpload(BaseCodecovTask, name="app.tasks.upload.PreProcessUpload"
                 "Unable to reach git provider because repo doesn't have a valid bot",
                 extra=dict(repoid=commit.repoid, commit=commit.commitid),
             )
-        except TorngitRepoNotFoundError:
-            log.warning(
-                "Unable to reach git provider because this specific bot/integration can't see that repository",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-            )
-        except TorngitClientError:
-            log.warning(
-                "Unable to reach git provider because there was a 4xx error",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-                exc_info=True,
-            )
 
         return repository_service
-
-    async def fetch_commit_yaml_and_possibly_store(self, commit, repository_service):
-        repository = commit.repository
-        try:
-            log.info(
-                "Fetching commit yaml from provider for commit",
-                extra=dict(repoid=commit.repoid, commit=commit.commitid),
-            )
-            commit_yaml = await fetch_commit_yaml_from_provider(
-                commit, repository_service
-            )
-            save_repo_yaml_to_database_if_needed(commit, commit_yaml)
-        except InvalidYamlException as ex:
-            save_commit_error(
-                commit,
-                error_code=CommitErrorTypes.INVALID_YAML.value,
-                error_params=dict(
-                    repoid=repository.repoid,
-                    commit=commit.commitid,
-                    error_location=ex.error_location,
-                ),
-            )
-            log.warning(
-                "Unable to use yaml from commit because it is invalid",
-                extra=dict(
-                    repoid=repository.repoid,
-                    commit=commit.commitid,
-                    error_location=ex.error_location,
-                ),
-                exc_info=True,
-            )
-            commit_yaml = None
-        except TorngitClientError:
-            log.warning(
-                "Unable to use yaml from commit because it cannot be fetched",
-                extra=dict(repoid=repository.repoid, commit=commit.commitid),
-                exc_info=True,
-            )
-            commit_yaml = None
-        return UserYaml.get_final_yaml(
-            owner_yaml=repository.owner.yaml,
-            repo_yaml=repository.yaml,
-            commit_yaml=commit_yaml,
-            ownerid=repository.owner.ownerid,
-        )
 
 
 RegisteredUploadTask = celery_app.register_task(PreProcessUpload())

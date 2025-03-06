@@ -1,61 +1,48 @@
-import logging
-import typing
-
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+import sentry_sdk
+from lxml.etree import Element
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilderSession
 
 
 class MonoProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content.tag == "coverage" and content.find("assembly") is not None)
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return content.tag == "coverage" and content.find("assembly") is not None
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_xml(content, report_builder_session)
 
 
-def from_xml(xml, report_builder_session: ReportBuilderSession) -> Report:
-    path_fixer, ignored_lines, sessionid = (
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-        report_builder_session.sessionid,
-    )
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
+    files: dict[str, ReportFile | None] = {}
+
     # loop through methods
     for method in xml.iter("method"):
-        # get file name
-        filename = path_fixer(method.attrib["filename"])
-        if filename is None:
-            continue
+        filename = method.attrib["filename"]
+        if filename not in files:
+            _file = report_builder_session.create_coverage_file(filename)
+            files[filename] = _file
 
-        _file = report_builder_session.get_file(filename)
-        if not _file:
-            _file = report_builder_session.file_class(
-                name=filename, ignore=ignored_lines.get(filename)
-            )
+        _file = files[filename]
+        if _file is None:
+            continue
 
         # loop through statements
         for line in method.iter("statement"):
-            line = line.attrib
-            coverage = int(line["counter"])
+            attr = line.attrib
+            coverage = int(attr["counter"])
 
             _file.append(
-                int(line["line"]),
+                int(attr["line"]),
                 report_builder_session.create_coverage_line(
-                    filename=filename,
-                    coverage=coverage,
-                    coverage_type=CoverageType.line,
+                    coverage,
                 ),
             )
 
-        report_builder_session.append(_file)
-
-    return report_builder_session.output_report()
+    for _file in files.values():
+        if _file is not None:
+            report_builder_session.append(_file)

@@ -1,17 +1,19 @@
-from io import BytesIO
-from json import dumps, loads
+from json import loads
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from lxml import etree
-from shared.reports.editable import EditableReport, EditableReportFile
-from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
-from shared.reports.types import ReportTotals
-from shared.utils.sessions import Session, SessionType
+from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.types import LineSession, ReportTotals
+from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 
-from helpers.exceptions import CorruptRawReportError, ReportEmptyError
+from helpers.exceptions import (
+    CorruptRawReportError,
+    ReportEmptyError,
+    ReportExpiredException,
+)
 from services.report import raw_upload_processor as process
 from services.report.parser import LegacyReportParser
 from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedReportFile
@@ -20,6 +22,21 @@ from test_utils.base import BaseTestCase
 
 here = Path(__file__)
 folder = here.parent
+
+
+@pytest.mark.skip(reason="this is supposed to be invoked manually")
+def test_manual():
+    # The intention of this test is to easily reproduce production problems with real reports.
+    # So download the relevant report, fill in its filename below, comment out the `skip` annotation,
+    # and run this test directly.
+    filename = "..."
+    with open(filename, "rb") as d:
+        contents = d.read()
+
+    parsed_report = LegacyReportParser().parse_raw_report_from_bytes(contents)
+    master = process.process_raw_upload(None, parsed_report, Session())
+
+    assert not master.is_empty()
 
 
 class TestProcessRawUpload(BaseTestCase):
@@ -60,45 +77,18 @@ class TestProcessRawUpload(BaseTestCase):
             report.append("# path=app.coverage.txt")
             report.append("/file2:\n 1 | 1|line")
 
-        if "M" in keys:
-            master = self.get_v3_report()
-        else:
-            master = None
-        parsed_report = LegacyReportParser().parse_raw_report_from_io(
-            BytesIO("\n".join(report).encode())
+        parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
+            "\n".join(report).encode()
         )
-        result = process.process_raw_upload(
-            commit_yaml=None, original_report=master, reports=parsed_report, flags=[]
-        )
-        master = result.report
+        master = process.process_raw_upload(None, parsed_report, Session())
 
         if "e" in keys:
             assert master.sessions[0].env == {"A": "b"}
-        else:
-            if "M" in keys:
-                assert master.sessions[3].totals == ReportTotals(
-                    files=1,
-                    lines=1,
-                    hits=1,
-                    misses=0,
-                    partials=0,
-                    coverage="100",
-                    branches=0,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                )
 
-        if "M" in keys:
-            assert master.totals.files == 7 + (
-                1 if ("m" in keys and "n" not in keys) else 0
-            )
-            assert master.totals.sessions == 4
-        else:
-            assert master.totals.files == 1 + (
-                1 if ("m" in keys and "n" not in keys) else 0
-            )
-            assert master.totals.sessions == 1
+        assert master.totals.files == 1 + (
+            1 if ("m" in keys and "n" not in keys) else 0
+        )
+        assert master.totals.sessions == 1
 
         if "n" in keys:
             assert master.get("path/to/file")
@@ -146,15 +136,10 @@ class TestProcessRawUpload(BaseTestCase):
         report.append("# path=coverage/coverage.json")
         report.extend(json_section)
 
-        result = process.process_raw_upload(
-            commit_yaml={},
-            original_report=None,
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO("\n".join(report).encode())
-            ),
-            flags=[],
+        parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
+            "\n".join(report).encode()
         )
-        master = result.report
+        master = process.process_raw_upload({}, parsed_report, Session())
         assert master.files == ["source", "file"]
 
     def test_process_raw_upload_empty_report(self):
@@ -187,18 +172,15 @@ class TestProcessRawUpload(BaseTestCase):
         original_report.add_session(Session(flags=["unit"]))
         assert len(original_report.sessions) == 1
 
+        parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
+            "\n".join(report_data).encode()
+        )
         with pytest.raises(ReportEmptyError):
             process.process_raw_upload(
-                commit_yaml=None,
-                original_report=original_report,
-                reports=LegacyReportParser().parse_raw_report_from_io(
-                    BytesIO("\n".join(report_data).encode())
-                ),
-                session=Session(flags=["fruits"]),
-                flags=[],
+                UserYaml({}), parsed_report, Session(flags=["fruits"])
             )
-        assert len(original_report.sessions) == 2
-        assert sorted(original_report.flags.keys()) == ["fruits", "unit"]
+        assert len(original_report.sessions) == 1
+        assert sorted(original_report.flags.keys()) == ["unit"]
         assert original_report.files == ["file_1.go", "file_2.py"]
         assert original_report.flags["unit"].totals == ReportTotals(
             files=2,
@@ -215,21 +197,7 @@ class TestProcessRawUpload(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        assert original_report.flags["fruits"].totals == ReportTotals(
-            files=0,
-            lines=0,
-            hits=0,
-            misses=0,
-            partials=0,
-            coverage=None,
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=1,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
+        assert original_report.flags.get("fruits") is None
         general_totals, json_data = original_report.to_database()
         assert general_totals == {
             "f": 2,
@@ -241,7 +209,7 @@ class TestProcessRawUpload(BaseTestCase):
             "b": 1,
             "d": 0,
             "M": 0,
-            "s": 2,
+            "s": 1,
             "C": 10,
             "N": 2,
             "diff": None,
@@ -251,16 +219,13 @@ class TestProcessRawUpload(BaseTestCase):
                 "file_1.go": [
                     0,
                     [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                    {
-                        "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                        "meta": {"session_count": 1},
-                    },
+                    None,
                     None,
                 ],
                 "file_2.py": [
                     1,
                     [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                    {"0": [0, 2, 1, 0, 1, "50.00000", 1], "meta": {"session_count": 1}},
+                    None,
                     None,
                 ],
             },
@@ -279,101 +244,37 @@ class TestProcessRawUpload(BaseTestCase):
                     "e": None,
                     "st": "uploaded",
                     "se": {},
-                },
-                "1": {
-                    "t": None,
-                    "d": None,
-                    "a": None,
-                    "f": ["fruits"],
-                    "c": None,
-                    "n": None,
-                    "N": None,
-                    "j": None,
-                    "u": None,
-                    "p": None,
-                    "e": None,
-                    "st": "uploaded",
-                    "se": {},
-                },
+                }
             },
         }
 
     def test_none(self):
         with pytest.raises(ReportEmptyError, match="No files found in report."):
-            process.process_raw_upload(
-                self,
-                {},
-                LegacyReportParser().parse_raw_report_from_io(BytesIO(b"")),
-                [],
-            )
+            parsed_report = LegacyReportParser().parse_raw_report_from_bytes(b"")
+            process.process_raw_upload(None, parsed_report, Session())
 
 
 class TestProcessRawUploadFixed(BaseTestCase):
     def test_fixes(self):
-        reports = "\n".join(
-            (
-                "# path=coverage.info",
-                "mode: count",
-                "file.go:7.14,9.2 1 1",
-                "<<<<<< EOF",
-                "# path=fixes",
-                "file.go:8:",
-                "<<<<<< EOF",
-                "",
-            )
+        report_lines = [
+            "# path=coverage.info",
+            "mode: count",
+            "file.go:7.14,9.2 1 1",
+            "<<<<<< EOF",
+            "# path=fixes",
+            "file.go:8:",
+            "<<<<<< EOF",
+            "",
+        ]
+        parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
+            "\n".join(report_lines).encode()
         )
-        result = process.process_raw_upload(
-            commit_yaml={},
-            original_report=None,
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(reports.encode())
-            ),
-            flags=[],
-            session={},
-        )
-        report = result.report
+        report = process.process_raw_upload({}, parsed_report, Session())
+
         assert 2 not in report["file.go"], "2 never existed"
         assert report["file.go"][7].coverage == 1
         assert 8 not in report["file.go"], "8 should have been removed"
         assert 9 not in report["file.go"], "9 should have been removed"
-
-
-class TestProcessRawUploadNotJoined(BaseTestCase):
-    @pytest.mark.parametrize(
-        "flag, joined",
-        [("nightly", False), ("unittests", True), ("ui", True), ("other", True)],
-    )
-    def test_not_joined(self, mocker, flag, joined):
-        yaml = {
-            "flags": {
-                "nightly": {"joined": False},
-                "unittests": {"joined": True},
-                "ui": {"paths": ["ui/"]},
-            }
-        }
-        merge = Mock(side_effect=NotImplementedError)
-        report = Report()
-        rf = ReportFile("fr.py")
-        rf.append(1, ReportLine.create(1))
-        report.append(rf)
-        with patch(
-            "services.report.raw_upload_processor.process_report", return_value=report
-        ):
-            with pytest.raises(NotImplementedError):
-                report = process.process_raw_upload(
-                    commit_yaml=UserYaml(yaml),
-                    original_report=Mock(
-                        merge=merge, add_session=Mock(return_value=(1, Session()))
-                    ),
-                    reports=LegacyReportParser().parse_raw_report_from_io(
-                        BytesIO("a<<<<<< EOF".encode())
-                    ),
-                    flags=[flag],
-                    session=Session(),
-                )
-            merge.assert_called_with(mocker.ANY, joined=joined)
-            call_args, call_kwargs = merge.call_args
-            assert isinstance(call_args[0], Report)
 
 
 class TestProcessRawUploadFlags(BaseTestCase):
@@ -382,59 +283,24 @@ class TestProcessRawUploadFlags(BaseTestCase):
         [{"paths": ["!tests/.*"]}, {"ignore": ["tests/.*"]}, {"paths": ["folder/"]}],
     )
     def test_flags(self, flag):
-        result = process.process_raw_upload(
-            commit_yaml=UserYaml({"flags": {"docker": flag}}),
-            original_report={},
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
-                )
-            ),
-            flags=["docker"],
+        parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
+            b'{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'
         )
-        master = result.report
+        master = process.process_raw_upload(
+            UserYaml({"flags": {"docker": flag}}),
+            parsed_report,
+            Session(flags=["docker"]),
+        )
+
         assert master.files == ["folder/file.py"]
         assert master.sessions[0].flags == ["docker"]
 
 
-class TestProcessSessions(BaseTestCase):
-    def test_sessions(self):
-        result = process.process_raw_upload(
-            commit_yaml={},
-            original_report={},
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
-                )
-            ),
-            flags=None,
-        )
-        master = result.report
-        result = process.process_raw_upload(
-            commit_yaml={},
-            original_report=master,
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"tests/test.py": [null, 0], "folder/file.py": [null, 1]}}'.encode()
-                )
-            ),
-            flags=None,
-        )
-        master = result.report
-        print(master.totals)
-        assert master.totals.sessions == 2
-
-
 class TestProcessReport(BaseTestCase):
-    @pytest.mark.parametrize("report", ["<idk>", "<?xml", ""])
+    @pytest.mark.parametrize("report", [b"<idk>", b"<?xml", b""])
     def test_emptys(self, report):
         res = process.process_report(
-            report=ParsedUploadedReportFile(
-                filename=None, file_contents=BytesIO(report.encode())
-            ),
+            report=ParsedUploadedReportFile(filename=None, file_contents=report),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
             ),
@@ -446,7 +312,7 @@ class TestProcessReport(BaseTestCase):
         res = process.process_report(
             report=ParsedUploadedReportFile(
                 filename="app.coverage.txt",
-                file_contents=BytesIO("/file:\n 1 | 1|line".encode()),
+                file_contents=b"/file:\n 1 | 1|line",
             ),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -457,18 +323,13 @@ class TestProcessReport(BaseTestCase):
 
     def test_report_fixes_same_final_result(self):
         commit_yaml = {"fixes": ["arroba::prefix", "bingo::prefix"]}
-        result = process.process_raw_upload(
-            commit_yaml=UserYaml(commit_yaml),
-            original_report=None,
-            session={},
-            reports=LegacyReportParser().parse_raw_report_from_io(
-                BytesIO(
-                    '{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}'.encode()
-                )
-            ),
-            flags=None,
+        parsed_report = LegacyReportParser().parse_raw_report_from_bytes(
+            b'{"coverage": {"arroba/test.py": [null, 0], "bingo/test.py": [null, 1]}}'
         )
-        master = result.report
+        master = process.process_raw_upload(
+            UserYaml(commit_yaml), parsed_report, Session()
+        )
+
         assert len(master.files) == 1
         assert master.files[0] == "prefix/test.py"
 
@@ -477,299 +338,257 @@ class TestProcessReport(BaseTestCase):
         [
             (
                 "go.from_txt",
+                ParsedUploadedReportFile(filename=None, file_contents=b"mode: atomic"),
+            ),
+            (
+                "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"mode: atomic")
+                    filename="/Users/path/to/app.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO(b"<data>"),
-                ),
-            ),
-            (
-                "xcode.from_txt",
-                ParsedUploadedReportFile(
-                    filename="app.coverage.txt", file_contents=BytesIO(b"<data>")
+                    filename="app.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/framework.coverage.txt",
-                    file_contents=BytesIO(b"<data>"),
+                    file_contents=b"<data>",
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="framework.coverage.txt", file_contents=BytesIO(b"<data>")
+                    filename="framework.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/xctest.coverage.txt",
-                    file_contents=BytesIO(b"<data>"),
+                    file_contents=b"<data>",
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="xctest.coverage.txt", file_contents=BytesIO(b"<data>")
+                    filename="xctest.coverage.txt", file_contents=b"<data>"
                 ),
             ),
             (
                 "xcode.from_txt",
                 ParsedUploadedReportFile(
-                    filename="coverage.txt", file_contents=BytesIO(b"/blah/app.h:\n")
+                    filename="coverage.txt", file_contents=b"/blah/app.h:\n"
                 ),
             ),
             (
                 "dlst.from_string",
-                ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"data\ncovered")
-                ),
+                ParsedUploadedReportFile(filename=None, file_contents=b"data\ncovered"),
             ),
             (
                 "vb.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b"<results><SampleTag></SampleTag></results>"
-                    ),
+                    file_contents=b"<results><SampleTag></SampleTag></results>",
                 ),
             ),
             (
                 "lcov.from_txt",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"content\nend_of_record")
+                    filename=None, file_contents=b"content\nend_of_record"
                 ),
             ),
             (
                 "gcov.from_txt",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"0:Source:\nline2")
+                    filename=None, file_contents=b"0:Source:\nline2"
                 ),
             ),
             (
                 "lua.from_txt",
+                ParsedUploadedReportFile(filename=None, file_contents=b"======="),
+            ),
+            (
+                "gap.from_string",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b"=======")
+                    filename=None, file_contents=b'{"Type": "S", "File": "a"}'
                 ),
             ),
             (
                 "gap.from_string",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"Type": "S", "File": "a"}')
-                ),
-            ),
-            (
-                "gap.from_string",
-                ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'{"Type": "S", "File": "a"}\n{"Type":"R","Line":1,"FileId":37}'
-                    ),
+                    file_contents=b'{"Type": "S", "File": "a"}\n{"Type":"R","Line":1,"FileId":37}',
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"RSpec": {"coverage": {}}}')
+                    filename=None, file_contents=b'{"RSpec": {"coverage": {}}}'
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
-                    filename=None,
-                    file_contents=BytesIO(b'{"MiniTest": {"coverage": {}}}'),
+                    filename=None, file_contents=b'{"MiniTest": {"coverage": {}}}'
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"coverage": {}}')
+                    filename=None, file_contents=b'{"coverage": {}}'
                 ),
             ),
             (
                 "v1.from_json",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        ('{"coverage": {"data": "' + "\xf1" + '"}}').encode()
-                    ),
+                    file_contents=('{"coverage": {"data": "' + "\xf1" + '"}}').encode(),
                 ),
-            ),  # non-acii
+            ),
             (
                 "rlang.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"uploader": "R"}')
+                    filename=None, file_contents=b'{"uploader": "R"}'
                 ),
             ),
             (
                 "scala.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"fileReports": ""}')
+                    filename=None, file_contents=b'{"fileReports": ""}'
                 ),
             ),
             (
                 "coveralls.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'{"source_files": ""}')
+                    filename=None, file_contents=b'{"source_files": ""}'
                 ),
             ),
             (
                 "node.from_json",
                 ParsedUploadedReportFile(
-                    filename=None,
-                    file_contents=BytesIO(b'{"filename": {"branchMap": ""}}'),
+                    filename=None, file_contents=b'{"filename": {"branchMap": ""}}'
                 ),
             ),
             (
                 "scoverage.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        (
-                            "<statements><data>" + "\xf1" + "</data></statements>"
-                        ).encode()
-                    ),
+                    file_contents=(
+                        "<statements><data>" + "\xf1" + "</data></statements>"
+                    ).encode(),
                 ),
             ),
             (
                 "clover.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<coverage generated="abc"><SampleTag></SampleTag></coverage>'
-                    ),
+                    file_contents=b'<coverage generated="abc"><SampleTag></SampleTag></coverage>',
                 ),
             ),
             (
                 "cobertura.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b"<coverage><SampleTag></SampleTag></coverage>"
-                    ),
+                    file_contents=b"<coverage><SampleTag></SampleTag></coverage>",
                 ),
             ),
             (
                 "csharp.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b"<CoverageSession><SampleTag></SampleTag></CoverageSession>"
-                    ),
+                    file_contents=b"<CoverageSession><SampleTag></SampleTag></CoverageSession>",
                 ),
             ),
             (
                 "jacoco.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(b"<report><SampleTag></SampleTag></report>"),
+                    file_contents=b"<report><SampleTag></SampleTag></report>",
                 ),
             ),
             (
                 "xcodeplist.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0">\n<plist version="1.0">'
-                    ),
+                    file_contents=b'<?xml version="1.0">\n<plist version="1.0">',
                 ),
             ),
             (
                 "xcodeplist.from_xml",
                 ParsedUploadedReportFile(
                     filename="3CB41F9A-1DEA-4DE1-B321-6F462C460DB6.xccoverage.plist",
-                    file_contents=BytesIO(b"__"),
+                    file_contents=b"__",
                 ),
             ),
             (
                 "scoverage.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<statements><SampleTag></SampleTag></statements>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<statements><SampleTag></SampleTag></statements>',
                 ),
             ),
             (
                 "clover.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<coverage generated="abc"><SampleTag></SampleTag></coverage>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<coverage generated="abc"><SampleTag></SampleTag></coverage>',
                 ),
             ),
             (
                 "cobertura.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<coverage><SampleTag></SampleTag></coverage>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<coverage><SampleTag></SampleTag></coverage>',
                 ),
             ),
             (
                 "csharp.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<CoverageSession><SampleTag></SampleTag></CoverageSession>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<CoverageSession><SampleTag></SampleTag></CoverageSession>',
                 ),
             ),
             (
                 "jacoco.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="utf-8"?>\n<report><SampleTag></SampleTag></report>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="utf-8"?>\n<report><SampleTag></SampleTag></report>',
                 ),
             ),
             (
                 "salesforce.from_json",
                 ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'[{"name": "banana"}]')
+                    filename=None, file_contents=b'[{"name": "banana"}]'
                 ),
             ),
             (
                 "bullseye.from_xml",
                 ParsedUploadedReportFile(
                     filename=None,
-                    file_contents=BytesIO(
-                        b'<?xml version="1.0" encoding="UTF-8"?><BullseyeCoverage name="test.cov" dir="c:/project/cov/sample/" buildId="1234_%s" version="6" xmlns="https://www.bullseye.com/covxml" fn_cov="29" fn_total="29" cd_cov="108" cd_total="161" d_cov="107" d_total="153"><folder name="calc" fn_cov="10" fn_total="10" cd_cov="21" cd_total="50" d_cov="21" d_total="50"></folder></BullseyeCoverage>'
-                    ),
+                    file_contents=b'<?xml version="1.0" encoding="UTF-8"?><BullseyeCoverage name="test.cov" dir="c:/project/cov/sample/" buildId="1234_%s" version="6" xmlns="https://www.bullseye.com/covxml" fn_cov="29" fn_total="29" cd_cov="108" cd_total="161" d_cov="107" d_total="153"><folder name="calc" fn_cov="10" fn_total="10" cd_cov="21" cd_total="50" d_cov="21" d_total="50"></folder></BullseyeCoverage>',
                 ),
             ),
         ],
     )
     def test_detect(self, lang, report):
-        with patch("services.report.languages.%s" % lang, return_value=lang) as func:
+        with patch("services.report.languages.%s" % lang) as func:
             res = process.process_report(
                 report=report,
                 report_builder=ReportBuilder(
                     current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
                 ),
             )
-            assert res == lang
+
+            assert res is not None
             assert func.called
 
     @pytest.mark.parametrize(
         "report",
-        [
-            (
-                ParsedUploadedReportFile(
-                    filename=None, file_contents=BytesIO(b'[{"a": "banana"}]')
-                )
-            )
-        ],
+        [(ParsedUploadedReportFile(filename=None, file_contents=b'[{"a": "banana"}]'))],
     )
     def test_detect_nothing_found(self, report):
         res = process.process_report(
@@ -781,7 +600,7 @@ class TestProcessReport(BaseTestCase):
         assert res is None
 
     def test_xxe_entity_not_called(self, mocker):
-        report_xxe_xml = """<?xml version="1.0"?>
+        report_xxe_xml = b"""<?xml version="1.0"?>
         <!DOCTYPE coverage [
         <!ELEMENT coverage ANY >
         <!ENTITY xxe SYSTEM "file:///config/codecov.yml" >]>
@@ -790,7 +609,7 @@ class TestProcessReport(BaseTestCase):
         func = mocker.patch("services.report.languages.scoverage.from_xml")
         process.process_report(
             report=ParsedUploadedReportFile(
-                filename="filename", file_contents=BytesIO(report_xxe_xml.encode())
+                filename="filename", file_contents=report_xxe_xml
             ),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -808,7 +627,7 @@ class TestProcessReport(BaseTestCase):
         mocked.return_value = "bad_processing", "new_type"
         r = ParsedUploadedReportFile(
             filename="/Users/path/to/app.coverage.txt",
-            file_contents=BytesIO("<data>".encode()),
+            file_contents=b"<data>",
         )
         result = process.process_report(
             report=r,
@@ -818,26 +637,30 @@ class TestProcessReport(BaseTestCase):
         )
         assert result is None
         assert mocked.called
-        mocked.assert_called_with(r)
+        mocked.assert_called_with(r, "<data>")
 
     def test_process_report_exception_raised(self, mocker):
         class SpecialUnexpectedException(Exception):
             pass
 
-        mock_bad_processor = mocker.MagicMock(
-            matches_content=mocker.MagicMock(return_value=True),
-            process=mocker.MagicMock(side_effect=SpecialUnexpectedException()),
-            name="mock_bad_processor",
+        mocker.patch(
+            "services.report.report_processor.report_type_matching",
+            return_value=(b"", "plist"),
         )
-        mock_possible_list = mocker.patch(
-            "services.report.report_processor.get_possible_processors_list"
+        mocker.patch(
+            "services.report.report_processor.XCodePlistProcessor.matches_content",
+            return_value=True,
         )
-        mock_possible_list.return_value = [mock_bad_processor]
+        mocker.patch(
+            "services.report.report_processor.XCodePlistProcessor.process",
+            side_effect=SpecialUnexpectedException(),
+        )
+
         with pytest.raises(SpecialUnexpectedException):
             process.process_report(
                 report=ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
                 report_builder=ReportBuilder(
                     current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -845,23 +668,23 @@ class TestProcessReport(BaseTestCase):
             )
 
     def test_process_report_corrupt_format(self, mocker):
-        mock_bad_processor = mocker.MagicMock(
-            matches_content=mocker.MagicMock(return_value=True),
-            process=mocker.MagicMock(
-                side_effect=CorruptRawReportError(
-                    "expected_format", "error_explanation"
-                )
-            ),
-            name="mock_bad_processor",
+        mocker.patch(
+            "services.report.report_processor.report_type_matching",
+            return_value=(b"", "plist"),
         )
         mocker.patch(
-            "services.report.report_processor.get_possible_processors_list",
-            return_value=[mock_bad_processor],
+            "services.report.report_processor.XCodePlistProcessor.matches_content",
+            return_value=True,
         )
+        mocker.patch(
+            "services.report.report_processor.XCodePlistProcessor.process",
+            side_effect=CorruptRawReportError("expected_format", "error_explanation"),
+        )
+
         res = process.process_report(
             report=ParsedUploadedReportFile(
                 filename="/Users/path/to/app.coverage.txt",
-                file_contents=BytesIO("<data>".encode()),
+                file_contents=b"<data>",
             ),
             report_builder=ReportBuilder(
                 current_yaml=None, sessionid=0, ignored_lines={}, path_fixer=str
@@ -870,32 +693,15 @@ class TestProcessReport(BaseTestCase):
         assert res is None
 
     def test_process_raw_upload_multiple_raw_reports(self, mocker):
-        original_report = Report()
-        original_banana = ReportFile("banana.py")
-        original_banana.append(100, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_banana.append(200, ReportLine.create(0, sessions=[LineSession(0, 0)]))
-        original_banana.append(300, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_banana.append(400, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_banana.append(
-            401, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
-        )
-        original_report.append(original_banana)
-        another_file = ReportFile("another.c")
-        another_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        third_file = ReportFile("third.c")
-        third_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        original_report.append(another_file)
-        original_report.append(third_file)
-        original_report.add_session(Session(flags=["super"]))  # session with id 0
         first_raw_report_result = Report()
         first_banana = ReportFile("banana.py")
-        first_banana.append(1, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        first_banana.append(2, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        first_banana.append(1, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        first_banana.append(2, ReportLine.create(0, sessions=[LineSession(0, 0)]))
         first_raw_report_result.append(first_banana)
         second_raw_report_result = Report()
         second_banana = ReportFile("banana.py")
-        second_banana.append(2, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        second_banana.append(3, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        second_banana.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
+        second_banana.append(3, ReportLine.create(0, sessions=[LineSession(0, 0)]))
         second_raw_report_result.append(second_banana)
         second_another_file = ReportFile("another.c")
         second_another_file.append(
@@ -908,9 +714,9 @@ class TestProcessReport(BaseTestCase):
         third_raw_report_result = Report()
         third_banana = ReportFile("banana.py")
         third_banana.append(
-            3, ReportLine.create("1/2", sessions=[LineSession(1, "1/2")])
+            3, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
         )
-        third_banana.append(5, ReportLine.create(0, sessions=[LineSession(1, 0)]))
+        third_banana.append(5, ReportLine.create(0, sessions=[LineSession(0, 0)]))
         third_raw_report_result.append(third_banana)
         uploaded_reports = LegacyParsedRawReport(
             toc=None,
@@ -919,15 +725,15 @@ class TestProcessReport(BaseTestCase):
             uploaded_files=[
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
                 ParsedUploadedReportFile(
                     filename="/Users/path/to/app.coverage.txt",
-                    file_contents=BytesIO("<data>".encode()),
+                    file_contents=b"<data>",
                 ),
             ],
         )
@@ -940,15 +746,9 @@ class TestProcessReport(BaseTestCase):
                 third_raw_report_result,
             ],
         )
-        session = Session()
-        result = process.process_raw_upload(
-            UserYaml({}),
-            original_report,
-            uploaded_reports,
-            ["flag_one", "flag_two"],
-            session=session,
-        )
-        res = result.report
+        session = Session(flags=["flag_one", "flag_two"])
+        res = process.process_raw_upload(UserYaml({}), uploaded_reports, session)
+
         assert session.totals == ReportTotals(
             files=2,
             lines=6,
@@ -959,19 +759,19 @@ class TestProcessReport(BaseTestCase):
             branches=0,
             methods=0,
             messages=0,
-            sessions=0,
+            sessions=1,
             complexity=0,
             complexity_total=0,
             diff=0,
         )
-        assert sorted(res.files) == ["another.c", "banana.py", "third.c"]
+        assert sorted(res.files) == ["another.c", "banana.py"]
         assert res.get("banana.py").totals == ReportTotals(
             files=0,
-            lines=9,
-            hits=5,
-            misses=2,
-            partials=2,
-            coverage="55.55556",
+            lines=4,
+            hits=2,
+            misses=1,
+            partials=1,
+            coverage="50.00000",
             branches=0,
             methods=0,
             messages=0,
@@ -983,25 +783,10 @@ class TestProcessReport(BaseTestCase):
         assert res.get("another.c").totals == ReportTotals(
             files=0,
             lines=2,
-            hits=2,
-            misses=0,
-            partials=0,
-            coverage="100",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert res.get("third.c").totals == ReportTotals(
-            files=0,
-            lines=1,
             hits=1,
-            misses=0,
+            misses=1,
             partials=0,
-            coverage="100",
+            coverage="50.00000",
             branches=0,
             methods=0,
             messages=0,
@@ -1010,222 +795,31 @@ class TestProcessReport(BaseTestCase):
             complexity_total=0,
             diff=0,
         )
-        assert sorted(res.sessions.keys()) == [0, 1]
-        assert res.sessions[1] == session
+        assert sorted(res.sessions.keys()) == [0]
+        assert res.sessions[0] == session
 
-
-class TestProcessRawUploadCarryforwardFlags(BaseTestCase):
-    def test_process_raw_upload_with_carryforwarded_flags(self):
-        original_report = EditableReport()
-        upload_flags = ["somethingold", "flag_two"]
-        first_file = EditableReportFile("banana.py")
-        first_file.append(100, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        first_file.append(200, ReportLine.create(0, sessions=[LineSession(0, 0)]))
-        first_file.append(300, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        first_file.append(400, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        first_file.append(
-            401, ReportLine.create("1/2", sessions=[LineSession(0, "1/2")])
-        )
-        second_file = EditableReportFile("another.c")
-        second_file.append(2, ReportLine.create(1, sessions=[LineSession(0, 1)]))
-        second_file.append(5, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        second_file.append(7, ReportLine.create(1, sessions=[LineSession(0, 2)]))
-        second_file.append(7, ReportLine.create(1, sessions=[LineSession(1, 2)]))
-        third_file = EditableReportFile("third.c")
-        third_file.append(2, ReportLine.create(1, sessions=[LineSession(1, 1)]))
-        original_report.append(first_file)
-        original_report.append(second_file)
-        original_report.append(third_file)
-        original_report.add_session(Session(flags=["super"]))  # session with id 0
-        original_report.add_session(
-            Session(flags=["somethingold"], session_type=SessionType.carriedforward)
-        )  # session with id 1
-        assert self.convert_report_to_better_readable(original_report)["archive"] == {
-            "banana.py": [
-                (100, 1, None, [[0, 1, None, None, None]], None, None),
-                (200, 0, None, [[0, 0, None, None, None]], None, None),
-                (300, 1, None, [[0, 1, None, None, None]], None, None),
-                (400, 1, None, [[0, 1, None, None, None]], None, None),
-                (401, "1/2", None, [[0, "1/2", None, None, None]], None, None),
-            ],
-            "another.c": [
-                (2, 1, None, [[0, 1, None, None, None]], None, None),
-                (5, 1, None, [[1, 1, None, None, None]], None, None),
-                (
-                    7,
-                    2,
-                    None,
-                    [[0, 2, None, None, None], [1, 2, None, None, None]],
-                    None,
-                    None,
-                ),
-            ],
-            "third.c": [(2, 1, None, [[1, 1, None, None, None]], None, None)],
-        }
-        raw_content = dumps(
-            {
-                "coverage": {
-                    "another.c": [None, 3, "1/2"],
-                    "tests/test.py": [None, 0],
-                    "folder/file.py": [None, 1],
-                }
-            }
-        )
+    def test_process_raw_upload_expired_report(self, mocker):
+        filename = "/Users/path/to/app.coverage.txt"
         uploaded_reports = LegacyParsedRawReport(
             toc=None,
             env=None,
             report_fixes=None,
             uploaded_files=[
                 ParsedUploadedReportFile(
-                    filename="/Users/path/to/app.coverage.json",
-                    file_contents=BytesIO(raw_content.encode()),
+                    filename="/Users/path/to/app.coverage.txt",
+                    file_contents=b"<data>",
                 ),
             ],
         )
-        session = Session(flags=upload_flags)
-        result = process.process_raw_upload(
-            UserYaml(
-                {
-                    "flag_management": {
-                        "individual_flags": [
-                            {"name": "somethingold", "carryforward": True}
-                        ]
-                    }
-                }
-            ),
-            original_report,
-            uploaded_reports,
-            ["somethingold", "flag_two"],
-            session=session,
+        mocker.patch.object(
+            process,
+            "process_report",
+            side_effect=[
+                ReportExpiredException(),
+            ],
         )
-        report = result.report
-        assert result.fully_deleted_sessions == [1]
-        assert result.partially_deleted_sessions == []
-        assert sorted(report.sessions.keys()) == [0, session.id]
-        assert session.id == 2
-        assert report.sessions[session.id] == session
-        assert session.totals == ReportTotals(
-            files=3,
-            lines=4,
-            hits=2,
-            misses=1,
-            partials=1,
-            coverage="50.00000",
-            branches=1,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert report.totals == ReportTotals(
-            files=4,
-            lines=10,
-            hits=7,
-            misses=2,
-            partials=1,
-            coverage="70.00000",
-            branches=1,
-            methods=0,
-            messages=0,
-            sessions=2,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert sorted(report.files) == [
-            "another.c",
-            "banana.py",
-            "folder/file.py",
-            "tests/test.py",
-        ]
-        assert "third.c" not in report.files
-        assert report.get("tests/test.py").totals == ReportTotals(
-            files=0,
-            lines=1,
-            hits=0,
-            misses=1,
-            partials=0,
-            coverage="0",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert report.get("folder/file.py").totals == ReportTotals(
-            files=0,
-            lines=1,
-            hits=1,
-            misses=0,
-            partials=0,
-            coverage="100",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
+        session = Session(flags=["flag_one", "flag_two"])
+        with pytest.raises(ReportExpiredException) as e:
+            _ = process.process_raw_upload(UserYaml({}), uploaded_reports, session)
 
-        assert report.get("banana.py").totals == ReportTotals(
-            files=0,
-            lines=5,
-            hits=3,
-            misses=1,
-            partials=1,
-            coverage="60.00000",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert report.get("another.c").totals == ReportTotals(
-            files=0,
-            lines=3,
-            hits=3,
-            misses=0,
-            partials=0,
-            coverage="100",
-            branches=1,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert self.convert_report_to_better_readable(report)["archive"] == {
-            "banana.py": [
-                (100, 1, None, [[0, 1, None, None, None]], None, None),
-                (200, 0, None, [[0, 0, None, None, None]], None, None),
-                (300, 1, None, [[0, 1, None, None, None]], None, None),
-                (400, 1, None, [[0, 1, None, None, None]], None, None),
-                (401, "1/2", None, [[0, "1/2", None, None, None]], None, None),
-            ],
-            "another.c": [
-                (1, 3, None, [[session.id, 3, None, None, None]], None, None),
-                (
-                    2,
-                    "2/2",
-                    "b",
-                    [[0, 1, None, None, None], [session.id, "1/2", None, None, None]],
-                    None,
-                    None,
-                ),
-                (7, 2, None, [[0, 2, None, None, None]], None, None),
-            ],
-            "tests/test.py": [
-                (1, 0, None, [[session.id, 0, None, None, None]], None, None)
-            ],
-            "folder/file.py": [
-                (1, 1, None, [[session.id, 1, None, None, None]], None, None)
-            ],
-        }
+        assert e.value.filename == filename

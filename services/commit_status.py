@@ -9,7 +9,7 @@ def _ci_providers() -> List[str]:
     providers = get_config("services", "ci_providers")
     if not providers:
         return []
-    elif type(providers) is list:
+    elif isinstance(providers, list):
         return providers
     else:
         return map(lambda p: p.strip(), providers.split(","))

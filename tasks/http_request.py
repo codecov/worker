@@ -14,7 +14,7 @@ class HTTPRequestTask(BaseCodecovTask, name="app.tasks.http_request.HTTPRequest"
     Task for making generic HTTP requests.
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         url,
@@ -23,7 +23,7 @@ class HTTPRequestTask(BaseCodecovTask, name="app.tasks.http_request.HTTPRequest"
         timeout=None,
         data=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         if timeout is None:
             timeout = get_config("setup", "http", "timeouts", "external", default=10)
@@ -39,8 +39,8 @@ class HTTPRequestTask(BaseCodecovTask, name="app.tasks.http_request.HTTPRequest"
         log.info("HTTP request", extra=params)
 
         try:
-            async with httpx.AsyncClient() as client:
-                res = await client.request(**params)
+            with httpx.Client() as client:
+                res = client.request(**params)
 
             if res.status_code >= 500:
                 # server error, we can retry later

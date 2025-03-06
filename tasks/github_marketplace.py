@@ -3,10 +3,10 @@ from datetime import datetime
 
 import requests
 from shared.celery_config import ghm_sync_plans_task_name
+from shared.plan.constants import DEFAULT_FREE_PLAN
 
 from app import celery_app
 from database.models import Owner, Repository
-from services.billing import BillingPlan
 from services.github_marketplace import GitHubMarketplaceService
 from services.stripe import stripe
 from tasks.base import BaseCodecovTask
@@ -19,7 +19,7 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
     Sync GitHub marketplace plans
     """
 
-    async def run_async(self, db_session, sender=None, account=None, action=None):
+    def run_impl(self, db_session, sender=None, account=None, action=None):
         """
         Sender: The person who took the action that triggered the webhook. Ex:
         { "login":"username", "id":3877742, "type":"User", ...,  "email":"username@email.com" }
@@ -153,6 +153,7 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
             name=name,
             email=email,
             plan_provider="github",
+            createstamp=datetime.now(),
         )
         db_session.add(owner)
         db_session.flush()
@@ -186,7 +187,10 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
         Create or update plan from GitHub marketplace purchase info. Cancel Stripe
         subscription if owner currently has one.
         """
-        log.info("Create or update plan", extra=dict(service_id=service_id))
+        log.info(
+            "Github Marketplace - Create or update plan",
+            extra=dict(service_id=service_id),
+        )
 
         owner = (
             db_session.query(Owner)
@@ -202,8 +206,11 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
             owner.plan_user_count = purchase_object["unit_count"]
 
             if owner.stripe_customer_id and owner.stripe_subscription_id:
-                # cancel strip subscription
-                stripe.Subscription.delete(owner.stripe_subscription_id)
+                # cancel stripe subscription immediately
+                stripe.Subscription.cancel(
+                    owner.stripe_subscription_id,
+                    prorate=True,
+                )
                 owner.stripe_subscription_id = None
         else:
             # create the user
@@ -236,7 +243,7 @@ class SyncPlansTask(BaseCodecovTask, name=ghm_sync_plans_task_name):
 
         if owner:
             # deactivate repos and remove all activated users for this owner
-            owner.plan = BillingPlan.users_basic.value
+            owner.plan = DEFAULT_FREE_PLAN
             owner.plan_user_count = 1
             owner.plan_activated_users = None
 

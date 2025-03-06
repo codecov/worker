@@ -1,8 +1,8 @@
 import pytest
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
-from services.billing import BillingPlan
 from services.github_marketplace import GitHubMarketplaceService
 from tasks.github_marketplace import SyncPlansTask
 
@@ -27,13 +27,12 @@ C/tY+lZIEO1Gg/FxSMB+hwwhwfSuE3WohZfEcSy+R48=
 
 @pytest.mark.integration
 class TestGHMarketplaceSyncPlansTask(object):
-    @pytest.mark.asyncio
-    async def test_purchase_by_existing_owner(
+    def test_purchase_by_existing_owner(
         self, dbsession, mocker, mock_configuration, codecov_vcr
     ):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -62,23 +61,20 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "purchased"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "paid"
 
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate is True
         assert owner.plan_user_count == 10
 
-    @pytest.mark.asyncio
-    async def test_purchase_new_owner(
+    def test_purchase_new_owner(
         self, dbsession, mocker, mock_configuration, codecov_vcr
     ):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -95,9 +91,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "purchased"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "paid"
 
         owner = (
@@ -108,18 +102,17 @@ class TestGHMarketplaceSyncPlansTask(object):
 
         assert owner is not None
         assert owner.username == "cc-test"
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate is True
         assert owner.plan_user_count == 10
 
-    @pytest.mark.asyncio
-    async def test_purchase_listing_not_found(
+    def test_purchase_listing_not_found(
         self, dbsession, mocker, mock_configuration, codecov_vcr
     ):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -136,9 +129,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "purchased"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "free"
 
         owner = (
@@ -150,15 +141,14 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner is not None
         assert owner.username == "some-org"
         assert owner.plan_provider == "github"
-        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_user_count == 1
         assert owner.plan_activated_users is None
 
-    @pytest.mark.asyncio
-    async def test_cancelled(self, dbsession, mocker, mock_configuration, codecov_vcr):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+    def test_cancelled(self, dbsession, mocker, mock_configuration, codecov_vcr):
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
 
         mock_configuration.params["github"] = {
             "integration": {
@@ -174,7 +164,7 @@ class TestGHMarketplaceSyncPlansTask(object):
             username="cc-test",
             service="github",
             service_id="3877742",
-            plan="users",
+            plan=PlanName.GHM_PLAN_NAME.value,
             plan_provider="github",
             plan_auto_activate=True,
             plan_user_count=10,
@@ -214,9 +204,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         action = "cancelled"
 
         task = SyncPlansTask()
-        result = await task.run_async(
-            dbsession, sender=sender, account=account, action=action
-        )
+        result = task.run_impl(dbsession, sender=sender, account=account, action=action)
         assert result["plan_type_synced"] == "free"
 
         dbsession.commit()
@@ -228,9 +216,9 @@ class TestGHMarketplaceSyncPlansTask(object):
         assert owner is not None
         assert owner.username == "cc-test"
         assert owner.plan_provider == "github"
-        assert owner.plan == "users-basic"
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_user_count == 1
-        assert owner.plan_activated_users == None
+        assert owner.plan_activated_users is None
 
         repos = (
             dbsession.query(Repository)
@@ -241,13 +229,10 @@ class TestGHMarketplaceSyncPlansTask(object):
         for repo in repos:
             assert repo.activated is False
 
-    @pytest.mark.asyncio
-    async def test_sync_all_plans(
-        self, dbsession, mocker, mock_configuration, codecov_vcr
-    ):
-        mock_configuration.loaded_files[
-            ("github", "integration", "pem")
-        ] = fake_private_key
+    def test_sync_all_plans(self, dbsession, mocker, mock_configuration, codecov_vcr):
+        mock_configuration.loaded_files[("github", "integration", "pem")] = (
+            fake_private_key
+        )
         mock_configuration.params["github"] = {
             "integration": {
                 "pem": "/home/src/certs/github.pem",
@@ -265,7 +250,7 @@ class TestGHMarketplaceSyncPlansTask(object):
             username="test2",
             service="github",
             service_id="781233",
-            plan="users",
+            plan=PlanName.GHM_PLAN_NAME.value,
             plan_provider="github",
             plan_auto_activate=True,
             plan_user_count=10,
@@ -286,7 +271,7 @@ class TestGHMarketplaceSyncPlansTask(object):
         owners = dbsession.query(Owner).filter(Owner.service_id.in_(["2", "4"])).all()
         assert owners is not None
         for owner in owners:
-            assert owner.plan == "users"
+            assert owner.plan == PlanName.GHM_PLAN_NAME.value
             assert owner.plan_provider == "github"
             assert owner.plan_auto_activate == True
             assert owner.plan_user_count == 12

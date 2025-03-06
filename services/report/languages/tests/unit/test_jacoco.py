@@ -1,13 +1,16 @@
 import datetime
+import logging
 import xml.etree.cElementTree as etree
 from time import time
 
 import pytest
+from pytest import LogCaptureFixture
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import jacoco
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.0//EN" "report.dtd">
@@ -32,6 +35,7 @@ xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
           </method>
         </class>
         <sourcefile name="source.java">
+            <line nr="0" mi="0" ci="20" mb="0" cb="0" />
             <line nr="1" mi="99" ci="99" mb="0" cb="2" />
             <line nr="2" mi="0" ci="2" mb="1" cb="1" />
             <line nr="3" mi="1" ci="0" mb="0" cb="0" />
@@ -51,6 +55,10 @@ xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 
 
 class TestJacoco(BaseTestCase):
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog: LogCaptureFixture):
+        self.caplog = caplog
+
     def test_report(self):
         def fixes(path):
             if path == "base/ignore":
@@ -58,19 +66,19 @@ class TestJacoco(BaseTestCase):
             assert path in ("base/source.java", "base/file.java", "base/empty")
             return path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "file_name"
-        )
-        report = jacoco.from_xml(
-            etree.fromstring(xml % int(time())), report_builder_session
-        )
-        processed_report = self.convert_report_to_better_readable(report)
-        import pprint
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
 
-        pprint.pprint(processed_report["archive"])
+        with self.caplog.at_level(logging.WARNING, logger=jacoco.__name__):
+            jacoco.from_xml(etree.fromstring(xml % int(time())), report_builder_session)
+
+            assert (
+                self.caplog.records[-1].message
+                == "Jacoco report has an invalid coverage line: nr=0. Skipping processing line."
+            )
+
+        report = report_builder_session.output_report()
+        processed_report = self.convert_report_to_better_readable(report)
+
         expected_result_archive = {
             "base/file.java": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
             "base/source.java": [
@@ -90,22 +98,14 @@ class TestJacoco(BaseTestCase):
             assert path in ("base/source.java", "base/file.java", "base/empty")
             return path
 
-        report_builder = ReportBuilder(
+        report_builder_session = create_report_builder_session(
             current_yaml={"parsers": {"jacoco": {"partials_as_hits": True}}},
-            sessionid=0,
-            ignored_lines={},
             path_fixer=fixes,
         )
-        report_builder_session = report_builder.create_report_builder_session(
-            "file_name"
-        )
-        report = jacoco.from_xml(
-            etree.fromstring(xml % int(time())), report_builder_session
-        )
+        jacoco.from_xml(etree.fromstring(xml % int(time())), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "base/file.java": [(1, 1, None, [[0, 1, None, None, None]], None, None)],
             "base/source.java": [
@@ -142,14 +142,11 @@ class TestJacoco(BaseTestCase):
             else:
                 return path if "src/main/java" in path else None
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "file_name"
-        )
-        report = jacoco.from_xml(etree.fromstring(data), report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        jacoco.from_xml(etree.fromstring(data), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
+
         assert [path] == list(processed_report["archive"].keys())
 
     @pytest.mark.parametrize(
@@ -162,11 +159,7 @@ class TestJacoco(BaseTestCase):
         ],
     )
     def test_expired(self, date):
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=None
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "file_name"
-        )
+        report_builder_session = create_report_builder_session()
+
         with pytest.raises(ReportExpiredException, match="Jacoco report expired"):
             jacoco.from_xml(etree.fromstring(xml % date), report_builder_session)

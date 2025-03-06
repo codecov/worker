@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from hashlib import sha1
 from uuid import uuid4
 
 import factory
 from factory import Factory
+from shared.django_apps.codecov_auth.models import Plan, Tier
+from shared.plan.constants import DEFAULT_FREE_PLAN, TierName
 
 from database import enums, models
 from services.encryption import encryptor
@@ -48,6 +50,8 @@ class OwnerFactory(Factory):
     trial_end_date = datetime.now()
     trial_status = enums.TrialStatus.NOT_STARTED.value
     trial_fired_by = None
+    upload_token_required_for_public_repos = False
+    plan = DEFAULT_FREE_PLAN
 
     oauth_token = factory.LazyAttribute(
         lambda o: encrypt_oauth_token(o.unencrypted_oauth_token)
@@ -71,9 +75,13 @@ class RepositoryFactory(Factory):
 
     owner = factory.SubFactory(OwnerFactory)
     bot = None
-    updatestamp = factory.LazyAttribute(lambda o: datetime.now())
+    updatestamp = factory.LazyAttribute(lambda o: datetime.now(tz=timezone.utc))
     languages = []
-    languages_last_updated = factory.LazyAttribute(lambda o: datetime.now())
+    languages_last_updated = factory.LazyAttribute(
+        lambda o: datetime.now(tz=timezone.utc)
+    )
+    bundle_analysis_enabled = False
+    test_analytics_enabled = True
 
 
 class BranchFactory(Factory):
@@ -111,8 +119,8 @@ class CommitFactory(Factory):
         ).hexdigest()
     )
     ci_passed = True
-    pullid = 1
-    timestamp = datetime(2019, 2, 1, 17, 59, 47)
+    pullid = None
+    timestamp = datetime(2019, 2, 1, 17, 59, 47, tzinfo=timezone.utc)
     author = factory.SubFactory(OwnerFactory)
     repository = factory.SubFactory(RepositoryFactory)
     totals = factory.LazyFunction(
@@ -291,3 +299,41 @@ class ConstantsFactory(Factory):
 
     key = ""
     value = ""
+
+
+class TierFactory(Factory):
+    class Meta:
+        model = Tier
+
+    tier_name = TierName.BASIC.value
+    bundle_analysis = False
+    test_analytics = False
+    flaky_test_detection = False
+    project_coverage = False
+    private_repo_support = False
+
+
+class PlanFactory(Factory):
+    class Meta:
+        model = Plan
+
+    tier = factory.SubFactory(TierFactory)
+    base_unit_price = 0
+    benefits = factory.LazyFunction(lambda: ["Benefit 1", "Benefit 2", "Benefit 3"])
+    billing_rate = None
+    is_active = True
+    marketing_name = factory.Faker("catch_phrase")
+    max_seats = 1
+    monthly_uploads_limit = None
+    name = DEFAULT_FREE_PLAN
+    paid_plan = False
+    stripe_id = None
+
+
+class UploadErrorFactory(Factory):
+    class Meta:
+        model = models.UploadError
+
+    report_upload = factory.SubFactory(UploadFactory)
+    error_code = "error"
+    error_params = {"error_message": "error message"}

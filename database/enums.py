@@ -26,6 +26,16 @@ class Notification(Enum):
     codecov_slack_app = "codecov_slack_app"
 
 
+notification_type_status_or_checks = {
+    Notification.status_changes,
+    Notification.status_patch,
+    Notification.status_project,
+    Notification.checks_changes,
+    Notification.checks_patch,
+    Notification.checks_project,
+}
+
+
 class NotificationState(Enum):
     pending = "pending"
     success = "success"
@@ -62,3 +72,9 @@ class ReportType(Enum):
     COVERAGE = "coverage"
     TEST_RESULTS = "test_results"
     BUNDLE_ANALYSIS = "bundle_analysis"
+
+
+class FlakeSymptomType(Enum):
+    FAILED_IN_DEFAULT_BRANCH = "failed_in_default_branch"
+    CONSECUTIVE_DIFF_OUTCOMES = "consecutive_diff_outcomes"
+    UNRELATED_MATCHING_FAILURES = "unrelated_matching_failures"

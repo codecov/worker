@@ -1,11 +1,10 @@
 import logging
 import re
 import string
-from typing import Optional, Sequence
 
 log = logging.getLogger(__name__)
 
-_remove_known_bad_paths = re.compile(
+remove_known_bad_paths = re.compile(
     r"^(\.*\/)*(%s)?"
     % "|".join(
         (
@@ -88,7 +87,7 @@ def unquote_git_path(path: str) -> str:
     return bytes(rv).decode("utf-8")
 
 
-def clean_toc(toc: str) -> Sequence[str]:
+def clean_toc(toc: str) -> list[str]:
     """
     Split a newline-delimited table of contents into a list of paths.
 
@@ -119,23 +118,3 @@ def clean_toc(toc: str) -> Sequence[str]:
         rv.append(path)
 
     return rv
-
-
-def first_not_null_index(_list) -> Optional[int]:
-    """return key of the first not null value in list"""
-    for i, v in enumerate(_list):
-        if v is not None:
-            return i
-
-
-_star_to_glob = re.compile(r"(?<!\.)\*").sub
-
-
-def _fixpaths_regs(fix: str) -> str:
-    key = tuple(fix.split("::"))[0]
-    # [DEPRECIATING] because handled by validators, but some data is cached in db
-    # a/**/b => a/.*/b
-    key = key.replace("**", r".*")
-    # a/*/b => a/[^\/\n]+/b
-    key = _star_to_glob(r"[^\/\n]+", key)
-    return key.lstrip("/")

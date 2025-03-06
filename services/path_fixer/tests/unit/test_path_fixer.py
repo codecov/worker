@@ -1,3 +1,5 @@
+from pathlib import PurePosixPath, PureWindowsPath
+
 from shared.yaml import UserYaml
 
 from services.path_fixer import PathFixer, invert_pattern
@@ -107,9 +109,6 @@ class TestBasePathAwarePathFixer(object):
         assert base_aware_pf("sample/path.c") == "path.c"
         assert base_aware_pf("another/path.py") == "another/path.py"
         assert base_aware_pf("/another/path.py") == "another/path.py"
-        assert len(base_aware_pf.unexpected_results) == 0
-        assert base_aware_pf.log_abnormalities() is False
-        assert not base_aware_pf.log_abnormalities()
 
     def test_basepath_uses_own_result_if_main_is_none(self):
         toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
@@ -118,13 +117,6 @@ class TestBasePathAwarePathFixer(object):
         base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
         assert pf("__init__.py") is None
         assert base_aware_pf("__init__.py") == "project/__init__.py"
-        assert base_aware_pf.log_abnormalities()
-        assert len(base_aware_pf.unexpected_results) == 1
-        assert base_aware_pf.unexpected_results.pop() == {
-            "original_path": "__init__.py",
-            "original_path_fixer_result": None,
-            "base_path_aware_result": "project/__init__.py",
-        }
 
     def test_basepath_uses_own_result_if_main_is_none_multuple_base_paths(self):
         toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
@@ -134,12 +126,54 @@ class TestBasePathAwarePathFixer(object):
         assert pf("__init__.py") is None
         assert base_aware_pf("__init__.py") is None
         assert (
-            base_aware_pf("__init__.py", bases_to_try=["/home/travis/build/project"])
+            base_aware_pf("__init__.py", bases_to_try=("/home/travis/build/project",))
             == "project/__init__.py"
         )
-        assert base_aware_pf.log_abnormalities()
-        assert base_aware_pf.unexpected_results.pop() == {
-            "original_path": "__init__.py",
-            "original_path_fixer_result": None,
-            "base_path_aware_result": "project/__init__.py",
-        }
+
+    def test_basepath_does_not_resolve_empty_paths(self):
+        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
+        pf = PathFixer.init_from_user_yaml({}, toc, [])
+        coverage_file = "/some/coverage.xml"
+        base_aware_pf = pf.get_relative_path_aware_pathfixer(coverage_file)
+
+        assert base_aware_pf("") is None
+
+    def test_basepath_with_win_and_posix_paths(self):
+        toc = ["project/__init__.py", "tests/__init__.py", "tests/test_project.py"]
+        pf = PathFixer.init_from_user_yaml({}, toc, [])
+
+        posix_coverage_file_path = "/posix_base_path/coverage.xml"
+        posix_base_aware_pf = pf.get_relative_path_aware_pathfixer(
+            posix_coverage_file_path
+        )
+        assert posix_base_aware_pf.base_path == [PurePosixPath("/posix_base_path")]
+
+        windows_coverage_file_path = "C:\\windows_base_path\\coverage.xml"
+        windows_base_aware_pf = pf.get_relative_path_aware_pathfixer(
+            windows_coverage_file_path
+        )
+        assert windows_base_aware_pf.base_path == [
+            PureWindowsPath("C:\\windows_base_path")
+        ]
+
+
+def test_ambiguous_paths():
+    toc = [
+        "foobar/bar/baz.py",
+        "barfoo/bar/baz.py",
+    ]
+    base_path = "/home/runner/work/owner/repo/foobar/build/coverage/coverage.xml"
+    #                                         ~~~~~~
+    bases_to_try = ("/app",)
+    # The problem here is that the given `file_name` is ambiguous, and neither the
+    # `base_path` nor the `bases_to_try` is helping us narrow this down.
+    # The `base_path` does include one of the relevant parent directories,
+    # but the paths within the coverage file are not relative to *that* file,
+    # and the `bases_to_try` seem to be completely unrelated.
+    file_name = "bar/baz.py"
+
+    pf = PathFixer.init_from_user_yaml({}, toc, [])
+    base_aware_pf = pf.get_relative_path_aware_pathfixer(base_path)
+
+    assert pf(file_name) is None
+    assert base_aware_pf(file_name, bases_to_try=bases_to_try) is None

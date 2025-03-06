@@ -8,7 +8,7 @@ from database.models.timeseries import Measurement
 
 class TestDatabaseEngine:
     def test_session_get_bind_timeseries_disabled(self, sqlalchemy_connect_url, mocker):
-        mocker.patch("database.engine.timeseries_enabled", return_value=False)
+        mocker.patch("database.engine.is_timeseries_enabled", return_value=False)
 
         session_factory = SessionFactory(
             database_url=sqlalchemy_connect_url,
@@ -33,7 +33,7 @@ class TestDatabaseEngine:
         assert engine == session_factory.main_engine
 
     def test_session_get_bind_timeseries_enabled(self, sqlalchemy_connect_url, mocker):
-        mocker.patch("database.engine.timeseries_enabled", return_value=True)
+        mocker.patch("database.engine.is_timeseries_enabled", return_value=True)
 
         session_factory = SessionFactory(
             database_url=sqlalchemy_connect_url,

@@ -1,13 +1,53 @@
+"""
+`checkpoint_logger` is a module that tracks latencies/reliabilities for higher-level
+"flows" that don't map well to auto-instrumented tracing. It serializes its data
+between tasks allowing you to begin a flow on one host and log its completion on
+another (as long as clock drift is marginal).
+
+See `UploadFlow` for an example of defining a flow. It's recommended that you
+define your flow with the decorators in this file:
+- `@success_events()`, `@failure_events()`: designate some events as terminal
+    success/fail states of your flow.
+- `@subflows()`: pre-define subflows that get submitted automatically; implicitly
+    define a flow from the first event to each success or failure event
+- `@reliability_counters`: increment event, start, finish, success, failure counters
+    for defining reliability metrics for your flow
+
+It is expected that `@subflows()` and `@reliability_counters` be invoked **after**
+`@success_events()` and/or `@failure_events`.
+
+    # Simple usage
+    UploadFlow.log(UploadFlow.BEGIN)
+    ...
+    # each function returns the flow so you can chain `log` calls.
+    UploadFlow
+        .log(UploadFlow.PROCESSING_COMPLETE)
+        .log(UploadFlow.SKIPPING_NOTIFICATION)
+
+
+    # More complicated usage
+    # - Loads data from a previous task that was passed in `kwargs`
+    # - Logs `UploadFlow.BEGIN` directly into `kwargs` to pass to the next task
+    # - Ignores if `UploadFlow.BEGIN` was already logged (i.e. if this is a task retry)
+    from_kwargs([UploadFlow], kwargs)
+    UploadFlow.log(UploadFlow.BEGIN, kwargs=kwargs, ignore_repeat=True)
+    next_task(kwargs)
+    ...
+    # when using `@failure_events()` and `@subflows()`, an auto-created subflow
+    # is automatically submitted because `UploadFlow.TOO_MANY_RETRIES` is an error
+    from_kwargs(UploadFlow, kwargs)
+        .log(UploadFlow.TOO_MANY_RETRIES)
+"""
+
 import functools
 import itertools
 import logging
 import time
-from enum import Enum, auto
+from enum import Enum
 from typing import (
     Any,
     Callable,
     ClassVar,
-    Generic,
     Iterable,
     Mapping,
     MutableMapping,
@@ -17,79 +57,21 @@ from typing import (
 )
 
 import sentry_sdk
-from shared.metrics import Counter, Histogram, metrics
+
+from helpers.checkpoint_logger.prometheus import PROMETHEUS_HANDLER
+from helpers.log_context import get_log_context, set_log_context
 
 logger = logging.getLogger(__name__)
 
-
 T = TypeVar("T", bound="BaseFlow")
 TSubflows: TypeAlias = Mapping[T, Iterable[tuple[str, T]]]
-
-
-CHECKPOINTS_TOTAL_BEGUN = Counter(
-    "worker_checkpoints_begun",
-    "Total number of times a flow's first checkpoint was logged.",
-    ["flow"],
-)
-CHECKPOINTS_TOTAL_SUCCEEDED = Counter(
-    "worker_checkpoints_succeeded",
-    "Total number of times one of a flow's success checkpoints was logged.",
-    ["flow"],
-)
-CHECKPOINTS_TOTAL_FAILED = Counter(
-    "worker_checkpoints_failed",
-    "Total number of times one of a flow's failure checkpoints was logged.",
-    ["flow"],
-)
-CHECKPOINTS_TOTAL_ENDED = Counter(
-    "worker_checkpoints_ended",
-    "Total number of times one of a flow's terminal checkpoints (success or failure) was logged.",
-    ["flow"],
-)
-CHECKPOINTS_ERRORS = Counter(
-    "worker_checkpoints_errors",
-    "Total number of errors while trying to log checkpoints",
-    ["flow"],
-)
-CHECKPOINTS_EVENTS = Counter(
-    "worker_checkpoints_events",
-    "Total number of checkpoints logged.",
-    ["flow", "checkpoint"],
-)
-
-CHECKPOINTS_SUBFLOW_DURATION = Histogram(
-    "worker_checkpoints_subflow_duration_seconds",
-    "Duration of subflows in seconds.",
-    ["flow", "subflow"],
-    buckets=[
-        0.05,
-        0.1,
-        0.5,
-        1,
-        2,
-        5,
-        10,
-        30,
-        60,
-        120,
-        180,
-        300,
-        600,
-        900,
-        1200,
-        1800,
-        2400,
-        3600,
-    ],
-)
 
 
 def _error(msg, flow, strict=False):
     # When a new version of worker rolls out, it will pick up tasks that
     # may have been enqueued by the old worker and be missing checkpoints
     # data. At least for that reason, we want to allow failing softly.
-    metrics.incr("worker.checkpoint_logger.error")
-    CHECKPOINTS_ERRORS.labels(flow=flow.__name__).inc()
+    PROMETHEUS_HANDLER.log_errors(flow=flow.__name__)
     if strict:
         raise ValueError(msg)
     else:
@@ -114,7 +96,9 @@ class BaseFlow(str, Enum):
     is_failure: ClassVar[Callable[[T], bool]]
     log_counters: ClassVar[Callable[[T], None]]
 
-    def _generate_next_value_(name: str, start: int, count: int, last_values: list[Any]):  # type: ignore[override]
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: list[Any]
+    ):  # type: ignore[override]
         """
         This powers `enum.auto()`. It sets the value of "MyEnum.A" to "A".
         """
@@ -151,6 +135,154 @@ class BaseFlow(str, Enum):
 
     def __hash__(self):
         return hash(self.name)
+
+    @classmethod
+    def beginning(cls: type[T]) -> T:
+        return next(iter(cls.__members__.values()))
+
+    @classmethod
+    def has_begun(cls: type[T]) -> bool:
+        return cls.beginning() in cls._data_from_log_context()
+
+    @classmethod
+    def has_ended(cls: type[T]) -> bool:
+        return cls.final() in cls._data_from_log_context()
+
+    @classmethod
+    def final(cls: type[T]) -> T:
+        *_, final = iter(cls.__members__.values())
+        return final
+
+    def is_beginning(self):
+        return self == self.beginning()
+
+    @classmethod
+    def _validate_checkpoint(cls: type[T], checkpoint: T) -> None:
+        if checkpoint.__class__ != cls:
+            # This error is not ignored when `strict==False` because it's definitely
+            # a code mistake
+            raise ValueError(
+                f"Checkpoint {checkpoint} not part of flow `{cls.__name__}`"
+            )
+
+    @classmethod
+    def _data_from_log_context(cls: type[T]) -> Mapping[T, int]:
+        return get_log_context().checkpoints_data.get(_kwargs_key(cls), {})
+
+    @classmethod
+    def _save_to_log_context(cls: type[T], data: Mapping[T, int]):
+        log_context = get_log_context()
+        log_context.checkpoints_data[_kwargs_key(cls)] = data
+        set_log_context(log_context)
+
+    @classmethod
+    def save_to_kwargs(cls: type[T], kwargs: dict):
+        data = cls._data_from_log_context()
+        if data:
+            kwargs[_kwargs_key(cls)] = data
+        return kwargs
+
+    @classmethod
+    def log(
+        cls: type[T],
+        checkpoint: T,
+        ignore_repeat: bool = False,
+        kwargs: Optional[MutableMapping[str, Any]] = None,
+        strict: bool = False,
+    ) -> type[T]:
+        cls._validate_checkpoint(checkpoint)
+
+        if not cls.has_begun() and not checkpoint.is_beginning():
+            _error(
+                f"Tried to log checkpoint {checkpoint} before the flow began",
+                cls,
+                strict=strict,
+            )
+            return cls
+
+        is_failure = hasattr(checkpoint, "is_failure") and checkpoint.is_failure()
+        is_success = hasattr(checkpoint, "is_success") and checkpoint.is_success()
+        is_terminal = is_failure or is_success
+        if is_terminal and cls.has_ended():
+            _error(
+                f"Tried to log terminal checkpoint {checkpoint} after the flow ended",
+                cls,
+                strict=strict,
+            )
+            return cls
+
+        data = cls._data_from_log_context()
+        if checkpoint in data:
+            if not ignore_repeat:
+                _error(f"Already recorded checkpoint {checkpoint}", cls, strict=strict)
+            return cls
+
+        timestamp = _get_milli_timestamp()
+        data[checkpoint] = timestamp
+        if is_terminal:
+            data[cls.final()] = timestamp
+        cls._save_to_log_context(data)
+
+        if kwargs is not None:
+            cls.save_to_kwargs(kwargs)
+
+        # `cls._subflows()` comes from the `@subflows` decorator
+        # If the flow has pre-defined subflows, we can automatically submit
+        # any of them that end with the checkpoint we just logged.
+        if hasattr(cls, "_subflows"):
+            for metric, beginning in cls._subflows().get(checkpoint, []):  # type: ignore[operator]
+                cls.submit_subflow(metric, beginning, checkpoint, data=data)
+
+        # `checkpoint.log_counters()` comes from the `@reliability_counters`
+        # decorator
+        # Increment event, start, finish, success, failure counters
+        if hasattr(checkpoint, "log_counters"):
+            checkpoint.log_counters()
+
+        return cls
+
+    @classmethod
+    def _subflow_duration(
+        cls: type[T], start: T, end: T, data: Mapping[T, int], strict=False
+    ) -> Optional[int]:
+        cls._validate_checkpoint(start)
+        cls._validate_checkpoint(end)
+        if start not in data:
+            _error(
+                f"Cannot compute duration; missing start checkpoint {start}",
+                cls,
+                strict=strict,
+            )
+            return None
+        elif end not in data:
+            _error(
+                f"Cannot compute duration; missing end checkpoint {end}",
+                cls,
+                strict=strict,
+            )
+            return None
+        elif end <= start:
+            # This error is not ignored when `self.strict==False` because it's definitely
+            # a code mistake
+            raise ValueError(
+                f"Cannot compute duration; end {end} is not after start {start}"
+            )
+
+        return data[end] - data[start]
+
+    @classmethod
+    def submit_subflow(
+        cls: type[T], metric: str, start: T, end: T, data: Mapping[T, int], strict=False
+    ) -> type[T]:
+        duration = cls._subflow_duration(start, end, data, strict)
+        if duration:
+            sentry_sdk.set_measurement(metric, duration, "milliseconds")
+            duration_in_seconds = duration / 1000
+            PROMETHEUS_HANDLER.log_subflow(
+                flow=cls.__name__, subflow=metric, duration=duration_in_seconds
+            )
+
+        return cls
 
 
 TClassDecorator: TypeAlias = Callable[[type[T]], type[T]]
@@ -243,7 +375,9 @@ def subflows(*args: tuple[str, str, str]) -> TClassDecorator:
             # We get our subflows in the form: [(metric, begin, end)]
             # We want them in the form: {end: [(metric, begin)]}
             # The first step of munging is to group by end
-            key_on_end = lambda x: x[2]
+            def key_on_end(x):
+                return x[2]
+
             sorted_by_end = sorted(args, key=key_on_end)
             grouped_by_end = itertools.groupby(args, key=key_on_end)
 
@@ -326,13 +460,11 @@ def reliability_counters(klass: type[T]) -> type[T]:
     """
 
     def log_counters(obj: T) -> None:
-        metrics.incr(f"{klass.__name__}.events.{obj.name}")
-        CHECKPOINTS_EVENTS.labels(flow=klass.__name__, checkpoint=obj.name).inc()
+        PROMETHEUS_HANDLER.log_checkpoints(flow=klass.__name__, checkpoint=obj.name)
 
         # If this is the first checkpoint, increment the number of flows we've begun
         if obj == next(iter(klass.__members__.values())):
-            metrics.incr(f"{klass.__name__}.total.begun")
-            CHECKPOINTS_TOTAL_BEGUN.labels(flow=klass.__name__).inc()
+            PROMETHEUS_HANDLER.log_begun(flow=klass.__name__)
             return
 
         is_failure = hasattr(obj, "is_failure") and obj.is_failure()
@@ -340,15 +472,12 @@ def reliability_counters(klass: type[T]) -> type[T]:
         is_terminal = is_failure or is_success
 
         if is_failure:
-            metrics.incr(f"{klass.__name__}.total.failed")
-            CHECKPOINTS_TOTAL_FAILED.labels(flow=klass.__name__).inc()
+            PROMETHEUS_HANDLER.log_failure(flow=klass.__name__)
         elif is_success:
-            metrics.incr(f"{klass.__name__}.total.succeeded")
-            CHECKPOINTS_TOTAL_SUCCEEDED.labels(flow=klass.__name__).inc()
+            PROMETHEUS_HANDLER.log_success(flow=klass.__name__)
 
         if is_terminal:
-            metrics.incr(f"{klass.__name__}.total.ended")
-            CHECKPOINTS_TOTAL_ENDED.labels(flow=klass.__name__).inc()
+            PROMETHEUS_HANDLER.log_total_ended(flow=klass.__name__)
 
     klass.log_counters = log_counters
     return klass
@@ -362,155 +491,30 @@ def _kwargs_key(cls: type[T]) -> str:
     return f"checkpoints_{cls.__name__}"
 
 
-class CheckpointLogger(Generic[T]):
-    """
-    CheckpointLogger is a class that tracks latencies/reliabilities for higher-level
-    "flows" that don't map well to auto-instrumented tracing. It can be
-    reconstructed from its serialized data allowing you to begin a flow on one host
-    and log its completion on another (as long as clock drift is marginal).
-
-    See `UploadFlow` for an example of defining a flow. It's recomended that you
-    define your flow with the decorators in this file:
-    - `@success_events()`, `@failure_events()`: designate some events as terminal
-      success/fail states of your flow.
-    - `@subflows()`: pre-define subflows that get submitted automatically; implicitly
-      define a flow from the first event to each success or failure event
-    - `@reliability_counters`: increment event, start, finish, success, failure counters
-      for defining reliability metrics for your flow
-
-    It is expected that `@subflows()` and `@reliability_counters` be invoked **after**
-    `@success_events()` and/or `@failure_events`.
-
-      # Simple usage
-      checkpoints = CheckpointLogger(UploadFlow)
-      checkpoints.log(UploadFlow.BEGIN)
-      ...
-      # each member returns `self` so you can chain `log` and `submit_subflow` calls
-      # calling `submit_subflow` manually is unnecessary when using `@subflows()`
-      checkpoints
-          .log(UploadFlow.PROCESSING_BEGIN)
-          .submit_subflow("time_before_processing", UploadFlow.BEGIN, UploadFlow.PROCESSING_BEGIN)
-
-      # More complicated usage
-      # - Creates logger from `kwargs`
-      # - logs `UploadFlow.BEGIN` directly into `kwargs`
-      # - ignores if `UploadFlow.BEGIN` was already logged (i.e. if this is a task retry)
-      from_kwargs(UploadFlow, kwargs).log(UploadFlow.BEGIN, kwargs=kwargs, ignore_repeat=True)
-      next_task(kwargs)
-      ...
-      # when using `@failure_events()` and `@subflows()`, an auto-created subflow
-      # is automatically submitted because `UploadFlow.TOO_MANY_RETRIES` is an error
-      from_kwargs(UploadFlow, kwargs)
-          .log(UploadFlow.TOO_MANY_RETRIES)
-    """
-
-    _Self = TypeVar("_Self", bound="CheckpointLogger[T]")
-
-    def __init__(
-        self: _Self,
-        cls: type[T],
-        data: Optional[MutableMapping[T, int]] = None,
-        strict=False,
-    ):
-        self.cls = cls
-        self.data = data if data else {}
-        self.kwargs_key = _kwargs_key(self.cls)
-        self.strict = strict
-
-    def _error(self: _Self, msg: str) -> None:
-        _error(msg, self.cls, self.strict)
-
-    def _validate_checkpoint(self: _Self, checkpoint: T) -> None:
-        if checkpoint.__class__ != self.cls:
-            # This error is not ignored when `self.strict==False` because it's definitely
-            # a code mistake
-            raise ValueError(
-                f"Checkpoint {checkpoint} not part of flow `{self.cls.__name__}`"
-            )
-
-    def _subflow_duration(self: _Self, start: T, end: T) -> Optional[int]:
-        self._validate_checkpoint(start)
-        self._validate_checkpoint(end)
-        if start not in self.data:
-            self._error(f"Cannot compute duration; missing start checkpoint {start}")
-            return None
-        elif end not in self.data:
-            self._error(f"Cannot compute duration; missing end checkpoint {end}")
-            return None
-        elif end <= start:
-            # This error is not ignored when `self.strict==False` because it's definitely
-            # a code mistake
-            raise ValueError(
-                f"Cannot compute duration; end {end} is not after start {start}"
-            )
-
-        return self.data[end] - self.data[start]
-
-    def log(
-        self: _Self,
-        checkpoint: T,
-        ignore_repeat: bool = False,
-        kwargs: Optional[MutableMapping[str, Any]] = None,
-    ) -> _Self:
-        if checkpoint not in self.data:
-            self._validate_checkpoint(checkpoint)
-            self.data[checkpoint] = _get_milli_timestamp()
-        elif not ignore_repeat:
-            self._error(f"Already recorded checkpoint {checkpoint}")
-            return self
-        else:
-            return self
-
-        if kwargs is not None:
-            kwargs[self.kwargs_key] = self.data
-
-        # `self.cls._subflows()` comes from the `@subflows` decorator
-        # If the flow has pre-defined subflows, we can automatically submit
-        # any of them that end with the checkpoint we just logged.
-        if hasattr(self.cls, "_subflows"):
-            # mypy thinks selc.cls._subflows == self.cls
-            for metric, beginning in self.cls._subflows().get(checkpoint, []):  # type: ignore[operator]
-                self.submit_subflow(metric, beginning, checkpoint)
-
-        # `checkpoint.log_counters()` comes from the `@reliability_counters`
-        # decorator
-        # Increment event, start, finish, success, failure counters
-        if hasattr(checkpoint, "log_counters"):
-            checkpoint.log_counters()
-
-        return self
-
-    def submit_subflow(self: _Self, metric: str, start: T, end: T) -> _Self:
-        duration = self._subflow_duration(start, end)
-        if duration:
-            sentry_sdk.set_measurement(metric, duration, "milliseconds")
-            duration_in_seconds = duration / 1000
-            CHECKPOINTS_SUBFLOW_DURATION.labels(
-                flow=self.cls.__name__, subflow=metric
-            ).observe(duration_in_seconds)
-
-        return self
-
-
 def from_kwargs(
-    cls: type[T], kwargs: MutableMapping[str, Any], strict: bool = False
-) -> CheckpointLogger[T]:
-    data = kwargs.get(_kwargs_key(cls), {})
+    flows: list[type[T]], kwargs: MutableMapping[str, Any], strict: bool = False
+):
+    checkpoints_data = {}
+    for cls in flows:
+        kwargs_key = _kwargs_key(cls)
+        data = kwargs.get(kwargs_key, {})
 
-    # kwargs has been deserialized into a Python dictionary, but our enum values
-    # are deserialized as simple strings. We need to ensure the strings are all
-    # proper enum values as best we can, and then downcast to enum instances.
-    deserialized_data = {}
-    for checkpoint, timestamp in data.items():
-        try:
-            deserialized_data[cls(checkpoint)] = timestamp
-        except ValueError:
-            _error(
-                f"Checkpoint {checkpoint} not part of flow `{cls.__name__}`",
-                cls,
-                strict,
-            )
-            deserialized_data = {}
-            break
+        # kwargs has been deserialized into a Python dictionary, but our enum values
+        # are deserialized as simple strings. We need to ensure the strings are all
+        # proper enum values as best we can, and then downcast to enum instances.
+        checkpoints_data[kwargs_key] = {}
+        for checkpoint, timestamp in data.items():
+            try:
+                checkpoints_data[kwargs_key][cls(checkpoint)] = timestamp
+            except ValueError:
+                _error(
+                    f"Checkpoint {checkpoint} not part of flow `{cls.__name__}`",
+                    cls,
+                    strict,
+                )
+                checkpoints_data[kwargs_key] = {}
+                break
 
-    return CheckpointLogger(cls, deserialized_data, strict)
+    log_context = get_log_context()
+    log_context.checkpoints_data = checkpoints_data
+    set_log_context(log_context)

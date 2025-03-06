@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -8,9 +9,8 @@ from shared.config import ConfigHelper
 from shared.storage.memory import MemoryStorageService
 from shared.torngit import Github as GithubHandler
 from sqlalchemy import event
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
-from sqlalchemy_utils import create_database, database_exists
+from sqlalchemy_utils import database_exists
 
 from celery_config import initialize_logging
 from database.base import Base
@@ -26,6 +26,7 @@ def pytest_configure(config):
     file after command line options have been parsed.
     """
     os.environ["CURRENT_ENVIRONMENT"] = "local"
+    os.environ["RUN_ENV"] = "DEV"
     _get_cached_current_env.cache_clear()
     initialize_logging()
 
@@ -38,7 +39,7 @@ def pytest_itemcollected(item):
 
 
 @pytest.fixture(scope="session")
-def engine(request, sqlalchemy_connect_url, app_config):
+def engine(request, sqlalchemy_db, sqlalchemy_connect_url, app_config):
     """Engine configuration.
     See http://docs.sqlalchemy.org/en/latest/core/engines.html
     for more details.
@@ -65,30 +66,102 @@ def engine(request, sqlalchemy_connect_url, app_config):
         engine.url.database = "{}_{}".format(engine.url.database, xdist_suffix)
         engine = create_engine(engine.url)  # override engine
 
-    def fin():
-        print("Disposing engine")
-        engine.dispose()
+    # Check that the DB exist and migrate the unmigrated SQLALchemy models as a stop-gap
+    database_url = sqlalchemy_connect_url
+    if not database_exists(database_url):
+        raise RuntimeError(f"SQLAlchemy cannot connect to DB at {database_url}")
 
-    request.addfinalizer(fin)
-    return engine
+    Base.metadata.tables["timeseries_measurement"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["timeseries_dataset"].create(bind=engine, checkfirst=True)
+
+    Base.metadata.tables["compare_commitcomparison"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["compare_flagcomparison"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["compare_componentcomparison"].create(
+        bind=engine, checkfirst=True
+    )
+
+    Base.metadata.tables["labelanalysis_labelanalysisrequest"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["labelanalysis_labelanalysisprocessingerror"].create(
+        bind=engine, checkfirst=True
+    )
+
+    Base.metadata.tables["staticanalysis_staticanalysissuite"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["staticanalysis_staticanalysissinglefilesnapshot"].create(
+        bind=engine, checkfirst=True
+    )
+    Base.metadata.tables["staticanalysis_staticanalysissuitefilepath"].create(
+        bind=engine, checkfirst=True
+    )
+
+    yield engine
+
+    print("Disposing engine")  # noqa: T201
+    engine.dispose()
 
 
 @pytest.fixture(scope="session")
-def db(engine, sqlalchemy_connect_url):
-    database_url = sqlalchemy_connect_url
-    try:
-        if not database_exists(database_url):
-            create_database(database_url)
-    except OperationalError:
-        pytest.skip("No available db")
-    connection = engine.connect()
-    connection.execute("DROP SCHEMA IF EXISTS public CASCADE;")
-    connection.execute("CREATE SCHEMA public;")
-    Base.metadata.create_all(engine)
+def sqlalchemy_db(request: pytest.FixtureRequest, django_db_blocker, django_db_setup):
+    # Bootstrap the DB by running the Django bootstrap version.
+    from django.conf import settings
+    from django.db import connections
+    from django.test.utils import setup_databases, teardown_databases
+
+    keepdb = request.config.getvalue("reuse_db", False) and not request.config.getvalue(
+        "create_db", False
+    )
+
+    with django_db_blocker.unblock():
+        # Temporarily reset the database to the SQLAlchemy DBs to run the migrations.
+        original_db_name = settings.DATABASES["default"]["NAME"]
+        original_test_name = settings.DATABASES["default"]["TEST"]["NAME"]
+        settings.DATABASES["default"]["NAME"] = "sqlalchemy"
+        settings.DATABASES["default"]["TEST"]["NAME"] = "test_postgres_sqlalchemy"
+        db_cfg = setup_databases(
+            verbosity=request.config.option.verbose,
+            interactive=False,
+            keepdb=keepdb,
+        )
+        settings.DATABASES["default"]["NAME"] = original_db_name
+        settings.DATABASES["default"]["TEST"]["NAME"] = original_test_name
+
+        # Hack to get the default connection for the test database to _actually_ be the
+        # Django database that the django_db should actually use. It was set to the SQLAlchemy database,
+        # but this makes sure that the default Django DB connection goes to the Django database.
+        # Since the database was already created and migrated in the django_db_setup fixture,
+        # we set keepdb=True to avoid recreating the database and rerunning the migrations.
+        connections.configure_settings(settings.DATABASES)
+        connections["default"].creation.create_test_db(
+            verbosity=request.config.option.verbose,
+            autoclobber=True,
+            keepdb=True,
+        )
+
+    yield
+
+    if not keepdb:
+        try:
+            with django_db_blocker.unblock():
+                # Need to set `test_postgres_sqlalchemy` as the main db name to tear down properly.
+                settings.DATABASES["default"]["NAME"] = "test_postgres_sqlalchemy"
+                teardown_databases(db_cfg, verbosity=request.config.option.verbose)
+                settings.DATABASES["default"]["NAME"] = original_db_name
+        except Exception as exc:  # noqa: BLE001
+            request.node.warn(
+                pytest.PytestWarning(
+                    f"Error when trying to teardown test databases: {exc!r}"
+                )
+            )
 
 
 @pytest.fixture
-def dbsession(db, engine):
+def dbsession(sqlalchemy_db, engine):
+    """Sets up the SQLAlchemy dbsession."""
     connection = engine.connect()
 
     connection_transaction = connection.begin()
@@ -129,11 +202,9 @@ def mock_configuration(mocker):
                 "access_key_id": "codecov-default-key",
                 "bucket": "archive",
                 "hash_key": "88f572f4726e4971827415efa8867978",
-                "periodic_callback_ms": False,
                 "secret_access_key": "codecov-default-secret",
                 "verify_ssl": False,
             },
-            "redis_url": "redis://redis:@localhost:6379/",
             "smtp": {
                 "host": "mailhog",
                 "port": 1025,
@@ -154,7 +225,18 @@ def mock_configuration(mocker):
 
 
 @pytest.fixture
+def empty_configuration(mocker):
+    m = mocker.patch("shared.config._get_config_instance")
+    mock_config = ConfigHelper()
+    m.return_value = mock_config
+    return mock_config
+
+
+@pytest.fixture
 def codecov_vcr(request):
+    vcr_log = logging.getLogger("vcr")
+    vcr_log.setLevel(logging.ERROR)
+
     current_path = Path(request.node.fspath)
     current_path_name = current_path.name.replace(".py", "")
     cassete_path = current_path.parent / "cassetes" / current_path_name
@@ -182,10 +264,23 @@ def mock_redis(mocker):
 
 @pytest.fixture
 def mock_storage(mocker):
-    m = mocker.patch("services.storage._cached_get_storage_client")
+    m = mocker.patch("shared.storage.get_appropriate_storage_service")
     storage_server = MemoryStorageService({})
     m.return_value = storage_server
-    yield storage_server
+    return storage_server
+
+
+@pytest.fixture
+def mock_archive_storage(mocker):
+    mocker.patch(
+        "shared.django_apps.core.models.should_write_data_to_storage_config_check",
+        return_value=True,
+    )
+    storage_server = MemoryStorageService({})
+    mocker.patch(
+        "shared.storage.get_appropriate_storage_service", return_value=storage_server
+    )
+    return storage_server
 
 
 @pytest.fixture
@@ -201,6 +296,7 @@ def mock_repo_provider(mocker):
     m = mocker.patch("services.repository._get_repo_provider_service_instance")
     provider_instance = mocker.MagicMock(
         GithubHandler,
+        data={},
         get_commit_diff=mock.AsyncMock(return_value={}),
         get_distance_in_commits=mock.AsyncMock(
             return_value={"behind_by": 0, "behind_by_commit": None}
@@ -212,16 +308,21 @@ def mock_repo_provider(mocker):
 
 @pytest.fixture
 def mock_owner_provider(mocker):
-    m = mocker.patch("services.owner._get_owner_provider_service_instance")
     provider_instance = mocker.MagicMock(GithubHandler)
-    m.return_value = provider_instance
+
+    def side_effect(*args, **kwargs):
+        provider_instance.data = {**kwargs}
+        return provider_instance
+
+    m = mocker.patch("services.owner._get_owner_provider_service_instance")
+    m.side_effect = side_effect
     yield provider_instance
 
 
 @pytest.fixture
 def with_sql_functions(dbsession):
     dbsession.execute(
-        """CREATE FUNCTION array_append_unique(anyarray, anyelement) RETURNS anyarray
+        """CREATE OR REPLACE FUNCTION array_append_unique(anyarray, anyelement) RETURNS anyarray
                 LANGUAGE sql IMMUTABLE
                 AS $_$
             select case when $2 is null
@@ -285,16 +386,25 @@ def mock_checkpoint_submit(mocker, request):
     if request.node.get_closest_marker("real_checkpoint_logger"):
         return
 
-    def mock_submit_fn(metric, start, end):
+    def mock_submit_fn(metric, start, end, data={}):
         pass
 
     mock_submit = mocker.Mock()
     mock_submit.side_effect = mock_submit_fn
 
-    from helpers.checkpoint_logger import CheckpointLogger
-
-    return mocker.patch.object(
-        CheckpointLogger,
-        "submit_subflow",
-        mock_submit,
+    return mocker.patch(
+        "helpers.checkpoint_logger.BaseFlow.submit_subflow", mock_submit
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_feature(mocker, request):
+    if request.node.get_closest_marker("real_feature"):
+        return
+
+    from shared.rollouts import Feature
+
+    def check_value(self, identifier, default=False):
+        return default
+
+    return mocker.patch.object(Feature, "check_value", check_value)

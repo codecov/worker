@@ -1,7 +1,7 @@
-import json
 from pathlib import Path
 
 import pytest
+from freezegun import freeze_time
 
 from database.models import Owner
 from database.tests.factories import OwnerFactory
@@ -11,31 +11,24 @@ here = Path(__file__)
 
 
 class TestSyncTeamsTaskUnit(object):
-    @pytest.mark.asyncio
-    async def test_unknown_owner(self, mocker, mock_configuration, dbsession):
+    def test_unknown_owner(self, mocker, mock_configuration, dbsession):
         unknown_ownerid = 10404
         with pytest.raises(AssertionError, match="Owner not found"):
-            await SyncTeamsTask().run_async(
+            SyncTeamsTask().run_impl(
                 dbsession, unknown_ownerid, username=None, using_integration=False
             )
 
-    @pytest.mark.asyncio
-    async def test_no_teams(self, mocker, mock_configuration, dbsession, codecov_vcr):
+    def test_no_teams(self, mocker, mock_configuration, dbsession, codecov_vcr):
         token = "testv2ztxs03zwys22v36ama292esl13swroe6dj"
         user = OwnerFactory.create(
             organizations=[], service="github", unencrypted_oauth_token=token
         )
         dbsession.add(user)
         dbsession.flush()
-        await SyncTeamsTask().run_async(
-            dbsession, user.ownerid, using_integration=False
-        )
+        SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
         assert user.organizations == []
 
-    @pytest.mark.asyncio
-    async def test_team_removed(
-        self, mocker, mock_configuration, dbsession, codecov_vcr
-    ):
+    def test_team_removed(self, mocker, mock_configuration, dbsession, codecov_vcr):
         token = "testv2ztxs03zwys22v36ama292esl13swroe6dj"
         prev_team = OwnerFactory.create(service="github", username="Evil_Corp")
         dbsession.add(prev_team)
@@ -46,13 +39,10 @@ class TestSyncTeamsTaskUnit(object):
         )
         dbsession.add(user)
         dbsession.flush()
-        await SyncTeamsTask().run_async(
-            dbsession, user.ownerid, using_integration=False
-        )
+        SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
         assert prev_team.ownerid not in user.organizations
 
-    @pytest.mark.asyncio
-    async def test_team_data_updated(
+    def test_team_data_updated(
         self, mocker, mock_configuration, dbsession, codecov_vcr
     ):
         token = "testh0ry1fe5tiysbtbh6x47fdwotcsoyv7orqrd"
@@ -72,9 +62,7 @@ class TestSyncTeamsTaskUnit(object):
         dbsession.add(user)
         dbsession.flush()
 
-        await SyncTeamsTask().run_async(
-            dbsession, user.ownerid, using_integration=False
-        )
+        SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
         assert old_team.ownerid in user.organizations
 
         # old team in db should have its data updated
@@ -83,25 +71,20 @@ class TestSyncTeamsTaskUnit(object):
         assert old_team.name == "codecov"
         assert str(old_team.updatestamp) > last_updated
 
-    @pytest.mark.asyncio
-    async def test_gitlab_subgroups(
+    @freeze_time("2024-03-28T00:00:00")
+    def test_gitlab_subgroups(
         self, mocker, mock_configuration, dbsession, codecov_vcr, caplog
     ):
         import logging
 
         caplog.set_level(logging.DEBUG)
-        print(codecov_vcr)
-        print(dir(codecov_vcr))
-        print(codecov_vcr.rewound)
         token = "testenll80qbqhofao65"
         user = OwnerFactory.create(
             organizations=[], service="gitlab", unencrypted_oauth_token=token
         )
         dbsession.add(user)
         dbsession.flush()
-        await SyncTeamsTask().run_async(
-            dbsession, user.ownerid, using_integration=False
-        )
+        SyncTeamsTask().run_impl(dbsession, user.ownerid, using_integration=False)
 
         assert len(user.organizations) == 6
         gitlab_groups = (
@@ -147,5 +130,6 @@ class TestSyncTeamsTaskUnit(object):
             expected_data = expected_groups.get(service_id, {})
             assert g.username == expected_data.get("username")
             assert g.name == expected_data["name"]
+            assert g.createstamp.isoformat() == "2024-03-28T00:00:00+00:00"
             if expected_data["parent_service_id"]:
                 assert g.parent_service_id == expected_data["parent_service_id"]

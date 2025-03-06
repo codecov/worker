@@ -1,5 +1,4 @@
 import logging
-import random
 
 from celery.exceptions import MaxRetriesExceededError
 from redis.exceptions import LockError
@@ -25,7 +24,7 @@ log = logging.getLogger(__name__)
 class ManualTriggerTask(
     BaseCodecovTask, name=manual_upload_completion_trigger_task_name
 ):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         *,
@@ -48,7 +47,7 @@ class ManualTriggerTask(
                 timeout=60 * 5,
                 blocking_timeout=5,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -68,7 +67,7 @@ class ManualTriggerTask(
             )
             return {"notifications_called": False, "message": "Unable to acquire lock"}
 
-    async def process_async_within_lock(
+    def process_impl_within_lock(
         self,
         *,
         db_session,
@@ -92,7 +91,7 @@ class ManualTriggerTask(
             .filter(
                 CommitReport.code == report_code,
                 CommitReport.commit == commit,
-                (CommitReport.report_type == None)
+                (CommitReport.report_type == None)  # noqa: E711
                 | (CommitReport.report_type == ReportType.COVERAGE.value),
             )
         )

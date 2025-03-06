@@ -1,29 +1,21 @@
-import typing
-
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+import sentry_sdk
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilderSession
 
 
 class RlangProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
+    def matches_content(self, content: dict, first_line: str, name: str) -> bool:
         return isinstance(content, dict) and content.get("uploader") == "R"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_json(content, path_fixer, ignored_lines, sessionid)
+        self, content: dict, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_json(content, report_builder_session)
 
 
-def from_json(data_dict, fix, ignored_lines, sessionid):
+def from_json(data_dict: dict, report_builder_session: ReportBuilderSession) -> None:
     """
     Report example
 
@@ -32,18 +24,19 @@ def from_json(data_dict, fix, ignored_lines, sessionid):
         name:
         coverage: [null]
     """
-    report = Report()
 
     for data in data_dict["files"]:
-        filename = fix(data["name"])
-        if filename:
-            _file = ReportFile(filename, ignore=ignored_lines.get(filename))
-            fs = _file.__setitem__
-            [
-                fs(ln, ReportLine.create(int(cov), None, [[sessionid, int(cov)]]))
-                for ln, cov in enumerate(data["coverage"])
-                if cov is not None
-            ]
-            report.append(_file)
+        _file = report_builder_session.create_coverage_file(data["name"])
+        if _file is None:
+            continue
 
-    return report
+        for ln, cov in enumerate(data["coverage"]):
+            if cov is not None:
+                _file.append(
+                    ln,
+                    report_builder_session.create_coverage_line(
+                        int(cov),
+                    ),
+                )
+
+        report_builder_session.append(_file)

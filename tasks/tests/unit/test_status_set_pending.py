@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import mock
@@ -12,8 +11,7 @@ here = Path(__file__)
 
 
 class TestSetPendingTaskUnit(object):
-    @pytest.mark.asyncio
-    async def test_no_status(self, mocker, mock_configuration, dbsession, mock_redis):
+    def test_no_status(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         repo = mocker.MagicMock(
             service="github",
@@ -35,14 +33,13 @@ class TestSetPendingTaskUnit(object):
         commitid = commit.commitid
         branch = "master"
         on_a_pull_request = False
-        res = await StatusSetPendingTask().run_async(
+        res = StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         assert res["status_set"] == False
         assert not repo.set_commit_status.called
 
-    @pytest.mark.asyncio
-    async def test_not_in_beta(self, mocker, mock_configuration, dbsession, mock_redis):
+    def test_not_in_beta(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         repo = mocker.MagicMock(
             service="github",
@@ -67,15 +64,12 @@ class TestSetPendingTaskUnit(object):
         with pytest.raises(
             AssertionError, match="Pending disabled. Please request to be in beta."
         ):
-            await StatusSetPendingTask().run_async(
+            StatusSetPendingTask().run_impl(
                 dbsession, repoid, commitid, branch, on_a_pull_request
             )
         mock_redis.sismember.assert_called_with("beta.pending", repoid)
 
-    @pytest.mark.asyncio
-    async def test_skip_set_pending(
-        self, mocker, mock_configuration, dbsession, mock_redis
-    ):
+    def test_skip_set_pending(self, mocker, mock_configuration, dbsession, mock_redis):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
         get_commit_statuses = Status([])
         set_commit_status = None
@@ -105,14 +99,13 @@ class TestSetPendingTaskUnit(object):
         commitid = commit.commitid
         branch = "master"
         on_a_pull_request = False
-        res = await StatusSetPendingTask().run_async(
+        res = StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         assert not repo.set_commit_status.called
         assert res["status_set"] == False
 
-    @pytest.mark.asyncio
-    async def test_skip_set_pending_unknown_branch(
+    def test_skip_set_pending_unknown_branch(
         self, mocker, mock_configuration, dbsession, mock_redis
     ):
         mocked_1 = mocker.patch("tasks.status_set_pending.get_repo_provider_service")
@@ -146,13 +139,12 @@ class TestSetPendingTaskUnit(object):
         commitid = commit.commitid
         branch = None
         on_a_pull_request = False
-        res = await StatusSetPendingTask().run_async(
+        res = StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         assert not repo.set_commit_status.called
         assert res["status_set"] == False
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "context, branch, cc_status_exists",
         [
@@ -169,7 +161,7 @@ class TestSetPendingTaskUnit(object):
             ("changes", "skip", False),
         ],
     )
-    async def test_set_pending(
+    def test_set_pending(
         self,
         context,
         branch,
@@ -227,16 +219,16 @@ class TestSetPendingTaskUnit(object):
         repoid = commit.repoid
         commitid = commit.commitid
         on_a_pull_request = False
-        await StatusSetPendingTask().run_async(
+        StatusSetPendingTask().run_impl(
             dbsession, repoid, commitid, branch, on_a_pull_request
         )
         if branch == "master" and not cc_status_exists:
             repo.set_commit_status.assert_called_with(
-                commit=commitid,
-                status="pending",
-                context="codecov/" + context + "/custom",
-                description="Collecting reports and waiting for CI to complete",
-                url=f"https://codecov.io/gh/owner/repo/commit/{commitid}",
+                commitid,
+                "pending",
+                "codecov/" + context + "/custom",
+                "Collecting reports and waiting for CI to complete",
+                f"https://codecov.io/gh/owner/repo/commit/{commitid}",
             )
         else:
             assert not repo.set_commit_status.called

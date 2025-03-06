@@ -1,49 +1,51 @@
-import typing
+import sentry_sdk
+from lxml.etree import Element
+from shared.reports.resources import ReportFile
 
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+from services.report.report_builder import ReportBuilderSession
 
-from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from .base import BaseLanguageProcessor
+from .helpers import child_text
 
 
 class VbTwoProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content.tag == "CoverageDSPriv")
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return content.tag == "CoverageDSPriv"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
+
+
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
+    files: dict[str, ReportFile] = {}
+    for source in xml.iterfind("SourceFileNames"):
+        _file = report_builder_session.create_coverage_file(
+            child_text(source, "SourceFileName").replace("\\", "/")
         )
-        return from_xml(content, path_fixer, ignored_lines, sessionid)
+        if _file is not None:
+            files[child_text(source, "SourceFileID")] = _file
 
+    for line in xml.iterfind("Lines"):
+        _file = files.get(child_text(line, "SourceFileID"))
+        if _file is None:
+            continue
 
-def from_xml(xml, fix, ignored_lines, sessionid):
-    file_by_source = {}
-    for source in xml.iter("SourceFileNames"):
-        filename = fix(source.find("SourceFileName").text.replace("\\", "/"))
-        if filename:
-            file_by_source[source.find("SourceFileID").text] = ReportFile(
-                filename, ignore=ignored_lines.get(filename)
+        # 0 == hit, 1 == partial, 2 == miss
+        cov_txt = child_text(line, "Coverage")
+        cov = 1 if cov_txt == "0" else 0 if cov_txt == "2" else True
+        for ln in range(
+            int(child_text(line, "LnStart")),
+            int(child_text(line, "LnEnd")) + 1,
+        ):
+            _file.append(
+                ln,
+                report_builder_session.create_coverage_line(
+                    cov,
+                ),
             )
 
-    for line in xml.iter("Lines"):
-        _file = file_by_source.get(line.find("SourceFileID").text)
-        if _file is not None:
-            # 0 == hit, 1 == partial, 2 == miss
-            cov = line.find("Coverage").text
-            cov = 1 if cov == "0" else 0 if cov == "2" else True
-            for ln in range(
-                int(line.find("LnStart").text), int(line.find("LnEnd").text) + 1
-            ):
-                _file[ln] = ReportLine.create(cov, None, [[sessionid, cov]])
-
-    report = Report()
-    for value in file_by_source.values():
-        report.append(value)
-    return report
+    for _file in files.values():
+        report_builder_session.append(_file)

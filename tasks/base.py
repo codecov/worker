@@ -1,12 +1,16 @@
-import asyncio
 import logging
 from datetime import datetime
 
-from celery.exceptions import SoftTimeLimitExceeded
+import sentry_sdk
+from celery._state import get_current_task
+from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from celery.worker.request import Request
-from prometheus_client import REGISTRY
+from django.db import transaction as django_transaction
 from shared.celery_router import route_tasks_based_on_user_plan
 from shared.metrics import Counter, Histogram
+from shared.timeseries.helpers import is_timeseries_enabled
+from shared.torngit.base import TorngitBaseAdapter
+from shared.typings.torngit import AdditionalData
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -17,8 +21,20 @@ from sqlalchemy.exc import (
 from app import celery_app
 from celery_task_router import _get_user_plan_from_task
 from database.engine import get_db_session
-from helpers.metrics import metrics
-from helpers.telemetry import MetricContext, TimeseriesTimer
+from database.enums import CommitErrorTypes
+from database.models.core import (
+    GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+    Commit,
+    Repository,
+)
+from helpers.checkpoint_logger import from_kwargs as load_checkpoints_from_kwargs
+from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
+from helpers.clock import get_seconds_to_next_hour
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
+from helpers.log_context import LogContext, set_log_context
+from helpers.save_commit_error import save_commit_error
+from helpers.telemetry import TimeseriesTimer, log_simple_metric
+from services.repository import get_repo_provider_service
 
 log = logging.getLogger("worker")
 
@@ -43,9 +59,13 @@ class BaseCodecovRequest(Request):
         res = super().on_timeout(soft, timeout)
         if not soft:
             REQUEST_HARD_TIMEOUT_COUNTER.labels(task=self.name).inc()
-            metrics.incr(f"{self.metrics_prefix}.hardtimeout")
         REQUEST_TIMEOUT_COUNTER.labels(task=self.name).inc()
-        metrics.incr(f"{self.metrics_prefix}.timeout")
+
+        if UploadFlow.has_begun():
+            UploadFlow.log(UploadFlow.CELERY_TIMEOUT)
+        if TestResultsFlow.has_begun():
+            TestResultsFlow.log(TestResultsFlow.CELERY_TIMEOUT)
+
         return res
 
 
@@ -136,6 +156,7 @@ class BaseCodecovTask(celery_app.Task):
             return self.time_limit
         return self.app.conf.task_time_limit or 0
 
+    @sentry_sdk.trace
     def apply_async(self, args=None, kwargs=None, **options):
         db_session = get_db_session()
         user_plan = _get_user_plan_from_task(db_session, self.name, kwargs)
@@ -144,6 +165,7 @@ class BaseCodecovTask(celery_app.Task):
         celery_compatible_config = {
             "time_limit": extra_config.get("hard_timelimit", None),
             "soft_time_limit": extra_config.get("soft_timelimit", None),
+            "user_plan": user_plan,
         }
         options = {**options, **celery_compatible_config}
 
@@ -159,18 +181,75 @@ class BaseCodecovTask(celery_app.Task):
         }
         return super().apply_async(args=args, kwargs=kwargs, headers=headers, **options)
 
+    def _commit_django(self):
+        try:
+            django_transaction.commit()
+        except Exception as e:
+            log.warning(
+                "Django transaction failed to commit.",
+                exc_info=True,
+                extra=dict(e=e),
+            )
+
+        if is_timeseries_enabled():
+            try:
+                django_transaction.commit("timeseries")
+            except Exception as e:
+                log.warning(
+                    "Django transaction failed to commit in the timeseries database.",
+                    exc_info=True,
+                    extra=dict(e=e),
+                )
+
+    def _rollback_django(self):
+        try:
+            django_transaction.rollback()
+        except Exception as e:
+            log.warning(
+                "Django transaction failed to roll back.",
+                exc_info=True,
+                extra=dict(e=e),
+            )
+
+        if is_timeseries_enabled():
+            try:
+                django_transaction.rollback("timeseries")
+            except Exception as e:
+                log.warning(
+                    "Django transaction failed to roll back in the timeseries database.",
+                    exc_info=True,
+                    extra=dict(e=e),
+                )
+
+    # Called when attempting to retry the task on db error
+    def _retry(self, countdown=None):
+        if not countdown:
+            countdown = self.default_retry_delay
+
+        try:
+            self.retry(countdown=countdown)
+        except MaxRetriesExceededError:
+            if UploadFlow.has_begun():
+                UploadFlow.log(UploadFlow.UNCAUGHT_RETRY_EXCEPTION)
+            if TestResultsFlow.has_begun():
+                TestResultsFlow.log(TestResultsFlow.UNCAUGHT_RETRY_EXCEPTION)
+
     def _analyse_error(self, exception: SQLAlchemyError, *args, **kwargs):
         try:
             import psycopg2
 
-            if isinstance(exception.orig, psycopg2.errors.DeadlockDetected):
+            if hasattr(exception, "orig") and isinstance(
+                exception.orig, psycopg2.errors.DeadlockDetected
+            ):
                 log.exception(
                     "Deadlock while talking to database",
                     extra=dict(task_args=args, task_kwargs=kwargs),
                     exc_info=True,
                 )
                 return
-            elif isinstance(exception.orig, psycopg2.OperationalError):
+            elif hasattr(exception, "orig") and isinstance(
+                exception.orig, psycopg2.OperationalError
+            ):
                 log.warning(
                     "Database seems to be unavailable",
                     extra=dict(task_args=args, task_kwargs=kwargs),
@@ -191,7 +270,6 @@ class BaseCodecovTask(celery_app.Task):
             enqueued_time = datetime.fromisoformat(created_timestamp)
             now = datetime.now()
             delta = now - enqueued_time
-            metrics.timing(f"{self.metrics_prefix}.time_in_queue", delta)
 
             queue_name = self.request.get("delivery_info", {}).get("routing_key", None)
             time_in_queue_timer = TASK_TIME_IN_QUEUE.labels(
@@ -199,52 +277,53 @@ class BaseCodecovTask(celery_app.Task):
             )  # TODO is None a valid label value
             time_in_queue_timer.observe(delta.total_seconds())
 
-            if queue_name:
-                metrics.timing(f"worker.queues.{queue_name}.time_in_queue", delta)
-                metrics.timing(
-                    f"{self.metrics_prefix}.{queue_name}.time_in_queue", delta
-                )
-
     def run(self, *args, **kwargs):
-        self.task_run_counter.inc()
-        self._emit_queue_metrics()
+        with self.task_full_runtime.time():  # Timer isn't tested
+            db_session = get_db_session()
 
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
+            log_context = LogContext(
+                repo_id=kwargs.get("repoid") or kwargs.get("repo_id"),
+                owner_id=kwargs.get("ownerid"),
+                commit_sha=kwargs.get("commitid") or kwargs.get("commit_id"),
+            )
 
-        with TimeseriesTimer(
-            metric_context, f"{self.metrics_prefix}.full_runtime", sync=True
-        ):
-            with self.task_full_runtime.time():  # Timer isn't tested
-                with metrics.timer(f"{self.metrics_prefix}.full"):
-                    db_session = get_db_session()
-                    try:
-                        with TimeseriesTimer(
-                            metric_context,
-                            f"{self.metrics_prefix}.core_runtime",
-                            sync=True,
-                        ):
-                            with self.task_core_runtime.time():  # Timer isn't tested
-                                with metrics.timer(f"{self.metrics_prefix}.run"):
-                                    return asyncio.run(
-                                        self.run_async(db_session, *args, **kwargs)
-                                    )
-                    except (DataError, IntegrityError):
-                        log.exception(
-                            "Errors related to the constraints of database happened",
-                            extra=dict(task_args=args, task_kwargs=kwargs),
-                        )
-                        db_session.rollback()
-                        self.retry()
-                    except SQLAlchemyError as ex:
-                        self._analyse_error(ex, args, kwargs)
-                        db_session.rollback()
-                        self.retry()
-                    finally:
-                        self.wrap_up_dbsession(db_session)
+            task = get_current_task()
+            if task and task.request:
+                log_context.task_name = task.name
+                log_context.task_id = task.request.id
+
+            log_context.populate_from_sqlalchemy(db_session)
+            set_log_context(log_context)
+            load_checkpoints_from_kwargs([UploadFlow, TestResultsFlow], kwargs)
+
+            self.task_run_counter.inc()
+            self._emit_queue_metrics()
+
+            try:
+                with TimeseriesTimer(f"{self.metrics_prefix}.core_runtime", sync=True):
+                    with self.task_core_runtime.time():  # Timer isn't tested
+                        return self.run_impl(db_session, *args, **kwargs)
+            except (DataError, IntegrityError):
+                log.exception(
+                    "Errors related to the constraints of database happened",
+                    extra=dict(task_args=args, task_kwargs=kwargs),
+                )
+                db_session.rollback()
+                self._rollback_django()
+                self._retry()
+            except SQLAlchemyError as ex:
+                self._analyse_error(ex, args, kwargs)
+                db_session.rollback()
+                self._rollback_django()
+                self._retry()
+            except MaxRetriesExceededError as ex:
+                if UploadFlow.has_begun():
+                    UploadFlow.log(UploadFlow.UNCAUGHT_RETRY_EXCEPTION)
+                if TestResultsFlow.has_begun():
+                    TestResultsFlow.log(TestResultsFlow.UNCAUGHT_RETRY_EXCEPTION)
+            finally:
+                self.wrap_up_dbsession(db_session)
+                self._commit_django()
 
     def wrap_up_dbsession(self, db_session):
         """
@@ -285,41 +364,77 @@ class BaseCodecovTask(celery_app.Task):
             )
             get_db_session.remove()
 
-    def on_retry(self, *args, **kwargs):
-        res = super().on_retry(*args, **kwargs)
+    def on_retry(self, exc, task_id, args, kwargs, einfo):
+        res = super().on_retry(exc, task_id, args, kwargs, einfo)
         self.task_retry_counter.inc()
-        metrics.incr(f"{self.metrics_prefix}.retries")
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
-        metric_context.log_simple_metric(f"{self.metrics_prefix}.retry", 1.0)
+        log_simple_metric(f"{self.metrics_prefix}.retry", 1.0)
         return res
 
-    def on_success(self, *args, **kwargs):
-        res = super().on_success(*args, **kwargs)
+    def on_success(self, retval, task_id, args, kwargs):
+        res = super().on_success(retval, task_id, args, kwargs)
         self.task_success_counter.inc()
-        metrics.incr(f"{self.metrics_prefix}.successes")
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
-        metric_context.log_simple_metric(f"{self.metrics_prefix}.success", 1.0)
+        log_simple_metric(f"{self.metrics_prefix}.success", 1.0)
         return res
 
-    def on_failure(self, *args, **kwargs):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
         """
-        Includes SoftTimeoutLimitException, for example
+        Includes SoftTimeLimitExceeded, for example
         """
-        res = super().on_failure(*args, **kwargs)
+        res = super().on_failure(exc, task_id, args, kwargs, einfo)
         self.task_failure_counter.inc()
-        metrics.incr(f"{self.metrics_prefix}.failures")
-        metric_context = MetricContext(
-            commit_sha=kwargs.get("commitid"),
-            repo_id=kwargs.get("repoid"),
-            owner_id=kwargs.get("ownerid"),
-        )
-        metric_context.log_simple_metric(f"{self.metrics_prefix}.failure", 1.0)
+        log_simple_metric(f"{self.metrics_prefix}.failure", 1.0)
+
+        if UploadFlow.has_begun():
+            UploadFlow.log(UploadFlow.CELERY_FAILURE)
+        if TestResultsFlow.has_begun():
+            TestResultsFlow.log(TestResultsFlow.CELERY_FAILURE)
+
         return res
+
+    def get_repo_provider_service(
+        self,
+        repository: Repository,
+        installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
+        additional_data: AdditionalData = None,
+        commit: Commit = None,
+    ) -> TorngitBaseAdapter | None:
+        try:
+            return get_repo_provider_service(
+                repository, installation_name_to_use, additional_data
+            )
+        except RepositoryWithoutValidBotError:
+            save_commit_error(
+                commit,
+                error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+                error_params=dict(repoid=repository.repoid),
+            )
+            log.warning(
+                "Unable to reach git provider because repo doesn't have a valid bot"
+            )
+        except NoConfiguredAppsAvailable as exp:
+            if exp.rate_limited_count > 0:
+                # There's at least 1 app that we can use to communicate with GitHub,
+                # but this app happens to be rate limited now. We try again later.
+                # Min wait time of 1 minute
+                retry_delay_seconds = max(60, get_seconds_to_next_hour())
+                log.warning(
+                    "Unable to get repo provider service due to rate limits. Retrying again later.",
+                    extra=dict(
+                        apps_available=exp.apps_count,
+                        apps_rate_limited=exp.rate_limited_count,
+                        apps_suspended=exp.suspended_count,
+                        countdown_seconds=retry_delay_seconds,
+                    ),
+                )
+                self._retry(countdown=retry_delay_seconds)
+            else:
+                log.warning(
+                    "Unable to get repo provider service. Apps appear to be suspended.",
+                    extra=dict(
+                        apps_available=exp.apps_count,
+                        apps_rate_limited=exp.rate_limited_count,
+                        apps_suspended=exp.suspended_count,
+                    ),
+                )
+        except Exception as e:
+            log.exception("Uncaught exception when trying to get repository service")

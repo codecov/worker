@@ -1,14 +1,12 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 
-from sqlalchemy import func
+from shared.config import get_config
+from shared.plan.service import PlanService
+from shared.upload.utils import query_monthly_coverage_measurements
 
-from conftest import dbsession
-from database.enums import Decoration, ReportType, TrialStatus
-from database.models import Commit, Owner, Repository
-from database.models.reports import CommitReport, Upload
-from services.billing import BillingPlan, is_pr_billing_plan
+from database.enums import Decoration
+from database.models import Owner
 from services.license import requires_license
 from services.repository import EnrichedPull
 
@@ -25,65 +23,32 @@ BOT_USER_EMAILS = [
 BOT_USER_IDS = ["29139614"]  # renovate[bot] github
 USER_BASIC_LIMIT_UPLOAD = 250
 
-PLANS_WITH_UPLOAD_LIMIT = {
-    "users-basic": 250,
-    "users-teamm": 2500,
-    "users-teamy": 2500,
-}
-
-# Temporary org to test custom GHM changes
-WHITELISTED_ORGS = ["drazisil-org"]
-
 
 @dataclass
 class DecorationDetails(object):
     decoration_type: Decoration
     reason: str
     should_attempt_author_auto_activation: bool = False
-    activation_org_ownerid: int = None
-    activation_author_ownerid: int = None
+    activation_org_ownerid: int | None = None
+    activation_author_ownerid: int | None = None
 
 
 def _is_bot_account(author: Owner) -> bool:
     return author.email in BOT_USER_EMAILS or author.service_id in BOT_USER_IDS
 
 
-def determine_uploads_used(db_session, org: Owner) -> int:
-    query = (
-        db_session.query(Upload)
-        .join(CommitReport)
-        .join(Commit)
-        .join(Repository)
-        .filter(
-            Upload.upload_type == "uploaded",
-            Repository.ownerid == org.ownerid,
-            Repository.private == True,
-            Upload.created_at >= (datetime.now() - timedelta(days=30)),
-            Commit.timestamp >= (datetime.now() - timedelta(days=60)),
-            (CommitReport.report_type == None)
-            | (CommitReport.report_type == ReportType.COVERAGE.value),
-        )
-    )
+def determine_uploads_used(plan_service: PlanService) -> int:
+    # This query takes an absurdly long time to run and in some environments we
+    # would like to disable it
+    if not get_config("setup", "upload_throttling_enabled", default=True):
+        return 0
 
-    if (
-        org.trial_status == TrialStatus.EXPIRED.value
-        and org.trial_start_date
-        and org.trial_end_date
-    ):
-        query = query.filter(
-            (Upload.created_at >= org.trial_end_date)
-            | (Upload.created_at <= org.trial_start_date)
-        )
-
-    # Upload limit of the user's plan, default to USER_BASIC_LIMIT_UPLOAD if not found
-    plan_allowed_limit = PLANS_WITH_UPLOAD_LIMIT.get(org.plan, USER_BASIC_LIMIT_UPLOAD)
-
-    return query.limit(plan_allowed_limit).count()
+    return query_monthly_coverage_measurements(plan_service=plan_service)
 
 
 def determine_decoration_details(
     enriched_pull: EnrichedPull, empty_upload=None
-) -> dict:
+) -> DecorationDetails:
     """
     Determine the decoration details from pull information. We also check if the pull author needs to be activated
 
@@ -118,7 +83,7 @@ def determine_decoration_details(
             )
 
         if db_pull.repository.private is False:
-            # public repo or repo we arent certain is private should be standard
+            # public repo or repo we aren't certain is private should be standard
             return DecorationDetails(
                 decoration_type=Decoration.standard, reason="Public repo"
             )
@@ -127,23 +92,15 @@ def determine_decoration_details(
 
         db_session = db_pull.get_db_session()
 
-        if org.service == "gitlab" and org.parent_service_id:
-            # need to get root group so we can check plan info
-            (gl_root_group,) = db_session.query(
-                func.public.get_gitlab_root_group(org.ownerid)
-            ).first()
+        # do not access plan directly - only through PlanService
+        org_plan = PlanService(current_org=org)
+        # use the org that has the plan - for GL this is the root_org rather than the repository.owner org
+        org = org_plan.current_org
 
-            org = (
-                db_session.query(Owner)
-                .filter(Owner.ownerid == gl_root_group.get("ownerid"))
-                .first()
+        if not org_plan.is_pr_billing_plan:
+            return DecorationDetails(
+                decoration_type=Decoration.standard, reason="Org not on PR plan"
             )
-
-        if not is_pr_billing_plan(org.plan):
-            if org.username not in WHITELISTED_ORGS:
-                return DecorationDetails(
-                    decoration_type=Decoration.standard, reason="Org not on PR plan"
-                )
 
         pr_author = (
             db_session.query(Owner)
@@ -168,18 +125,18 @@ def determine_decoration_details(
                 reason="PR author not found in database",
             )
 
-        # TODO declare this to be shared between codecov-api and worker
-        uploads_used = determine_uploads_used(db_session=db_session, org=org)
+        monthly_limit = org_plan.monthly_uploads_limit
+        if monthly_limit is not None:
+            uploads_used = determine_uploads_used(plan_service=org_plan)
 
-        if (
-            org.plan in PLANS_WITH_UPLOAD_LIMIT
-            and uploads_used >= PLANS_WITH_UPLOAD_LIMIT[org.plan]
-            and not requires_license()
-        ):
-            return DecorationDetails(
-                decoration_type=Decoration.upload_limit,
-                reason="Org has exceeded the upload limit",
-            )
+            if (
+                uploads_used >= org_plan.monthly_uploads_limit
+                and not requires_license()
+            ):
+                return DecorationDetails(
+                    decoration_type=Decoration.upload_limit,
+                    reason="Org has exceeded the upload limit",
+                )
 
         if (
             org.plan_activated_users is not None

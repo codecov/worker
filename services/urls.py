@@ -1,10 +1,12 @@
 import logging
-import os
 import re
+from dataclasses import dataclass
 from enum import Enum
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from typing import List
+from urllib.parse import parse_qs, quote_plus, urlencode, urlparse, urlunparse
 
 from shared.config import get_config
+from shared.django_apps.codecov_auth.models import Service
 
 from database.models import Commit, Pull, Repository
 from services.license import requires_license
@@ -35,6 +37,7 @@ class SiteUrls(Enum):
     members_url = "{dashboard_base_url}/members/{service_short}/{username}"
     members_url_self_hosted = "{dashboard_base_url}/account/{service_short}/{username}"
     plan_url = "{dashboard_base_url}/plan/{service_short}/{username}"
+    test_analytics_url = "{dashboard_base_url}/{service_short}/{username}/{project_name}/tests/{branch_name}"
 
     def get_url(self, **kwargs) -> str:
         return self.value.format(**kwargs)
@@ -53,6 +56,16 @@ def get_dashboard_base_url() -> str:
         return configured_dashboard_url or configured_base_url
     else:
         return configured_dashboard_url or "https://app.codecov.io"
+
+
+def _get_username_for_url(repository: Repository) -> str:
+    username = repository.owner.username
+    if repository.owner.service == Service.GITLAB.value:
+        # if GL, direct url to root org not subgroup
+        root_org = repository.owner.root_organization
+        if root_org is not None:
+            username = root_org.username
+    return username
 
 
 def get_commit_url(commit: Commit) -> str:
@@ -122,6 +135,19 @@ def get_pull_url(pull: Pull) -> str:
     )
 
 
+def get_bundle_analysis_pull_url(pull: Pull) -> str:
+    repository = pull.repository
+    pull_url = SiteUrls.pull_url.get_url(
+        base_url=get_dashboard_base_url(),
+        service_short=services_short_dict.get(repository.service),
+        username=repository.owner.username,
+        project_name=repository.name,
+        pull_id=pull.pullid,
+    )
+    params = [QueryParams(name="dropdown", value="bundle")]
+    return append_query_params_to_url(url=pull_url, params=params)
+
+
 def get_pull_graph_url(pull: Pull, graph_filename: str, **kwargs) -> str:
     repository = pull.repository
     url = SiteUrls.pull_graph_url.get_url(
@@ -147,11 +173,12 @@ def get_org_account_url(pull: Pull) -> str:
 
 def get_members_url(pull: Pull) -> str:
     repository = pull.repository
+    username = _get_username_for_url(repository=repository)
     if not requires_license():
         return SiteUrls.members_url.get_url(
             dashboard_base_url=get_dashboard_base_url(),
             service_short=services_short_dict.get(repository.service),
-            username=repository.owner.username,
+            username=username,
         )
     else:
         return SiteUrls.members_url_self_hosted.get_url(
@@ -163,11 +190,38 @@ def get_members_url(pull: Pull) -> str:
 
 def get_plan_url(pull: Pull) -> str:
     repository = pull.repository
+    username = _get_username_for_url(repository=repository)
     return SiteUrls.plan_url.get_url(
         dashboard_base_url=get_dashboard_base_url(),
         service_short=services_short_dict.get(repository.service),
-        username=repository.owner.username,
+        username=username,
     )
+
+
+def get_test_analytics_url(repo: Repository, commit: Commit) -> str:
+    return SiteUrls.test_analytics_url.get_url(
+        dashboard_base_url=get_dashboard_base_url(),
+        service_short=services_short_dict.get(repo.service),
+        username=repo.owner.username,
+        project_name=repo.name,
+        branch_name=quote_plus(commit.branch),
+    )
+
+
+@dataclass
+class QueryParams:
+    name: str
+    value: str
+
+
+def append_query_params_to_url(url: str, params: List[QueryParams]) -> str:
+    parsed_url = urlparse(url)
+    query_dict = parse_qs(parsed_url.query)
+    # Add tracking parameters
+    for param in params:
+        query_dict[param.name] = param.value
+    parsed_url = parsed_url._replace(query=urlencode(query_dict, doseq=True))
+    return urlunparse(parsed_url)
 
 
 def append_tracking_params_to_urls(

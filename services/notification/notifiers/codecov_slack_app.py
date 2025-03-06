@@ -1,16 +1,18 @@
 import json
 import os
 from decimal import Decimal
+from typing import Optional
 
 import requests
 
 from database.enums import Notification
 from database.models import Commit
+from services.comparison import ComparisonProxy
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.notification.notifiers.generics import Comparison, EnhancedJSONEncoder
+from services.notification.notifiers.generics import EnhancedJSONEncoder
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import round_number
 
@@ -37,7 +39,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
         elif isinstance(self.notifier_yaml_settings, bool):
             return self.notifier_yaml_settings
 
-    def store_results(self, comparison: Comparison, result: NotificationResult):
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     def serialize_commit(self, commit: Commit):
@@ -54,17 +56,16 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             "pull": commit.pullid,
         }
 
-    def build_payload(self, comparison: Comparison):
+    def build_payload(self, comparison: ComparisonProxy) -> dict:
         head_full_commit = comparison.head
         base_full_commit = comparison.project_coverage_base
         if comparison.has_project_coverage_base_report():
-            difference = None
-            head_report_coverage = head_full_commit.report.totals.coverage
-            base_report_coverage = base_full_commit.report.totals.coverage
-            if head_report_coverage is not None and base_report_coverage is not None:
-                difference = Decimal(head_full_commit.report.totals.coverage) - Decimal(
-                    base_full_commit.report.totals.coverage
-                )
+            difference = Decimal(0)
+            head_coverage = head_full_commit.report.totals.coverage
+            base_coverage = base_full_commit.report.totals.coverage
+            if head_coverage is not None and base_coverage is not None:
+                difference = Decimal(head_coverage) - Decimal(base_coverage)
+
             message = (
                 "no change"
                 if difference == 0
@@ -83,6 +84,7 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
             message = "unknown"
             notation = ""
             comparison_url = None
+        head_report = comparison.head.report
         return {
             "url": comparison_url,
             "message": message,
@@ -98,10 +100,14 @@ class CodecovSlackAppNotifier(AbstractBaseNotifier):
                 if comparison.project_coverage_base
                 else None
             ),
-            "head_totals_c": str(comparison.head.report.totals.coverage),
+            "head_totals_c": str(head_report.totals.coverage) if head_report else "0",
         }
 
-    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         request_url = f"{CODECOV_SLACK_APP_URL}/notify"
 
         headers = {

@@ -1,13 +1,15 @@
 import logging
 from typing import Any, Dict
 
-from shared.celery_config import notify_task_name
+import sentry_sdk
 from shared.yaml import UserYaml
 
 from app import celery_app
 from database.enums import ReportType
 from database.models import Commit
-from services.bundle_analysis import Notifier
+from helpers.github_installation import get_installation_name_for_owner_for_task
+from services.bundle_analysis.notify import BundleAnalysisNotifyService
+from services.bundle_analysis.notify.types import NotificationSuccess
 from services.lock_manager import LockManager, LockRetry, LockType
 from tasks.base import BaseCodecovTask
 
@@ -17,7 +19,7 @@ bundle_analysis_notify_task_name = "app.tasks.bundle_analysis.BundleAnalysisNoti
 
 
 class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task_name):
-    async def run_async(
+    def run_impl(
         self,
         db_session,
         # Celery `chain` injects this argument - it's the returned result
@@ -52,7 +54,7 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
                 LockType.BUNDLE_ANALYSIS_NOTIFY,
                 retry_num=self.request.retries,
             ):
-                return await self.process_async_within_lock(
+                return self.process_impl_within_lock(
                     db_session=db_session,
                     repoid=repoid,
                     commitid=commitid,
@@ -63,7 +65,8 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         except LockRetry as retry:
             self.retry(max_retries=5, countdown=retry.countdown)
 
-    async def process_async_within_lock(
+    @sentry_sdk.trace
+    def process_impl_within_lock(
         self,
         *,
         db_session,
@@ -88,20 +91,24 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
         )
         assert commit, "commit not found"
 
-        notify = True
-
         # these are the task results from prior processor tasks in the chain
         # (they get accumulated as we execute each task in succession)
         processing_results = previous_result.get("results", [])
 
         if all((result["error"] is not None for result in processing_results)):
             # every processor errored, nothing to notify on
-            notify = False
+            return {
+                "notify_attempted": False,
+                "notify_succeeded": NotificationSuccess.ALL_ERRORED,
+            }
 
-        success = None
-        if notify:
-            notifier = Notifier(commit, commit_yaml)
-            success = await notifier.notify()
+        installation_name_to_use = get_installation_name_for_owner_for_task(
+            self.name, commit.repository.owner
+        )
+        notifier = BundleAnalysisNotifyService(
+            commit, commit_yaml, gh_app_installation_name=installation_name_to_use
+        )
+        result = notifier.notify()
 
         log.info(
             "Finished bundle analysis notify",
@@ -110,10 +117,14 @@ class BundleAnalysisNotifyTask(BaseCodecovTask, name=bundle_analysis_notify_task
                 commit=commitid,
                 commit_yaml=commit_yaml,
                 parent_task=self.request.parent_id,
+                result=result,
             ),
         )
 
-        return {"notify_attempted": notify, "notify_succeeded": success}
+        return {
+            "notify_attempted": True,
+            "notify_succeeded": result.to_NotificationSuccess(),
+        }
 
 
 RegisteredBundleAnalysisNotifyTask = celery_app.register_task(

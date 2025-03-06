@@ -2,21 +2,40 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+from mock import AsyncMock, PropertyMock
+from shared.validation.types import CoverageCommentRequiredChanges
 
 from database.models import Pull
+from database.models.core import CompareCommit
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
+from services.comparison import get_or_create_comparison
 from services.notification.notifiers.base import NotificationResult
+from services.repository import EnrichedPull
 from tasks.notify import NotifyTask
+from tests.helpers import mock_all_plans_and_tiers
 
 sample_token = "ghp_test6ldgmyaglf73gcnbi0kprz7dyjz6nzgn"
 
 
+@pytest.fixture
+def is_not_first_pull(mocker):
+    mocker.patch(
+        "database.models.core.Pull.is_first_coverage_pull",
+        return_value=False,
+        new_callable=PropertyMock,
+    )
+
+
 @pytest.mark.integration
 class TestNotifyTask(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_no_notifiers(
+    @pytest.mark.django_db
+    def test_simple_call_no_notifiers(
         self,
         mock_requests_post,
         dbsession,
@@ -27,10 +46,10 @@ class TestNotifyTask(object):
         mock_redis,
     ):
         mock_requests_post.return_value.status_code = 200
-        mock_redis.get.return_value = False
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://codecov.io"
+        mock_redis.get.return_value = None
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -71,20 +90,21 @@ class TestNotifyTask(object):
             )
             mock_storage.write_file("archive", master_chunks_url, content)
         task = NotifyTask()
-        result = await task.run_async(
+        result = task.run_impl(
             dbsession, repoid=commit.repoid, commitid=commit.commitid, current_yaml={}
         )
-        expected_result = {
+
+        assert result == {
             "notified": True,
             "notifications": [
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -97,7 +117,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "christina84",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -134,16 +154,15 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 }
             ],
         }
-        assert result == expected_result
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_only_status_notifiers(
+    @pytest.mark.django_db
+    def test_simple_call_only_status_notifiers(
         self,
         mock_post_request,
         dbsession,
@@ -153,9 +172,9 @@ class TestNotifyTask(object):
         mock_configuration,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://codecov.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -185,6 +204,7 @@ class TestNotifyTask(object):
         )
         dbsession.add(commit)
         dbsession.add(master_commit)
+        get_or_create_comparison(dbsession, master_commit, commit)
         dbsession.flush()
         task = NotifyTask()
         with open("tasks/tests/samples/sample_chunks_1.txt") as f:
@@ -196,7 +216,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -208,26 +228,25 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to 17a71a9",
                         },
-                        "data_received": None,
-                    },
+                        data_received={"id": 1},
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -240,7 +259,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -278,7 +297,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -314,11 +333,12 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
             ],
         }
+        assert result is not None
         assert (
             result["notifications"][0]["result"]
             == expected_result["notifications"][0]["result"]
@@ -327,9 +347,26 @@ class TestNotifyTask(object):
         assert result["notifications"] == expected_result["notifications"]
         assert result == expected_result
 
+        comparison = (
+            dbsession.query(CompareCommit)
+            .filter(
+                CompareCommit.compare_commit_id == commit.id,
+                CompareCommit.base_commit_id == master_commit.id,
+            )
+            .first()
+        )
+        assert comparison is not None
+        assert comparison.patch_totals is not None
+        assert comparison.patch_totals == {
+            "hits": 2,
+            "misses": 0,
+            "partials": 0,
+            "coverage": 1.0,
+        }
+
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_only_status_notifiers_no_pull_request(
+    @pytest.mark.django_db
+    def test_simple_call_only_status_notifiers_no_pull_request(
         self,
         mock_post_request,
         dbsession,
@@ -339,9 +376,9 @@ class TestNotifyTask(object):
         mock_configuration,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://myexamplewebsite.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://myexamplewebsite.io"
+        )
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
             owner__service="github",
@@ -383,7 +420,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -399,56 +436,59 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to 081d919",
                         },
-                        "data_received": {"id": 9333281614},
-                    },
+                        data_received={"id": 9333281614},
+                    ),
                 },
                 {
                     "notifier": "status-patch",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/patch",
                             "state": "success",
                             "message": "Coverage not affected when comparing 081d919...f089529",
                         },
-                        "data_received": {"id": 9333281697},
-                    },
+                        data_received={"id": 9333281697},
+                    ),
                 },
                 {
                     "notifier": "status-changes",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/changes",
                             "state": "failure",
-                            "message": "1 file has unexpected coverage changes not visible in diff",
+                            "message": "1 file has indirect coverage changes not visible in diff",
+                            "included_helper_text": {
+                                "indirect_changes_helper_text": "Your changes status has failed because you have indirect coverage changes. Learn more about [Unexpected Coverage Changes](https://docs.codecov.com/docs/unexpected-coverage-changes) and [reasons for indirect coverage changes](https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes)."
+                            },
                         },
-                        "data_received": {"id": 9333281703},
-                    },
+                        data_received={"id": 9333281703},
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -461,7 +501,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -499,7 +539,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -535,8 +575,8 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
             ],
         }
@@ -555,8 +595,8 @@ class TestNotifyTask(object):
         assert result == expected_result
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_only_status_notifiers_with_pull_request(
+    @pytest.mark.django_db
+    def test_simple_call_only_status_notifiers_with_pull_request(
         self,
         mock_post_request,
         dbsession,
@@ -566,9 +606,9 @@ class TestNotifyTask(object):
         mock_configuration,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://myexamplewebsite.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://myexamplewebsite.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -611,7 +651,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -627,56 +667,56 @@ class TestNotifyTask(object):
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": "85.00% (+0.00%) compared to f089529",
                         },
-                        "data_received": {"id": 9333363767},
-                    },
+                        data_received={"id": 9333363767},
+                    ),
                 },
                 {
                     "notifier": "status-patch",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/patch",
                             "state": "success",
                             "message": "Coverage not affected when comparing f089529...11daa27",
                         },
-                        "data_received": {"id": 9333363778},
-                    },
+                        data_received={"id": 9333363778},
+                    ),
                 },
                 {
                     "notifier": "status-changes",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/changes",
                             "state": "success",
-                            "message": "No unexpected coverage changes found",
+                            "message": "No indirect coverage changes found",
                         },
-                        "data_received": {"id": 9333363801},
-                    },
+                        data_received={"id": 9333363801},
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "example-python",
                             "owner": "ThiagoCodecov",
                             "comparison": {
@@ -689,7 +729,7 @@ class TestNotifyTask(object):
                                     "branch": "thiago/base-no-base",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -727,7 +767,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47",
+                                    "timestamp": "2019-02-01T17:59:47+00:00",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -763,16 +803,16 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
             ],
         }
         assert result == expected_result
 
     @patch("requests.post")
-    @pytest.mark.asyncio
-    async def test_simple_call_status_and_notifiers(
+    @pytest.mark.django_db
+    def test_simple_call_status_and_notifiers(
         self,
         mock_post_request,
         dbsession,
@@ -780,11 +820,12 @@ class TestNotifyTask(object):
         codecov_vcr,
         mock_storage,
         mock_configuration,
+        is_not_first_pull,
     ):
         mock_post_request.return_value.status_code = 200
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://myexamplewebsite.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://myexamplewebsite.io"
+        )
         mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -795,6 +836,9 @@ class TestNotifyTask(object):
             name="codecov-demo",
             image_token="abcdefghij",
         )
+        dbsession.add(repository)
+        dbsession.flush()
+        repository.owner.plan_activated_users = [repository.owner.ownerid]
         dbsession.add(repository)
         dbsession.flush()
         head_commitid = "5601846871b8142ab0df1e0b8774756c658bcc7d"
@@ -831,7 +875,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -839,7 +883,9 @@ class TestNotifyTask(object):
                 "comment": {
                     "layout": "reach, diff, flags, files, footer",
                     "behavior": "default",
-                    "require_changes": False,
+                    "require_changes": [
+                        CoverageCommentRequiredChanges.no_requirements.value
+                    ],
                     "require_base": False,
                     "require_head": True,
                 },
@@ -873,11 +919,11 @@ class TestNotifyTask(object):
                 {
                     "notifier": "WebhookNotifier",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "repo": {
                                 "url": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo",
                                 "service_id": repository.service_id,
@@ -986,78 +1032,78 @@ class TestNotifyTask(object):
                                 "merged": False,
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "SlackNotifier",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
-                            "text": f"Coverage for <https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|joseph-sentry/codecov-demo> *no change* `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9|0.00%>` on `test` is `85.00000%` via `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|5601846>`",
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
+                            "text": "Coverage for <https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|joseph-sentry/codecov-demo> *no change* `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9|0.00%>` on `test` is `85.00000%` via `<https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d|5601846>`",
                             "author_name": "Codecov",
                             "author_link": "https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d",
                             "attachments": [],
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "status-project",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation="already_done",
+                        data_sent={
                             "title": "codecov/project",
                             "state": "success",
                             "message": f"85.00% (+0.00%) compared to {master_sha[:7]}",
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "status-patch",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=False,
+                        notification_successful=None,
+                        explanation="already_done",
+                        data_sent={
                             "title": "codecov/patch",
                             "state": "success",
                             "message": f"Coverage not affected when comparing {master_sha[:7]}...{head_commitid[:7]}",
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "status-changes",
                     "title": "default",
-                    "result": {
-                        "notification_attempted": False,
-                        "notification_successful": None,
-                        "explanation": "already_done",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "title": "codecov/changes",
                             "state": "success",
-                            "message": "No unexpected coverage changes found",
+                            "message": "No indirect coverage changes found",
                         },
-                        "data_received": None,
-                    },
+                        data_received={"id": 24846000025},
+                    ),
                 },
                 {
                     "notifier": "codecov-slack-app",
                     "title": "codecov-slack-app",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": "Successfully notified slack app",
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation="Successfully notified slack app",
+                        data_sent={
                             "repository": "codecov-demo",
                             "owner": "joseph-sentry",
                             "comparison": {
@@ -1144,21 +1190,21 @@ class TestNotifyTask(object):
                                 "head_totals_c": "85.00000",
                             },
                         },
-                        "data_received": None,
-                    },
+                        data_received=None,
+                    ),
                 },
                 {
                     "notifier": "comment",
                     "title": "comment",
-                    "result": {
-                        "notification_attempted": True,
-                        "notification_successful": True,
-                        "explanation": None,
-                        "data_sent": {
+                    "result": NotificationResult(
+                        notification_attempted=True,
+                        notification_successful=True,
+                        explanation=None,
+                        data_sent={
                             "message": [
-                                "## [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
+                                "## [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
                                 "All modified and coverable lines are covered by tests :white_check_mark:",
-                                "> Comparison is base [(`5b174c2`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 85.00% compared to head [(`5601846`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 85.00%.",
+                                "> Project coverage is 85.00%. Comparing base [(`5b174c2`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d?dropdown=coverage&el=desc).",
                                 "> Report is 2 commits behind head on main.",
                                 "",
                                 ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
@@ -1185,26 +1231,22 @@ class TestNotifyTask(object):
                                 "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                                 "",
                                 "",
-                                "",
                                 "------",
                                 "",
-                                "[Continue to review full report in Codecov by Sentry](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).",
+                                "[Continue to review full report in Codecov by Sentry](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).",
                                 "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
                                 "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-                                "> Powered by [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+                                "> Powered by [Codecov](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=footer). Last update [5b174c2...5601846](https://myexamplewebsite.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
                                 "",
                             ],
                             "commentid": None,
                             "pullid": 9,
                         },
-                        "data_received": {"id": 1699669573},
-                    },
+                        data_received={"id": 1699669573},
+                    ),
                 },
             ],
         }
-
-        pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
-        assert pull.commentid == "1699669573"
 
         assert len(result["notifications"]) == len(expected_result["notifications"])
         for expected, actual in zip(
@@ -1212,35 +1254,43 @@ class TestNotifyTask(object):
             sorted(expected_result["notifications"], key=lambda x: x["notifier"]),
         ):
             assert (
-                expected["result"]["notification_attempted"]
-                == actual["result"]["notification_attempted"]
+                expected["result"].notification_attempted
+                == actual["result"].notification_attempted
             )
             assert (
-                expected["result"]["notification_successful"]
-                == actual["result"]["notification_successful"]
+                expected["result"].notification_successful
+                == actual["result"].notification_successful
             )
-            assert expected["result"]["explanation"] == actual["result"]["explanation"]
-            assert expected["result"]["data_sent"].get("message") == actual["result"][
-                "data_sent"
-            ].get("message")
-            assert expected["result"]["data_sent"] == actual["result"]["data_sent"]
-            assert (
-                expected["result"]["data_received"] == actual["result"]["data_received"]
-            )
+            assert expected["result"].explanation == actual["result"].explanation
+            assert expected["result"].data_sent.get("message") == actual[
+                "result"
+            ].data_sent.get("message")
+            assert expected["result"].data_sent == actual["result"].data_sent
+            assert expected["result"].data_received == actual["result"].data_received
             assert expected["result"] == actual["result"]
             assert expected == actual
-        assert sorted(result["notifications"], key=lambda x: x["notifier"]) == sorted(
+
+        sorted_result = sorted(result["notifications"], key=lambda x: x["notifier"])
+        sorted_expected_result = sorted(
             expected_result["notifications"], key=lambda x: x["notifier"]
         )
+        assert len(sorted_result) == len(sorted_expected_result) == 7
+        assert sorted_result == sorted_expected_result
+
+        result["notifications"] = sorted_result
+        expected_result["notifications"] = sorted_expected_result
         assert result == expected_result
 
-    @pytest.mark.asyncio
-    async def test_notifier_call_no_head_commit_report(
+        pull = dbsession.query(Pull).filter_by(pullid=9, repoid=commit.repoid).first()
+        assert pull.commentid == "1699669573"
+
+    @pytest.mark.django_db
+    def test_notifier_call_no_head_commit_report(
         self, dbsession, mocker, codecov_vcr, mock_storage, mock_configuration
     ):
-        mock_configuration.params["setup"][
-            "codecov_dashboard_url"
-        ] = "https://codecov.io"
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
         mocked_app = mocker.patch.object(NotifyTask, "app")
         repository = RepositoryFactory.create(
             owner__unencrypted_oauth_token=sample_token,
@@ -1277,7 +1327,7 @@ class TestNotifyTask(object):
                 f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
             )
             mock_storage.write_file("archive", master_chunks_url, content)
-        result = await task.run_async_within_lock(
+        result = task.run_impl_within_lock(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -1289,3 +1339,82 @@ class TestNotifyTask(object):
             "reason": "no_head_report",
         }
         assert result == expected_result
+
+    @pytest.mark.django_db
+    @patch("requests.post")
+    def test_notifier_call_no_head_commit_report_empty_upload(
+        self,
+        mock_post_request,
+        dbsession,
+        mocker,
+        codecov_vcr,
+        mock_storage,
+        mock_configuration,
+        mock_repo_provider,
+    ):
+        mock_configuration.params["setup"]["codecov_dashboard_url"] = (
+            "https://codecov.io"
+        )
+        mocked_app = mocker.patch.object(NotifyTask, "app")
+        repository = RepositoryFactory.create(
+            owner__unencrypted_oauth_token=sample_token,
+            owner__username="ThiagoCodecov",
+            owner__service="github",
+            owner__service_id="44376991",
+            name="example-python",
+        )
+        dbsession.add(repository)
+        dbsession.flush()
+        master_commit = CommitFactory.create(
+            message="",
+            pullid=None,
+            branch="master",
+            commitid="17a71a9a2f5335ed4d00496c7bbc6405f547a527",
+            repository=repository,
+        )
+        commit = CommitFactory.create(
+            message="",
+            pullid=1234,
+            branch="test-branch-1",
+            commitid="649eaaf2924e92dc7fd8d370ddb857033231e67a",
+            repository=repository,
+            _report_json=None,
+        )
+        dbsession.add(commit)
+        dbsession.add(master_commit)
+        dbsession.flush()
+        pull = dbsession.query(Pull).filter_by(pullid=1234).first()
+        pull.repository = repository
+        pull.head = commit.commitid
+        pull.base = master_commit.commitid
+        dbsession.add(pull)
+        dbsession.flush()
+
+        task = NotifyTask()
+        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
+            content = f.read().encode()
+            archive_hash = ArchiveService.get_archive_hash(commit.repository)
+            master_chunks_url = (
+                f"v4/repos/{archive_hash}/commits/{master_commit.commitid}/chunks.txt"
+            )
+            mock_storage.write_file("archive", master_chunks_url, content)
+
+        mocker.patch("tasks.notify.NotifyTask.fetch_and_update_whether_ci_passed")
+        mocker.patch(
+            "tasks.notify.fetch_and_update_pull_request_information_from_commit",
+            return_value=EnrichedPull(database_pull=pull, provider_pull=None),
+        )
+        mock_repo_provider.get_commit_statuses = AsyncMock(return_value=None)
+
+        result = task.run_impl_within_lock(
+            dbsession,
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            current_yaml={"coverage": {"status": {"project": True}}},
+            empty_upload="pass",
+        )
+
+        assert result["notified"]
+        assert len(result["notifications"]) == 2
+        assert result["notifications"][0]["result"] is not None
+        assert result["notifications"][1]["result"] is not None

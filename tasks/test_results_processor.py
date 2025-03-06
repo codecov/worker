@@ -1,25 +1,32 @@
-import base64
-import json
-import logging
-import zlib
-from io import BytesIO
-from typing import List
+from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
+from datetime import date, datetime
+from typing import Literal, TypedDict
+
+import sentry_sdk
+import test_results_parser
 from shared.celery_config import test_results_processor_task_name
 from shared.config import get_config
 from shared.yaml import UserYaml
 from sqlalchemy.dialects.postgresql import insert
-from test_results_parser import (
-    ParserError,
-    Testrun,
-    parse_junit_xml,
-    parse_pytest_reportlog,
-    parse_vitest_json,
-)
+from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.models import Repository, Test, TestInstance, Upload
+from database.models import (
+    DailyTestRollup,
+    Flake,
+    Repository,
+    RepositoryFlag,
+    Test,
+    TestFlagBridge,
+    TestInstance,
+    Upload,
+)
+from helpers.metrics import metrics
 from services.archive import ArchiveService
+from services.processing.types import UploadArguments
 from services.test_results import generate_flags_hash, generate_test_id
 from services.yaml import read_yaml_field
 from tasks.base import BaseCodecovTask
@@ -27,205 +34,440 @@ from tasks.base import BaseCodecovTask
 log = logging.getLogger(__name__)
 
 
-class ParserFailureError(Exception):
-    def __init__(self, err_msg, file_content, parser="", parser_err_msg=""):
-        self.err_msg = err_msg
-        self.file_content = file_content
-        self.parser = parser
-        self.parser_err_msg = parser_err_msg
+@dataclass
+class ReadableFile:
+    path: str
+    contents: bytes
 
 
-class ParserNotSupportedError(Exception):
-    ...
+def get_repo_flag_ids(db_session: Session, repoid: int, flags: list[str]) -> set[int]:
+    if not flags:
+        return set()
+
+    return set(
+        db_session.query(RepositoryFlag.id_)
+        .filter(
+            RepositoryFlag.repository_id == repoid,
+            RepositoryFlag.flag_name.in_(flags),
+        )
+        .all()
+    )
+
+
+def create_daily_totals(
+    daily_totals: dict,
+    test_id: str,
+    repoid: int,
+    duration_seconds: float,
+    outcome: Literal["pass", "failure", "error", "skip"],
+    branch: str,
+    commitid: str,
+    flaky_test_set: set[str],
+):
+    daily_totals[test_id] = {
+        "test_id": test_id,
+        "repoid": repoid,
+        "last_duration_seconds": duration_seconds,
+        "avg_duration_seconds": duration_seconds,
+        "pass_count": 1 if outcome == "pass" else 0,
+        "fail_count": 1 if outcome == "failure" or outcome == "error" else 0,
+        "skip_count": 1 if outcome == "skip" else 0,
+        "flaky_fail_count": 1
+        if test_id in flaky_test_set and (outcome == "failure" or outcome == "error")
+        else 0,
+        "branch": branch,
+        "date": date.today(),
+        "latest_run": datetime.now(),
+        "commits_where_fail": [commitid]
+        if outcome == "failure" or outcome == "error"
+        else [],
+    }
+
+
+def update_daily_totals(
+    daily_totals: dict,
+    test_id: str,
+    duration_seconds: float,
+    outcome: Literal["pass", "failure", "error", "skip"],
+):
+    daily_totals[test_id]["last_duration_seconds"] = duration_seconds
+
+    # logic below is a little complicated but we're basically doing:
+
+    # (old_avg * num of values used to compute old avg) + new value
+    # -------------------------------------------------------------
+    #          num of values used to compute old avg + 1
+    daily_totals[test_id]["avg_duration_seconds"] = (
+        daily_totals[test_id]["avg_duration_seconds"]
+        * (daily_totals[test_id]["pass_count"] + daily_totals[test_id]["fail_count"])
+        + duration_seconds
+    ) / (daily_totals[test_id]["pass_count"] + daily_totals[test_id]["fail_count"] + 1)
+
+    if outcome == "pass":
+        daily_totals[test_id]["pass_count"] += 1
+    elif outcome == "failure" or outcome == "error":
+        daily_totals[test_id]["fail_count"] += 1
+    elif outcome == "skip":
+        daily_totals[test_id]["skip_count"] += 1
+
+
+@dataclass
+class PytestName:
+    actual_class_name: str
+    test_file_path: str
+
+
+class DailyTotals(TypedDict):
+    test_id: str
+    repoid: int
+    pass_count: int
+    fail_count: int
+    skip_count: int
+    flaky_fail_count: int
+    branch: str
+    date: date
+    latest_run: datetime
+    commits_where_fail: list[str]
+    last_duration_seconds: float
+    avg_duration_seconds: float
 
 
 class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task_name):
     __test__ = False
 
-    async def run_async(
+    def run_impl(
         self,
         db_session,
-        *,
-        repoid,
-        commitid,
+        previous_result: bool,
+        *args,
+        repoid: int,
+        commitid: str,
         commit_yaml,
-        arguments_list,
-        report_code=None,
+        arguments_list: list[UploadArguments],
         **kwargs,
-    ):
-        commit_yaml = UserYaml(commit_yaml)
+    ) -> bool:
+        log.info("Received upload test result processing task")
 
+        commit_yaml = UserYaml(commit_yaml)
         repoid = int(repoid)
-        log.info(
-            "Received upload test result processing task",
-            extra=dict(repoid=repoid, commit=commitid),
+
+        results = []
+
+        repo_flakes = (
+            db_session.query(Flake.testid)
+            .filter(Flake.repoid == repoid, Flake.end_date.is_(None))
+            .all()
+        )
+        flaky_test_set = {flake.testid for flake in repo_flakes}
+        repository = (
+            db_session.query(Repository)
+            .filter(Repository.repoid == int(repoid))
+            .first()
         )
 
-        testrun_dict_list = []
-        upload_list = []
+        should_delete_archive = self.should_delete_archive(commit_yaml)
+        archive_service = ArchiveService(repository)
 
         # process each report session's test information
-        for args in arguments_list:
-            upload_obj: Upload = (
-                db_session.query(Upload).filter_by(id_=args.get("upload_pk")).first()
+        for arguments in arguments_list:
+            upload = (
+                db_session.query(Upload).filter_by(id_=arguments["upload_id"]).first()
+            )
+            result = self.process_individual_upload(
+                db_session,
+                archive_service,
+                repository,
+                commitid,
+                upload,
+                flaky_test_set,
+                should_delete_archive,
             )
 
-            res = self.process_individual_upload(
-                db_session, repoid, commitid, upload_obj
-            )
+            results.append(result)
 
-            # concat existing and new test information
-            testrun_dict_list.append(res)
+        return previous_result or any(result.get("successful") for result in results)
 
-            upload_list.append(upload_obj)
-
-        if self.should_delete_archive(commit_yaml):
-            repository = (
-                db_session.query(Repository)
-                .filter(Repository.repoid == int(repoid))
-                .first()
-            )
-            self.delete_archive(
-                commitid, repository, commit_yaml, uploads_to_delete=upload_list
-            )
-
-        return testrun_dict_list
-
-    def process_individual_upload(
-        self, db_session, repoid, commitid, upload_obj: Upload
+    @sentry_sdk.trace
+    def _bulk_write_tests_to_db(
+        self,
+        db_session: Session,
+        repoid: int,
+        commitid: str,
+        upload_id: int,
+        branch: str,
+        parsing_results: list[test_results_parser.ParsingInfo],
+        flaky_test_set: set[str],
+        flags: list[str],
     ):
-        upload_id = upload_obj.id
-        parsed_testruns: List[Testrun] = self.process_individual_arg(
-            upload_obj, upload_obj.report.commit.repository
-        )
-        if not parsed_testruns:
-            log.error(
-                "No test result files were successfully parsed for this upload",
-                extra=dict(
-                    repoid=repoid,
-                    commitid=commitid,
-                    upload_id=upload_id,
-                ),
-            )
-            return {
-                "successful": False,
-            }
-        flags_hash = generate_flags_hash(upload_obj.flag_names)
-        upload_id = upload_obj.id
+        log.info("Writing tests to database", extra=dict(upload_id=upload_id))
+        test_data = {}
+        test_instance_data = []
+        test_flag_bridge_data: list[dict] = []
+        daily_totals: dict[str, DailyTotals] = dict()
 
-        for testrun in parsed_testruns:
-            name = testrun.name
-            testsuite = testrun.testsuite
-            outcome = str(testrun.outcome)
-            duration_seconds = testrun.duration
-            failure_message = testrun.failure_message
-            test_id = generate_test_id(repoid, testsuite, name, flags_hash)
-            insert_on_conflict_do_nothing = (
-                insert(Test.__table__)
-                .values(
+        flags_hash = generate_flags_hash(flags)
+        repo_flag_ids = get_repo_flag_ids(db_session, repoid, flags)
+
+        for p in parsing_results:
+            framework = p["framework"]
+
+            for testrun in p["testruns"]:
+                # Build up the data for bulk insert
+                name: str = f"{testrun['classname']}\x1f{testrun['name']}"
+                testsuite: str = testrun["testsuite"]
+                outcome = testrun["outcome"]
+                duration_seconds: float = (
+                    testrun["duration"] if testrun["duration"] is not None else 0.0
+                )
+                failure_message: str | None = testrun["failure_message"]
+                test_id: str = generate_test_id(repoid, testsuite, name, flags_hash)
+                computed_name = testrun["computed_name"]
+                filename: str | None = testrun["filename"]
+
+                test_data[(repoid, name, testsuite, flags_hash)] = dict(
                     id=test_id,
                     repoid=repoid,
                     name=name,
                     testsuite=testsuite,
                     flags_hash=flags_hash,
+                    framework=framework,
+                    filename=filename,
+                    computed_name=computed_name,
                 )
-                .on_conflict_do_nothing()
+
+                if repo_flag_ids:
+                    test_flag_bridge_data.extend(
+                        {"test_id": test_id, "flag_id": flag_id}
+                        for flag_id in repo_flag_ids
+                    )
+
+                test_instance_data.append(
+                    dict(
+                        test_id=test_id,
+                        upload_id=upload_id,
+                        duration_seconds=duration_seconds,
+                        outcome=outcome,
+                        failure_message=failure_message,
+                        commitid=commitid,
+                        branch=branch,
+                        reduced_error_id=None,
+                        repoid=repoid,
+                    )
+                )
+
+                if outcome != "skip":
+                    if test_id in daily_totals:
+                        update_daily_totals(
+                            daily_totals, test_id, duration_seconds, outcome
+                        )
+                    else:
+                        create_daily_totals(
+                            daily_totals,
+                            test_id,
+                            repoid,
+                            duration_seconds,
+                            outcome,
+                            branch,
+                            commitid,
+                            flaky_test_set,
+                        )
+
+        # Upsert Tests
+        if len(test_data) > 0:
+            metrics.gauge("test_results_processor.test_count", len(test_data))
+            sorted_tests = sorted(
+                test_data.values(),
+                key=lambda x: str(x["id"]),
             )
-            db_session.execute(insert_on_conflict_do_nothing)
-            db_session.flush()
+            self.save_tests(db_session, sorted_tests)
 
-            ti = TestInstance(
-                test_id=test_id,
-                upload_id=upload_id,
-                duration_seconds=duration_seconds,
-                outcome=outcome,
-                failure_message=failure_message,
+            log.info("Upserted tests to database", extra=dict(upload_id=upload_id))
+
+        if len(test_flag_bridge_data) > 0:
+            self.save_test_flag_bridges(db_session, test_flag_bridge_data)
+
+            log.info(
+                "Inserted new test flag bridges to database",
+                extra=dict(upload_id=upload_id),
             )
-            db_session.add(ti)
-            db_session.flush()
 
-        return {
-            "successful": True,
-        }
+        if len(daily_totals) > 0:
+            sorted_rollups = sorted(
+                daily_totals.values(), key=lambda x: str(x["test_id"])
+            )
+            self.save_daily_test_rollups(db_session, sorted_rollups)
 
-    def process_individual_arg(self, upload: Upload, repository) -> List[Testrun]:
-        archive_service = ArchiveService(repository)
+            log.info(
+                "Upserted daily test rollups to database",
+                extra=dict(upload_id=upload_id),
+            )
+
+        # Save TestInstances
+        if len(test_instance_data) > 0:
+            metrics.gauge(
+                "test_results_processor.test_instance_count", len(test_instance_data)
+            )
+            self.save_test_instances(db_session, test_instance_data)
+
+            log.info(
+                "Inserted test instances to database", extra=dict(upload_id=upload_id)
+            )
+
+    def save_tests(self, db_session: Session, test_data: list[dict]):
+        test_insert = insert(Test.__table__).values(test_data)
+        insert_on_conflict_do_update = test_insert.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "framework": test_insert.excluded.framework,
+                "computed_name": test_insert.excluded.computed_name,
+                "filename": test_insert.excluded.filename,
+            },
+        )
+        db_session.execute(insert_on_conflict_do_update)
+        db_session.commit()
+
+    def save_daily_test_rollups(
+        self, db_session: Session, daily_rollups: list[DailyTotals]
+    ):
+        rollup_table = DailyTestRollup.__table__
+        stmt = insert(rollup_table).values(daily_rollups)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[
+                "repoid",
+                "branch",
+                "test_id",
+                "date",
+            ],
+            set_={
+                "last_duration_seconds": stmt.excluded.last_duration_seconds,
+                "avg_duration_seconds": (
+                    rollup_table.c.avg_duration_seconds
+                    * (rollup_table.c.pass_count + rollup_table.c.fail_count)
+                    + stmt.excluded.avg_duration_seconds
+                )
+                / (rollup_table.c.pass_count + rollup_table.c.fail_count + 1),
+                "latest_run": stmt.excluded.latest_run,
+                "pass_count": rollup_table.c.pass_count + stmt.excluded.pass_count,
+                "skip_count": rollup_table.c.skip_count + stmt.excluded.skip_count,
+                "fail_count": rollup_table.c.fail_count + stmt.excluded.fail_count,
+                "flaky_fail_count": rollup_table.c.flaky_fail_count
+                + stmt.excluded.flaky_fail_count,
+                "commits_where_fail": rollup_table.c.commits_where_fail
+                + stmt.excluded.commits_where_fail,
+            },
+        )
+
+        db_session.execute(stmt)
+        db_session.commit()
+
+    def save_test_instances(self, db_session: Session, test_instance_data: list[dict]):
+        insert_test_instances = insert(TestInstance.__table__).values(
+            test_instance_data
+        )
+        db_session.execute(insert_test_instances)
+        db_session.commit()
+
+    def save_test_flag_bridges(
+        self, db_session: Session, test_flag_bridge_data: list[dict]
+    ):
+        insert_on_conflict_do_nothing_flags = (
+            insert(TestFlagBridge.__table__)
+            .values(test_flag_bridge_data)
+            .on_conflict_do_nothing(index_elements=["test_id", "flag_id"])
+        )
+        db_session.execute(insert_on_conflict_do_nothing_flags)
+        db_session.commit()
+
+    def parse_file(
+        self,
+        file_bytes: bytes,
+        upload: Upload,
+    ) -> tuple[list[test_results_parser.ParsingInfo], bytes] | None:
+        try:
+            parsing_infos, readable_files = test_results_parser.parse_raw_upload(
+                file_bytes
+            )
+            return parsing_infos, readable_files
+        except RuntimeError as exc:
+            log.error(
+                "Error parsing file",
+                extra=dict(
+                    repoid=upload.report.commit.repoid,
+                    commitid=upload.report.commit_id,
+                    uploadid=upload.id,
+                    parser_err_msg=str(exc),
+                    upload_state=upload.state,
+                ),
+            )
+            sentry_sdk.capture_exception(exc, tags={"upload_state": upload.state})
+            return None
+
+    def process_individual_upload(
+        self,
+        db_session,
+        archive_service: ArchiveService,
+        repository: Repository,
+        commitid,
+        upload: Upload,
+        flaky_test_set: set[str],
+        should_delete_archive: bool,
+    ):
+        upload_id = upload.id
+
+        log.info("Processing individual upload", extra=dict(upload_id=upload_id))
+        if upload.state == "processed":
+            return {"successful": True}
+        elif upload.state == "has_failed":
+            return {"successful": False}
 
         payload_bytes = archive_service.read_file(upload.storage_path)
-        data = json.loads(payload_bytes)
+        parsing_results: list[test_results_parser.ParsingInfo] = []
+        report_contents: list[ReadableFile] = []
 
-        testrun_list = []
+        result = self.parse_file(payload_bytes, upload)
+        if result is None:
+            upload.state = "has_failed"
+            db_session.commit()
+            return {"successful": False}
 
-        for file in data["test_results_files"]:
-            file = file["data"]
-            file_bytes = BytesIO(zlib.decompress(base64.b64decode(file)))
-            try:
-                testrun_list += self.parse_single_file(file_bytes)
-            except ParserFailureError as exc:
-                log.error(
-                    exc.err_msg,
-                    extra=dict(
-                        repoid=upload.report.commit.repoid,
-                        commitid=upload.report.commit_id,
-                        uploadid=upload.id,
-                        file_content=exc.file_content,
-                        parser=exc.parser,
-                        parser_err_msg=exc.parser_err_msg,
-                    ),
-                )
+        parsing_results, readable_files = result
 
-        return testrun_list
-
-    def parse_single_file(
-        self,
-        file_bytes,
-    ):
-        try:
-            parser, parsing_function = self.match_report(file_bytes)
-        except ParserNotSupportedError as e:
-            raise ParserFailureError(
-                err_msg="File did not match any parser format",
-                file_content=file_bytes.read().decode()[:300],
-            ) from e
-
-        try:
-            file_content = file_bytes.read()
-            res = parsing_function(file_content)
-        except ParserError as e:
-            raise ParserFailureError(
-                err_msg="Error parsing file",
-                file_content=file_content.decode()[:300],
-                parser=parser,
-                parser_err_msg=str(e),
-            ) from e
-
-        return res
-
-    def match_report(self, file_bytes):
-        first_line = file_bytes.readline()
-        second_line = file_bytes.readline()
-        file_bytes.seek(0)
-        first_line = self.remove_space_from_line(first_line)
-        second_line = self.remove_space_from_line(second_line)
-        first_two_lines = first_line + second_line
-
-        parser = "no parser"
-        if first_two_lines.startswith(b"<?xml"):
-            parser = "junit_xml"
-            parsing_function = parse_junit_xml
-        elif first_two_lines.startswith(b'{"pytest_version":'):
-            parser = "pytest_reportlog"
-            parsing_function = parse_pytest_reportlog
-        elif first_two_lines.startswith(b'{"numTotalTestSuites"'):
-            parser = "vitest_json"
-            parsing_function = parse_vitest_json
+        if all(len(result["testruns"]) == 0 for result in parsing_results):
+            successful = False
+            log.error(
+                "No test result files were successfully parsed for this upload",
+                extra=dict(upload_id=upload_id),
+            )
         else:
-            raise ParserNotSupportedError()
+            successful = True
 
-        return parser, parsing_function
+            self._bulk_write_tests_to_db(
+                db_session,
+                repository.repoid,
+                commitid,
+                upload_id,
+                upload.report.commit.branch,
+                parsing_results,
+                flaky_test_set,
+                upload.flag_names,
+            )
 
-    def remove_space_from_line(self, line):
-        return bytes("".join(line.decode("utf-8").split()), "utf-8")
+        upload.state = "processed"
+        db_session.commit()
+
+        log.info(
+            "Finished processing individual upload", extra=dict(upload_id=upload_id)
+        )
+
+        if should_delete_archive:
+            self.delete_archive(archive_service, upload)
+        else:
+            log.info(
+                "Writing readable files to archive", extra=dict(upload_id=upload_id)
+            )
+            archive_service.write_file(upload.storage_path, readable_files)
+
+        return {"successful": successful}
 
     def should_delete_archive(self, commit_yaml):
         if get_config("services", "minio", "expire_raw_after_n_days"):
@@ -234,23 +476,14 @@ class TestResultsProcessorTask(BaseCodecovTask, name=test_results_processor_task
             commit_yaml, ("codecov", "archive", "uploads"), _else=True
         )
 
-    def delete_archive(
-        self, commitid, repository, commit_yaml, uploads_to_delete: List[Upload]
-    ):
-        archive_service = ArchiveService(repository)
-        for upload in uploads_to_delete:
-            archive_url = upload.storage_path
-            if archive_url and not archive_url.startswith("http"):
-                log.info(
-                    "Deleting uploaded file as requested",
-                    extra=dict(
-                        archive_url=archive_url,
-                        commit=commitid,
-                        upload=upload.external_id,
-                        parent_task=self.request.parent_id,
-                    ),
-                )
-                archive_service.delete_file(archive_url)
+    def delete_archive(self, archive_service: ArchiveService, upload: Upload):
+        archive_url = upload.storage_path
+        if archive_url and not archive_url.startswith("http"):
+            log.info(
+                "Deleting uploaded file as requested",
+                extra=dict(archive_url=archive_url, upload=upload.external_id),
+            )
+            archive_service.delete_file(archive_url)
 
 
 RegisteredTestResultsProcessorTask = celery_app.register_task(

@@ -1,12 +1,10 @@
-import pytest
 from shared.torngit.exceptions import TorngitClientGeneralError
 
 from services.comparison import ComparisonProxy
 
 
 class TestGetBehindBy(object):
-    @pytest.mark.asyncio
-    async def test_get_behind_by(self, mocker, mock_repo_provider):
+    def test_get_behind_by(self, mocker, mock_repo_provider):
         comparison = ComparisonProxy(mocker.MagicMock())
         comparison.comparison.enriched_pull.provider_pull = {"base": {"branch": "a"}}
         mock_repo_provider.get_branches.return_value = [("a", "1")]
@@ -18,25 +16,22 @@ class TestGetBehindBy(object):
             "services.comparison.get_repo_provider_service",
             return_value=mock_repo_provider,
         )
-        res = await comparison.get_behind_by()
+        res = comparison.get_behind_by()
         assert res == 3
 
-    @pytest.mark.asyncio
-    async def test_get_behind_by_no_base_commit(self, mocker):
+    def test_get_behind_by_no_base_commit(self, mocker):
         comparison = ComparisonProxy(mocker.MagicMock())
         del comparison.comparison.project_coverage_base.commit.commitid
-        res = await comparison.get_behind_by()
+        res = comparison.get_behind_by()
         assert res is None
 
-    @pytest.mark.asyncio
-    async def test_get_behind_by_no_provider_pull(self, mocker):
+    def test_get_behind_by_no_provider_pull(self, mocker):
         comparison = ComparisonProxy(mocker.MagicMock())
         comparison.comparison.enriched_pull.provider_pull = None
-        res = await comparison.get_behind_by()
+        res = comparison.get_behind_by()
         assert res is None
 
-    @pytest.mark.asyncio
-    async def test_get_behind_by_no_matching_branches(self, mocker, mock_repo_provider):
+    def test_get_behind_by_no_matching_branches(self, mocker, mock_repo_provider):
         mock_repo_provider.get_branch.side_effect = TorngitClientGeneralError(
             404,
             None,
@@ -47,5 +42,5 @@ class TestGetBehindBy(object):
             return_value=mock_repo_provider,
         )
         comparison = ComparisonProxy(mocker.MagicMock())
-        res = await comparison.get_behind_by()
+        res = comparison.get_behind_by()
         assert res is None

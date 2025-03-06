@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import sync_teams_task_name
-from sqlalchemy.dialects.postgresql import insert
 
 from app import celery_app
 from database.models import Owner
@@ -17,17 +17,17 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
 
     ignore_result = False
 
-    async def run_async(self, db_session, ownerid, *, username=None, **kwargs):
+    def run_impl(self, db_session, ownerid, *, username=None, **kwargs):
         log.info("Sync teams", extra=dict(ownerid=ownerid, username=username))
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
 
         assert owner, "Owner not found"
         service = owner.service
 
-        git = get_owner_provider_service(owner, using_integration=False)
+        git = get_owner_provider_service(owner, ignore_installation=True)
 
         # get list of teams with username, name, email, id (service_id), etc
-        teams = await git.list_teams()
+        teams = async_to_sync(git.list_teams)()
 
         updated_teams = []
 
@@ -89,6 +89,7 @@ class SyncTeamsTask(BaseCodecovTask, name=sync_teams_task_name):
                 email=data.get("email"),
                 avatar_url=data.get("avatar_url"),
                 parent_service_id=data.get("parent_service_id"),
+                createstamp=datetime.now(),
             )
             db_session.add(team)
             db_session.flush()

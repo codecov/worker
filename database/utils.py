@@ -1,10 +1,8 @@
-import json
 import logging
 import time
-from contextlib import contextmanager
-from functools import lru_cache
 from typing import Any, Callable, Optional
 
+import orjson
 from shared.storage.exceptions import FileNotInStorageError
 from shared.utils.ReportEncoder import ReportEncoder
 
@@ -85,9 +83,9 @@ class ArchiveField:
 
     def __set_name__(self, owner, name):
         # Validate that the owner class has the methods we need
-        assert issubclass(
-            owner, ArchiveFieldInterface
-        ), "Missing some required methods to use AchiveField"
+        assert issubclass(owner, ArchiveFieldInterface), (
+            "Missing some required methods to use AchiveField"
+        )
         self.public_name = name
         self.db_field_name = "_" + name
         self.archive_field_name = "_" + name + "_storage_path"
@@ -104,7 +102,7 @@ class ArchiveField:
                 # we're within the timeout window
                 try:
                     file_str = archive_service.read_file(archive_field)
-                    result = self.rehydrate_fn(obj, json.loads(file_str))
+                    result = self.rehydrate_fn(obj, orjson.loads(file_str))
                     if error:
                         # we previously errored and now it succeeded
                         log.info(
@@ -118,8 +116,8 @@ class ArchiveField:
                         )
                     return result
                 except FileNotInStorageError:
-                    log.error(
-                        "Archive enabled field not in storage",
+                    log.warning(
+                        "Archive enabled not found, retrying soon",
                         extra=dict(
                             storage_path=archive_field,
                             object_id=obj.id,
@@ -131,6 +129,14 @@ class ArchiveField:
                     # in a tight loop
                     time.sleep(self.read_timeout / 10)
 
+            log.error(
+                "Archive enabled field not in storage",
+                extra=dict(
+                    storage_path=archive_field,
+                    object_id=obj.id,
+                    commit=obj.get_commitid(),
+                ),
+            )
         else:
             log.debug(
                 "Both db_field and archive_field are None",

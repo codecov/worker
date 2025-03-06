@@ -1,5 +1,6 @@
 import logging
 
+from asgiref.sync import async_to_sync
 from shared.reports.readonly import ReadOnlyReport
 from shared.yaml import UserYaml
 
@@ -8,7 +9,8 @@ from database.enums import ReportType
 from database.models import Commit, Pull
 from database.models.reports import CommitReport, ReportResults
 from helpers.exceptions import RepositoryWithoutValidBotError
-from services.comparison import ComparisonProxy
+from helpers.github_installation import get_installation_name_for_owner_for_task
+from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, FullCommit
 from services.notification.notifiers.status.patch import PatchStatusNotifier
 from services.report import ReportService
@@ -25,25 +27,28 @@ log = logging.getLogger(__name__)
 class SaveReportResultsTask(
     BaseCodecovTask, name="app.tasks.reports.save_report_results"
 ):
-    async def run_async(
+    def run_impl(
         self, db_session, *, repoid, commitid, report_code, current_yaml, **kwargs
     ):
         commit = self.fetch_commit(db_session, repoid, commitid)
 
         try:
-            repository_service = get_repo_provider_service(commit.repository)
+            installation_name_to_use = get_installation_name_for_owner_for_task(
+                self.name, commit.repository.owner
+            )
+            repository_service = get_repo_provider_service(
+                commit.repository, installation_name_to_use=installation_name_to_use
+            )
         except RepositoryWithoutValidBotError:
             return {
                 "report_results_saved": False,
                 "reason": "repository without valid bot",
             }
 
-        current_yaml = await self.fetch_yaml_dict(
-            current_yaml, commit, repository_service
-        )
-        enriched_pull = await fetch_and_update_pull_request_information_from_commit(
-            repository_service, commit, current_yaml
-        )
+        current_yaml = self.fetch_yaml_dict(current_yaml, commit, repository_service)
+        enriched_pull = async_to_sync(
+            fetch_and_update_pull_request_information_from_commit
+        )(repository_service, commit, current_yaml)
         base_commit = self.fetch_base_commit(commit, enriched_pull)
         base_report, head_report = self.fetch_base_and_head_reports(
             current_yaml, commit, base_commit, report_code
@@ -64,12 +69,13 @@ class SaveReportResultsTask(
         comparison = ComparisonProxy(
             Comparison(
                 head=FullCommit(commit=commit, report=head_report),
-                enriched_pull=enriched_pull,
                 project_coverage_base=FullCommit(
                     commit=base_commit, report=base_report
                 ),
                 patch_coverage_base_commitid=patch_coverage_base_commitid,
-            )
+                enriched_pull=enriched_pull,
+            ),
+            ComparisonContext(repository_service=repository_service),
         )
 
         notifier = PatchStatusNotifier(
@@ -78,8 +84,9 @@ class SaveReportResultsTask(
             notifier_yaml_settings={},
             notifier_site_settings=True,
             current_yaml=current_yaml,
+            repository_service=repository_service,
         )
-        result = await notifier.build_payload(comparison)
+        result = notifier.build_payload(comparison)
         report = self.fetch_report(commit, report_code)
         log.info(
             "Saving report results into the db",
@@ -113,14 +120,14 @@ class SaveReportResultsTask(
             base_commit = self.fetch_parent(commit)
         return base_commit
 
-    async def fetch_yaml_dict(self, current_yaml, commit, repository_service):
+    def fetch_yaml_dict(self, current_yaml, commit, repository_service):
         if current_yaml is None:
-            current_yaml = await get_current_yaml(commit, repository_service)
+            current_yaml = async_to_sync(get_current_yaml)(commit, repository_service)
         else:
             current_yaml = UserYaml.from_dict(current_yaml)
         return current_yaml
 
-    def fetch_commit(self, db_session, repoid, commitid):
+    def fetch_commit(self, db_session, repoid, commitid) -> Commit | None:
         commits_query = db_session.query(Commit).filter(
             Commit.repoid == repoid, Commit.commitid == commitid
         )
@@ -145,7 +152,7 @@ class SaveReportResultsTask(
             db_session.query(CommitReport)
             .filter_by(commit_id=commit.id_, code=report_code)
             .filter(
-                (CommitReport.report_type == None)
+                (CommitReport.report_type == None)  # noqa: E711
                 | (CommitReport.report_type == ReportType.COVERAGE.value)
             )
             .first()

@@ -1,12 +1,8 @@
-import json
 from pathlib import Path
-from smtplib import SMTPDataError, SMTPRecipientsRefused, SMTPSenderRefused
-from unittest.mock import MagicMock
 
 import pytest
 from jinja2 import TemplateNotFound, UndefinedError
 from shared.config import ConfigHelper
-from shared.utils.test_utils.mock_metrics import mock_metrics as utils_mock_metrics
 
 from database.tests.factories import OwnerFactory
 from services.smtp import SMTPService, SMTPServiceError
@@ -29,11 +25,9 @@ def mock_configuration_no_smtp(mocker):
                 "access_key_id": "codecov-default-key",
                 "bucket": "archive",
                 "hash_key": "88f572f4726e4971827415efa8867978",
-                "periodic_callback_ms": False,
                 "secret_access_key": "codecov-default-secret",
                 "verify_ssl": False,
             },
-            "redis_url": "redis://redis:@localhost:6379/",
         },
         "setup": {
             "codecov_url": "https://codecov.io",
@@ -48,8 +42,7 @@ def mock_configuration_no_smtp(mocker):
 
 
 class TestSendEmailTask(object):
-    @pytest.mark.asyncio
-    async def test_send_email(
+    def test_send_email(
         self,
         mocker,
         mock_configuration,
@@ -59,94 +52,69 @@ class TestSendEmailTask(object):
         mock_redis,
     ):
         mock_smtp.configure_mock(**{"send.return_value": None})
-        metrics = utils_mock_metrics(mocker)
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
+            from_addr="test_from@codecov.io",
             username="test_username",
         )
 
         assert result == {"email_successful": True, "err_msg": None}
-        assert metrics.data["worker.tasks.send_email.attempt"] == 1
-        assert metrics.data["worker.tasks.send_email.succeed"] == 1
-        assert metrics.data["worker.tasks.send_email.fail"] == 0
 
-    @pytest.mark.asyncio
-    async def test_send_email_non_existent_template(
+    def test_send_email_uses_default_from_addr(
+        self, mocker, mock_configuration, dbsession, mock_smtp
+    ):
+        mock_smtp.configure_mock(**{"send.return_value": None})
+        owner = OwnerFactory.create(email=to_addr)
+        dbsession.add(owner)
+        dbsession.flush()
+        result = SendEmailTask().run_impl(
+            db_session=dbsession,
+            to_addr=owner.email,
+            subject="Test",
+            template_name="test",
+            username="test_username",
+        )
+        assert result == {
+            "email_successful": True,
+            "err_msg": None,
+        }
+
+    def test_send_email_non_existent_template(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
         with pytest.raises(TemplateNotFound):
-            result = await SendEmailTask().run_async(
+            _ = SendEmailTask().run_impl(
                 db_session=dbsession,
-                ownerid=owner.ownerid,
-                from_addr="test_from@codecov.io",
-                template_name="non_existent",
+                to_addr=owner.email,
                 subject="Test",
+                template_name="non_existent",
                 username="test_username",
             )
 
-    @pytest.mark.asyncio
-    async def test_send_email_no_owner(
-        self, mocker, mock_configuration, dbsession, mock_smtp
-    ):
-        owner = OwnerFactory.create(email=None)
-        dbsession.add(owner)
-        dbsession.flush()
-        result = await SendEmailTask().run_async(
-            db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
-            subject="Test",
-            username="test_username",
-        )
-
-        assert result == {
-            "email_successful": False,
-            "err_msg": "Owner does not have email",
-        }
-
-    @pytest.mark.asyncio
-    async def test_send_email_missing_kwargs(
+    def test_send_email_missing_kwargs(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
         with pytest.raises(UndefinedError):
-            result = await SendEmailTask().run_async(
+            result = SendEmailTask().run_impl(
                 db_session=dbsession,
-                ownerid=owner.ownerid,
-                from_addr="test_from@codecov.io",
+                to_addr=owner.email,
                 subject="Test",
                 template_name="test",
             )
 
-    @pytest.mark.asyncio
-    async def test_send_email_invalid_owner_no_list_type(
-        self, mocker, mock_configuration, dbsession, mock_smtp
-    ):
-        result = await SendEmailTask().run_async(
-            db_session=dbsession,
-            ownerid=99999999,
-            from_addr="test_from@codecov.io",
-            template_name="test",
-            subject="Test",
-            username="test_username",
-        )
-        assert result == {"email_successful": False, "err_msg": "Unable to find owner"}
-
-    @pytest.mark.asyncio
-    async def test_send_email_recipients_refused(
+    def test_send_email_recipients_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -156,20 +124,18 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
 
         assert result["email_successful"] == False
         assert result["err_msg"] == "All recipients were refused"
 
-    @pytest.mark.asyncio
-    async def test_send_email_sender_refused(
+    def test_send_email_sender_refused(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -178,19 +144,17 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result["email_successful"] == False
         assert result["err_msg"] == "Sender was refused"
 
-    @pytest.mark.asyncio
-    async def test_send_email_data_error(
+    def test_send_email_data_error(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -203,19 +167,17 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result["email_successful"] == False
         assert result["err_msg"] == "The SMTP server did not accept the data"
 
-    @pytest.mark.asyncio
-    async def test_send_email_sends_errs(
+    def test_send_email_sends_errs(
         self, mocker, mock_configuration, dbsession, mock_smtp
     ):
         mock_smtp.configure_mock(
@@ -224,31 +186,28 @@ class TestSendEmailTask(object):
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result["email_successful"] == False
         assert result["err_msg"] == "123 abc 456 def"
 
-    @pytest.mark.asyncio
-    async def test_send_email_no_smtp_config(
+    def test_send_email_no_smtp_config(
         self, mocker, mock_configuration_no_smtp, dbsession
     ):
         SMTPService.connection = None
         owner = OwnerFactory.create(email=to_addr)
         dbsession.add(owner)
         dbsession.flush()
-        result = await SendEmailTask().run_async(
+        result = SendEmailTask().run_impl(
             db_session=dbsession,
-            ownerid=owner.ownerid,
-            from_addr="test_from@codecov.io",
-            template_name="test",
+            to_addr=owner.email,
             subject="Test",
+            template_name="test",
             username="test_username",
         )
         assert result == {

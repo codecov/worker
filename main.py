@@ -1,22 +1,29 @@
-# -*- coding: utf-8 -*-
-import logging
 import os
-import sys
-import typing
 
-import click
 import django
-from celery.signals import worker_process_shutdown
-from prometheus_client import REGISTRY, CollectorRegistry, multiprocess
-from shared.celery_config import BaseCeleryConfig
-from shared.config import get_config
-from shared.metrics import start_prometheus
-from shared.storage.exceptions import BucketAlreadyExistsError
 
-import app
-from helpers.environment import get_external_dependencies_folder
-from helpers.version import get_current_version
-from services.storage import get_storage_client
+# we're moving this before we create the Celery object
+# so that celery can detect Django is being used
+# using the Django fixup will help fix some database issues
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
+django.setup()
+
+import logging  # noqa: E402
+import sys  # noqa: E402
+
+import click  # noqa: E402
+import shared.storage  # noqa: E402
+from celery.signals import worker_process_shutdown  # noqa: E402
+from prometheus_client import REGISTRY, CollectorRegistry, multiprocess  # noqa: E402
+from shared.celery_config import BaseCeleryConfig  # noqa: E402
+from shared.config import get_config  # noqa: E402
+from shared.license import startup_license_logging  # noqa: E402
+from shared.metrics import start_prometheus  # noqa: E402
+from shared.storage.exceptions import BucketAlreadyExistsError  # noqa: E402
+
+import app  # noqa: E402
+from helpers.environment import get_external_dependencies_folder  # noqa: E402
+from helpers.version import get_current_version  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -54,16 +61,13 @@ def mark_process_dead(pid, exitcode, **kwargs):
 
 
 def setup_worker():
-    print(initialization_text.format(version=get_current_version()))
+    print(initialization_text.format(version=get_current_version()))  # noqa: T201
 
     if getattr(sys, "frozen", False):
         # Only for enterprise builds
         external_deps_folder = get_external_dependencies_folder()
         log.info(f"External dependencies folder configured to {external_deps_folder}")
         sys.path.append(external_deps_folder)
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_scaffold.settings")
-    django.setup()
 
     registry = REGISTRY
     if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
@@ -72,15 +76,25 @@ def setup_worker():
 
     start_prometheus(9996, registry=registry)  # 9996 is an arbitrary port number
 
-    storage_client = get_storage_client()
-    minio_config = get_config("services", "minio")
-    bucket_name = get_config("services", "minio", "bucket", default="archive")
-    region = minio_config.get("region", "us-east-1")
-    try:
-        storage_client.create_root_storage(bucket_name, region)
-        log.info("Initializing bucket %s", bucket_name)
-    except BucketAlreadyExistsError:
-        pass
+    minio_config = get_config("services", "minio", default={})
+    auto_create_bucket = minio_config.get("auto_create_bucket", False)
+    if auto_create_bucket:
+        try:
+            bucket_name = minio_config.get("bucket", "archive")
+            region = minio_config.get("region", "us-east-1")
+
+            # note that this is a departure from the old default behavior.
+            # This is intended as the bucket will exist in most cases where IAC or manual setup is used
+            log.info("Initializing bucket %s", bucket_name)
+
+            # this storage client is only used to create the bucket so it doesn't need to be
+            # aware of the repoid
+            storage_client = shared.storage.get_appropriate_storage_service()
+            storage_client.create_root_storage(bucket_name, region)
+        except BucketAlreadyExistsError:
+            pass
+
+    startup_license_logging()
 
 
 @cli.command()
@@ -95,37 +109,41 @@ def setup_worker():
     default=["celery"],
     help="Queues to listen to for this worker",
 )
-def worker(name, concurrency, debug, queue):
+def worker(name: str, concurrency: int, debug: bool, queue: list[str]):
     setup_worker()
-    actual_queues = _get_queues_param_from_queue_input(queue)
-    return app.celery_app.worker_main(
-        argv=[
-            "worker",
-            "-n",
-            name,
-            "-c",
-            concurrency,
-            "-l",
-            ("debug" if debug else "info"),
-            "-Q",
-            actual_queues,
-            "-B",
-            "-s",
-            "/home/codecov/celerybeat-schedule",  # TODO find file that can work on production and enterprise
-        ]
-    )
+    args = [
+        "worker",
+        "-n",
+        name,
+        "-c",
+        concurrency,
+        "-l",
+        ("debug" if debug else "info"),
+    ]
+    if get_config("setup", "celery_queues_enabled", default=True):
+        actual_queues = _get_queues_param_from_queue_input(queue)
+        args += ["-Q", actual_queues]
+
+    if get_config("setup", "celery_beat_enabled", default=True):
+        args += ["-B", "-s", "/home/codecov/celerybeat-schedule"]
+
+    return app.celery_app.worker_main(argv=args)
 
 
-def _get_queues_param_from_queue_input(queues: typing.List[str]) -> str:
+def _get_queues_param_from_queue_input(queues: list[str]) -> str:
     # We always run the health_check queue to make sure the healthcheck is performed
     # And also to avoid that queue fillign up with no workers to consume from it
-    # this should support if one wants to pass comma separated values
-    # since in the end all is joined again
+
+    # Support passing comma separated values, as those will be split again:
     joined_queues = ",".join(queues)
     enterprise_queues = ["enterprise_" + q for q in joined_queues.split(",")]
-    return ",".join(
-        [joined_queues, *enterprise_queues, BaseCeleryConfig.health_check_default_queue]
-    )
+    all_queues = [
+        joined_queues,
+        *enterprise_queues,
+        BaseCeleryConfig.health_check_default_queue,
+    ]
+
+    return ",".join(all_queues)
 
 
 def main():

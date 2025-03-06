@@ -1,22 +1,19 @@
 import logging
-from contextlib import nullcontext
-from typing import Dict
+from typing import Optional
 
+import sentry_sdk
+from asgiref.sync import async_to_sync
 from shared.config import get_config
-from shared.helpers.cache import DEFAULT_TTL, NO_VALUE, make_hash_sha256
+from shared.helpers.cache import NO_VALUE, make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError, TorngitError
-from shared.utils.sessions import SessionType
 
 from helpers.cache import cache
 from helpers.match import match
-from helpers.metrics import metrics
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
-    Comparison,
     NotificationResult,
 )
-from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_pull_url
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_paths_from_flags
@@ -25,21 +22,17 @@ log = logging.getLogger(__name__)
 
 
 class StatusNotifier(AbstractBaseNotifier):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._repository_service = None
-
     def is_enabled(self) -> bool:
         return True
 
-    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     @property
     def name(self):
         return f"status-{self.context}"
 
-    async def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         raise NotImplementedError()
 
     def get_upgrade_message(self) -> str:
@@ -53,7 +46,7 @@ class StatusNotifier(AbstractBaseNotifier):
         if self.is_failing_empty_upload():
             return ("failure", "Testable files changed")
 
-    def can_we_set_this_status(self, comparison) -> bool:
+    def can_we_set_this_status(self, comparison: ComparisonProxy) -> bool:
         head = comparison.head.commit
         pull = comparison.pull
         if (
@@ -66,8 +59,8 @@ class StatusNotifier(AbstractBaseNotifier):
         return True
 
     def determine_status_check_behavior_to_apply(
-        self, comparison, field_name
-    ) -> str or None:
+        self, comparison: ComparisonProxy, field_name
+    ) -> str | None:
         """
         Used for fields that can be set at the global level for all checks in "default_rules", or at the component level for an individual check.
         For more context, see https://docs.codecov.io/docs/commit-status#default_rules
@@ -88,7 +81,7 @@ class StatusNotifier(AbstractBaseNotifier):
 
         return behavior_to_apply
 
-    def flag_coverage_was_uploaded(self, comparison) -> bool:
+    def flag_coverage_was_uploaded(self, comparison: ComparisonProxy) -> bool:
         """
         Indicates whether coverage was uploaded for any of the flags on this status check.
         If there are no flags on the status check, this will return true.
@@ -105,12 +98,6 @@ class StatusNotifier(AbstractBaseNotifier):
             len(report_uploaded_flags.intersection(flags_included_in_status_check)) > 0
         )
 
-    @property
-    def repository_service(self):
-        if not self._repository_service:
-            self._repository_service = get_repo_provider_service(self.repository)
-        return self._repository_service
-
     def get_notifier_filters(self) -> dict:
         flag_list = self.notifier_yaml_settings.get("flags") or []
         return dict(
@@ -121,7 +108,7 @@ class StatusNotifier(AbstractBaseNotifier):
             flags=flag_list,
         )
 
-    def required_builds(self, comparison: Comparison) -> bool:
+    def required_builds(self, comparison: ComparisonProxy) -> bool:
         flags = self.notifier_yaml_settings.get("flags") or []
         head_report = comparison.head.report
 
@@ -129,7 +116,7 @@ class StatusNotifier(AbstractBaseNotifier):
             flag_configuration = self.current_yaml.get_flag_configuration(flag)
             if flag_configuration and head_report and head_report.sessions:
                 number_of_occ = 0
-                for sid, session in head_report.sessions.items():
+                for session in head_report.sessions.values():
                     if session.flags and flag in session.flags:
                         number_of_occ += 1
                 needed_builds = flag_configuration.get("after_n_builds", 0)
@@ -147,7 +134,22 @@ class StatusNotifier(AbstractBaseNotifier):
                     return False
         return True
 
-    async def notify(self, comparison: Comparison):
+    def get_github_app_used(self) -> int | None:
+        torngit = self.repository_service
+        if torngit is None:
+            return None
+        torngit_installation = torngit.data.get("installation")
+        selected_installation_id = (
+            torngit_installation.get("id") if torngit_installation else None
+        )
+        return selected_installation_id
+
+    @sentry_sdk.trace
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         payload = None
         if not self.can_we_set_this_status(comparison):
             return NotificationResult(
@@ -173,7 +175,7 @@ class StatusNotifier(AbstractBaseNotifier):
                 )
             )
             if not comparison.has_head_report():
-                payload = await self.build_payload(comparison)
+                payload = self.build_payload(comparison)
             elif (
                 flag_coverage_not_uploaded_behavior == "exclude"
                 and not self.flag_coverage_was_uploaded(comparison)
@@ -192,7 +194,7 @@ class StatusNotifier(AbstractBaseNotifier):
                 filtered_comparison = comparison.get_filtered_comparison(
                     **self.get_notifier_filters()
                 )
-                payload = await self.build_payload(filtered_comparison)
+                payload = self.build_payload(filtered_comparison)
                 payload["state"] = "success"
                 payload["message"] = (
                     payload["message"]
@@ -202,13 +204,13 @@ class StatusNotifier(AbstractBaseNotifier):
                 filtered_comparison = comparison.get_filtered_comparison(
                     **self.get_notifier_filters()
                 )
-                payload = await self.build_payload(filtered_comparison)
+                payload = self.build_payload(filtered_comparison)
             if comparison.pull:
                 payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
 
-            return await self.maybe_send_notification(comparison, payload)
+            return self.maybe_send_notification(comparison, payload)
         except TorngitClientError:
             log.warning(
                 "Unable to send status notification to user due to a client-side error",
@@ -242,10 +244,10 @@ class StatusNotifier(AbstractBaseNotifier):
                 data_sent=payload,
             )
 
-    async def status_already_exists(
+    def status_already_exists(
         self, comparison: ComparisonProxy, title, state, description
     ) -> bool:
-        statuses = await comparison.get_existing_statuses()
+        statuses = comparison.get_existing_statuses()
         if statuses:
             exists = statuses.get(title)
             return (
@@ -259,8 +261,8 @@ class StatusNotifier(AbstractBaseNotifier):
         status_piece = f"/{self.title}" if self.title != "default" else ""
         return f"codecov/{self.context}{status_piece}"
 
-    async def maybe_send_notification(
-        self, comparison: Comparison, payload: dict
+    def maybe_send_notification(
+        self, comparison: ComparisonProxy, payload: dict
     ) -> NotificationResult:
         base_commit = (
             comparison.project_coverage_base.commit
@@ -286,7 +288,7 @@ class StatusNotifier(AbstractBaseNotifier):
                 get_config("setup", "cache", "send_status_notification", default=600)
             )  # 10 min default
             cache.get_backend().set(cache_key, ttl, payload)
-            return await self.send_notification(comparison, payload)
+            return self.send_notification(comparison, payload)
         else:
             log.info(
                 "Notification payload unchanged.  Skipping notification.",
@@ -305,62 +307,15 @@ class StatusNotifier(AbstractBaseNotifier):
                 data_sent=None,
             )
 
-    async def send_notification(self, comparison: Comparison, payload):
-        title = self.get_status_external_name()
+    def send_notification(self, comparison: ComparisonProxy, payload):
         repository_service = self.repository_service
-        head = comparison.head.commit
+        title = self.get_status_external_name()
+        head_commit_sha = comparison.head.commit.commitid
         head_report = comparison.head.report
         state = payload["state"]
         message = payload["message"]
         url = payload["url"]
-        if not await self.status_already_exists(comparison, title, state, message):
-            state = (
-                "success" if self.notifier_yaml_settings.get("informational") else state
-            )
-
-            notification_result_data_sent = {
-                "title": title,
-                "state": state,
-                "message": message,
-            }
-            try:
-                with metrics.timer(
-                    "worker.services.notifications.notifiers.status.set_commit_status"
-                ):
-                    res = await repository_service.set_commit_status(
-                        commit=head.commitid,
-                        status=state,
-                        context=title,
-                        coverage=float(head_report.totals.coverage)
-                        if head_report
-                        else 0,
-                        description=message,
-                        url=url,
-                    )
-            except TorngitClientError:
-                log.warning(
-                    "Status not posted because this user can see but not set statuses on this repo",
-                    extra=dict(
-                        data_sent=notification_result_data_sent,
-                        commit=comparison.head.commit.commitid,
-                        repoid=comparison.head.commit.repoid,
-                    ),
-                )
-                return NotificationResult(
-                    notification_attempted=True,
-                    notification_successful=False,
-                    explanation="no_write_permission",
-                    data_sent=notification_result_data_sent,
-                    data_received=None,
-                )
-            return NotificationResult(
-                notification_attempted=True,
-                notification_successful=True,
-                explanation=None,
-                data_sent=notification_result_data_sent,
-                data_received={"id": res.get("id", "NO_ID")},
-            )
-        else:
+        if self.status_already_exists(comparison, title, state, message):
             log.info(
                 "Status already set",
                 extra=dict(context=title, description=message, state=state),
@@ -371,3 +326,66 @@ class StatusNotifier(AbstractBaseNotifier):
                 explanation="already_done",
                 data_sent={"title": title, "state": state, "message": message},
             )
+
+        state = "success" if self.notifier_yaml_settings.get("informational") else state
+
+        notification_result_data_sent = {
+            "title": title,
+            "state": state,
+            "message": message,
+        }
+
+        if payload.get("included_helper_text"):
+            notification_result_data_sent["included_helper_text"] = payload[
+                "included_helper_text"
+            ]
+
+        all_shas_to_notify = [head_commit_sha] + list(
+            comparison.context.gitlab_extra_shas or set()
+        )
+        if len(all_shas_to_notify) > 1:
+            log.info(
+                "Notifying multiple SHAs",
+                extra=dict(all_shas=all_shas_to_notify, commit=head_commit_sha),
+            )
+
+        try:
+            _set_commit_status = async_to_sync(repository_service.set_commit_status)
+            head_coverage = head_report and head_report.totals.coverage
+            all_results = [
+                _set_commit_status(
+                    commitid,
+                    state,
+                    title,
+                    description=message,
+                    url=url,
+                    coverage=(float(head_coverage) if head_coverage else 0),
+                )
+                for commitid in all_shas_to_notify
+            ]
+            res = all_results[0]
+
+        except TorngitClientError:
+            log.warning(
+                "Status not posted because this user can see but not set statuses on this repo",
+                extra=dict(
+                    data_sent=notification_result_data_sent,
+                    commit=head_commit_sha,
+                    repoid=comparison.head.commit.repoid,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=True,
+                notification_successful=False,
+                explanation="no_write_permission",
+                data_sent=notification_result_data_sent,
+                data_received=None,
+            )
+        return NotificationResult(
+            notification_attempted=True,
+            notification_successful=True,
+            explanation=None,
+            data_sent=notification_result_data_sent,
+            data_received={"id": res.get("id", "NO_ID")},
+            github_app_used=self.get_github_app_used(),
+        )

@@ -1,40 +1,22 @@
-import json
-import pprint
-from asyncio import Future
 from decimal import Decimal
 
 import mock
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
-from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportFile, Session, SessionType
-from shared.reports.types import ReportLine, ReportTotals, SessionTotalsArray
+from shared.reports.types import ReportLine, ReportTotals
 from shared.torngit.exceptions import TorngitRateLimitError
 from shared.yaml import UserYaml
 
-from database.models import CommitReport, ReportDetails, RepositoryFlag, Upload
-from database.tests.factories import (
-    CommitFactory,
-    ReportDetailsFactory,
-    ReportFactory,
-    ReportLevelTotalsFactory,
-    RepositoryFlagFactory,
-    UploadFactory,
-    UploadLevelTotalsFactory,
-)
+from database.models import CommitReport, RepositoryFlag, Upload
+from database.tests.factories import CommitFactory
 from helpers.exceptions import RepositoryWithoutValidBotError
-from helpers.labels import SpecialLabelsEnum
 from services.archive import ArchiveService
-from services.report import (
-    NotReadyToBuildReportYetError,
-    ProcessingError,
-    ProcessingResult,
-    ReportService,
-)
+from services.report import NotReadyToBuildReportYetError, ReportService
 from services.report import log as report_log
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
-    _adjust_sessions,
+    clear_carryforward_sessions,
 )
 from test_utils.base import BaseTestCase
 
@@ -144,91 +126,76 @@ def sample_commit_with_report_big(dbsession, mock_storage):
         "file_00.py": [
             0,
             [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_01.py": [
             1,
             [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_10.py": [
             10,
             [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_11.py": [
             11,
             [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_12.py": [
             12,
             [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_13.py": [
             13,
             [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_14.py": [
             14,
             [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_02.py": [
             2,
             [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_03.py": [
             3,
             [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_04.py": [
             4,
             [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_05.py": [
             5,
             [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_06.py": [
             6,
             [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_07.py": [
             7,
             [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_08.py": [
             8,
             [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_09.py": [
             9,
             [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
     }
@@ -354,91 +321,76 @@ def sample_commit_with_report_big_already_carriedforward(dbsession, mock_storage
         "file_00.py": [
             0,
             [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_01.py": [
             1,
             [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_10.py": [
             10,
             [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_11.py": [
             11,
             [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_12.py": [
             12,
             [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_13.py": [
             13,
             [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_14.py": [
             14,
             [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_02.py": [
             2,
             [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_03.py": [
             3,
             [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_04.py": [
             4,
             [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_05.py": [
             5,
             [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_06.py": [
             6,
             [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_07.py": [
             7,
             [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_08.py": [
             8,
             [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
         "file_09.py": [
             9,
             [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-            [None, None, None, [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0]],
             None,
         ],
     }
@@ -456,408 +408,8 @@ def sample_commit_with_report_big_already_carriedforward(dbsession, mock_storage
 
 
 class TestReportService(BaseTestCase):
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_no_report_saved(self, dbsession, mocker):
-        commit = CommitFactory(_report_json=None)
-        dbsession.add(commit)
-        dbsession.commit()
-        res = await ReportService({}).build_report_from_commit(commit)
-        assert res is not None
-        assert res.files == []
-        assert tuple(res.totals) == (0, 0, 0, 0, 0, None, 0, 0, 0, 0, 0, 0, 0)
-
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit(self, dbsession, mock_storage):
-        commit = CommitFactory(_report_json=None)
-        dbsession.add(commit)
-        report = ReportFactory(commit=commit)
-        dbsession.add(report)
-
-        details = ReportDetailsFactory(
-            report=report,
-            _files_array=[
-                {
-                    "filename": "awesome/__init__.py",
-                    "file_index": 2,
-                    "file_totals": [0, 10, 8, 2, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0],
-                    "session_totals": [
-                        [0, 10, 8, 2, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0]
-                    ],
-                    "diff_totals": [0, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                },
-                {
-                    "filename": "tests/__init__.py",
-                    "file_index": 0,
-                    "file_totals": [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
-                    "session_totals": [
-                        [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0]
-                    ],
-                    "diff_totals": None,
-                },
-                {
-                    "filename": "tests/test_sample.py",
-                    "file_index": 1,
-                    "file_totals": [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    "session_totals": [[0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
-                    "diff_totals": None,
-                },
-            ],
-        )
-        dbsession.add(details)
-        totals = ReportLevelTotalsFactory(
-            report=report,
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=85.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(totals)
-
-        upload = UploadFactory(report=report, order_number=0, upload_type="upload")
-        dbsession.add(upload)
-        upload_totals = UploadLevelTotalsFactory(
-            upload=upload,
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=85.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals)
-        dbsession.commit()
-        dbsession.flush()
-
-        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
-            content = f.read().encode()
-            archive_hash = ArchiveService.get_archive_hash(commit.repository)
-            chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
-            mock_storage.write_file("archive", chunks_url, content)
-
-        report = await ReportService({}).build_report_from_commit(commit)
-        assert report is not None
-        assert report.files == [
-            "awesome/__init__.py",
-            "tests/__init__.py",
-            "tests/test_sample.py",
-        ]
-        assert report.totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=Decimal("85.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-
-        assert len(report.sessions) == 1
-        assert report.sessions[0].flags == []
-        assert report.sessions[0].session_type == SessionType.uploaded
-        assert report.sessions[0].totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=Decimal("85.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-
-        # make sure report is still serializable
-        ReportService({}).save_report(commit, report)
-
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_with_flags(self, dbsession, mock_storage):
-        commit = CommitFactory(_report_json=None)
-        dbsession.add(commit)
-        report = ReportFactory(commit=commit)
-        dbsession.add(report)
-
-        details = ReportDetailsFactory(
-            report=report,
-            _files_array=[
-                {
-                    "filename": "awesome/__init__.py",
-                    "file_index": 2,
-                    "file_totals": [0, 10, 8, 2, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0],
-                    "session_totals": [
-                        [0, 10, 8, 2, 0, "80.00000", 0, 0, 0, 0, 0, 0, 0]
-                    ],
-                    "diff_totals": [0, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                },
-                {
-                    "filename": "tests/__init__.py",
-                    "file_index": 0,
-                    "file_totals": [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0],
-                    "session_totals": [
-                        [0, 3, 2, 1, 0, "66.66667", 0, 0, 0, 0, 0, 0, 0]
-                    ],
-                    "diff_totals": None,
-                },
-                {
-                    "filename": "tests/test_sample.py",
-                    "file_index": 1,
-                    "file_totals": [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    "session_totals": [[0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0]],
-                    "diff_totals": None,
-                },
-            ],
-        )
-        dbsession.add(details)
-        totals = ReportLevelTotalsFactory(
-            report=report,
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=85.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(totals)
-
-        flag1 = RepositoryFlagFactory(
-            repository=commit.repository,
-            flag_name="unit",
-        )
-        dbsession.add(flag1)
-        flag2 = RepositoryFlagFactory(
-            repository=commit.repository,
-            flag_name="integration",
-        )
-        dbsession.add(flag2)
-        flag3 = RepositoryFlagFactory(
-            repository=commit.repository,
-            flag_name="labels-flag",
-        )
-        dbsession.add(flag3)
-
-        upload1 = UploadFactory(
-            report=report, flags=[flag1], order_number=0, upload_type="upload"
-        )
-        dbsession.add(upload1)
-        upload_totals1 = UploadLevelTotalsFactory(
-            upload=upload1,
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=85.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals1)
-        dbsession.commit()
-
-        upload2 = UploadFactory(
-            report=report, flags=[flag1], order_number=1, upload_type="carriedforward"
-        )
-        dbsession.add(upload2)
-        upload_totals2 = UploadLevelTotalsFactory(
-            upload=upload2,
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=100.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals2)
-        dbsession.commit()
-
-        upload3 = UploadFactory(
-            report=report, flags=[flag2], order_number=2, upload_type="carriedforward"
-        )
-        dbsession.add(upload3)
-        upload_totals3 = UploadLevelTotalsFactory(
-            upload=upload3,
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=100.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals3)
-        dbsession.commit()
-        dbsession.flush()
-
-        upload4 = UploadFactory(
-            report=report, flags=[flag3], order_number=3, upload_type="upload"
-        )
-        dbsession.add(upload4)
-        upload_totals4 = UploadLevelTotalsFactory(
-            upload=upload4,
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=100.0,
-            branches=0,
-            methods=0,
-        )
-        dbsession.add(upload_totals4)
-        dbsession.commit()
-        dbsession.flush()
-
-        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
-            content = f.read().encode()
-            archive_hash = ArchiveService.get_archive_hash(commit.repository)
-            chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
-            mock_storage.write_file("archive", chunks_url, content)
-
-        yaml = {
-            "flag_management": {
-                "individual_flags": [
-                    {
-                        "name": "labels-flag",
-                        "carryforward": True,
-                        "carryforward_mode": "labels",
-                    }
-                ]
-            }
-        }
-        report = await ReportService(yaml).build_report_from_commit(commit)
-        assert report is not None
-        assert report.files == [
-            "awesome/__init__.py",
-            "tests/__init__.py",
-            "tests/test_sample.py",
-        ]
-        assert report.totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=Decimal("85.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-
-        assert len(report.sessions) == 2
-        assert report.sessions[0].flags == ["unit"]
-        assert report.sessions[0].session_type == SessionType.uploaded
-        assert report.sessions[0].totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage=Decimal("85.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert 1 not in report.sessions  # CF w/ equivalent direct upload
-        assert report.sessions[2].flags == ["integration"]
-        assert report.sessions[2].session_type == SessionType.carriedforward
-        assert report.sessions[2].totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=20,
-            misses=0,
-            partials=0,
-            coverage=Decimal("100.00"),
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=0,
-            complexity=0,
-            complexity_total=0,
-            diff=0,
-        )
-        assert 3 not in report.sessions  # labels flag w/ empty label set
-
-        # make sure report is still serializable
-        ReportService({}).save_report(commit, report)
-
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_fallback(
-        self, dbsession, mocker, mock_storage
-    ):
-        commit = CommitFactory()
-        dbsession.add(commit)
-        dbsession.commit()
-        with open("tasks/tests/samples/sample_chunks_1.txt") as f:
-            content = f.read().encode()
-            archive_hash = ArchiveService.get_archive_hash(commit.repository)
-            chunks_url = f"v4/repos/{archive_hash}/commits/{commit.commitid}/chunks.txt"
-            mock_storage.write_file("archive", chunks_url, content)
-        res = await ReportService({}).build_report_from_commit(commit)
-        assert res is not None
-        assert res.files == [
-            "awesome/__init__.py",
-            "tests/__init__.py",
-            "tests/test_sample.py",
-        ]
-        assert res.totals == ReportTotals(
-            files=3,
-            lines=20,
-            hits=17,
-            misses=3,
-            partials=0,
-            coverage="85.00000",
-            branches=0,
-            methods=0,
-            messages=0,
-            sessions=1,
-            complexity=0,
-            complexity_total=0,
-            diff=[1, 2, 1, 1, 0, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-        )
-        res._totals = None
-        assert res.totals.files == 3
-        assert res.totals.lines == 20
-        assert res.totals.hits == 17
-        assert res.totals.misses == 3
-        assert res.totals.partials == 0
-        assert res.totals.coverage == "85.00000"
-        assert res.totals.branches == 0
-        assert res.totals.methods == 0
-        assert res.totals.messages == 0
-        assert res.totals.sessions == 1
-        assert res.totals.complexity == 0
-        assert res.totals.complexity_total == 0
-        # notice we dont compare the diff since that one comes from git information we lost on the reset
-
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit(
         self,
         dbsession,
         sample_commit_with_report_big,
@@ -874,9 +426,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             [
@@ -1727,136 +1277,91 @@ class TestReportService(BaseTestCase):
                     "file_00.py": [
                         0,
                         [0, 14, 4, 5, 5, "28.57143", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 14, 12, 0, 2, "85.71429"],
-                        },
+                        None,
                         None,
                     ],
                     "file_01.py": [
                         1,
                         [0, 10, 3, 0, 7, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 11, 8, 0, 3, "72.72727"],
-                        },
+                        None,
                         None,
                     ],
                     "file_02.py": [
                         2,
                         [0, 11, 5, 0, 6, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 13, 9, 0, 4, "69.23077"],
-                        },
+                        None,
                         None,
                     ],
                     "file_03.py": [
                         3,
                         [0, 15, 4, 2, 9, "26.66667", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 16, 8, 0, 8, "50.00000"],
-                        },
+                        None,
                         None,
                     ],
                     "file_04.py": [
                         4,
                         [0, 10, 3, 1, 6, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 10, 6, 0, 4, "60.00000"],
-                        },
+                        None,
                         None,
                     ],
                     "file_05.py": [
                         5,
                         [0, 13, 3, 2, 8, "23.07692", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 14, 10, 0, 4, "71.42857"],
-                        },
+                        None,
                         None,
                     ],
                     "file_06.py": [
                         6,
                         [0, 7, 5, 0, 2, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 9, 7, 1, 1, "77.77778"],
-                        },
+                        None,
                         None,
                     ],
                     "file_07.py": [
                         7,
                         [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 11, 9, 0, 2, "81.81818"],
-                        },
+                        None,
                         None,
                     ],
                     "file_08.py": [
                         8,
                         [0, 11, 2, 4, 5, "18.18182", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 11, 6, 0, 5, "54.54545"],
-                        },
+                        None,
                         None,
                     ],
                     "file_09.py": [
                         9,
                         [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 14, 10, 1, 3, "71.42857"],
-                        },
+                        None,
                         None,
                     ],
                     "file_10.py": [
                         10,
                         [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 10, 6, 1, 3, "60.00000"],
-                        },
+                        None,
                         None,
                     ],
                     "file_11.py": [
                         11,
                         [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 23, 15, 1, 7, "65.21739"],
-                        },
+                        None,
                         None,
                     ],
                     "file_12.py": [
                         12,
                         [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 14, 8, 0, 6, "57.14286"],
-                        },
+                        None,
                         None,
                     ],
                     "file_13.py": [
                         13,
                         [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 15, 9, 0, 6, "60.00000"],
-                        },
+                        None,
                         None,
                     ],
                     "file_14.py": [
                         14,
                         [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 23, 13, 0, 10, "56.52174"],
-                        },
+                        None,
                         None,
                     ],
                 },
@@ -1925,8 +1430,8 @@ class TestReportService(BaseTestCase):
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_with_labels(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_with_labels(
         self, dbsession, sample_commit_with_report_big_with_labels
     ):
         parent_commit = sample_commit_with_report_big_with_labels
@@ -1940,9 +1445,7 @@ class TestReportService(BaseTestCase):
         dbsession.add(CommitReport(commit_id=commit.id_))
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert report.labels_index == {
             0: "Th2dMtk4M_codecov",
@@ -2315,19 +1818,13 @@ class TestReportService(BaseTestCase):
                     "file_00.py": [
                         0,
                         [0, 4, 0, 4, 0, "0", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 1},
-                            "0": [0, 4, 0, 4],
-                        },
+                        None,
                         None,
                     ],
                     "file_01.py": [
                         1,
                         [0, 32, 32, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 1},
-                            "0": [0, 32, 32, 0, 0, "100"],
-                        },
+                        None,
                         None,
                     ],
                 },
@@ -2365,29 +1862,12 @@ class TestReportService(BaseTestCase):
                 "s": 1,
             },
         }
-        print(readable_report["archive"])
         assert expected_results["report"]["files"] == readable_report["report"]["files"]
         assert expected_results["report"] == readable_report["report"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_is_called_as_generate(
-        self, dbsession, mocker
-    ):
-        commit = CommitFactory.create(_report_json=None)
-        dbsession.add(commit)
-        dbsession.flush()
-        mocked_create_new_report_for_commit = mocker.patch.object(
-            ReportService, "create_new_report_for_commit", return_value=Future()
-        )
-        mocked_create_new_report_for_commit.return_value.set_result("report")
-        yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report_service = ReportService(UserYaml(yaml_dict))
-        report = await report_service.build_report_from_commit(commit)
-        assert report == mocked_create_new_report_for_commit.return_value
-
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_carriedforward_add_sessions(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_build_report_from_commit_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -2410,17 +1890,15 @@ class TestReportService(BaseTestCase):
             "_possibly_shift_carryforward_report",
             side_effect=fake_possibly_shift,
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert len(report.files) == 15
         mock_possibly_shift.assert_called()
         to_merge_session = Session(flags=["enterprise"])
         report.add_session(to_merge_session)
         assert sorted(report.sessions.keys()) == [2, 3, 4]
-        assert _adjust_sessions(
-            report, Report(), to_merge_session, UserYaml(yaml_dict)
+        assert clear_carryforward_sessions(
+            report, Report(), ["enterprise"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
         )
@@ -2464,7 +1942,6 @@ class TestReportService(BaseTestCase):
                 "s": 1,
             },
         }
-        pprint.pprint(readable_report)
         assert (
             readable_report["report"]["sessions"]
             == expected_results["report"]["sessions"]
@@ -2476,15 +1953,14 @@ class TestReportService(BaseTestCase):
         assert readable_report["report"] == expected_results["report"]
         assert readable_report == expected_results
 
-    @pytest.mark.asyncio
-    async def test_build_report_from_commit_already_carriedforward_add_sessions(
+    def test_get_existing_report_for_commit_already_carriedforward_add_sessions(
         self, dbsession, sample_commit_with_report_big_already_carriedforward
     ):
         commit = sample_commit_with_report_big_already_carriedforward
         dbsession.add(commit)
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
-        report = await ReportService(UserYaml(yaml_dict)).build_report_from_commit(
+        report = ReportService(UserYaml(yaml_dict)).get_existing_report_for_commit(
             commit
         )
         assert report is not None
@@ -2493,8 +1969,8 @@ class TestReportService(BaseTestCase):
         first_to_merge_session = Session(flags=["enterprise"])
         report.add_session(first_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 2, 3, 4]
-        assert _adjust_sessions(
-            report, Report(), first_to_merge_session, UserYaml(yaml_dict)
+        assert clear_carryforward_sessions(
+            report, Report(), ["enterprise"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[2, 3], partially_deleted_sessions=[]
         )
@@ -2569,8 +2045,8 @@ class TestReportService(BaseTestCase):
         second_to_merge_session = Session(flags=["unit"])
         report.add_session(second_to_merge_session)
         assert sorted(report.sessions.keys()) == [0, 1, 3, 4]
-        assert _adjust_sessions(
-            report, Report(), second_to_merge_session, UserYaml(yaml_dict)
+        assert clear_carryforward_sessions(
+            report, Report(), ["unit"], UserYaml(yaml_dict)
         ) == SessionAdjustmentResult(
             fully_deleted_sessions=[], partially_deleted_sessions=[]
         )
@@ -2591,8 +2067,8 @@ class TestReportService(BaseTestCase):
         )
         assert new_readable_report["report"]["sessions"]["3"] == newly_added_session
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_with_path_filters(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_with_path_filters(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -2620,9 +2096,7 @@ class TestReportService(BaseTestCase):
             "_possibly_shift_carryforward_report",
             side_effect=fake_possibly_shift,
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == sorted(
             ["file_10.py", "file_11.py", "file_12.py", "file_13.py", "file_14.py"]
@@ -3003,46 +2477,31 @@ class TestReportService(BaseTestCase):
                     "file_10.py": [
                         10,
                         [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 10, 6, 1, 3, "60.00000"],
-                        },
+                        None,
                         None,
                     ],
                     "file_11.py": [
                         11,
                         [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 23, 15, 1, 7, "65.21739"],
-                        },
+                        None,
                         None,
                     ],
                     "file_12.py": [
                         12,
                         [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 14, 8, 0, 6, "57.14286"],
-                        },
+                        None,
                         None,
                     ],
                     "file_13.py": [
                         13,
                         [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 15, 9, 0, 6, "60.00000"],
-                        },
+                        None,
                         None,
                     ],
                     "file_14.py": [
                         14,
                         [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 23, 13, 0, 10, "56.52174"],
-                        },
+                        None,
                         None,
                     ],
                 },
@@ -3112,8 +2571,7 @@ class TestReportService(BaseTestCase):
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_no_flags(
+    def test_create_new_report_for_commit_no_flags(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -3133,9 +2591,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         mock_possibly_shift.assert_not_called()
@@ -3183,8 +2639,8 @@ class TestReportService(BaseTestCase):
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_no_parent(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_no_parent(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -3199,9 +2655,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         assert sorted(report.files) == []
         mock_possibly_shift.assert_not_called()
@@ -3249,8 +2703,8 @@ class TestReportService(BaseTestCase):
         assert expected_results["totals"] == readable_report["totals"]
         assert expected_results == readable_report
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_parent_not_ready(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_parent_not_ready(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         grandparent_commit = sample_commit_with_report_big
@@ -3274,9 +2728,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         mock_possibly_shift.assert_called()
         assert sorted(report.files) == sorted(
@@ -3319,91 +2771,91 @@ class TestReportService(BaseTestCase):
                 "file_00.py": [
                     0,
                     [0, 14, 4, 5, 5, "28.57143", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 14, 12, 0, 2, "85.71429"]},
+                    None,
                     None,
                 ],
                 "file_01.py": [
                     1,
                     [0, 10, 3, 0, 7, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 11, 8, 0, 3, "72.72727"]},
+                    None,
                     None,
                 ],
                 "file_02.py": [
                     2,
                     [0, 11, 5, 0, 6, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 13, 9, 0, 4, "69.23077"]},
+                    None,
                     None,
                 ],
                 "file_03.py": [
                     3,
                     [0, 15, 4, 2, 9, "26.66667", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 16, 8, 0, 8, "50.00000"]},
+                    None,
                     None,
                 ],
                 "file_04.py": [
                     4,
                     [0, 10, 3, 1, 6, "30.00000", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 10, 6, 0, 4, "60.00000"]},
+                    None,
                     None,
                 ],
                 "file_05.py": [
                     5,
                     [0, 13, 3, 2, 8, "23.07692", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 14, 10, 0, 4, "71.42857"]},
+                    None,
                     None,
                 ],
                 "file_06.py": [
                     6,
                     [0, 7, 5, 0, 2, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 9, 7, 1, 1, "77.77778"]},
+                    None,
                     None,
                 ],
                 "file_07.py": [
                     7,
                     [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 11, 9, 0, 2, "81.81818"]},
+                    None,
                     None,
                 ],
                 "file_08.py": [
                     8,
                     [0, 11, 2, 4, 5, "18.18182", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 11, 6, 0, 5, "54.54545"]},
+                    None,
                     None,
                 ],
                 "file_09.py": [
                     9,
                     [0, 11, 5, 1, 5, "45.45455", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 14, 10, 1, 3, "71.42857"]},
+                    None,
                     None,
                 ],
                 "file_10.py": [
                     10,
                     [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 10, 6, 1, 3, "60.00000"]},
+                    None,
                     None,
                 ],
                 "file_11.py": [
                     11,
                     [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 23, 15, 1, 7, "65.21739"]},
+                    None,
                     None,
                 ],
                 "file_12.py": [
                     12,
                     [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 14, 8, 0, 6, "57.14286"]},
+                    None,
                     None,
                 ],
                 "file_13.py": [
                     13,
                     [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 15, 9, 0, 6, "60.00000"]},
+                    None,
                     None,
                 ],
                 "file_14.py": [
                     14,
                     [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 4}, "3": [0, 23, 13, 0, 10, "56.52174"]},
+                    None,
                     None,
                 ],
             },
@@ -3453,8 +2905,8 @@ class TestReportService(BaseTestCase):
         )
         assert expected_results_report == readable_report["report"]
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_parent_not_ready_but_skipped(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_parent_not_ready_but_skipped(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         parent_commit = sample_commit_with_report_big
@@ -3474,9 +2926,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         mock_possibly_shift.assert_called()
         assert sorted(report.files) == sorted(
@@ -3560,8 +3010,8 @@ class TestReportService(BaseTestCase):
             expected_results_report["sessions"] == readable_report["report"]["sessions"]
         )
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_too_many_ancestors_not_ready(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_too_many_ancestors_not_ready(
         self, dbsession, sample_commit_with_report_big, mocker
     ):
         grandparent_commit = sample_commit_with_report_big
@@ -3585,9 +3035,7 @@ class TestReportService(BaseTestCase):
         mock_possibly_shift = mocker.patch.object(
             ReportService, "_possibly_shift_carryforward_report"
         )
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         mock_possibly_shift.assert_not_called()
         assert sorted(report.files) == []
@@ -3595,8 +3043,8 @@ class TestReportService(BaseTestCase):
         expected_results_report = {"files": {}, "sessions": {}}
         assert expected_results_report == readable_report["report"]
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_parent_had_no_parent_and_pending(self, dbsession):
         current_commit = CommitFactory.create(parent_commit_id=None, state="pending")
         dbsession.add(current_commit)
         for i in range(5):
@@ -3616,12 +3064,10 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         with pytest.raises(NotReadyToBuildReportYetError):
-            await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-                commit
-            )
+            ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_potential_cf_but_not_real_cf(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_potential_cf_but_not_real_cf(
         self, dbsession, sample_commit_with_report_big
     ):
         parent_commit = sample_commit_with_report_big
@@ -3642,13 +3088,11 @@ class TestReportService(BaseTestCase):
                 "individual_flags": [{"name": "banana", "carryforward": True}],
             }
         }
-        report = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report.is_empty()
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_parent_has_no_report(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_parent_has_no_report(
         self, mock_storage, dbsession
     ):
         parent = CommitFactory.create()
@@ -3662,7 +3106,7 @@ class TestReportService(BaseTestCase):
         report_service = ReportService(
             UserYaml({"flags": {"enterprise": {"carryforward": True}}})
         )
-        r = await report_service.create_new_report_for_commit(commit)
+        r = report_service.create_new_report_for_commit(commit)
         assert r.files == []
 
     def test_save_full_report(
@@ -3673,7 +3117,6 @@ class TestReportService(BaseTestCase):
                 "setup": {
                     "save_report_data_in_storage": {
                         "only_codecov": False,
-                        "report_details_files_array": True,
                     },
                 }
             }
@@ -3683,9 +3126,6 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
-        dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
         dbsession.flush()
         sample_report.sessions[0].archive = "path/to/upload/location"
         sample_report.sessions[
@@ -3751,86 +3191,6 @@ class TestReportService(BaseTestCase):
         assert second_upload.totals is None
         assert second_upload.upload_extras == {}
         assert second_upload.upload_type == "carriedforward"
-        assert report_details.files_array == [
-            {
-                "filename": "file_1.go",
-                "file_index": 0,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=8,
-                    hits=5,
-                    misses=3,
-                    partials=0,
-                    coverage="62.50000",
-                    branches=0,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=10,
-                    complexity_total=2,
-                    diff=0,
-                ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        ReportTotals(
-                            files=0,
-                            lines=8,
-                            hits=5,
-                            misses=3,
-                            partials=0,
-                            coverage="62.50000",
-                            branches=0,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=10,
-                            complexity_total=2,
-                            diff=0,
-                        )
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_2.py",
-                "file_index": 1,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=2,
-                    hits=1,
-                    misses=0,
-                    partials=1,
-                    coverage="50.00000",
-                    branches=1,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=0,
-                    complexity_total=0,
-                    diff=0,
-                ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        ReportTotals(
-                            files=0,
-                            lines=2,
-                            hits=1,
-                            misses=0,
-                            partials=1,
-                            coverage="50.00000",
-                            branches=1,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=0,
-                            complexity_total=0,
-                            diff=0,
-                        )
-                    ]
-                ),
-                "diff_totals": None,
-            },
-        ]
 
     def test_save_report_empty_report(self, dbsession, mock_storage):
         report = Report()
@@ -3839,9 +3199,6 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
-        dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
         dbsession.flush()
         report_service = ReportService({})
         res = report_service.save_report(commit, report)
@@ -3880,113 +3237,28 @@ class TestReportService(BaseTestCase):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
-        dbsession.flush()
         report_service = ReportService({})
         res = report_service.save_report(commit, sample_report)
         storage_hash = report_service.get_archive_service(
             commit.repository
         ).storage_hash
+
         assert res == {
             "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
         assert len(current_report_row.uploads) == 0
-        assert report_details.files_array == [
-            {
-                "filename": "file_1.go",
-                "file_index": 0,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=8,
-                    hits=5,
-                    misses=3,
-                    partials=0,
-                    coverage="62.50000",
-                    branches=0,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=10,
-                    complexity_total=2,
-                    diff=0,
-                ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        ReportTotals(
-                            files=0,
-                            lines=8,
-                            hits=5,
-                            misses=3,
-                            partials=0,
-                            coverage="62.50000",
-                            branches=0,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=10,
-                            complexity_total=2,
-                            diff=0,
-                        )
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_2.py",
-                "file_index": 1,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=2,
-                    hits=1,
-                    misses=0,
-                    partials=1,
-                    coverage="50.00000",
-                    branches=1,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=0,
-                    complexity_total=0,
-                    diff=0,
-                ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        ReportTotals(
-                            files=0,
-                            lines=2,
-                            hits=1,
-                            misses=0,
-                            partials=1,
-                            coverage="50.00000",
-                            branches=1,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=0,
-                            complexity_total=0,
-                            diff=0,
-                        )
-                    ]
-                ),
-                "diff_totals": None,
-            },
-        ]
-        expected = {
+        assert commit.report_json == {
             "files": {
                 "file_1.go": [
                     0,
                     [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                    {
-                        "meta": {"session_count": 1},
-                        "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                    },
+                    None,
                     None,
                 ],
                 "file_2.py": [
                     1,
                     [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 1}, "0": [0, 2, 1, 0, 1, "50.00000", 1]},
+                    None,
                     None,
                 ],
             },
@@ -4023,31 +3295,24 @@ class TestReportService(BaseTestCase):
                 },
             },
         }
-        assert (
-            commit.report_json["sessions"]["0"]["t"] == expected["sessions"]["0"]["t"]
-        )
-        assert commit.report_json["sessions"]["0"] == expected["sessions"]["0"]
-        assert commit.report_json["sessions"] == expected["sessions"]
-        assert commit.report_json == expected
         assert res["url"] in mock_storage.storage["archive"]
-        print(mock_storage.storage["archive"][res["url"]])
         expected_content = "\n".join(
             [
                 "{}",
                 "<<<<< end_of_header >>>>>",
-                "{}",
-                "[1, null, [[0, 1]], null, [10, 2]]",
-                "[0, null, [[0, 1]]]",
-                "[1, null, [[0, 1]]]",
+                '{"present_sessions":[0,1]}',
+                "[1,null,[[0,1]],null,[10,2]]",
+                "[0,null,[[0,1]]]",
+                "[1,null,[[0,1]]]",
                 "",
-                "[1, null, [[0, 1], [1, 1]]]",
-                "[0, null, [[0, 1]]]",
+                "[1,null,[[0,1],[1,1]]]",
+                "[0,null,[[0,1]]]",
                 "",
-                "[1, null, [[0, 1], [1, 0]]]",
-                "[1, null, [[0, 1]]]",
-                "[0, null, [[0, 1]]]",
+                "[1,null,[[0,1],[1,0]]]",
+                "[1,null,[[0,1]]]",
+                "[0,null,[[0,1]]]",
                 "<<<<< end_of_chunk >>>>>",
-                "{}",
+                '{"present_sessions":[0]}',
                 "",
                 "",
                 "",
@@ -4059,19 +3324,7 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                "[1, null, [[0, 1]]]",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
+                "[1,null,[[0,1]]]",
                 "",
                 "",
                 "",
@@ -4098,7 +3351,19 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 "",
-                '["1/2", "b", [[0, 1]]]',
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                '["1/2","b",[[0,1]]]',
             ]
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
@@ -4112,9 +3377,6 @@ class TestReportService(BaseTestCase):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
-        dbsession.flush()
         report_service = ReportService({})
         f = ReportFile("hahafile.txt")
         f.append(1, ReportLine.create(1))
@@ -4125,7 +3387,6 @@ class TestReportService(BaseTestCase):
         f3 = ReportFile("pulse.py")
         f3.append(2, ReportLine.create(1))
         sample_report.append(f3)
-        print(sample_report.files)
         del sample_report["file_2.py"]
         del sample_report["hahafile.txt"]
         del sample_report["pulse.py"]
@@ -4138,102 +3399,18 @@ class TestReportService(BaseTestCase):
             "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
         }
         assert len(current_report_row.uploads) == 0
-        assert report_details.files_array == [
-            {
-                "filename": "file_1.go",
-                "file_index": 0,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=8,
-                    hits=5,
-                    misses=3,
-                    partials=0,
-                    coverage="62.50000",
-                    branches=0,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=10,
-                    complexity_total=2,
-                    diff=0,
-                ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        ReportTotals(
-                            files=0,
-                            lines=8,
-                            hits=5,
-                            misses=3,
-                            partials=0,
-                            coverage="62.50000",
-                            branches=0,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=10,
-                            complexity_total=2,
-                            diff=0,
-                        )
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "poultry.c",
-                "file_index": 1,
-                "file_totals": ReportTotals(
-                    files=0,
-                    lines=1,
-                    hits=1,
-                    misses=0,
-                    partials=0,
-                    coverage="100",
-                    branches=0,
-                    methods=0,
-                    messages=0,
-                    sessions=0,
-                    complexity=0,
-                    complexity_total=0,
-                    diff=0,
-                ),
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        ReportTotals(
-                            files=0,
-                            lines=1,
-                            hits=1,
-                            misses=0,
-                            partials=0,
-                            coverage="100",
-                            branches=0,
-                            methods=0,
-                            messages=0,
-                            sessions=0,
-                            complexity=0,
-                            complexity_total=0,
-                            diff=0,
-                        ),
-                    ]
-                ),
-                "diff_totals": None,
-            },
-        ]
-        expected = {
+        assert commit.report_json == {
             "files": {
                 "file_1.go": [
                     0,
                     [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                    {
-                        "meta": {"session_count": 1},
-                        "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                    },
+                    None,
                     None,
                 ],
                 "poultry.c": [
                     1,
                     [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    {"meta": {"session_count": 2}, "1": [0, 1, 1, 0, 0, "100"]},
+                    None,
                     None,
                 ],
             },
@@ -4270,32 +3447,24 @@ class TestReportService(BaseTestCase):
                 },
             },
         }
-        assert (
-            commit.report_json["sessions"]["0"]["t"] == expected["sessions"]["0"]["t"]
-        )
-        assert commit.report_json["sessions"]["0"] == expected["sessions"]["0"]
-        assert commit.report_json["sessions"] == expected["sessions"]
-        assert commit.report_json["files"] == expected["files"]
-        assert commit.report_json == expected
         assert res["url"] in mock_storage.storage["archive"]
-        print(mock_storage.storage["archive"][res["url"]])
         expected_content = "\n".join(
             [
                 "{}",
                 "<<<<< end_of_header >>>>>",
-                "{}",
-                "[1, null, [[0, 1]], null, [10, 2]]",
-                "[0, null, [[0, 1]]]",
-                "[1, null, [[0, 1]]]",
+                '{"present_sessions":[0,1]}',
+                "[1,null,[[0,1]],null,[10,2]]",
+                "[0,null,[[0,1]]]",
+                "[1,null,[[0,1]]]",
                 "",
-                "[1, null, [[0, 1], [1, 1]]]",
-                "[0, null, [[0, 1]]]",
+                "[1,null,[[0,1],[1,1]]]",
+                "[0,null,[[0,1]]]",
                 "",
-                "[1, null, [[0, 1], [1, 0]]]",
-                "[1, null, [[0, 1]]]",
-                "[0, null, [[0, 1]]]",
+                "[1,null,[[0,1],[1,0]]]",
+                "[1,null,[[0,1]]]",
+                "[0,null,[[0,1]]]",
                 "<<<<< end_of_chunk >>>>>",
-                "{}",
+                '{"present_sessions":[]}',
                 "",
                 "",
                 "",
@@ -4312,20 +3481,16 @@ class TestReportService(BaseTestCase):
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_brand_new(self, dbsession, mock_storage):
+    def test_initialize_and_save_report_brand_new(self, dbsession, mock_storage):
         commit = CommitFactory.create()
         dbsession.add(commit)
         dbsession.flush()
         report_service = ReportService({})
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert r is not None
-        assert r.details is not None
-        assert r.details.files_array == []
         assert len(mock_storage.storage["archive"]) == 0
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_report_but_no_details(
+    def test_initialize_and_save_report_report_but_no_details(
         self, dbsession, mock_storage
     ):
         commit = CommitFactory.create()
@@ -4335,15 +3500,13 @@ class TestReportService(BaseTestCase):
         dbsession.add(report_row)
         dbsession.flush()
         report_service = ReportService({})
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         dbsession.refresh(report_row)
         assert r is not None
-        assert r.details is not None
-        assert r.details.files_array == []
         assert len(mock_storage.storage["archive"]) == 0
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_carryforward_needed(
+    @pytest.mark.django_db(databases={"default"})
+    def test_initialize_and_save_report_carryforward_needed(
         self, dbsession, sample_commit_with_report_big, mocker, mock_storage
     ):
         parent_commit = sample_commit_with_report_big
@@ -4356,7 +3519,7 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         report_service = ReportService(UserYaml(yaml_dict))
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert len(r.uploads) == 2
         first_upload = dbsession.query(Upload).filter_by(
             report_id=r.id_, order_number=2
@@ -4402,27 +3565,9 @@ class TestReportService(BaseTestCase):
             "carriedforward_from": parent_commit.commitid
         }
         assert second_upload.upload_type == "carriedforward"
-        assert r.details is not None
-        assert sorted(f["filename"] for f in r.details.files_array) == [
-            "file_00.py",
-            "file_01.py",
-            "file_02.py",
-            "file_03.py",
-            "file_04.py",
-            "file_05.py",
-            "file_06.py",
-            "file_07.py",
-            "file_08.py",
-            "file_09.py",
-            "file_10.py",
-            "file_11.py",
-            "file_12.py",
-            "file_13.py",
-            "file_14.py",
-        ]
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_report_but_no_details_carryforward_needed(
+    @pytest.mark.django_db(databases={"default"})
+    def test_initialize_and_save_report_report_but_no_details_carryforward_needed(
         self, dbsession, sample_commit_with_report_big, mock_storage
     ):
         parent_commit = sample_commit_with_report_big
@@ -4438,7 +3583,7 @@ class TestReportService(BaseTestCase):
         dbsession.flush()
         yaml_dict = {"flags": {"enterprise": {"carryforward": True}}}
         report_service = ReportService(UserYaml(yaml_dict))
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert len(r.uploads) == 2
         first_upload = dbsession.query(Upload).filter_by(
             report_id=r.id_, order_number=2
@@ -4484,40 +3629,16 @@ class TestReportService(BaseTestCase):
             "carriedforward_from": parent_commit.commitid
         }
         assert second_upload.upload_type == "carriedforward"
-        assert r.details is not None
-        assert sorted(f["filename"] for f in r.details.files_array) == [
-            "file_00.py",
-            "file_01.py",
-            "file_02.py",
-            "file_03.py",
-            "file_04.py",
-            "file_05.py",
-            "file_06.py",
-            "file_07.py",
-            "file_08.py",
-            "file_09.py",
-            "file_10.py",
-            "file_11.py",
-            "file_12.py",
-            "file_13.py",
-            "file_14.py",
-        ]
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_needs_backporting(
+    def test_initialize_and_save_report_needs_backporting(
         self, dbsession, sample_commit_with_report_big, mock_storage, mocker
     ):
         commit = sample_commit_with_report_big
         report_service = ReportService({})
-        mocker.patch.object(
-            ReportDetails, "_should_write_to_storage", return_value=True
-        )
-        r = await report_service.initialize_and_save_report(commit)
+        r = report_service.initialize_and_save_report(commit)
         assert r is not None
-        assert r.details is not None
         assert len(r.uploads) == 4
         first_upload = dbsession.query(Upload).filter_by(order_number=0).first()
-        print(first_upload.flags)
         assert sorted([f.flag_name for f in first_upload.flags]) == []
         second_upload = dbsession.query(Upload).filter_by(order_number=1).first()
         assert sorted([f.flag_name for f in second_upload.flags]) == ["unit"]
@@ -4534,224 +3655,10 @@ class TestReportService(BaseTestCase):
             .count()
             == 2
         )
-        print(r.details)
-        assert r.details.files_array == [
-            {
-                "filename": "file_00.py",
-                "file_index": 0,
-                "file_totals": [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 14, 12, 0, 2, "85.71429", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_01.py",
-                "file_index": 1,
-                "file_totals": [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_10.py",
-                "file_index": 10,
-                "file_totals": [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_11.py",
-                "file_index": 11,
-                "file_totals": [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_12.py",
-                "file_index": 12,
-                "file_totals": [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_13.py",
-                "file_index": 13,
-                "file_totals": [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_14.py",
-                "file_index": 14,
-                "file_totals": [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_02.py",
-                "file_index": 2,
-                "file_totals": [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_03.py",
-                "file_index": 3,
-                "file_totals": [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 16, 8, 0, 8, "50.00000", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_04.py",
-                "file_index": 4,
-                "file_totals": [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 10, 6, 0, 4, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_05.py",
-                "file_index": 5,
-                "file_totals": [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 14, 10, 0, 4, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_06.py",
-                "file_index": 6,
-                "file_totals": [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 9, 7, 1, 1, "77.77778", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_07.py",
-                "file_index": 7,
-                "file_totals": [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 11, 9, 0, 2, "81.81818", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_08.py",
-                "file_index": 8,
-                "file_totals": [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_09.py",
-                "file_index": 9,
-                "file_totals": [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                "session_totals": SessionTotalsArray.build_from_encoded_data(
-                    [
-                        None,
-                        None,
-                        None,
-                        [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
-                    ]
-                ),
-                "diff_totals": None,
-            },
-        ]
         storage_keys = mock_storage.storage["archive"].keys()
         assert any(map(lambda key: key.endswith("chunks.txt"), storage_keys))
 
-    @pytest.mark.asyncio
-    async def test_initialize_and_save_report_existing_report(
+    def test_initialize_and_save_report_existing_report(
         self, mock_storage, sample_report, dbsession, mocker
     ):
         mocker_save_full_report = mocker.patch.object(ReportService, "save_full_report")
@@ -4761,15 +3668,13 @@ class TestReportService(BaseTestCase):
         current_report_row = CommitReport(commit_id=commit.id_)
         dbsession.add(current_report_row)
         dbsession.flush()
-        report_details = ReportDetails(report_id=current_report_row.id_)
-        dbsession.add(report_details)
-        dbsession.flush()
         report_service = ReportService({})
         report_service.save_report(commit, sample_report)
-        res = await report_service.initialize_and_save_report(commit)
+        res = report_service.initialize_and_save_report(commit)
         assert res == current_report_row
         assert not mocker_save_full_report.called
 
+    @pytest.mark.django_db
     def test_create_report_upload(self, dbsession):
         arguments = {
             "branch": "master",
@@ -4778,7 +3683,7 @@ class TestReportService(BaseTestCase):
             "cmd_args": "n,F,Q,C",
             "commit": "1280bf4b8d596f41b101ac425758226c021876da",
             "job": "thisjob",
-            "flags": "unittest",
+            "flags": ["unittest"],
             "name": "this name contains more than 100 chars 1111111111111111111111111111111111111111111111111111111111111this is more than 100",
             "owner": "greenlantern",
             "package": "github-action-20210309-2b87ace",
@@ -4787,7 +3692,6 @@ class TestReportService(BaseTestCase):
             "reportid": "6e2b6449-4e60-43f8-80ae-2c03a5c03d92",
             "service": "github-actions",
             "slug": "greenlantern/reponame",
-            "upload_pk": "42593902",
             "url": "v4/raw/2021-03-12/C00AE6C87E34AF41A6D38D154C609782/1280bf4b8d596f41b101ac425758226c021876da/6e2b6449-4e60-43f8-80ae-2c03a5c03d92.txt",
             "using_global_token": "false",
             "version": "v4",
@@ -4823,66 +3727,8 @@ class TestReportService(BaseTestCase):
         assert res.totals is None
         assert res.upload_extras == {}
         assert res.upload_type == "uploaded"
-        assert len(res.flags) == 1
-        first_flag = res.flags[0]
-        assert first_flag.flag_name == "unittest"
-        assert first_flag.repository_id == commit.repoid
 
-    def test_update_upload_with_processing_result_error(self, mocker, dbsession):
-        upload_obj = UploadFactory.create(state="started", storage_path="url")
-        dbsession.add(upload_obj)
-        dbsession.flush()
-        assert len(upload_obj.errors) == 0
-        processing_result = ProcessingResult(
-            report=None,
-            session=mocker.MagicMock(),
-            error=ProcessingError(code="abclkj", params={"banana": "value"}),
-            fully_deleted_sessions=[],
-            partially_deleted_sessions=[],
-            raw_report=None,
-            upload_obj=upload_obj,
-        )
-        assert (
-            ReportService({}).update_upload_with_processing_result(
-                upload_obj, processing_result
-            )
-            is None
-        )
-        dbsession.refresh(upload_obj)
-        assert upload_obj.state == "error"
-        assert upload_obj.state_id == UploadState.ERROR.db_id
-        assert len(upload_obj.errors) == 1
-        assert upload_obj.errors[0].error_code == "abclkj"
-        assert upload_obj.errors[0].error_params == {"banana": "value"}
-        assert upload_obj.errors[0].report_upload == upload_obj
-
-    def test_update_upload_with_processing_result_success(self, mocker, dbsession):
-        upload_obj = UploadFactory.create(state="started", storage_path="url")
-        dbsession.add(upload_obj)
-        dbsession.flush()
-        assert len(upload_obj.errors) == 0
-        processing_result = ProcessingResult(
-            report=Report(),
-            session=Session(),
-            error=None,
-            fully_deleted_sessions=[],
-            partially_deleted_sessions=[],
-            raw_report=None,
-            upload_obj=upload_obj,
-        )
-        assert (
-            ReportService({}).update_upload_with_processing_result(
-                upload_obj, processing_result
-            )
-            is None
-        )
-        dbsession.refresh(upload_obj)
-        assert upload_obj.state == "processed"
-        assert upload_obj.state_id == UploadState.PROCESSED.db_id
-        assert len(upload_obj.errors) == 0
-
-    @pytest.mark.asyncio
-    async def test_shift_carryforward_report(
+    def test_shift_carryforward_report(
         self, dbsession, sample_report, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
@@ -4929,12 +3775,10 @@ class TestReportService(BaseTestCase):
             return fake_diff
 
         mock_repo_provider.get_compare = mock.AsyncMock(side_effect=fake_get_compare)
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             sample_report, parent_commit, commit
         )
         readable_report = self.convert_report_to_better_readable(result)
-        print(readable_report["archive"])
-        print(result.get("file_1.go")._lines)
         assert readable_report["archive"] == {
             "file_1.go": [
                 (1, 1, None, [[0, 1, None, None, None]], None, (10, 2)),
@@ -4966,16 +3810,14 @@ class TestReportService(BaseTestCase):
             ],
         }
 
-    @pytest.mark.asyncio
-    async def test_create_new_report_for_commit_and_shift(
+    @pytest.mark.django_db(databases={"default", "timeseries"})
+    def test_create_new_report_for_commit_and_shift(
         self, dbsession, sample_report, mocker, mock_repo_provider, mock_storage
     ):
         parent_commit = CommitFactory()
         parent_commit_report = CommitReport(commit_id=parent_commit.id_)
-        parent_report_details = ReportDetails(report_id=parent_commit_report.id_)
         dbsession.add(parent_commit)
         dbsession.add(parent_commit_report)
-        dbsession.add(parent_report_details)
         dbsession.flush()
 
         commit = CommitFactory.create(
@@ -5038,12 +3880,9 @@ class TestReportService(BaseTestCase):
             ReportService, "get_existing_report_for_commit", return_value=sample_report
         )
 
-        result = await ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(
-            commit
-        )
+        result = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert mock_get_report.call_count == 1
         readable_report = self.convert_report_to_better_readable(result)
-        print(readable_report["archive"])
         assert readable_report["archive"] == {
             "file_1.go": [
                 (1, 1, None, [[0, 1, None, None, None]], None, (10, 2)),
@@ -5075,8 +3914,7 @@ class TestReportService(BaseTestCase):
             ],
         }
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_cant_get_diff(
+    def test_possibly_shift_carryforward_report_cant_get_diff(
         self, dbsession, sample_report, mocker
     ):
         parent_commit = CommitFactory()
@@ -5094,7 +3932,7 @@ class TestReportService(BaseTestCase):
         mock_provider_service = mocker.patch(
             "services.report.get_repo_provider_service", return_value=fake_provider
         )
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             sample_report, parent_commit, commit
         )
         assert result == sample_report
@@ -5113,8 +3951,7 @@ class TestReportService(BaseTestCase):
             ),
         )
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_bot_error(
+    def test_possibly_shift_carryforward_report_bot_error(
         self, dbsession, sample_report, mocker
     ):
         parent_commit = CommitFactory()
@@ -5130,7 +3967,7 @@ class TestReportService(BaseTestCase):
         mock_provider_service = mocker.patch(
             "services.report.get_repo_provider_service", side_effect=raise_error
         )
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             sample_report, parent_commit, commit
         )
         assert result == sample_report
@@ -5144,8 +3981,7 @@ class TestReportService(BaseTestCase):
             ),
         )
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_random_processing_error(
+    def test_possibly_shift_carryforward_report_random_processing_error(
         self, dbsession, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
@@ -5163,7 +3999,7 @@ class TestReportService(BaseTestCase):
         )
         mock_report = mocker.Mock()
         mock_report.shift_lines_by_diff = raise_error
-        result = await ReportService({})._possibly_shift_carryforward_report(
+        result = ReportService({})._possibly_shift_carryforward_report(
             mock_report, parent_commit, commit
         )
         assert result == mock_report
@@ -5176,8 +4012,7 @@ class TestReportService(BaseTestCase):
             ),
         )
 
-    @pytest.mark.asyncio
-    async def test_possibly_shift_carryforward_report_softtimelimit_reraised(
+    def test_possibly_shift_carryforward_report_softtimelimit_reraised(
         self, dbsession, mocker, mock_repo_provider
     ):
         parent_commit = CommitFactory()
@@ -5192,6 +4027,6 @@ class TestReportService(BaseTestCase):
         mock_report = mocker.Mock()
         mock_report.shift_lines_by_diff = raise_error
         with pytest.raises(SoftTimeLimitExceeded):
-            await ReportService({})._possibly_shift_carryforward_report(
+            ReportService({})._possibly_shift_carryforward_report(
                 mock_report, parent_commit, commit
             )

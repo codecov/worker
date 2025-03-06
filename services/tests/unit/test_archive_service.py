@@ -1,10 +1,8 @@
 import json
 
 from shared.storage import MinioStorageService
-from shared.storage.exceptions import FileNotInStorageError
 
 from database.tests.factories import RepositoryFactory
-from database.tests.factories.core import CommitFactory
 from services.archive import ArchiveService
 from test_utils.base import BaseTestCase
 
@@ -20,23 +18,6 @@ class TestArchiveService(BaseTestCase):
         result = service.read_file(path)
         assert expected_result == result
 
-    def test_delete_repo_files(self, mocker):
-        mock_delete_files = mocker.patch.object(MinioStorageService, "delete_files")
-        mock_delete_files.return_value = [True, True]
-
-        mock_list_folder_contents = mocker.patch.object(
-            MinioStorageService, "list_folder_contents"
-        )
-        mock_list_folder_contents.return_value = [
-            {"name": "file1", "size": 84},
-            {"name": "freedom.txt", "size": 84},
-        ]
-
-        repo = RepositoryFactory.create()
-        service = ArchiveService(repo)
-        result = service.delete_repo_files()
-        assert result == 2
-
 
 class TestWriteJsonData(BaseTestCase):
     def test_write_report_details_to_storage(self, mocker, dbsession):
@@ -50,20 +31,12 @@ class TestWriteJsonData(BaseTestCase):
                 "filename": "file_1.go",
                 "file_index": 0,
                 "file_totals": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                "session_totals": {
-                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
             {
                 "filename": "file_2.py",
                 "file_index": 1,
                 "file_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                "session_totals": {
-                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
         ]
@@ -100,20 +73,12 @@ class TestWriteJsonData(BaseTestCase):
                 "filename": "file_1.go",
                 "file_index": 0,
                 "file_totals": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                "session_totals": {
-                    "0": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
             {
                 "filename": "file_2.py",
                 "file_index": 1,
                 "file_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                "session_totals": {
-                    "0": [0, 2, 1, 0, 1, "50.00000", 1],
-                    "meta": {"session_count": 1},
-                },
                 "diff_totals": None,
             },
         ]

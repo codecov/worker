@@ -1,22 +1,21 @@
 import json
 import logging
-from contextlib import nullcontext
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 from urllib.parse import urlparse
 
 import httpx
-from requests.exceptions import RequestException
+import sentry_sdk
 from shared.config import get_config
 
 from helpers.match import match
 from helpers.metrics import metrics
+from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
-from services.repository import get_repo_provider_service
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import get_paths_from_flags, round_number
 
@@ -34,17 +33,7 @@ class StandardNotifier(AbstractBaseNotifier):
     - Check that the threshold of the webhook is satisfied on this comparison
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._repository_service = None
-
-    @property
-    def repository_service(self):
-        if not self._repository_service:
-            self._repository_service = get_repo_provider_service(self.repository)
-        return self._repository_service
-
-    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     @property
@@ -89,21 +78,24 @@ class StandardNotifier(AbstractBaseNotifier):
             return False
         return True
 
-    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
+    @sentry_sdk.trace
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         filtered_comparison = comparison.get_filtered_comparison(
             **self.get_notifier_filters()
         )
-        with nullcontext():
-            with nullcontext():
-                if self.should_notify_comparison(filtered_comparison):
-                    result = await self.do_notify(filtered_comparison, **extra_data)
-                else:
-                    result = NotificationResult(
-                        notification_attempted=False,
-                        notification_successful=None,
-                        explanation="Did not fit criteria",
-                        data_sent=None,
-                    )
+        if self.should_notify_comparison(filtered_comparison):
+            result = self.do_notify(filtered_comparison)
+        else:
+            result = NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="Did not fit criteria",
+                data_sent=None,
+            )
         return result
 
     def get_notifier_filters(self) -> dict:
@@ -116,9 +108,9 @@ class StandardNotifier(AbstractBaseNotifier):
             flags=flag_list,
         )
 
-    async def do_notify(self, comparison) -> NotificationResult:
+    def do_notify(self, comparison: Comparison) -> NotificationResult:
         data = self.build_payload(comparison)
-        result = await self.send_actual_notification(data)
+        result = self.send_actual_notification(data)
         return NotificationResult(
             notification_attempted=result["notification_attempted"],
             notification_successful=result["notification_successful"],
@@ -240,15 +232,15 @@ class RequestsYamlBasedNotifier(StandardNotifier):
         "User-Agent": "Codecov",
     }
 
-    async def send_actual_notification(self, data: Mapping[str, Any]):
+    def send_actual_notification(self, data: Mapping[str, Any]):
         _timeouts = get_config("setup", "http", "timeouts", "external", default=10)
         kwargs = dict(timeout=_timeouts, headers=self.json_headers)
         try:
             with metrics.timer(
                 f"worker.services.notifications.notifiers.{self.name}.actual_connection"
             ):
-                async with httpx.AsyncClient() as client:
-                    res = await client.post(
+                with httpx.Client() as client:
+                    res = client.post(
                         url=self.notifier_yaml_settings["url"],
                         data=json.dumps(data, cls=EnhancedJSONEncoder),
                         **kwargs,

@@ -3,6 +3,8 @@ setup:
   debug: no
   loglvl: INFO
   encryption_secret: "zp^P9*i8aR3"
+  timeseries:
+    enabled: true
 
 services:
   database_url: postgres://postgres:password@postgres:5432/postgres
@@ -10,14 +12,12 @@ services:
   redis_url: redis://redis:6379
   minio:
     hash_key: testixik8qdauiab1yiffydimvi72ekq # never change this
-    periodic_callback_ms: false
     access_key_id: codecov-default-key
     secret_access_key: codecov-default-secret
     verify_ssl: false
   smtp:
     host: mailhog
     port: 1025
-
 
 github:
   bot:

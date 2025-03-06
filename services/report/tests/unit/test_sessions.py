@@ -2,21 +2,19 @@ import pytest
 from mock import MagicMock
 from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.resources import (
-    LineSession,
     Report,
     ReportFile,
     ReportLine,
     Session,
     SessionType,
 )
-from shared.reports.types import CoverageDatapoint
+from shared.reports.types import CoverageDatapoint, LineSession
 from shared.yaml import UserYaml
 
-from database.tests.factories.core import RepositoryFactory
 from helpers.labels import SpecialLabelsEnum
 from services.report.raw_upload_processor import (
     SessionAdjustmentResult,
-    _adjust_sessions,
+    clear_carryforward_sessions,
 )
 from test_utils.base import BaseTestCase
 
@@ -67,7 +65,6 @@ class TestAdjustSession(BaseTestCase):
         second_file = EditableReportFile("second_file.py")
         first_report.append(first_file)
         first_report.append(second_file)
-        # print(self.convert_report_to_better_readable(first_report)["archive"])
         assert self.convert_report_to_better_readable(first_report)["archive"] == {
             "first_file.py": [
                 (
@@ -222,8 +219,8 @@ class TestAdjustSession(BaseTestCase):
         first_to_merge_session = Session(flags=["enterprise"], id=3)
         second_report = Report(sessions={3: first_to_merge_session})
         current_yaml = UserYaml({})
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [])
         assert first_value == self.convert_report_to_better_readable(
             sample_first_report
@@ -239,10 +236,9 @@ class TestAdjustSession(BaseTestCase):
                 }
             }
         )
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
-        print(self.convert_report_to_better_readable(sample_first_report))
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -345,10 +341,7 @@ class TestAdjustSession(BaseTestCase):
                     "first_file.py": [
                         0,
                         [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {
-                            "meta": {"session_count": 4},
-                            "3": [0, 7, 7, 0, 0, "100"],
-                        },
+                        None,
                         None,
                     ]
                 },
@@ -438,8 +431,8 @@ class TestAdjustSession(BaseTestCase):
             }
         )
         first_value = self.convert_report_to_better_readable(sample_first_report)
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
         after_result = self.convert_report_to_better_readable(sample_first_report)
         assert after_result == first_value
@@ -474,16 +467,16 @@ class TestAdjustSession(BaseTestCase):
                         "code": None,
                         "commit": MagicMock(
                             name="fake_commit",
-                            **{"repository": MagicMock(name="fake_repo")}
+                            **{"repository": MagicMock(name="fake_repo")},
                         ),
-                    }
+                    },
                 )
-            }
+            },
         )
-        assert _adjust_sessions(
+        assert clear_carryforward_sessions(
             sample_first_report,
             second_report,
-            first_to_merge_session,
+            ["enterprise"],
             current_yaml,
             upload=upload,
         ) == SessionAdjustmentResult([], [0])
@@ -516,10 +509,9 @@ class TestAdjustSession(BaseTestCase):
             ),
         )
         second_report.append(second_report_file)
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([], [0])
-        print(self.convert_report_to_better_readable(sample_first_report))
         assert self.convert_report_to_better_readable(sample_first_report) == {
             "archive": {
                 "first_file.py": [
@@ -637,7 +629,7 @@ class TestAdjustSession(BaseTestCase):
                     "first_file.py": [
                         0,
                         [0, 7, 7, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"meta": {"session_count": 4}, "3": [0, 7, 7, 0, 0, "100"]},
+                        None,
                         None,
                     ]
                 },
@@ -763,11 +755,10 @@ class TestAdjustSession(BaseTestCase):
         )
         second_report.append(second_report_file)
         second_report.append(a_report_file)
-        assert _adjust_sessions(
-            sample_first_report, second_report, first_to_merge_session, current_yaml
+        assert clear_carryforward_sessions(
+            sample_first_report, second_report, ["enterprise"], current_yaml
         ) == SessionAdjustmentResult([0], [])
         res = self.convert_report_to_better_readable(sample_first_report)
-        # print(res["report"]["sessions"])
         assert res["report"]["sessions"] == {
             "1": {
                 "t": None,
@@ -815,7 +806,6 @@ class TestAdjustSession(BaseTestCase):
                 "se": {},
             },
         }
-        print(self.convert_report_to_better_readable(sample_first_report)["archive"])
         assert self.convert_report_to_better_readable(sample_first_report)[
             "archive"
         ] == {

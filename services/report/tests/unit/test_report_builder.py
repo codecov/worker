@@ -1,23 +1,12 @@
 import pytest
-from shared.reports.resources import LineSession, ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint
+from shared.reports.resources import ReportFile, ReportLine
+from shared.reports.types import CoverageDatapoint, LineSession
 
 from services.report.report_builder import (
     CoverageType,
     ReportBuilder,
     SpecialLabelsEnum,
 )
-
-
-def test_report_builder_simple_fields(mocker):
-    current_yaml, sessionid, ignored_lines, path_fixer = (
-        mocker.MagicMock(),
-        mocker.MagicMock(),
-        mocker.MagicMock(),
-        mocker.MagicMock(),
-    )
-    builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
-    assert builder.repo_yaml == current_yaml
 
 
 def test_report_builder_generate_session(mocker):
@@ -30,11 +19,7 @@ def test_report_builder_generate_session(mocker):
     filepath = "filepath"
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
-    assert builder_session.file_class == ReportFile
     assert builder_session.path_fixer == path_fixer
-    assert builder_session.sessionid == sessionid
-    assert builder_session.current_yaml == current_yaml
-    assert builder_session.ignored_lines == ignored_lines
 
 
 def test_report_builder_session(mocker):
@@ -280,9 +265,7 @@ def test_report_builder_session_create_line(mocker):
     filepath = "filepath"
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
-    line = builder_session.create_coverage_line(
-        "filename.py", 1, coverage_type=CoverageType.branch
-    )
+    line = builder_session.create_coverage_line(1, CoverageType.branch)
     assert line == ReportLine.create(
         coverage=1,
         type="b",
@@ -314,9 +297,8 @@ def test_report_builder_session_create_line_mixed_labels(mocker):
     builder = ReportBuilder(current_yaml, sessionid, ignored_lines, path_fixer)
     builder_session = builder.create_report_builder_session(filepath)
     line = builder_session.create_coverage_line(
-        "filename.py",
         1,
-        coverage_type=CoverageType.branch,
+        CoverageType.branch,
         labels_list_of_lists=[["label1"], [], ["label2"], None],
     )
     assert line == ReportLine.create(

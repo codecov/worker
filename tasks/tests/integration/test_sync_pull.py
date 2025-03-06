@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
 from services.archive import ArchiveService
 from tasks.sync_pull import PullSyncTask
@@ -10,10 +8,7 @@ here = Path(__file__)
 
 
 class TestPullSyncTask(object):
-    @pytest.mark.asyncio
-    async def test_call_task(
-        self, dbsession, codecov_vcr, mock_storage, mocker, mock_redis
-    ):
+    def test_call_task(self, dbsession, codecov_vcr, mock_storage, mocker, mock_redis):
         mocker.patch.object(PullSyncTask, "app")
         task = PullSyncTask()
         repository = RepositoryFactory.create(
@@ -88,7 +83,7 @@ class TestPullSyncTask(object):
         dbsession.add(head_commit)
         dbsession.add(pull)
         dbsession.flush()
-        res = await task.run_async(dbsession, repoid=pull.repoid, pullid=pull.pullid)
+        res = task.run_impl(dbsession, repoid=pull.repoid, pullid=pull.pullid)
         assert {
             "notifier_called": True,
             "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},

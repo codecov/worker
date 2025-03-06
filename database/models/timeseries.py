@@ -7,7 +7,6 @@ from database.base import CodecovBaseModel
 
 
 class TimeseriesBaseModel(CodecovBaseModel):
-
     __abstract__ = True
 
 
@@ -15,6 +14,15 @@ class MeasurementName(Enum):
     coverage = "coverage"
     flag_coverage = "flag_coverage"
     component_coverage = "component_coverage"
+    # For tracking the entire size of a bundle report by its name
+    bundle_analysis_report_size = "bundle_analysis_report_size"
+    # For tracking the size of a category of assets of a bundle report by its name
+    bundle_analysis_javascript_size = "bundle_analysis_javascript_size"
+    bundle_analysis_stylesheet_size = "bundle_analysis_stylesheet_size"
+    bundle_analysis_font_size = "bundle_analysis_font_size"
+    bundle_analysis_image_size = "bundle_analysis_image_size"
+    # For tracking individual asset size via its UUID
+    bundle_analysis_asset_size = "bundle_analysis_asset_size"
 
 
 class Measurement(TimeseriesBaseModel):

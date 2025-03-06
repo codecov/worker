@@ -1,8 +1,8 @@
-import re
 from pathlib import Path
 
 import pytest
 from shared.validation.exceptions import InvalidYamlException
+from shared.validation.types import CoverageCommentRequiredChanges
 
 from services.yaml.parser import parse_yaml_file
 from test_utils.base import BaseTestCase
@@ -36,7 +36,9 @@ class TestYamlSavingService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
             "parsers": {
                 "gcov": {

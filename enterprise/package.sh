@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Simple wrapper around pyinstaller
 
 set -e
@@ -31,7 +31,6 @@ print(' --hiddenimport celery.worker.consumer')
 print(' --hiddenimport sqlalchemy.ext.baked')
 print(' --hiddenimport tasks')
 print(' --hiddenimport tornado.curl_httpclient')
-print(' --hiddenimport opentelemetry-sdk')
 print(' --hiddenimport asyncore')
 print(' --hiddenimport imaplib')
 print(' --hiddenimport poplib')

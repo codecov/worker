@@ -1,13 +1,15 @@
 import logging
 from contextlib import nullcontext
-from typing import Dict
+from typing import Any, Optional, TypedDict
 
+import sentry_sdk
+from asgiref.sync import async_to_sync
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
-from helpers.metrics import metrics
-from services.notification.notifiers.base import Comparison, NotificationResult
+from services.comparison import ComparisonProxy, FilteredComparison
+from services.notification.notifiers.base import NotificationResult
+from services.notification.notifiers.mixins.status import StatusState
 from services.notification.notifiers.status.base import StatusNotifier
-from services.repository import get_repo_provider_service
 from services.urls import (
     append_tracking_params_to_urls,
     get_commit_url,
@@ -17,6 +19,19 @@ from services.urls import (
 from services.yaml.reader import get_paths_from_flags
 
 log = logging.getLogger(__name__)
+
+
+class CheckOutput(TypedDict):
+    title: str
+    summary: str
+    annotations: list[Any]
+    text: Optional[str]
+
+
+class CheckResult(TypedDict):
+    state: StatusState
+    output: CheckOutput
+    included_helper_text: dict[str, str]
 
 
 class ChecksNotifier(StatusNotifier):
@@ -29,7 +44,7 @@ class ChecksNotifier(StatusNotifier):
     def is_enabled(self) -> bool:
         return True
 
-    def store_results(self, comparison: Comparison, result: NotificationResult) -> bool:
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pass
 
     @property
@@ -46,7 +61,9 @@ class ChecksNotifier(StatusNotifier):
             flags=flag_list,
         )
 
-    def get_upgrade_message(self, comparison: Comparison) -> str:
+    def get_upgrade_message(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> str:
         db_pull = comparison.enriched_pull.database_pull
         links = {"members_url": get_members_url(db_pull)}
         author_username = comparison.enriched_pull.provider_pull["author"].get(
@@ -56,8 +73,8 @@ class ChecksNotifier(StatusNotifier):
             [
                 f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
                 f"Please [activate this user on Codecov]({links['members_url']}) to display a detailed status check.",
-                f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-                f"Please don't hesitate to email us at support@codecov.io with any questions.",
+                "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+                "Please don't hesitate to email us at support@codecov.io with any questions.",
             ]
         )
 
@@ -65,17 +82,22 @@ class ChecksNotifier(StatusNotifier):
         for i in range(0, len(annotations), self.ANNOTATIONS_PER_REQUEST):
             yield annotations[i : i + self.ANNOTATIONS_PER_REQUEST]
 
-    async def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(self, comparison: ComparisonProxy | FilteredComparison) -> dict:
         raise NotImplementedError()
 
     def get_status_external_name(self) -> str:
         status_piece = f"/{self.title}" if self.title != "default" else ""
         return f"codecov/{self.context}{status_piece}"
 
-    async def notify(self, comparison: Comparison):
+    @sentry_sdk.trace
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
         if comparison.pull is None or ():
             log.debug(
-                "Faling back to commit_status: Not a pull request",
+                "Falling back to commit_status: Not a pull request",
                 extra=dict(
                     notifier=self.name,
                     repoid=comparison.head.commit.repoid,
@@ -95,7 +117,7 @@ class ChecksNotifier(StatusNotifier):
             or comparison.enriched_pull.provider_pull is None
         ):
             log.debug(
-                "Faling back to commit_status: Pull request not in provider",
+                "Falling back to commit_status: Pull request not in provider",
                 extra=dict(
                     notifier=self.name,
                     repoid=comparison.head.commit.repoid,
@@ -112,7 +134,7 @@ class ChecksNotifier(StatusNotifier):
             )
         if comparison.pull.state != "open":
             log.debug(
-                "Faling back to commit_status: Pull request closed",
+                "Falling back to commit_status: Pull request closed",
                 extra=dict(
                     notifier=self.name,
                     repoid=comparison.head.commit.repoid,
@@ -143,6 +165,28 @@ class ChecksNotifier(StatusNotifier):
                 data_sent=None,
                 data_received=None,
             )
+        # Check for existing statuses for this commit. If so, retain
+        # statuses and don't do a check as well
+        statuses = comparison.get_existing_statuses()
+        status_title = self.get_status_external_name()
+        if statuses and statuses.get(status_title):
+            log.debug(
+                "Falling back to commit_status: Status already exists for this commit",
+                extra=dict(
+                    notifier=self.name,
+                    repoid=comparison.head.commit.repoid,
+                    notifier_title=self.title,
+                    status_title=status_title,
+                    commit=comparison.head.commit,
+                ),
+            )
+            return NotificationResult(
+                notification_attempted=False,
+                notification_successful=None,
+                explanation="preexisting_commit_status",
+                data_sent=None,
+                data_received=None,
+            )
         payload = None
         try:
             with nullcontext():
@@ -153,7 +197,7 @@ class ChecksNotifier(StatusNotifier):
                     )
                 )
                 if not comparison.has_head_report():
-                    payload = await self.build_payload(comparison)
+                    payload = self.build_payload(comparison)
                 elif (
                     flag_coverage_not_uploaded_behavior == "exclude"
                     and not self.flag_coverage_was_uploaded(comparison)
@@ -172,7 +216,7 @@ class ChecksNotifier(StatusNotifier):
                     filtered_comparison = comparison.get_filtered_comparison(
                         **self.get_notifier_filters()
                     )
-                    payload = await self.build_payload(filtered_comparison)
+                    payload = self.build_payload(filtered_comparison)
                     payload["state"] = "success"
                     payload["output"]["summary"] = (
                         payload.get("output", {}).get("summary", "")
@@ -182,12 +226,12 @@ class ChecksNotifier(StatusNotifier):
                     filtered_comparison = comparison.get_filtered_comparison(
                         **self.get_notifier_filters()
                     )
-                    payload = await self.build_payload(filtered_comparison)
+                    payload = self.build_payload(filtered_comparison)
             if comparison.pull:
                 payload["url"] = get_pull_url(comparison.pull)
             else:
                 payload["url"] = get_commit_url(comparison.head.commit)
-            return await self.maybe_send_notification(comparison, payload)
+            return self.maybe_send_notification(comparison, payload)
         except TorngitClientError as e:
             if e.code == 403:
                 raise e
@@ -277,10 +321,10 @@ class ChecksNotifier(StatusNotifier):
             file_diff["additions"] = lines_diff
         return file_diff
 
-    def get_codecov_pr_link(self, comparison):
-        return f"[View this Pull Request on Codecov]({get_pull_url(comparison.pull)}?src=pr&el=h1)"
+    def get_codecov_pr_link(self, comparison: ComparisonProxy | FilteredComparison):
+        return f"[View this Pull Request on Codecov]({get_pull_url(comparison.pull)}?dropdown=coverage&src=pr&el=h1)"
 
-    def get_lines_to_annotate(self, comparison, files_with_change):
+    def get_lines_to_annotate(self, comparison: ComparisonProxy, files_with_change):
         lines_diff = []
         for _file in files_with_change:
             if _file is None:
@@ -317,8 +361,9 @@ class ChecksNotifier(StatusNotifier):
             previous_line = line
         return line_headers
 
-    @metrics.timer("worker.services.notifications.notifiers.checks.create_annotations")
-    def create_annotations(self, comparison, diff):
+    def create_annotations(
+        self, comparison: ComparisonProxy | FilteredComparison, diff
+    ):
         files_with_change = [
             {"type": _diff["type"], "path": path, "segments": _diff["segments"]}
             for path, _diff in (diff["files"] if diff else {}).items()
@@ -344,17 +389,10 @@ class ChecksNotifier(StatusNotifier):
             annotations.append(annotation)
         return annotations
 
-    @property
-    def repository_service(self):
-        if not self._repository_service:
-            self._repository_service = get_repo_provider_service(self.repository)
-        return self._repository_service
-
-    async def send_notification(self, comparison: Comparison, payload):
-        title = self.get_status_external_name()
+    def send_notification(self, comparison: ComparisonProxy, payload):
         repository_service = self.repository_service
+        title = self.get_status_external_name()
         head = comparison.head.commit
-        head_report = comparison.head.report
         state = payload["state"]
         state = "success" if self.notifier_yaml_settings.get("informational") else state
 
@@ -390,12 +428,9 @@ class ChecksNotifier(StatusNotifier):
             )
 
         # We need to first create the check run, get that id and update the status
-        with metrics.timer(
-            "worker.services.notifications.notifiers.checks.create_check_run"
-        ):
-            check_id = await repository_service.create_check_run(
-                check_name=title, head_sha=head.commitid
-            )
+        check_id = async_to_sync(repository_service.create_check_run)(
+            check_name=title, head_sha=head.commitid
+        )
 
         if len(output.get("annotations", [])) > self.ANNOTATIONS_PER_REQUEST:
             annotation_pages = list(
@@ -409,31 +444,26 @@ class ChecksNotifier(StatusNotifier):
                 ),
             )
             for annotation_page in annotation_pages:
-                with metrics.timer(
-                    "worker.services.notifications.notifiers.checks.update_check_run"
-                ):
-                    await repository_service.update_check_run(
-                        check_id,
-                        state,
-                        output={
-                            "title": output.get("title"),
-                            "summary": output.get("summary"),
-                            "annotations": annotation_page,
-                        },
-                        url=payload.get("url"),
-                    )
+                async_to_sync(repository_service.update_check_run)(
+                    check_id,
+                    state,
+                    output={
+                        "title": output.get("title"),
+                        "summary": output.get("summary"),
+                        "annotations": annotation_page,
+                    },
+                    url=payload.get("url"),
+                )
 
         else:
-            with metrics.timer(
-                "worker.services.notifications.notifiers.checks.update_check_run"
-            ):
-                await repository_service.update_check_run(
-                    check_id, state, output=output, url=payload.get("url")
-                )
+            async_to_sync(repository_service.update_check_run)(
+                check_id, state, output=output, url=payload.get("url")
+            )
 
         return NotificationResult(
             notification_attempted=True,
             notification_successful=True,
             explanation=None,
             data_sent=payload,
+            github_app_used=self.get_github_app_used(),
         )

@@ -1,21 +1,22 @@
+import shared.bots.exceptions
+
+RepositoryWithoutValidBotError = shared.bots.exceptions.RepositoryWithoutValidBotError
+OwnerWithoutValidBotError = shared.bots.exceptions.OwnerWithoutValidBotError
+RequestedGithubAppNotFound = shared.bots.exceptions.RequestedGithubAppNotFound
+NoConfiguredAppsAvailable = shared.bots.exceptions.NoConfiguredAppsAvailable
+
+
 class ReportExpiredException(Exception):
-    pass
+    def __init__(self, message=None, filename=None) -> None:
+        super().__init__(message)
+        self.filename = filename
 
 
 class ReportEmptyError(Exception):
     pass
 
 
-class RepositoryWithoutValidBotError(Exception):
-    pass
-
-
-class OwnerWithoutValidBotError(Exception):
-    pass
-
-
 class CorruptRawReportError(Exception):
-
     """Error indicated that report is somehow different than it should be
 
     Notice that this error should not be used to replace `matches_content` logic on each processor.

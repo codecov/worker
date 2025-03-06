@@ -1,6 +1,7 @@
 import logging
-from decimal import Decimal
-from typing import Any, Callable, List, Optional, Tuple, Union
+from decimal import Decimal, InvalidOperation
+from enum import Enum
+from typing import Literal, TypedDict
 
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.yaml.reader import round_number
@@ -8,15 +9,87 @@ from services.yaml.reader import round_number
 log = logging.getLogger(__name__)
 
 
+class StatusState(Enum):
+    success = "success"
+    failure = "failure"
+
+
+class StatusResult(TypedDict):
+    """
+    The mixins in this file do the calculations and decide the SuccessState for all Status and Checks Notifiers.
+    Checks have different fields than Statuses, so Checks are converted to the CheckResult type later.
+    """
+
+    state: Literal["success", "failure"]  # StatusState values
+    message: str
+    included_helper_text: dict[str, str]
+
+
+class HelperTextKey(str, Enum):
+    CUSTOM_TARGET_PATCH = "custom_target_helper_text_patch"
+    CUSTOM_TARGET_PROJECT = "custom_target_helper_text_project"
+    RCB_INDIRECT_CHANGES = "rcb_indirect_changes_helper_text"
+    INDIRECT_CHANGES_KEY = "indirect_changes_helper_text"
+    RCB_ADJUST_BASE = "rcb_adjust_base_helper_text"
+
+
+class HelperTextTemplate(str, Enum):
+    CUSTOM_TARGET = (
+        "Your {context} {notification_type} has failed because the {point_of_comparison} coverage ({coverage}%) is below the target coverage ({target}%). "
+        "You can increase the {point_of_comparison} coverage or adjust the "
+        "[target](https://docs.codecov.com/docs/commit-status#target) coverage."
+    )
+    INDIRECT_CHANGES = (
+        "Your {context} {notification_type} has failed because you have indirect coverage changes. "
+        "Learn more about [Unexpected Coverage Changes](https://docs.codecov.com/docs/unexpected-coverage-changes) "
+        "and [reasons for indirect coverage changes](https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes)."
+    )
+    RCB_ADJUST_BASE = (
+        "Your project {notification_type} has failed because the head coverage ({coverage}%) "
+        "is below the [adjusted base coverage](https://docs.codecov.com/docs/removed-code-behavior#option-3-default-adjust_base) ({adjusted_base_cov}%). "
+        "You can increase the head coverage or adjust the "
+        "[Removed Code Behavior](https://docs.codecov.com/docs/removed-code-behavior)."
+    )
+
+
+HELPER_TEXT_MAP = {
+    HelperTextKey.CUSTOM_TARGET_PATCH: HelperTextTemplate.CUSTOM_TARGET,
+    HelperTextKey.CUSTOM_TARGET_PROJECT: HelperTextTemplate.CUSTOM_TARGET,
+    HelperTextKey.RCB_INDIRECT_CHANGES: HelperTextTemplate.INDIRECT_CHANGES,
+    HelperTextKey.INDIRECT_CHANGES_KEY: HelperTextTemplate.INDIRECT_CHANGES,
+    HelperTextKey.RCB_ADJUST_BASE: HelperTextTemplate.RCB_ADJUST_BASE,
+}
+
+
 class StatusPatchMixin(object):
-    async def get_patch_status(self, comparison) -> Tuple[str, str]:
-        threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
-        diff = await comparison.get_diff(use_original_base=True)
-        totals = comparison.head.report.apply_diff(diff)
+    context = "patch"
+
+    def _get_threshold(self) -> Decimal:
+        """
+        Threshold can be configured by user, default is 0.0
+        """
+        threshold = self.notifier_yaml_settings.get("threshold", "0.0")
+
+        try:
+            # check if user has erroneously added a % to this input and fix
+            threshold = Decimal(str(threshold).replace("%", ""))
+        except (InvalidOperation, TypeError, AttributeError):
+            threshold = Decimal("0.0")
+        return threshold
+
+    def _get_target(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[Decimal | None, bool]:
+        """
+        Target can be configured by user, default is auto, which is the coverage level from the base report.
+        Target will be None if no report is found to compare against.
+        """
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
+            # check if user has erroneously added a % to this input and fix
             target_coverage = Decimal(
                 str(self.notifier_yaml_settings.get("target")).replace("%", "")
             )
+            is_custom_target = True
         else:
             target_coverage = (
                 Decimal(comparison.project_coverage_base.report.totals.coverage)
@@ -24,29 +97,62 @@ class StatusPatchMixin(object):
                 and comparison.project_coverage_base.report.totals.coverage is not None
                 else None
             )
+            is_custom_target = False
+        return target_coverage, is_custom_target
+
+    def get_patch_status(
+        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
+    ) -> StatusResult:
+        threshold = self._get_threshold()
+        target_coverage, is_custom_target = self._get_target(comparison)
+        totals = comparison.get_patch_totals()
+        included_helper_text = {}
+
+        # coverage affected
         if totals and totals.lines > 0:
             coverage = Decimal(totals.coverage)
             if target_coverage is None:
-                state = self.notifier_yaml_settings.get("if_not_found", "success")
+                state = self.notifier_yaml_settings.get(
+                    "if_not_found", StatusState.success.value
+                )
                 message = "No report found to compare against"
             else:
-                state = "success" if coverage >= target_coverage else "failure"
-                if (
-                    state == "failure"
-                    and threshold is not None
-                    and coverage >= (target_coverage - threshold)
+                state = (
+                    StatusState.success.value
+                    if coverage >= target_coverage
+                    else StatusState.failure.value
+                )
+                # use rounded numbers for messages
+                coverage_rounded = round_number(self.current_yaml, coverage)
+                target_rounded = round_number(self.current_yaml, target_coverage)
+                if state == StatusState.failure.value and coverage >= (
+                    target_coverage - threshold
                 ):
-                    state = "success"
-                    coverage_str = round_number(self.current_yaml, coverage)
-                    threshold_str = round_number(self.current_yaml, threshold)
-                    target_str = round_number(self.current_yaml, target_coverage)
-                    message = f"{coverage_str}% of diff hit (within {threshold_str}% threshold of {target_str}%)"
-
+                    threshold_rounded = round_number(self.current_yaml, threshold)
+                    state = StatusState.success.value
+                    message = f"{coverage_rounded}% of diff hit (within {threshold_rounded}% threshold of {target_rounded}%)"
                 else:
-                    coverage_str = round_number(self.current_yaml, coverage)
-                    target_str = round_number(self.current_yaml, target_coverage)
-                    message = f"{coverage_str}% of diff hit (target {target_str}%)"
-            return (state, message)
+                    message = (
+                        f"{coverage_rounded}% of diff hit (target {target_rounded}%)"
+                    )
+                if state == StatusState.failure.value and is_custom_target:
+                    helper_text = HELPER_TEXT_MAP[
+                        HelperTextKey.CUSTOM_TARGET_PATCH
+                    ].value.format(
+                        context=self.context,
+                        notification_type=notification_type,
+                        point_of_comparison=self.context,
+                        coverage=coverage_rounded,
+                        target=target_rounded,
+                    )
+                    included_helper_text[HelperTextKey.CUSTOM_TARGET_PATCH.value] = (
+                        helper_text
+                    )
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
+
+        # coverage not affected
         if comparison.project_coverage_base.commit:
             description = "Coverage not affected when comparing {0}...{1}".format(
                 comparison.project_coverage_base.commit.commitid[:7],
@@ -54,10 +160,16 @@ class StatusPatchMixin(object):
             )
         else:
             description = "Coverage not affected"
-        return ("success", description)
+        return StatusResult(
+            state=StatusState.success.value,
+            message=description,
+            included_helper_text=included_helper_text,
+        )
 
 
 class StatusChangesMixin(object):
+    context = "changes"
+
     def is_a_change_worth_noting(self, change) -> bool:
         if not change.new and not change.deleted:
             # has totals and not -10m => 10h
@@ -67,18 +179,24 @@ class StatusChangesMixin(object):
                 return (t.misses + t.partials) > 0
         return False
 
-    async def get_changes_status(self, comparison) -> Tuple[str, str]:
+    def get_changes_status(
+        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
+    ) -> StatusResult:
+        included_helper_text = {}
         pull = comparison.pull
         if self.notifier_yaml_settings.get("base") in ("auto", None, "pr") and pull:
             if not comparison.has_project_coverage_base_report():
                 description = (
                     "Unable to determine changes, no report found at pull request base"
                 )
-                state = "success"
-                return (state, description)
+                return StatusResult(
+                    state=StatusState.success.value,
+                    message=description,
+                    included_helper_text=included_helper_text,
+                )
 
         # filter changes
-        changes = await comparison.get_changes()
+        changes = comparison.get_changes()
         if changes:
             changes = list(filter(self.is_a_change_worth_noting, changes))
 
@@ -87,27 +205,43 @@ class StatusChangesMixin(object):
             lpc = len(changes)
             eng = "files have" if lpc > 1 else "file has"
             description = (
-                "{0} {1} unexpected coverage changes not visible in diff".format(
-                    lpc, eng
-                )
+                "{0} {1} indirect coverage changes not visible in diff".format(lpc, eng)
             )
             state = (
-                "success"
+                StatusState.success.value
                 if self.notifier_yaml_settings.get("informational")
-                else "failure"
+                else StatusState.failure.value
             )
-            return (state, description)
+            if state == StatusState.failure.value:
+                # their comparison failed because of unexpected/indirect changes, give them helper text about it
+                included_helper_text[HelperTextKey.INDIRECT_CHANGES_KEY.value] = (
+                    HELPER_TEXT_MAP[HelperTextKey.INDIRECT_CHANGES_KEY].value.format(
+                        context=self.context,
+                        notification_type=notification_type,
+                    )
+                )
+            return StatusResult(
+                state=state,
+                message=description,
+                included_helper_text=included_helper_text,
+            )
 
-        description = "No unexpected coverage changes found"
-        return ("success", description)
+        description = "No indirect coverage changes found"
+        return StatusResult(
+            state=StatusState.success.value,
+            message=description,
+            included_helper_text=included_helper_text,
+        )
 
 
 class StatusProjectMixin(object):
-    DEFAULT_REMOVED_CODE_BEHAVIOR = "fully_covered_patch"
+    DEFAULT_REMOVED_CODE_BEHAVIOR = "adjust_base"
+    context = "project"
+    point_of_comparison = "head"
 
-    async def _apply_removals_only_behavior(
-        self, comparison: Union[ComparisonProxy, FilteredComparison]
-    ) -> Optional[Tuple[str, str]]:
+    def _apply_removals_only_behavior(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> tuple[str, str] | None:
         """
         Rule for passing project status on removals_only behavior:
         Pass if code was _only removed_ (i.e. no addition, no unexpected changes)
@@ -116,35 +250,33 @@ class StatusProjectMixin(object):
             "Applying removals_only behavior to project status",
             extra=dict(commit=comparison.head.commit.commitid),
         )
-        impacted_files_dict = await comparison.get_impacted_files()
-        impacted_files = impacted_files_dict.get("files", [])
+        impacted_files = comparison.get_impacted_files().get("files", [])
+
         no_added_no_unexpected_change = all(
-            map(
-                lambda file_dict: (
-                    file_dict.get("added_diff_coverage", []) == []
-                    and file_dict.get("unexpected_line_changes") == []
-                ),
-                impacted_files,
-            )
+            not file.get("added_diff_coverage")
+            and not file.get("unexpected_line_changes")
+            for file in impacted_files
         )
-        some_removed = any(
-            map(
-                lambda file_dict: (file_dict.get("removed_diff_coverage", []) != []),
-                impacted_files,
-            )
-        )
+        some_removed = any(file.get("removed_diff_coverage") for file in impacted_files)
+
         if no_added_no_unexpected_change and some_removed:
-            return ("success", f", passed because this change only removed code")
+            return (
+                StatusState.success.value,
+                ", passed because this change only removed code",
+            )
         return None
 
-    async def _apply_adjust_base_behavior(
-        self, comparison: ComparisonProxy
-    ) -> Optional[Tuple[str, str]]:
+    def _apply_adjust_base_behavior(
+        self,
+        comparison: ComparisonProxy | FilteredComparison,
+        notification_type: str,
+    ) -> tuple[tuple[str, str] | None, dict]:
         """
         Rule for passing project status on adjust_base behavior:
         We adjust the BASE of the comparison by removing from it lines that were removed in HEAD
         And then re-calculate BASE coverage and compare it to HEAD coverage.
         """
+        helper_text = {}
         log.info(
             "Applying adjust_base behavior to project status",
             extra=dict(commit=comparison.head.commit.commitid),
@@ -157,121 +289,195 @@ class StatusProjectMixin(object):
                 "Notifier settings specify target value. Skipping adjust_base.",
                 extra=dict(commit=comparison.head.commit.commitid),
             )
-            return None
+            return None, helper_text
 
-        impacted_files_dict = await comparison.get_impacted_files()
-        impacted_files = impacted_files_dict.get("files", [])
-
-        def get_sum_from_lists(
-            coverage_diff_info: List[Any], comparison_fn: Callable[[Any], int]
-        ):
-            return sum(map(comparison_fn, coverage_diff_info))
+        impacted_files = comparison.get_impacted_files().get("files", [])
 
         hits_removed = 0
         misses_removed = 0
         partials_removed = 0
+
         for file_dict in impacted_files:
-            removed_diff_coverage_list = file_dict.get("removed_diff_coverage", [])
-            if removed_diff_coverage_list is not None:
-                hits_removed += get_sum_from_lists(
-                    removed_diff_coverage_list, lambda item: 1 if item[1] == "h" else 0
+            removed_diff_coverage_list = file_dict.get("removed_diff_coverage")
+            if removed_diff_coverage_list:
+                hits_removed += sum(
+                    1 if item[1] == "h" else 0 for item in removed_diff_coverage_list
                 )
-                misses_removed += get_sum_from_lists(
-                    removed_diff_coverage_list, lambda item: 1 if item[1] == "m" else 0
+                misses_removed += sum(
+                    1 if item[1] == "m" else 0 for item in removed_diff_coverage_list
                 )
-                partials_removed += get_sum_from_lists(
-                    removed_diff_coverage_list, lambda item: 1 if item[1] == "p" else 0
+                partials_removed += sum(
+                    1 if item[1] == "p" else 0 for item in removed_diff_coverage_list
                 )
 
         base_totals = comparison.project_coverage_base.report.totals
         base_adjusted_hits = base_totals.hits - hits_removed
         base_adjusted_misses = base_totals.misses - misses_removed
         base_adjusted_partials = base_totals.partials - partials_removed
+        base_adjusted_totals = (
+            base_adjusted_hits + base_adjusted_misses + base_adjusted_partials
+        )
+
+        if not base_adjusted_totals:
+            return None, helper_text
+
         # The coverage info is in percentage, so multiply by 100
         base_adjusted_coverage = (
-            Decimal(
-                base_adjusted_hits
-                / (base_adjusted_hits + base_adjusted_misses + base_adjusted_partials)
-            )
-            * 100
+            Decimal(base_adjusted_hits / base_adjusted_totals) * 100
         )
-        head_coverage = Decimal(comparison.head.report.totals.coverage)
-        if base_adjusted_coverage <= head_coverage:
-            rounded_difference = round_number(
-                self.current_yaml, head_coverage - base_adjusted_coverage
-            )
-            rounded_base_adjusted_coverage = round_number(
-                self.current_yaml, base_adjusted_coverage
-            )
-            return (
-                "success",
-                f", passed because coverage increased by {rounded_difference:+}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)",
-            )
-        return None
+        threshold = self._get_threshold()
 
-    async def _apply_fully_covered_patch_behavior(
-        self, comparison: ComparisonProxy
-    ) -> Optional[Tuple[str, str]]:
+        head_coverage = Decimal(comparison.head.report.totals.coverage)
+        log.info(
+            "Adjust base applied to project status",
+            extra=dict(
+                commit=comparison.head.commit.commitid,
+                base_adjusted_coverage=base_adjusted_coverage,
+                threshold=threshold,
+                head_coverage=head_coverage,
+                hits_removed=hits_removed,
+                misses_removed=misses_removed,
+                partials_removed=partials_removed,
+            ),
+        )
+        base_adjusted_coverage = base_adjusted_coverage - threshold
+
+        # the head coverage is rounded to five digits after the dot, using shared.helpers.numeric.ratio
+        # so we should round the base adjusted coverage to the same amount of digits after the dot
+        # Decimal.quantize: https://docs.python.org/3/library/decimal.html#decimal.Decimal.quantize
+        quantized_base_adjusted_coverage = base_adjusted_coverage.quantize(
+            Decimal("0.00000")
+        )
+        rounded_base_adjusted_coverage = round_number(
+            self.current_yaml, base_adjusted_coverage
+        )
+
+        if quantized_base_adjusted_coverage - head_coverage < Decimal("0.005"):
+            rounded_difference = max(
+                0,
+                round_number(self.current_yaml, head_coverage - base_adjusted_coverage),
+            )
+            message = f", passed because coverage increased by {rounded_difference}% when compared to adjusted base ({rounded_base_adjusted_coverage}%)"
+            return (
+                (
+                    StatusState.success.value,
+                    message,
+                ),
+                helper_text,
+            )
+
+        # use rounded numbers for messages
+        coverage_rounded = round_number(self.current_yaml, head_coverage)
+
+        # their comparison failed despite the adjusted base, give them helper text about it
+        helper_text[HelperTextKey.RCB_ADJUST_BASE.value] = HELPER_TEXT_MAP[
+            HelperTextKey.RCB_ADJUST_BASE
+        ].value.format(
+            notification_type=notification_type,
+            coverage=coverage_rounded,
+            adjusted_base_cov=rounded_base_adjusted_coverage,
+        )
+        return None, helper_text
+
+    def _apply_fully_covered_patch_behavior(
+        self,
+        comparison: ComparisonProxy | FilteredComparison,
+        notification_type: str,
+    ) -> tuple[tuple[str, str] | None, dict]:
         """
         Rule for passing project status on fully_covered_patch behavior:
-        Pass if patch coverage is 100% and there are no unexpected changes
+        Pass if patch coverage is 100% and there are no indirect changes
         """
+        helper_text = {}
         log.info(
             "Applying fully_covered_patch behavior to project status",
             extra=dict(commit=comparison.head.commit.commitid),
         )
-        impacted_files_dict = await comparison.get_impacted_files()
-        impacted_files = impacted_files_dict.get("files", [])
+        impacted_files = comparison.get_impacted_files().get("files", [])
+
         no_unexpected_changes = all(
-            map(
-                lambda file_dict: file_dict.get("unexpected_line_changes") == [],
-                impacted_files,
-            )
+            not file.get("unexpected_line_changes") for file in impacted_files
         )
+
         if not no_unexpected_changes:
             log.info(
                 "Unexpected changes when applying patch_100 behavior",
                 extra=dict(commit=comparison.head.commit.commitid),
             )
-            return None
-        diff = await comparison.get_diff(use_original_base=True)
+
+            # their comparison failed because of unexpected/indirect changes, give them helper text about it
+            helper_text[HelperTextKey.RCB_INDIRECT_CHANGES] = HELPER_TEXT_MAP[
+                HelperTextKey.RCB_INDIRECT_CHANGES
+            ].format(
+                context=self.context,
+                notification_type=notification_type,
+            )
+            return None, helper_text
+
+        diff = comparison.get_diff(use_original_base=True)
         patch_totals = comparison.head.report.apply_diff(diff)
         if patch_totals is None or patch_totals.lines == 0:
             # Coverage was not changed by patch
-            return ("success", ", passed because coverage was not affected by patch")
+            return (
+                (
+                    StatusState.success.value,
+                    ", passed because coverage was not affected by patch",
+                ),
+                helper_text,
+            )
         coverage = Decimal(patch_totals.coverage)
         if coverage == 100.0:
             return (
-                "success",
-                ", passed because patch was fully covered by tests with no unexpected coverage changes",
+                (
+                    StatusState.success.value,
+                    ", passed because patch was fully covered by tests, and no indirect coverage changes",
+                ),
+                helper_text,
             )
-        return None
+        return None, helper_text
 
-    async def get_project_status(
-        self, comparison: Union[ComparisonProxy, FilteredComparison]
-    ) -> Tuple[str, str]:
-        state, message = self._get_project_status(comparison)
-        if state == "success":
-            return (state, message)
+    def get_project_status(
+        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
+    ) -> StatusResult:
+        result = self._get_project_status(
+            comparison, notification_type=notification_type
+        )
+        if result["state"] == StatusState.success.value:
+            return result
 
         # Possibly pass the status check via removed_code_behavior
+        # The removed code behavior can change the `state` from `failure` to `success` and add to the `message`.
         # We need both reports to be able to get the diff and apply the removed_code behavior
         if comparison.project_coverage_base.report and comparison.head.report:
+            is_custom_rcb = True
             removed_code_behavior = self.notifier_yaml_settings.get(
-                "removed_code_behavior", self.DEFAULT_REMOVED_CODE_BEHAVIOR
+                "removed_code_behavior", None
             )
+            if removed_code_behavior is None:
+                is_custom_rcb = False
+                removed_code_behavior = self.DEFAULT_REMOVED_CODE_BEHAVIOR
+
             # Apply removed_code_behavior
             removed_code_result = None
             if removed_code_behavior == "removals_only":
-                removed_code_result = await self._apply_removals_only_behavior(
-                    comparison
-                )
+                removed_code_result = self._apply_removals_only_behavior(comparison)
             elif removed_code_behavior == "adjust_base":
-                removed_code_result = await self._apply_adjust_base_behavior(comparison)
-            elif removed_code_behavior == "fully_covered_patch":
-                removed_code_result = await self._apply_fully_covered_patch_behavior(
-                    comparison
+                removed_code_result, helper_text = self._apply_adjust_base_behavior(
+                    comparison,
+                    notification_type=notification_type,
                 )
+                if is_custom_rcb:
+                    # if user set this in their yaml, give them helper text related to it
+                    result["included_helper_text"].update(helper_text)
+            elif removed_code_behavior == "fully_covered_patch":
+                removed_code_result, helper_text = (
+                    self._apply_fully_covered_patch_behavior(
+                        comparison,
+                        notification_type=notification_type,
+                    )
+                )
+                # if user set this in their yaml, give them helper text related to it
+                result["included_helper_text"].update(helper_text)
             else:
                 if removed_code_behavior not in [False, "off"]:
                     log.warning(
@@ -284,49 +490,121 @@ class StatusProjectMixin(object):
             # Possibly change status
             if removed_code_result:
                 removed_code_state, removed_code_message = removed_code_result
-                return (removed_code_state, message + removed_code_message)
-        return (state, message)
+                if removed_code_state == StatusState.success.value:
+                    # the status was failure, has been changed to success through RCB settings
+                    # since the status is no longer failing, remove any included_helper_text
+                    result["included_helper_text"] = {}
+                result["state"] = removed_code_state
+                result["message"] = result["message"] + removed_code_message
+        return result
 
-    def _get_project_status(self, comparison) -> Tuple[str, str]:
-        if comparison.head.report.totals.coverage is None:
-            state = self.notifier_yaml_settings.get("if_not_found", "success")
-            message = "No coverage information found on head"
-            return (state, message)
+    def _get_threshold(self) -> Decimal:
+        """
+        Threshold can be configured by user, default is 0.0
+        """
+        threshold = self.notifier_yaml_settings.get("threshold", "0.0")
 
-        threshold = Decimal(self.notifier_yaml_settings.get("threshold") or "0.0")
-        head_coverage = Decimal(comparison.head.report.totals.coverage)
-        head_coverage_rounded = round_number(self.current_yaml, head_coverage)
+        try:
+            # check if user has erroneously added a % to this input and fix
+            threshold = Decimal(str(threshold).replace("%", ""))
+        except (InvalidOperation, TypeError, AttributeError):
+            threshold = Decimal("0.0")
+        return threshold
 
+    def _get_target(
+        self, base_report_totals: ComparisonProxy | FilteredComparison
+    ) -> tuple[Decimal, bool]:
+        """
+        Target can be configured by user, default is auto, which is the coverage level from the base report.
+        """
         if self.notifier_yaml_settings.get("target") not in ("auto", None):
-            # Explicit target coverage defined in YAML
+            # check if user has erroneously added a % to this input and fix
             target_coverage = Decimal(
                 str(self.notifier_yaml_settings.get("target")).replace("%", "")
             )
-            state = (
-                "success"
-                if ((head_coverage + threshold) >= target_coverage)
-                else "failure"
+            is_custom_target = True
+        else:
+            target_coverage = Decimal(base_report_totals.coverage)
+            is_custom_target = False
+        return target_coverage, is_custom_target
+
+    def _get_project_status(
+        self, comparison: ComparisonProxy | FilteredComparison, notification_type: str
+    ) -> StatusResult:
+        included_helper_text = {}
+        if (
+            not comparison.head.report
+            or (head_report_totals := comparison.head.report.totals) is None
+            or head_report_totals.coverage is None
+        ):
+            state = self.notifier_yaml_settings.get(
+                "if_not_found", StatusState.success.value
             )
-            expected_coverage_str = round_number(self.current_yaml, target_coverage)
-            message = f"{head_coverage_rounded}% (target {expected_coverage_str}%)"
-            return (state, message)
-        if comparison.project_coverage_base.report is None:
+            message = "No coverage information found on head"
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
+
+        base_report = comparison.project_coverage_base.report
+        if base_report is None:
             # No base report - can't pass by offset coverage
-            state = self.notifier_yaml_settings.get("if_not_found", "success")
+            state = self.notifier_yaml_settings.get(
+                "if_not_found", StatusState.success.value
+            )
             message = "No report found to compare against"
-            return (state, message)
-        if comparison.project_coverage_base.report.totals.coverage is None:
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
+
+        base_report_totals = base_report.totals
+        if base_report_totals.coverage is None:
             # Base report, no coverage on base report - can't pass by offset coverage
-            state = self.notifier_yaml_settings.get("if_not_found", "success")
+            state = self.notifier_yaml_settings.get(
+                "if_not_found", StatusState.success.value
+            )
             message = "No coverage information found on base report"
-            return (state, message)
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
+
         # Proper comparison head vs base report
-        target_coverage = Decimal(
-            comparison.project_coverage_base.report.totals.coverage
+        threshold = self._get_threshold()
+        target_coverage, is_custom_target = self._get_target(base_report_totals)
+        head_coverage = Decimal(head_report_totals.coverage)
+        head_coverage_rounded = round_number(self.current_yaml, head_coverage)
+
+        # threshold is used to determine success/failure, but is not included in messaging
+        state = (
+            StatusState.success.value
+            if head_coverage >= (target_coverage - threshold)
+            else StatusState.failure.value
         )
-        state = "success" if head_coverage + threshold >= target_coverage else "failure"
-        change_coverage = round_number(
+
+        if is_custom_target:
+            # Explicit target coverage defined in YAML
+            # use rounded numbers for messages
+            target_rounded = round_number(self.current_yaml, target_coverage)
+            message = f"{head_coverage_rounded}% (target {target_rounded}%)"
+            if state == StatusState.failure.value:
+                helper_text = HELPER_TEXT_MAP[
+                    HelperTextKey.CUSTOM_TARGET_PROJECT
+                ].value.format(
+                    context=self.context,
+                    notification_type=notification_type,
+                    point_of_comparison=self.point_of_comparison,
+                    coverage=head_coverage_rounded,
+                    target=target_rounded,
+                )
+                included_helper_text[HelperTextKey.CUSTOM_TARGET_PROJECT] = helper_text
+            return StatusResult(
+                state=state, message=message, included_helper_text=included_helper_text
+            )
+
+        # use rounded numbers for messages
+        change_coverage_rounded = round_number(
             self.current_yaml, head_coverage - target_coverage
         )
-        message = f"{head_coverage_rounded}% ({change_coverage:+}%) compared to {comparison.project_coverage_base.commit.commitid[:7]}"
-        return (state, message)
+        message = f"{head_coverage_rounded}% ({change_coverage_rounded:+}%) compared to {comparison.project_coverage_base.commit.commitid[:7]}"
+        return StatusResult(
+            state=state, message=message, included_helper_text=included_helper_text
+        )

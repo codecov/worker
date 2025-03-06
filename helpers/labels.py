@@ -1,7 +1,5 @@
 from enum import Enum
-from typing import Set, Union
 
-import sentry_sdk
 from shared.reports.resources import Report
 
 # The SpecialLabelsEnum enum is place to hold sentinels for labels with special
@@ -33,46 +31,43 @@ class SpecialLabelsEnum(Enum):
         self.corresponding_index = index
 
 
-@sentry_sdk.trace
-def get_labels_per_session(report: Report, sess_id: int) -> Union[Set[str], Set[int]]:
+def get_labels_per_session(report: Report, sess_id: int) -> set[str | int]:
     """Returns a Set with the labels present in a session from report, EXCLUDING the SpecialLabel.
 
     The return value can either be a set of strings (the labels themselves) OR
     a set of ints (the label indexes). The label can be looked up from the index
     using Report.lookup_label_by_id(label_id) (assuming Report._labels_idx is set)
     """
-    all_labels = set()
-    for rf in report:
-        for _, line in rf.lines:
+    all_labels: set[str | int] = set()
+
+    for file in report:
+        for _, line in file.lines:
             if line.datapoints:
                 for datapoint in line.datapoints:
                     if datapoint.sessionid == sess_id:
                         all_labels.update(datapoint.label_ids or [])
-    return all_labels - set(
-        [
-            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
-            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index,
-        ]
-    )
+
+    return all_labels - {
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index,
+    }
 
 
-@sentry_sdk.trace
-def get_all_report_labels(report: Report) -> Union[Set[str], Set[int]]:
+def get_all_report_labels(report: Report) -> set[str | int]:
     """Returns a Set with the labels present in report EXCLUDING the SpecialLabel.
 
     The return value can either be a set of strings (the labels themselves) OR
     a set of ints (the label indexes). The label can be looked up from the index
     using Report.lookup_label_by_id(label_id) (assuming Report._labels_idx is set)
     """
-    all_labels = set()
-    for rf in report:
-        for _, line in rf.lines:
+    all_labels: set[str | int] = set()
+    for file in report:
+        for _, line in file.lines:
             if line.datapoints:
                 for datapoint in line.datapoints:
                     all_labels.update(datapoint.label_ids or [])
-    return all_labels - set(
-        [
-            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
-            SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index,
-        ]
-    )
+
+    return all_labels - {
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_label,
+        SpecialLabelsEnum.CODECOV_ALL_LABELS_PLACEHOLDER.corresponding_index,
+    }

@@ -1,11 +1,13 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Iterable, List, Tuple
+from itertools import groupby
+from typing import Iterable, List
 
+from asgiref.sync import async_to_sync
 from shared.celery_config import gh_app_webhook_check_task_name
 from shared.config import get_config
-from shared.metrics import metrics
+from shared.metrics import Counter
 from shared.torngit import Github
 from shared.torngit.exceptions import (
     TorngitRateLimitError,
@@ -19,6 +21,24 @@ from services.github import get_github_integration_token
 from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)
+
+WEBHOOK_DELIVERY_FAILURES = Counter(
+    "worker_webhooks_deliveries_failed",
+    "Count of how many incoming webhooks failed to be delivered to our service, broken down by git provider and webhook event. This metric overcounts: the task runs every 6 hours but it considers failures from the last 8 hours.",
+    [
+        "service",
+        "event",
+    ],
+)
+
+WEBHOOK_REDELIVERY_REQUESTS = Counter(
+    "worker_webhooks_redelivery_requests",
+    "Count of how many webhooks we requested redelivery for, broken down by git provider and whether the redelivery request was successful. Note that we don't necessarily request redelivery for every failure.",
+    [
+        "service",
+        "result",
+    ],
+)
 
 
 class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task_name):
@@ -63,25 +83,39 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
 
         return filter(event_filter, deliveries)
 
-    def apply_filters_to_deliveries(self, deliveries: List[object]) -> List[object]:
+    async def process_delivery_page(
+        self, gh_handler: Github, deliveries: List[object]
+    ) -> List[object]:
+        # Beware - filter objects are single-use iterables. If you iterate or
+        # take their length, they're consumed and can't be used again.
         deliveries = self._apply_time_filter(deliveries)
         deliveries = self._apply_status_filter(deliveries)
 
-        # Filter objects are one-and-done iterables. We have to materialize it into a list
-        # if we want to take the length *and* continue using it.
-        # Since Python lists contain references to their contents, this shouldn't be too much
-        # more expensive than just iterating.
-        deliveries = list(deliveries)
-        metrics.incr("webhooks.github.deliveries.failed", count=len(deliveries))
+        # Sort by the webhook event so we can record how many failures there
+        # were for each different event. `sorted` returns a list even if the
+        # input was a single-use iterator.
+        deliveries = sorted(deliveries, key=lambda item: item.get("event"))
+        for event, items in groupby(deliveries, key=lambda item: item.get("event")):
+            WEBHOOK_DELIVERY_FAILURES.labels(service="github", event=event).inc(
+                len(list(items))
+            )
 
-        # Same as above, we need to materialize our filter into a list so we can both take
-        # the length of it and return it.
+        # We don't necessarily want to request redelivery for every failure.
+        # Apply a filter and materialize it as a list.
         deliveries = list(self._apply_event_filter(deliveries))
-        metrics.incr(
-            "webhooks.github.deliveries.retry_requested", count=len(deliveries)
+        redeliveries_requested = len(deliveries)
+
+        successful_request_count = await self.request_redeliveries(
+            gh_handler, deliveries
+        )
+        WEBHOOK_REDELIVERY_REQUESTS.labels(service="github", result="success").inc(
+            successful_request_count
+        )
+        WEBHOOK_REDELIVERY_REQUESTS.labels(service="github", result="failure").inc(
+            redeliveries_requested - successful_request_count
         )
 
-        return deliveries
+        return successful_request_count, redeliveries_requested
 
     async def request_redeliveries(
         self, gh_handler: Github, deliveries_to_request: List[object]
@@ -99,12 +133,12 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
         results = await asyncio.gather(*redelivery_coroutines)
         return sum(results)
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         if is_enterprise():
             return dict(checked=False, reason="Enterprise env")
 
         gh_app_token = get_github_integration_token(
-            service="github", integration_id=None
+            service="github", installation_id=None
         )
         gh_handler = Github(
             token=dict(key=gh_app_token),
@@ -117,25 +151,36 @@ class GitHubAppWebhooksCheckTask(CodecovCronTask, name=gh_app_webhook_check_task
         successful_redeliveries = 0
         all_deliveries = 0
         pages_processed = 0
-        try:
+
+        async def process_deliveries():
             async for deliveries in gh_handler.list_webhook_deliveries():
+                nonlocal all_deliveries
+                nonlocal pages_processed
+                nonlocal redeliveries_requested
+                nonlocal successful_redeliveries
                 all_deliveries += len(deliveries)
                 pages_processed += 1
-                deliveries_to_request = self.apply_filters_to_deliveries(deliveries)
-                curr_successful_redeliveries = await self.request_redeliveries(
-                    gh_handler, deliveries_to_request
+                (
+                    curr_successful_redeliveries,
+                    curr_redeliveries_requested,
+                ) = await self.process_delivery_page(
+                    gh_handler,
+                    deliveries,
                 )
                 successful_redeliveries += curr_successful_redeliveries
-                redeliveries_requested += len(deliveries_to_request)
+                redeliveries_requested += curr_redeliveries_requested
                 log.info(
                     "Processed page of webhook redelivery requests",
                     extra=dict(
-                        deliveries_to_request=len(deliveries_to_request),
+                        deliveries_to_request=curr_redeliveries_requested,
                         successful_redeliveries=curr_successful_redeliveries,
                         acc_successful_redeliveries=successful_redeliveries,
                         acc_redeliveries_requested=redeliveries_requested,
                     ),
                 )
+
+        try:
+            async_to_sync(process_deliveries)()
         except (
             TorngitUnauthorizedError,
             TorngitServer5xxCodeError,

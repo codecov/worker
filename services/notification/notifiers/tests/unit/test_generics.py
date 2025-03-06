@@ -1,5 +1,4 @@
 import httpx
-import pytest
 
 from database.tests.factories import RepositoryFactory
 from services.notification.notifiers.generics import (
@@ -12,7 +11,7 @@ class SampleNotifierForTest(StandardNotifier):
     def build_payload(self, comparison):
         return {"commitid": comparison.head.commit.commitid}
 
-    async def send_actual_notification(self, data):
+    def send_actual_notification(self, data):
         return {
             "notification_attempted": True,
             "notification_successful": True,
@@ -33,6 +32,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={},
             notifier_site_settings=False,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -48,6 +48,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.is_enabled()
 
@@ -63,6 +64,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"field_1": "something"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -78,6 +80,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=["example.com"],
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.is_enabled()
 
@@ -93,6 +96,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=["badexample.com"],
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.is_enabled()
 
@@ -103,6 +107,7 @@ class TestStandardkNotifier(object):
             notifier_yaml_settings={"url": "https://example.com/myexample"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
@@ -116,6 +121,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(sample_comparison)
 
@@ -129,6 +135,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
@@ -142,6 +149,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(sample_comparison)
 
@@ -157,6 +165,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(
             sample_comparison_without_base_report
@@ -172,6 +181,7 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert notifier.should_notify_comparison(sample_comparison)
 
@@ -190,11 +200,11 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         assert not notifier.should_notify_comparison(actual_comparison)
 
-    @pytest.mark.asyncio
-    async def test_notify(self, sample_comparison):
+    def test_notify(self, sample_comparison):
         notifier = SampleNotifierForTest(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -204,16 +214,16 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
-        res = await notifier.notify(sample_comparison)
+        res = notifier.notify(sample_comparison)
         assert res.notification_attempted
         assert res.notification_successful
         assert res.explanation is None
         assert res.data_sent == {"commitid": sample_comparison.head.commit.commitid}
         assert res.data_received is None
 
-    @pytest.mark.asyncio
-    async def test_notify_should_not_notify(self, sample_comparison, mocker):
+    def test_notify_should_not_notify(self, sample_comparison, mocker):
         notifier = SampleNotifierForTest(
             repository=sample_comparison.head.commit.repository,
             title="title",
@@ -223,11 +233,12 @@ class TestStandardkNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         mocker.patch.object(
             SampleNotifierForTest, "should_notify_comparison", return_value=False
         )
-        res = await notifier.notify(sample_comparison)
+        res = notifier.notify(sample_comparison)
         assert not res.notification_attempted
         assert res.notification_successful is None
         assert res.explanation == "Did not fit criteria"
@@ -236,9 +247,8 @@ class TestStandardkNotifier(object):
 
 
 class TestRequestsYamlBasedNotifier(object):
-    @pytest.mark.asyncio
-    async def test_send_notification_exception(self, mocker, sample_comparison):
-        mocked_post = mocker.patch.object(httpx.AsyncClient, "post")
+    def test_send_notification_exception(self, mocker, sample_comparison):
+        mocked_post = mocker.patch.object(httpx.Client, "post")
         mocked_post.side_effect = httpx.HTTPError("message")
         notifier = RequestsYamlBasedNotifier(
             repository=sample_comparison.head.commit.repository,
@@ -249,9 +259,10 @@ class TestRequestsYamlBasedNotifier(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=None,
         )
         data = {}
-        res = await notifier.send_actual_notification(data)
+        res = notifier.send_actual_notification(data)
         assert res == {
             "notification_attempted": True,
             "notification_successful": False,

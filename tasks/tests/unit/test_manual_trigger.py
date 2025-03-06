@@ -8,8 +8,7 @@ from tasks.manual_trigger import ManualTriggerTask
 
 
 class TestUploadCompletionTask(object):
-    @pytest.mark.asyncio
-    async def test_manual_upload_completion_trigger(
+    def test_manual_upload_completion_trigger(
         self,
         mocker,
         mock_configuration,
@@ -18,7 +17,6 @@ class TestUploadCompletionTask(object):
         mock_redis,
         celery_app,
     ):
-
         mocked_app = mocker.patch.object(
             ManualTriggerTask,
             "app",
@@ -28,20 +26,23 @@ class TestUploadCompletionTask(object):
                 "app.tasks.compute_comparison.ComputeComparison": mocker.MagicMock(),
             },
         )
+        commit = CommitFactory.create(pullid=None)
+        pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+        commit.pullid = pull.pullid
+        dbsession.add(pull)
+        dbsession.flush()
 
-        commit = CommitFactory.create(pullid=10)
-        pull = PullFactory.create(
-            repository=commit.repository, head=commit.commitid, pullid=commit.pullid
-        )
+        dbsession.add(commit)
+
         upload = UploadFactory.create(report__commit=commit)
         compared_to = CommitFactory.create(repository=commit.repository)
         pull.compared_to = compared_to.commitid
-        dbsession.add(commit)
+
         dbsession.add(upload)
-        dbsession.add(pull)
         dbsession.add(compared_to)
+        dbsession.add(pull)
         dbsession.flush()
-        result = await ManualTriggerTask().run_async(
+        result = ManualTriggerTask().run_impl(
             dbsession,
             repoid=commit.repoid,
             commitid=commit.commitid,
@@ -70,8 +71,7 @@ class TestUploadCompletionTask(object):
             "app.tasks.compute_comparison.ComputeComparison"
         ].apply_async.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_manual_upload_completion_trigger_uploads_still_processing(
+    def test_manual_upload_completion_trigger_uploads_still_processing(
         self,
         mocker,
         mock_configuration,
@@ -80,7 +80,6 @@ class TestUploadCompletionTask(object):
         mock_redis,
         celery_app,
     ):
-
         mocker.patch.object(
             ManualTriggerTask,
             "app",
@@ -98,7 +97,7 @@ class TestUploadCompletionTask(object):
         dbsession.add(upload2)
         dbsession.flush()
         with pytest.raises(Retry):
-            result = await ManualTriggerTask().run_async(
+            result = ManualTriggerTask().run_impl(
                 dbsession,
                 repoid=commit.repoid,
                 commitid=commit.commitid,

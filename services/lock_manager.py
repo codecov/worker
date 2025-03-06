@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 class LockType(Enum):
     BUNDLE_ANALYSIS_PROCESSING = "bundle_analysis_processing"
     BUNDLE_ANALYSIS_NOTIFY = "bundle_analysis_notify"
+    NOTIFICATION = "notify"
     # TODO: port existing task locking to use `LockManager`
 
 
@@ -86,7 +87,7 @@ class LockManager:
                 )
         except LockError:
             max_retry = 200 * 3**retry_num
-            countdown = min(random.randint(max_retry / 2, max_retry), 60 * 60 * 5)
+            countdown = min(random.randint(max_retry // 2, max_retry), 60 * 60 * 5)
 
             log.warning(
                 "Unable to acquire lock",

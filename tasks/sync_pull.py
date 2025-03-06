@@ -1,21 +1,27 @@
 import json
 import logging
 import os
+import time
 from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List, Sequence
 
 import sqlalchemy.orm
+from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.celery_config import notify_task_name, pulls_task_name
+from shared.metrics import Counter, inc_counter
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
 from shared.yaml import UserYaml
+from shared.yaml.user_yaml import OwnerContext
 
 from app import celery_app
 from database.models import Commit, Pull, Repository
-from helpers.exceptions import RepositoryWithoutValidBotError
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
+from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
+from rollouts import SYNC_PULL_USE_MERGE_COMMIT_SHA
 from services.comparison.changes import get_changes
 from services.redis import get_redis_connection
 from services.report import Report, ReportService
@@ -24,14 +30,21 @@ from services.repository import (
     fetch_and_update_pull_request_information,
     get_repo_provider_service,
 )
+from services.test_results import should_do_flaky_detection
 from services.yaml.reader import read_yaml_field
 from tasks.base import BaseCodecovTask
+from tasks.process_flakes import process_flakes_task_name
 
 log = logging.getLogger(__name__)
 
+SYNC_PULL_MERGE_COMMIT_SHA_COUNTER = Counter(
+    "sync_pull_merge_commit_sha",
+    "Number of sync pull using merge commit SHA",
+    ["success"],
+)
+
 
 class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
-
     """
         This is the task that syncs pull with the information the Git Provider gives us
 
@@ -49,7 +62,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         At the end we call the notify task to do notifications with the new information we have
     """
 
-    async def run_async(
+    def run_impl(
         self,
         db_session: sqlalchemy.orm.Session,
         *,
@@ -62,9 +75,14 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         pullid = int(pullid)
         repoid = int(repoid)
         lock_name = f"pullsync_{repoid}_{pullid}"
+        start_wait = time.monotonic()
         try:
-            with redis_connection.lock(lock_name, timeout=60 * 5, blocking_timeout=5):
-                return await self.run_async_within_lock(
+            with redis_connection.lock(
+                lock_name,
+                timeout=60 * 5,
+                blocking_timeout=0.5,
+            ):
+                return self.run_impl_within_lock(
                     db_session,
                     redis_connection,
                     repoid=repoid,
@@ -84,7 +102,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "reason": "unable_fetch_lock",
             }
 
-    async def run_async_within_lock(
+    def run_impl_within_lock(
         self,
         db_session: sqlalchemy.orm.Session,
         redis_connection,
@@ -97,12 +115,18 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         commit_updates_done = {"merged_count": 0, "soft_deleted_count": 0}
         repository = db_session.query(Repository).filter_by(repoid=repoid).first()
         assert repository
+        extra_info = dict(pullid=pullid, repoid=repoid)
         try:
-            repository_service = get_repo_provider_service(repository)
+            installation_name_to_use = get_installation_name_for_owner_for_task(
+                self.name, repository.owner
+            )
+            repository_service = get_repo_provider_service(
+                repository, installation_name_to_use=installation_name_to_use
+            )
         except RepositoryWithoutValidBotError:
             log.warning(
                 "Could not sync pull because there is no valid bot found for that repo",
-                extra=dict(pullid=pullid, repoid=repoid),
+                extra=extra_info,
                 exc_info=True,
             )
             return {
@@ -111,20 +135,43 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "pull_updated": False,
                 "reason": "no_bot",
             }
+        except NoConfiguredAppsAvailable as err:
+            log.error(
+                "Could not sync pull because there are no configured apps available",
+                extra={
+                    **extra_info,
+                    "suspended_app_count": err.suspended_count,
+                    "rate_limited_count": err.rate_limited_count,
+                },
+            )
+            if err.rate_limited_count > 0:
+                log.info("Apps are rate limited. Retrying in 60s", extra=extra_info)
+                self.retry(max_retries=1, countdown=60)
+            return {
+                "notifier_called": False,
+                "commit_updates_done": {"merged_count": 0, "soft_deleted_count": 0},
+                "pull_updated": False,
+                "reason": "no_configured_apps_available",
+            }
+        context = OwnerContext(
+            owner_onboarding_date=repository.owner.createstamp,
+            owner_plan=repository.owner.plan,
+            ownerid=repository.ownerid,
+        )
         current_yaml = UserYaml.get_final_yaml(
             owner_yaml=repository.owner.yaml,
             repo_yaml=repository.yaml,
-            ownerid=repository.owner.ownerid,
+            owner_context=context,
         )
         with metrics.timer(f"{self.metrics_prefix}.fetch_pull"):
-            enriched_pull = await fetch_and_update_pull_request_information(
+            enriched_pull = async_to_sync(fetch_and_update_pull_request_information)(
                 repository_service, db_session, repoid, pullid, current_yaml
             )
         pull = enriched_pull.database_pull
         if pull is None:
             log.info(
                 "Not syncing pull since we can't find it in the database nor in the provider",
-                extra=dict(pullid=pullid, repoid=repoid),
+                extra=extra_info,
             )
             return {
                 "notifier_called": False,
@@ -135,7 +182,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         if enriched_pull.provider_pull is None:
             log.info(
                 "Not syncing pull since we can't find it in the provider. There is nothing to sync",
-                extra=dict(pullid=pullid, repoid=repoid),
+                extra=extra_info,
             )
             return {
                 "notifier_called": False,
@@ -144,7 +191,9 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "reason": "not_in_provider",
             }
         self.trigger_ai_pr_review(enriched_pull, current_yaml)
-        report_service = ReportService(current_yaml)
+        report_service = ReportService(
+            current_yaml, gh_app_installation_name=installation_name_to_use
+        )
         head_commit = pull.get_head_commit()
         if head_commit is None:
             log.info(
@@ -166,12 +215,19 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         commits = None
         db_session.commit()
         try:
-            commits = await repository_service.get_pull_request_commits(pull.pullid)
-            base_ancestors_tree = await repository_service.get_ancestors_tree(
+            commits = async_to_sync(repository_service.get_pull_request_commits)(
+                pull.pullid
+            )
+            base_ancestors_tree = async_to_sync(repository_service.get_ancestors_tree)(
                 enriched_pull.provider_pull["base"]["branch"]
             )
             commit_updates_done = self.update_pull_commits(
-                enriched_pull, commits, base_ancestors_tree
+                repository_service,
+                enriched_pull,
+                commits,
+                base_ancestors_tree,
+                current_yaml,
+                repository,
             )
             db_session.commit()
         except TorngitClientError:
@@ -179,7 +235,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 "Unable to fetch information about pull commits",
                 extra=dict(pullid=pullid, repoid=repoid),
             )
-        await self.update_pull_from_reports(
+        self.update_pull_from_reports(
             pull, repository_service, base_report, head_report, current_yaml
         )
         db_session.commit()
@@ -232,7 +288,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                 extra=dict(pullid=pull.pullid, repoid=pull.repoid),
             )
 
-    async def update_pull_from_reports(
+    def update_pull_from_reports(
         self,
         pull: Pull,
         repository_service,
@@ -241,7 +297,7 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         current_yaml,
     ):
         try:
-            compare_dict = await repository_service.get_compare(
+            compare_dict = async_to_sync(repository_service.get_compare)(
                 pull.base, pull.head, with_commits=False
             )
             diff = compare_dict["diff"]
@@ -276,9 +332,12 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
 
     def update_pull_commits(
         self,
+        repository_service,
         enriched_pull: EnrichedPull,
         commits_on_pr: Sequence,
         ancestors_tree_on_base: Dict[str, Any],
+        current_yaml,
+        repository: Repository,
     ) -> dict:
         """Updates commits considering what the new PR situation is.
 
@@ -308,7 +367,12 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
         if commits_on_pr:
             if pull.state == "merged":
                 is_squash_merge = self.was_pr_merged_with_squash(
-                    commits_on_pr, ancestors_tree_on_base
+                    repoid,
+                    pullid,
+                    pull_dict,
+                    repository_service,
+                    commits_on_pr,
+                    ancestors_tree_on_base,
                 )
                 if not is_squash_merge:
                     log.info(
@@ -339,6 +403,13 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
                         )
                     )
 
+                    self.trigger_process_flakes(
+                        db_session,
+                        repository,
+                        pull.head,
+                        current_yaml,
+                    )
+
             # set the rest of the commits to deleted (do not show in the UI)
             deleted_count = (
                 db_session.query(Commit)
@@ -351,9 +422,26 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             )
         return {"soft_deleted_count": deleted_count, "merged_count": merged_count}
 
-    def was_pr_merged_with_squash(
-        self, commits_on_pr: Sequence[str], base_ancestors_tree: Dict[str, Any]
-    ) -> bool:
+    def was_squash_via_merge_commit(
+        self, repoid, pullid, repository_service, pull_dict
+    ):
+        # if the merge commit exists for this PR, and that commit
+        # has multiple parents, then it's a regular merge commit
+        # otherwise it's a squash
+
+        merge_commit_sha = pull_dict.get("merge_commit_sha")
+        log.info(
+            "Sync Pull using merge commit sha experiment running",
+            extra=dict(repoid=repoid, pullid=pullid, merge_commit_sha=merge_commit_sha),
+        )
+
+        if merge_commit_sha is None:
+            return None
+
+        merge_commit = repository_service.get_commit(merge_commit_sha)
+        return len(merge_commit["parents"] <= 1)
+
+    def was_squash_via_ancestor_tree(self, commits_on_pr, base_ancestors_tree):
         """
             Determines if commit was merged with squash merge or not, by looking at the commits
                 that were on the commit and the commits that are on the base branch now
@@ -399,6 +487,60 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
             ),
         )
         return True
+
+    def was_pr_merged_with_squash(
+        self,
+        repoid: int,
+        pullid: int,
+        repository_service,
+        pull_dict: dict[str, Any],
+        commits_on_pr: Sequence[str],
+        base_ancestors_tree: Dict[str, Any],
+    ) -> bool:
+        experiment_was_squash = None
+        if SYNC_PULL_USE_MERGE_COMMIT_SHA.check_value(repoid):
+            experiment_was_squash = self.was_squash_via_merge_commit(
+                repoid, pullid, repository_service, pull_dict
+            )
+
+        regular_was_squash = self.was_squash_via_ancestor_tree(
+            commits_on_pr, base_ancestors_tree
+        )
+
+        if regular_was_squash == experiment_was_squash:
+            inc_counter(
+                SYNC_PULL_MERGE_COMMIT_SHA_COUNTER,
+                labels=dict(success="true"),
+            )
+            log.info(
+                "Sync Pull merge commit sha experiment succeeded",
+                extra=dict(repoid=repoid, pullid=pullid),
+            )
+        else:
+            inc_counter(
+                SYNC_PULL_MERGE_COMMIT_SHA_COUNTER,
+                labels=dict(success="false"),
+            )
+            log.info(
+                "Sync Pull merge commit sha experiment failed",
+                extra=dict(repoid=repoid, pullid=pullid),
+            )
+
+        return regular_was_squash
+
+    def trigger_process_flakes(
+        self,
+        db_session: sqlalchemy.orm.Session,
+        repository: Repository,
+        pull_head: str,
+        current_yaml: UserYaml,
+    ):
+        if should_do_flaky_detection(repository, current_yaml):
+            redis_client = get_redis_connection()
+            redis_client.set(f"flake_uploads:{repository.repoid}", 0)
+            self.app.tasks[process_flakes_task_name].apply_async(
+                kwargs=dict(repo_id=repository.repoid, commit_id=pull_head)
+            )
 
     def trigger_ai_pr_review(self, enriched_pull: EnrichedPull, current_yaml: UserYaml):
         pull = enriched_pull.database_pull

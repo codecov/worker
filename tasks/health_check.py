@@ -47,7 +47,7 @@ class HealthCheckTask(CodecovCronTask, name=health_check_task_name):
         else:
             return redis_service.get_redis_connection()
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         queue_names = self._get_all_queue_names_from_config()
         redis = self._get_correct_redis_connection()
         for q in queue_names:

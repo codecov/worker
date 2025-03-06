@@ -1,4 +1,3 @@
-import pytest
 from shared.staticanalysis import StaticAnalysisSingleFileSnapshotState
 
 from database.tests.factories.staticanalysis import (
@@ -9,18 +8,16 @@ from tasks.static_analysis_suite_check import StaticAnalysisSuiteCheckTask
 
 
 class TestStaticAnalysisCheckTask(object):
-    @pytest.mark.asyncio
-    async def test_simple_call_no_object_saved(self, dbsession):
+    def test_simple_call_no_object_saved(self, dbsession):
         task = StaticAnalysisSuiteCheckTask()
-        res = await task.run_async(dbsession, suite_id=987654321 * 7)
+        res = task.run_impl(dbsession, suite_id=987654321 * 7)
         assert res == {"changed_count": None, "successful": False}
 
-    @pytest.mark.asyncio
-    async def test_simple_call_with_suite_all_created(
+    def test_simple_call_with_suite_all_created(
         self, dbsession, mock_storage, mock_configuration, mocker
     ):
-        mock_metric_context = mocker.patch(
-            "tasks.static_analysis_suite_check.MetricContext"
+        mock_log_simple_metric = mocker.patch(
+            "tasks.static_analysis_suite_check.log_simple_metric"
         )
         obj = StaticAnalysisSuiteFactory.create()
         dbsession.add(obj)
@@ -44,21 +41,15 @@ class TestStaticAnalysisCheckTask(object):
         )
         dbsession.add(fp_obj)
         dbsession.flush()
-        res = await task.run_async(dbsession, suite_id=obj.id_)
-        mock_metric_context.assert_called_with(
-            repo_id=obj.commit.repository.repoid, commit_id=obj.commit.id
-        )
-        mock_metric_context.return_value.attempt_log_simple_metric.assert_any_call(
+        res = task.run_impl(dbsession, suite_id=obj.id_)
+        mock_log_simple_metric.assert_any_call(
             "static_analysis.data_sent_for_commit", float(True)
         )
-        mock_metric_context.return_value.attempt_log_simple_metric.assert_any_call(
-            "static_analysis.files_changed", 8
-        )
+        mock_log_simple_metric.assert_any_call("static_analysis.files_changed", 8)
         assert res == {"changed_count": 8, "successful": True}
 
-    @pytest.mark.asyncio
-    async def test_simple_call_with_suite_mix_from_other(
-        self, dbsession, mock_storage, mock_configuration
+    def test_simple_call_with_suite_mix_from_other(
+        self, dbsession, mock_storage, mock_configuration, mocker
     ):
         obj = StaticAnalysisSuiteFactory.create()
         another_obj_same_repo = StaticAnalysisSuiteFactory.create(
@@ -101,5 +92,5 @@ class TestStaticAnalysisCheckTask(object):
             )
             dbsession.add(fp_obj)
         dbsession.flush()
-        res = await task.run_async(dbsession, suite_id=obj.id_)
+        res = task.run_impl(dbsession, suite_id=obj.id_)
         assert res == {"changed_count": 23, "successful": True}

@@ -1,101 +1,71 @@
 interactions:
-- request:
-    body: null
-    headers:
-      Accept:
-      - application/json
-      User-Agent:
-      - Default
-    method: GET
-    uri: https://api.github.com/user/repos?per_page=100&page=1
-  response:
-    content: '[{"id":159090647,"node_id":"MDEwOlJlcG9zaXRvcnkxNTkwOTA2NDc=","name":"pub","full_name":"1nf1n1t3l00p/pub","private":false,"owner":{"login":"1nf1n1t3l00p","id":45343385,"node_id":"MDQ6VXNlcjQ1MzQzMzg1","avatar_url":"https://avatars1.githubusercontent.com/u/45343385?v=4","gravatar_id":"","url":"https://api.github.com/users/1nf1n1t3l00p","html_url":"https://github.com/1nf1n1t3l00p","followers_url":"https://api.github.com/users/1nf1n1t3l00p/followers","following_url":"https://api.github.com/users/1nf1n1t3l00p/following{/other_user}","gists_url":"https://api.github.com/users/1nf1n1t3l00p/gists{/gist_id}","starred_url":"https://api.github.com/users/1nf1n1t3l00p/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/1nf1n1t3l00p/subscriptions","organizations_url":"https://api.github.com/users/1nf1n1t3l00p/orgs","repos_url":"https://api.github.com/users/1nf1n1t3l00p/repos","events_url":"https://api.github.com/users/1nf1n1t3l00p/events{/privacy}","received_events_url":"https://api.github.com/users/1nf1n1t3l00p/received_events","type":"User","site_admin":false},"html_url":"https://github.com/1nf1n1t3l00p/pub","description":null,"fork":false,"url":"https://api.github.com/repos/1nf1n1t3l00p/pub","forks_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/forks","keys_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/keys{/key_id}","collaborators_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/teams","hooks_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/hooks","issue_events_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/issues/events{/number}","events_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/events","assignees_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/assignees{/user}","branches_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/branches{/branch}","tags_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/tags","blobs_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/refs{/sha}","trees_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/trees{/sha}","statuses_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/statuses/{sha}","languages_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/languages","stargazers_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/stargazers","contributors_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/contributors","subscribers_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/subscribers","subscription_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/subscription","commits_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/commits{/sha}","git_commits_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/commits{/sha}","comments_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/comments{/number}","issue_comment_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/issues/comments{/number}","contents_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/contents/{+path}","compare_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/compare/{base}...{head}","merges_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/merges","archive_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/downloads","issues_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/issues{/number}","pulls_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/pulls{/number}","milestones_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/milestones{/number}","notifications_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/labels{/name}","releases_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/releases{/id}","deployments_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/deployments","created_at":"2018-11-26T01:00:55Z","updated_at":"2018-11-26T01:00:58Z","pushed_at":"2018-11-26T01:00:57Z","git_url":"git://github.com/1nf1n1t3l00p/pub.git","ssh_url":"git@github.com:1nf1n1t3l00p/pub.git","clone_url":"https://github.com/1nf1n1t3l00p/pub.git","svn_url":"https://github.com/1nf1n1t3l00p/pub","homepage":null,"size":0,"stargazers_count":0,"watchers_count":0,"language":null,"has_issues":true,"has_projects":true,"has_downloads":true,"has_wiki":true,"has_pages":false,"forks_count":0,"mirror_url":null,"archived":false,"disabled":false,"open_issues_count":0,"license":null,"forks":0,"open_issues":0,"watchers":0,"default_branch":"master","permissions":{"admin":true,"push":true,"pull":true}}]'
-    headers:
-      Access-Control-Allow-Origin:
-      - '*'
-      Access-Control-Expose-Headers:
-      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
-        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
-        X-GitHub-Media-Type
-      Cache-Control:
-      - private, max-age=60, s-maxage=60
-      Connection:
-      - close
-      Content-Security-Policy:
-      - default-src 'none'
-      Content-Type:
-      - application/json; charset=utf-8
-      Date:
-      - Sun, 27 Oct 2019 03:14:12 GMT
-      Etag:
-      - W/"e3801bcbeed09428da1710250fede463"
-      Referrer-Policy:
-      - origin-when-cross-origin, strict-origin-when-cross-origin
-      Server:
-      - GitHub.com
-      Status:
-      - 200 OK
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubdomains; preload
-      Transfer-Encoding:
-      - chunked
-      Vary:
-      - Accept, Authorization, Cookie, X-GitHub-OTP
-      X-Accepted-Oauth-Scopes:
-      - ''
-      X-Consumed-Content-Encoding:
-      - gzip
-      X-Content-Type-Options:
-      - nosniff
-      X-Frame-Options:
-      - deny
-      X-Github-Media-Type:
-      - github.v3
-      X-Github-Request-Id:
-      - C030:746A:10DBEF9:2327992:5DB50B84
-      X-Oauth-Scopes:
-      - repo, user
-      X-Ratelimit-Limit:
-      - '5000'
-      X-Ratelimit-Remaining:
-      - '4999'
-      X-Ratelimit-Reset:
-      - '1572149652'
-      X-Xss-Protection:
-      - 1; mode=block
-    status:
-      code: 200
-      message: OK
-    status_code: 200
-    url: https://api.github.com/user/repos?per_page=100&page=1
-- request:
-    body: '{"query": "\nquery {\n    viewer {\n        repositories(\n            ownerAffiliations:
-      [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]\n            affiliations: [OWNER,
-      COLLABORATOR, ORGANIZATION_MEMBER]\n        ) {\n            totalCount\n        }\n    }\n}\n"}'
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '264'
-      content-type:
-      - application/json
-      host:
-      - api.github.com
-      user-agent:
-      - Default
-    method: POST
-    uri: https://api.github.com/graphql
-  response:
-    content: '{"data":{"viewer":{"repositories":{"totalCount": 1}}}}'
-    headers:
-      Content-Length:
-      - '54'
-      Content-Type:
-      - application/json
-    http_version: HTTP/1.1
-    status_code: 200
+  - request:
+      body: null
+      headers:
+        Accept:
+          - application/json
+        User-Agent:
+          - Default
+      method: GET
+      uri: https://api.github.com/user/repos?per_page=100&page=1
+    response:
+      content: '[{"id":159090647,"node_id":"MDEwOlJlcG9zaXRvcnkxNTkwOTA2NDc=","name":"pub","full_name":"1nf1n1t3l00p/pub","private":false,"owner":{"login":"1nf1n1t3l00p","id":45343385,"node_id":"MDQ6VXNlcjQ1MzQzMzg1","avatar_url":"https://avatars1.githubusercontent.com/u/45343385?v=4","gravatar_id":"","url":"https://api.github.com/users/1nf1n1t3l00p","html_url":"https://github.com/1nf1n1t3l00p","followers_url":"https://api.github.com/users/1nf1n1t3l00p/followers","following_url":"https://api.github.com/users/1nf1n1t3l00p/following{/other_user}","gists_url":"https://api.github.com/users/1nf1n1t3l00p/gists{/gist_id}","starred_url":"https://api.github.com/users/1nf1n1t3l00p/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/1nf1n1t3l00p/subscriptions","organizations_url":"https://api.github.com/users/1nf1n1t3l00p/orgs","repos_url":"https://api.github.com/users/1nf1n1t3l00p/repos","events_url":"https://api.github.com/users/1nf1n1t3l00p/events{/privacy}","received_events_url":"https://api.github.com/users/1nf1n1t3l00p/received_events","type":"User","site_admin":false},"html_url":"https://github.com/1nf1n1t3l00p/pub","description":null,"fork":false,"url":"https://api.github.com/repos/1nf1n1t3l00p/pub","forks_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/forks","keys_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/keys{/key_id}","collaborators_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/teams","hooks_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/hooks","issue_events_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/issues/events{/number}","events_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/events","assignees_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/assignees{/user}","branches_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/branches{/branch}","tags_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/tags","blobs_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/refs{/sha}","trees_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/trees{/sha}","statuses_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/statuses/{sha}","languages_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/languages","stargazers_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/stargazers","contributors_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/contributors","subscribers_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/subscribers","subscription_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/subscription","commits_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/commits{/sha}","git_commits_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/git/commits{/sha}","comments_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/comments{/number}","issue_comment_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/issues/comments{/number}","contents_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/contents/{+path}","compare_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/compare/{base}...{head}","merges_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/merges","archive_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/downloads","issues_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/issues{/number}","pulls_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/pulls{/number}","milestones_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/milestones{/number}","notifications_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/labels{/name}","releases_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/releases{/id}","deployments_url":"https://api.github.com/repos/1nf1n1t3l00p/pub/deployments","created_at":"2018-11-26T01:00:55Z","updated_at":"2018-11-26T01:00:58Z","pushed_at":"2018-11-26T01:00:57Z","git_url":"git://github.com/1nf1n1t3l00p/pub.git","ssh_url":"git@github.com:1nf1n1t3l00p/pub.git","clone_url":"https://github.com/1nf1n1t3l00p/pub.git","svn_url":"https://github.com/1nf1n1t3l00p/pub","homepage":null,"size":0,"stargazers_count":0,"watchers_count":0,"language":null,"has_issues":true,"has_projects":true,"has_downloads":true,"has_wiki":true,"has_pages":false,"forks_count":0,"mirror_url":null,"archived":false,"disabled":false,"open_issues_count":0,"license":null,"forks":0,"open_issues":0,"watchers":0,"default_branch":"master","permissions":{"admin":true,"push":true,"pull":true}}]'
+      headers:
+        Access-Control-Allow-Origin:
+          - "*"
+        Access-Control-Expose-Headers:
+          - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+            X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+            X-GitHub-Media-Type
+        Cache-Control:
+          - private, max-age=60, s-maxage=60
+        Connection:
+          - close
+        Content-Security-Policy:
+          - default-src 'none'
+        Content-Type:
+          - application/json; charset=utf-8
+        Date:
+          - Sun, 27 Oct 2019 03:14:12 GMT
+        Etag:
+          - W/"e3801bcbeed09428da1710250fede463"
+        Referrer-Policy:
+          - origin-when-cross-origin, strict-origin-when-cross-origin
+        Server:
+          - GitHub.com
+        Status:
+          - 200 OK
+        Strict-Transport-Security:
+          - max-age=31536000; includeSubdomains; preload
+        Transfer-Encoding:
+          - chunked
+        Vary:
+          - Accept, Authorization, Cookie, X-GitHub-OTP
+        X-Accepted-Oauth-Scopes:
+          - ""
+        X-Consumed-Content-Encoding:
+          - gzip
+        X-Content-Type-Options:
+          - nosniff
+        X-Frame-Options:
+          - deny
+        X-Github-Media-Type:
+          - github.v3
+        X-Github-Request-Id:
+          - C030:746A:10DBEF9:2327992:5DB50B84
+        X-Oauth-Scopes:
+          - repo, user
+        X-Ratelimit-Limit:
+          - "5000"
+        X-Ratelimit-Remaining:
+          - "4999"
+        X-Ratelimit-Reset:
+          - "1572149652"
+        X-Xss-Protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      status_code: 200
+      url: https://api.github.com/user/repos?per_page=100&page=1
 version: 1

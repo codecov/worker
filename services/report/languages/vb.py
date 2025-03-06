@@ -1,57 +1,50 @@
-import typing
-
-from shared.reports.resources import Report, ReportFile
-from shared.reports.types import ReportLine
+import sentry_sdk
+from lxml.etree import Element
+from shared.reports.resources import ReportFile
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import ReportBuilder
+from services.report.report_builder import ReportBuilderSession
 
 
 class VbProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return bool(content.tag == "results")
+    def matches_content(self, content: Element, first_line: str, name: str) -> bool:
+        return content.tag == "results"
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
-        path_fixer, ignored_lines, sessionid, repo_yaml = (
-            report_builder.path_fixer,
-            report_builder.ignored_lines,
-            report_builder.sessionid,
-            report_builder.repo_yaml,
-        )
-        return from_xml(content, path_fixer, ignored_lines, sessionid)
+        self, content: Element, report_builder_session: ReportBuilderSession
+    ) -> None:
+        return from_xml(content, report_builder_session)
 
 
-def from_xml(xml, fix, ignored_lines, sessionid):
-    report = Report()
+def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None:
+    files: dict[str, ReportFile] = {}
     for module in xml.iter("module"):
-        file_by_source = {}
         # loop through sources
         for sf in module.iter("source_file"):
-            filename = fix(sf.attrib["path"].replace("\\", "/"))
-            if filename:
-                file_by_source[sf.attrib["id"]] = ReportFile(
-                    filename, ignore=ignored_lines.get(filename)
+            _file = report_builder_session.create_coverage_file(
+                sf.attrib["path"].replace("\\", "/")
+            )
+            if _file is not None:
+                files[sf.attrib["id"]] = _file
+
+        # loop through each line
+        for line in module.iter("range"):
+            attr = line.attrib
+            _file = files.get(attr["source_id"])
+            if _file is None:
+                continue
+
+            cov_txt = attr["covered"]
+            coverage = 1 if cov_txt == "yes" else 0 if cov_txt == "no" else True
+            for ln in range(int(attr["start_line"]), int(attr["end_line"]) + 1):
+                _file.append(
+                    ln,
+                    report_builder_session.create_coverage_line(
+                        coverage,
+                    ),
                 )
 
-        if file_by_source:
-            # loop through each line
-            for line in module.iter("range"):
-                line = line.attrib
-                _file = file_by_source.get(line["source_id"])
-                if _file is not None:
-                    coverage = line["covered"]
-                    coverage = (
-                        1 if coverage == "yes" else 0 if coverage == "no" else True
-                    )
-                    for ln in range(int(line["start_line"]), int(line["end_line"]) + 1):
-                        _file[ln] = ReportLine.create(
-                            coverage, None, [[sessionid, coverage]]
-                        )
-
-            # add files
-            for v in file_by_source.values():
-                report.append(v)
-
-    return report
+    # add files
+    for _file in files.values():
+        report_builder_session.append(_file)

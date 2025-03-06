@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,13 +9,23 @@ from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
 from mock import ANY, call
 from prometheus_client import REGISTRY
-from shared.billing import BillingPlan
 from shared.celery_config import sync_repos_task_name, upload_task_name
-from sqlalchemy.exc import DBAPIError, IntegrityError, InvalidRequestError
+from shared.plan.constants import PlanName
+from shared.utils.test_utils import mock_config_helper
+from sqlalchemy.exc import (
+    DBAPIError,
+    IntegrityError,
+    InvalidRequestError,
+    StatementError,
+)
 
+from database.enums import CommitErrorTypes
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
 from database.tests.factories.core import OwnerFactory, RepositoryFactory
+from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from tasks.base import BaseCodecovRequest, BaseCodecovTask
 from tasks.base import celery_app as base_celery_app
+from tests.helpers import mock_all_plans_and_tiers
 
 here = Path(__file__)
 
@@ -35,7 +45,7 @@ class MockDateTime(datetime):
 
 
 class SampleTask(BaseCodecovTask, name="test.SampleTask"):
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         return {"unusual": "return", "value": ["There"]}
 
 
@@ -45,10 +55,10 @@ class SampleTaskWithArbitraryError(
     def __init__(self, error):
         self.error = error
 
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         raise self.error
 
-    def retry(self):
+    def retry(self, countdown=None):
         # Fake retry method
         raise Retry()
 
@@ -59,21 +69,21 @@ class SampleTaskWithArbitraryPostgresError(
     def __init__(self, error):
         self.error = error
 
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         raise DBAPIError("statement", "params", self.error)
 
-    def retry(self):
+    def retry(self, countdown=None):
         # Fake retry method
         raise Retry()
 
 
 class SampleTaskWithSoftTimeout(BaseCodecovTask, name="test.SampleTaskWithSoftTimeout"):
-    async def run_async(self, dbsession):
+    def run_impl(self, dbsession):
         raise SoftTimeLimitExceeded()
 
 
 class FailureSampleTask(BaseCodecovTask, name="test.FailureSampleTask"):
-    async def run_async(self, *args, **kwargs):
+    def run_impl(self, *args, **kwargs):
         raise Exception("Whhhhyyyyyyy")
 
 
@@ -95,10 +105,9 @@ class TestBaseCodecovTask(object):
         assert r.hard_time_limit_task == 480
 
     @patch("tasks.base.datetime", MockDateTime)
-    @patch("helpers.telemetry.MetricContext.log_simple_metric")
+    @patch("helpers.telemetry.log_simple_metric")
     def test_sample_run(self, mock_simple_metric, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
-        mocked_metrics = mocker.patch("tasks.base.metrics")
         mock_task_request = mocker.patch("tasks.base.BaseCodecovTask.request")
         fake_request_values = dict(
             created_timestamp="2023-06-13 10:00:00.000000",
@@ -111,23 +120,6 @@ class TestBaseCodecovTask(object):
         task_instance = SampleTask()
         result = task_instance.run()
         assert result == {"unusual": "return", "value": ["There"]}
-        assert mocked_metrics.timing.call_count == 3
-        mocked_metrics.timing.assert_has_calls(
-            [
-                call(
-                    "worker.task.test.SampleTask.time_in_queue",
-                    timedelta(seconds=61, microseconds=123),
-                ),
-                call(
-                    "worker.queues.my-queue.time_in_queue",
-                    timedelta(seconds=61, microseconds=123),
-                ),
-                call(
-                    "worker.task.test.SampleTask.my-queue.time_in_queue",
-                    timedelta(seconds=61, microseconds=123),
-                ),
-            ]
-        )
         assert (
             REGISTRY.get_sample_value(
                 "worker_tasks_timers_time_in_queue_seconds_sum",
@@ -136,10 +128,7 @@ class TestBaseCodecovTask(object):
             == 61.000123
         )
         mock_simple_metric.assert_has_calls(
-            [
-                call("worker.task.test.SampleTask.core_runtime", ANY),
-                call("worker.task.test.SampleTask.full_runtime", ANY),
-            ]
+            [call("worker.task.test.SampleTask.core_runtime", ANY)]
         )
 
     @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")
@@ -223,15 +212,174 @@ class TestBaseCodecovTask(object):
         assert fake_session.close.call_count == 0
         assert mocked_get_db_session.remove.call_count == 1
 
+    def test_commit_django_with_timeseries(self, mocker):
+        mock_config_helper(mocker, configs={"setup.timeseries.enabled": True})
+        mock_commit = mocker.patch("tasks.base.django_transaction.commit")
+        task = BaseCodecovTask()
+        task._commit_django()
+        assert mock_commit.call_args_list == [call(), call("timeseries")]
+
+    def test_commit_django_without_timeseries(self, mocker):
+        mock_config_helper(mocker, configs={"setup.timeseries.enabled": False})
+        mock_commit = mocker.patch("tasks.base.django_transaction.commit")
+        task = BaseCodecovTask()
+        task._commit_django()
+        assert mock_commit.call_args_list == [call()]
+
+    def test_rollback_django_with_timeseries(self, mocker):
+        mock_config_helper(mocker, configs={"setup.timeseries.enabled": True})
+        mock_rollback = mocker.patch("tasks.base.django_transaction.rollback")
+        task = BaseCodecovTask()
+        task._rollback_django()
+        assert mock_rollback.call_args_list == [call(), call("timeseries")]
+
+    def test_rollback_django_without_timeseries(self, mocker):
+        mock_config_helper(mocker, configs={"setup.timeseries.enabled": False})
+        mock_rollback = mocker.patch("tasks.base.django_transaction.rollback")
+        task = BaseCodecovTask()
+        task._rollback_django()
+        assert mock_rollback.call_args_list == [call()]
+
+    def test_run_success_commits_both_orms(self, mocker, dbsession):
+        mock_django_commit = mocker.patch("tasks.base.BaseCodecovTask._commit_django")
+        mock_wrap_up = mocker.patch("tasks.base.BaseCodecovTask.wrap_up_dbsession")
+        mock_django_rollback = mocker.patch(
+            "tasks.base.BaseCodecovTask._rollback_django"
+        )
+        mock_dbsession_rollback = mocker.patch.object(dbsession, "rollback")
+        mock_get_db_session = mocker.patch(
+            "tasks.base.get_db_session", return_value=dbsession
+        )
+
+        task = SampleTask()
+        task.run()
+
+        assert mock_django_commit.call_args_list == [call()]
+        assert mock_wrap_up.call_args_list == [call(dbsession)]
+
+        assert mock_django_rollback.call_count == 0
+        assert mock_dbsession_rollback.call_count == 0
+
+    def test_run_db_errors_rollback(self, mocker, dbsession, celery_app):
+        mock_django_commit = mocker.patch("tasks.base.BaseCodecovTask._commit_django")
+        mock_django_rollback = mocker.patch(
+            "tasks.base.BaseCodecovTask._rollback_django"
+        )
+        mock_dbsession_rollback = mocker.patch.object(dbsession, "rollback")
+        mock_wrap_up = mocker.patch("tasks.base.BaseCodecovTask.wrap_up_dbsession")
+        mock_get_db_session = mocker.patch(
+            "tasks.base.get_db_session", return_value=dbsession
+        )
+
+        # IntegrityError and DataError are subclasses of SQLAlchemyError that
+        # have their own `except` clause.
+        task = SampleTaskWithArbitraryError(IntegrityError("", {}, None))
+        registered_task = celery_app.register_task(task)
+        task = celery_app.tasks[registered_task.name]
+        task.apply()
+
+        assert mock_django_rollback.call_args_list == [call()]
+        assert mock_dbsession_rollback.call_args_list == [call()]
+
+        assert mock_django_commit.call_args_list == [call()]
+        assert mock_wrap_up.call_args_list == [call(dbsession)]
+
+    def test_run_sqlalchemy_error_rollback(self, mocker, dbsession, celery_app):
+        mock_django_commit = mocker.patch("tasks.base.BaseCodecovTask._commit_django")
+        mock_django_rollback = mocker.patch(
+            "tasks.base.BaseCodecovTask._rollback_django"
+        )
+        mock_dbsession_rollback = mocker.patch.object(dbsession, "rollback")
+        mock_wrap_up = mocker.patch("tasks.base.BaseCodecovTask.wrap_up_dbsession")
+        mock_get_db_session = mocker.patch(
+            "tasks.base.get_db_session", return_value=dbsession
+        )
+
+        # StatementError is a subclass of SQLAlchemyError just like
+        # IntegrityError and DataError, but this test case is different because
+        # it is caught by a different except clause.
+        task = SampleTaskWithArbitraryError(StatementError("", "", None, None))
+        registered_task = celery_app.register_task(task)
+        task = celery_app.tasks[registered_task.name]
+        task.apply()
+
+        assert mock_django_rollback.call_args_list == [call()]
+        assert mock_dbsession_rollback.call_args_list == [call()]
+
+        assert mock_django_commit.call_args_list == [call()]
+        assert mock_wrap_up.call_args_list == [call(dbsession)]
+
+    def test_get_repo_provider_service_working(self, mocker):
+        mock_repo_provider = mocker.MagicMock()
+        mock_get_repo_provider_service = mocker.patch(
+            "tasks.base.get_repo_provider_service", return_value=mock_repo_provider
+        )
+
+        task = BaseCodecovTask()
+        mock_repo = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo) == mock_repo_provider
+        mock_get_repo_provider_service.assert_called_with(
+            mock_repo, GITHUB_APP_INSTALLATION_DEFAULT_NAME, None
+        )
+
+    def test_get_repo_provider_service_rate_limited(self, mocker):
+        mocker.patch(
+            "tasks.base.get_repo_provider_service",
+            side_effect=NoConfiguredAppsAvailable(
+                apps_count=2,
+                rate_limited_count=2,
+                suspended_count=0,
+            ),
+        )
+        mocker.patch("tasks.base.get_seconds_to_next_hour", return_value=120)
+
+        task = BaseCodecovTask()
+        mock_retry = mocker.patch.object(task, "retry")
+        mock_repo = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo) is None
+        task.retry.assert_called_with(countdown=120)
+
+    def test_get_repo_provider_service_suspended(self, mocker):
+        mocker.patch(
+            "tasks.base.get_repo_provider_service",
+            side_effect=NoConfiguredAppsAvailable(
+                apps_count=2,
+                rate_limited_count=0,
+                suspended_count=2,
+            ),
+        )
+        mocker.patch("tasks.base.get_seconds_to_next_hour", return_value=120)
+
+        task = BaseCodecovTask()
+        mock_repo = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo) is None
+
+    def test_get_repo_provider_service_no_valid_bot(self, mocker):
+        mocker.patch(
+            "tasks.base.get_repo_provider_service",
+            side_effect=RepositoryWithoutValidBotError(),
+        )
+        mock_save_commit_error = mocker.patch("tasks.base.save_commit_error")
+
+        task = BaseCodecovTask()
+        mock_repo = mocker.MagicMock()
+        mock_repo.repoid = 5
+        mock_commit = mocker.MagicMock()
+        assert task.get_repo_provider_service(mock_repo, commit=mock_commit) is None
+        mock_save_commit_error.assert_called_with(
+            mock_commit,
+            error_code=CommitErrorTypes.REPO_BOT_INVALID.value,
+            error_params=dict(repoid=5),
+        )
+
 
 @pytest.mark.django_db(databases={"default", "timeseries"})
 class TestBaseCodecovTaskHooks(object):
-    def test_sample_task_success(self, celery_app, mocker):
+    def test_sample_task_success(self, celery_app):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
-            async def run_async(self, dbsession):
+            def run_impl(self, dbsession):
                 return {"unusual": "return", "value": ["There"]}
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         task = celery_app.tasks[DTask.name]
 
@@ -251,16 +399,14 @@ class TestBaseCodecovTaskHooks(object):
 
         res = k.get()
         assert res == {"unusual": "return", "value": ["There"]}
-        mock_metrics.assert_called_with("worker.task.test.SampleTask.successes")
         assert prom_run_counter_after - prom_run_counter_before == 1
         assert prom_success_counter_after - prom_success_counter_before == 1
 
-    def test_sample_task_failure(self, celery_app, mocker):
+    def test_sample_task_failure(self, celery_app):
         class FailureSampleTask(BaseCodecovTask, name="test.FailureSampleTask"):
-            async def run_async(self, *args, **kwargs):
+            def run_impl(self, *args, **kwargs):
                 raise Exception("Whhhhyyyyyyy")
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(FailureSampleTask())
         task = celery_app.tasks[DTask.name]
         with pytest.raises(Exception) as exc:
@@ -280,29 +426,25 @@ class TestBaseCodecovTaskHooks(object):
             assert prom_run_counter_after - prom_run_counter_before == 1
             assert prom_failure_counter_after - prom_failure_counter_before == 1
         assert exc.value.args == ("Whhhhyyyyyyy",)
-        mock_metrics.assert_called_with("worker.task.test.FailureSampleTask.failures")
 
-    def test_sample_task_retry(self, celery_app, mocker):
+    def test_sample_task_retry(self):
         # Unfortunately we cant really call the task with apply().get()
         # Something happens inside celery as of version 4.3 that makes them
         #   not call on_Retry at all.
         # best we can do is to call on_retry ourselves and ensure this makes the
         # metric be called
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         task = RetrySampleTask()
         prom_retry_counter_before = REGISTRY.get_sample_value(
             "worker_task_counts_retries_total", labels={"task": task.name}
         )
-        task.on_retry("exc", "task_id", "args", "kwargs", "einfo")
+        task.on_retry("exc", "task_id", ("args",), {"kwargs": "foo"}, "einfo")
         prom_retry_counter_after = REGISTRY.get_sample_value(
             "worker_task_counts_retries_total", labels={"task": task.name}
         )
-        mock_metrics.assert_called_with("worker.task.test.RetrySampleTask.retries")
         assert prom_retry_counter_after - prom_retry_counter_before == 1
 
 
 class TestBaseCodecovRequest(object):
-
     """
     All in all, this is a really weird class
 
@@ -333,7 +475,6 @@ class TestBaseCodecovRequest(object):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
             pass
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
         prom_timeout_counter_before = (
@@ -346,14 +487,12 @@ class TestBaseCodecovRequest(object):
         prom_timeout_counter_after = REGISTRY.get_sample_value(
             "worker_task_counts_timeouts_total", labels={"task": DTask.name}
         )
-        mock_metrics.assert_called_with("worker.task.test.SampleTask.timeout")
         assert prom_timeout_counter_after - prom_timeout_counter_before == 1
 
     def test_sample_task_hard_timeout(self, celery_app, mocker):
         class SampleTask(BaseCodecovTask, name="test.SampleTask"):
             pass
 
-        mock_metrics = mocker.patch("tasks.base.metrics.incr")
         DTask = celery_app.register_task(SampleTask())
         request = self.xRequest(mocker, DTask.name, celery_app)
         prom_timeout_counter_before = (
@@ -375,8 +514,6 @@ class TestBaseCodecovRequest(object):
         prom_hard_timeout_counter_after = REGISTRY.get_sample_value(
             "worker_task_counts_hard_timeouts_total", labels={"task": DTask.name}
         )
-        mock_metrics.assert_any_call("worker.task.test.SampleTask.hardtimeout")
-        mock_metrics.assert_any_call("worker.task.test.SampleTask.timeout")
         assert prom_timeout_counter_after - prom_timeout_counter_before == 1
         assert prom_hard_timeout_counter_after - prom_hard_timeout_counter_before == 1
 
@@ -384,9 +521,9 @@ class TestBaseCodecovRequest(object):
 class TestBaseCodecovTaskApplyAsyncOverride(object):
     @pytest.fixture
     def fake_owners(self, dbsession):
-        owner = OwnerFactory.create(plan=BillingPlan.pr_monthly.db_name)
+        owner = OwnerFactory.create(plan=PlanName.CODECOV_PRO_MONTHLY.value)
         owner_enterprise_cloud = OwnerFactory.create(
-            plan=BillingPlan.enterprise_cloud_yearly.db_name
+            plan=PlanName.ENTERPRISE_CLOUD_YEARLY.value
         )
         dbsession.add(owner)
         dbsession.add(owner_enterprise_cloud)
@@ -405,7 +542,6 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_apply_async_override(self, mocker):
-
         mock_get_db_session = mocker.patch("tasks.base.get_db_session")
         mock_celery_task_router = mocker.patch("tasks.base._get_user_plan_from_task")
         mock_route_tasks = mocker.patch(
@@ -431,11 +567,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=400,
             soft_time_limit=200,
+            user_plan=mock_celery_task_router(),
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
     def test_apply_async_override_with_chain(self, mocker):
-
         mock_get_db_session = mocker.patch("tasks.base.get_db_session")
         mock_celery_task_router = mocker.patch("tasks.base._get_user_plan_from_task")
         mock_route_tasks = mocker.patch(
@@ -469,9 +605,11 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_no_override(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {
@@ -510,12 +648,15 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             soft_time_limit=None,
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=None,
+            user_plan="users-pr-inappm",
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_override_from_celery(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {
@@ -554,12 +695,15 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             soft_time_limit=500,
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=600,
+            user_plan="users-enterprisey",
         )
 
     @pytest.mark.freeze_time("2023-06-13T10:01:01.000123")
+    @pytest.mark.django_db(databases={"default"})
     def test_real_example_override_from_upload(
         self, mocker, dbsession, mock_configuration, fake_repos
     ):
+        mock_all_plans_and_tiers()
         mock_configuration.set_params(
             {
                 "setup": {
@@ -598,4 +742,5 @@ class TestBaseCodecovTaskApplyAsyncOverride(object):
             soft_time_limit=400,
             headers=dict(created_timestamp="2023-06-13T10:01:01.000123"),
             time_limit=450,
+            user_plan="users-enterprisey",
         )

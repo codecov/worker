@@ -1,17 +1,23 @@
 import logging
 from datetime import datetime
+from typing import List, Optional, Tuple
 
+from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
-from shared.celery_config import sync_repo_languages_task_name, sync_repos_task_name
-from shared.metrics import metrics
-from shared.torngit.exceptions import TorngitClientError
+from shared.celery_config import (
+    sync_repo_languages_gql_task_name,
+    sync_repo_languages_task_name,
+    sync_repos_task_name,
+)
+from shared.config import get_config
+from shared.torngit.base import TorngitBaseAdapter
+from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Owner, Repository
-from rollouts import LIST_REPOS_GENERATOR_BY_OWNER_SLUG, owner_slug
 from services.owner import get_owner_provider_service
 from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
@@ -39,25 +45,44 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
     5. Fire off a task to sync every repository's available languages with its provider
        after finishing the sync.
+
+    # About the `using_integration` argument
+    `using_integration` is specific to GitHub users. When `using_integration==True` then this refresh
+    task came from receiving some INSTALLATION event from GitHub indicating that the app installation
+    for the user suffered some change.
+
+    In this case we use the installation token to list repos from github, as opposed to the owner's token
+    (there's possibly a difference in what repos the owner can see and what repos the app installation can see)
     """
 
     ignore_result = False
 
-    async def run_async(
+    def run_impl(
         self,
-        db_session,
+        db_session: Session,
+        # `previous_results`` is added by celery if the task is chained.
+        # It contains the results of tasks that came before this one in the chain
         previous_results=None,
         *,
-        ownerid,
-        username=None,
+        ownerid: int,
+        username: Optional[str] = None,
         using_integration=False,
         manual_trigger=False,
+        # `repository_service_ids` is optionally passed to the task
+        # when using_integration=True so we know what are the repos affected.
+        # Speeds up getting info from the git provider, but not required
+        # objects are (service_id, node_id)
+        repository_service_ids: Optional[List[Tuple[str, str]]] = None,
         **kwargs,
     ):
         log.info(
             "Sync repos",
             extra=dict(
-                ownerid=ownerid, username=username, using_integration=using_integration
+                ownerid=ownerid,
+                username=username,
+                using_integration=using_integration,
+                manual_trigger=manual_trigger,
+                repository_service_ids=repository_service_ids,
             ),
         )
         owner = db_session.query(Owner).filter(Owner.ownerid == ownerid).first()
@@ -72,38 +97,169 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                 timeout=max(300, self.hard_time_limit_task),
                 blocking_timeout=5,
             ):
-                git = get_owner_provider_service(owner, using_integration)
-                if using_integration:
-                    with metrics.timer(f"{metrics_scope}.sync_repos_using_integration"):
-                        await self.sync_repos_using_integration(
-                            db_session, git, owner, username
-                        )
-                else:
-                    with metrics.timer(f"{metrics_scope}.sync_repos"):
-                        await self.sync_repos(
-                            db_session, git, owner, username, using_integration
-                        )
-
-                self.sync_repos_languages(
-                    ownerid=owner.ownerid,
-                    db_session=db_session,
-                    manual_trigger=manual_trigger,
+                git = get_owner_provider_service(
+                    owner,
+                    ignore_installation=(not using_integration),
                 )
+                sync_repos_output = {}
+                if using_integration:
+                    sync_repos_output = async_to_sync(
+                        self.sync_repos_using_integration
+                    )(
+                        db_session,
+                        git,
+                        owner,
+                        username,
+                        repository_service_ids=repository_service_ids,
+                    )
+                else:
+                    sync_repos_output = async_to_sync(self.sync_repos)(
+                        db_session, git, owner, username, using_integration
+                    )
+
+                if get_config(
+                    "setup", "tasks", "sync_repo_languages", "enabled", default=True
+                ):
+                    self.sync_repos_languages(
+                        sync_repos_output=sync_repos_output,
+                        manual_trigger=manual_trigger,
+                        current_owner=owner,
+                    )
         except LockError:
             log.warning("Unable to sync repos because another task is already doing it")
 
-    async def sync_repos_using_integration(self, db_session, git, owner, username):
+    async def sync_repos_affected_repos_known(
+        self,
+        db_session: Session,
+        git: TorngitBaseAdapter,
+        owner: Owner,
+        repository_service_ids: List[Tuple[int, str]] | None,
+    ):
+        repoids_added = []
+        # Casting to str in case celery interprets the service ID as a integer for some reason
+        # As that has caused issues with testing locally
+        service_ids = set(str(x[0]) for x in repository_service_ids)
+        # Check what repos we already have in the DB
+        existing_repos = set(
+            map(
+                lambda row_result: row_result[0],
+                db_session.query(Repository.service_id)
+                .filter(Repository.service_id.in_(service_ids))
+                .all(),
+            )
+        )
+        missing_repo_service_ids = service_ids.difference(existing_repos)
+
+        log.info(
+            "Sync missing repos if any",
+            extra=dict(
+                ownerid=owner.ownerid,
+                missing_repo_service_ids=missing_repo_service_ids,
+                num_missing_repos=len(missing_repo_service_ids),
+                existing_repos=existing_repos,
+                repository_service_ids=repository_service_ids,
+            ),
+        )
+
+        # Get info from provider on the repos we don't have
+        repos_to_search = [
+            x[1]
+            for x in repository_service_ids
+            if str(x[0]) in missing_repo_service_ids
+        ]
+        async for repo_data in git.get_repos_from_nodeids_generator(
+            repos_to_search, owner.username
+        ):
+            # Get or create owner
+            if repo_data["owner"]["is_expected_owner"]:
+                new_repo_ownerid = owner.ownerid
+            else:
+                upserted_owner_id = self.upsert_owner(
+                    db_session,
+                    git.service,
+                    repo_data["owner"]["service_id"],
+                    repo_data["owner"]["username"],
+                )
+                new_repo_ownerid = upserted_owner_id
+            # Get or create repo
+            # Yes we had issues trying to insert a repeated repo at this point.
+            # Maybe race condition?
+            repoid = self.upsert_repo(
+                db_session=db_session,
+                service=git.service,
+                ownerid=new_repo_ownerid,
+                repo_data={**repo_data, "service_id": str(repo_data["service_id"])},
+                using_integration=True,
+            )
+            repoids_added.append(repoid)
+        return repoids_added
+
+    def _possibly_update_ghinstallation_covered_repos(
+        self,
+        git: TorngitBaseAdapter,
+        owner: Owner,
+        service_ids_listed: List[str],
+    ):
+        installation_used = git.data.get("installation")
+        if installation_used is None:
+            log.warning(
+                "Failed to update ghapp covered repos. We don't know which installation is being used"
+            )
+        if (
+            owner.github_app_installations is None
+            or owner.github_app_installations == []
+        ):
+            log.warning(
+                "Failed to possibly update ghapp covered repos. Owner has no installations",
+            )
+            return
+        ghapp = next(
+            filter(
+                lambda obj: (
+                    obj.installation_id == installation_used.get("installation_id")
+                    and obj.app_id == installation_used.get("app_id")
+                ),
+                owner.github_app_installations,
+            ),
+            None,
+        )
+        if ghapp and ghapp.repository_service_ids is not None:
+            covered_repos = set(ghapp.repository_service_ids)
+            service_ids_listed_set = set(service_ids_listed)
+            log.info(
+                "Updating list of repos covered",
+                extra=dict(
+                    owner=owner.ownerid,
+                    installation=ghapp.installation_id,
+                    ghapp_id=ghapp.id,
+                    added_repos_service_ids=covered_repos.difference(
+                        service_ids_listed_set
+                    ),
+                ),
+            )
+            ghapp.repository_service_ids = list(covered_repos | service_ids_listed_set)
+
+    async def sync_repos_using_integration(
+        self,
+        db_session: Session,
+        git: TorngitBaseAdapter,
+        owner: Owner,
+        username: str,
+        repository_service_ids: Optional[List[Tuple[int, str]]] = None,
+    ):
         ownerid = owner.ownerid
         log.info(
             "Syncing repos using integration",
             extra=dict(ownerid=ownerid, username=username),
         )
 
-        total_missing_repos = []
+        repoids = []
+
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
             service_ids = {repo["repo"]["service_id"] for repo in repos}
+            self._possibly_update_ghinstallation_covered_repos(git, owner, service_ids)
             if service_ids:
                 # Querying through the `Repository` model is cleaner, but we
                 # need to go through the table object instead if we want to
@@ -144,28 +300,27 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
                         using_integration=True,
                     )
                     db_session.add(new_repo)
-                db_session.flush()
-                total_missing_repos.extend(missing_repos)
+                    db_session.flush()
+                    repoids.append(new_repo.repoid)
 
         # Here comes the actual function
         received_repos = False
-        if LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
-            owner_slug(owner), default=False
-        ):
-            with metrics.timer(
-                f"{metrics_scope}.sync_repos_using_integration.list_repos_generator"
-            ):
-                async for page in git.list_repos_using_installation_generator(username):
-                    received_repos = True
-                    process_repos(page)
-        else:
-            with metrics.timer(
-                f"{metrics_scope}.sync_repos_using_integration.list_repos"
-            ):
-                repos = await git.list_repos_using_installation(username)
-            if repos:
+        if repository_service_ids:
+            # This flow is different from the ones below because the API already informed us the repos affected
+            # So we can update those values directly
+            repoids_added = await self.sync_repos_affected_repos_known(
+                db_session, git, owner, repository_service_ids
+            )
+            repoids = repoids_added
+        # Below logic may not be needed if repository_service_ids exist, but
+        # we have run into issues related to the sync task when repos are known
+        # So we should still run it just in case and possibly update GithubInstallation.repository_service_ids
+        # Instead of relying exclusively on the webhooks to do that
+        # TODO: Maybe we don't need to run this every time, but once in a while just in case...
+        async for page in git.list_repos_using_installation_generator(username):
+            if page:
                 received_repos = True
-                process_repos(repos)
+                process_repos(page)
 
         # If the installation returned no repos, we were probably disabled and
         # should indicate as much on this owner's repositories.
@@ -176,10 +331,23 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         log.info(
             "Repo sync using integration done",
-            extra=dict(repoids=total_missing_repos),
+            extra=dict(repoids_created=repoids, repoids_created_count=len(repoids)),
         )
 
-    async def sync_repos(self, db_session, git, owner, username, using_integration):
+        return {
+            "service": git.service,
+            "org_usernames": [owner.username],
+            "repoids": repoids,
+        }
+
+    async def sync_repos(
+        self,
+        db_session: Session,
+        git,
+        owner: Owner,
+        username: Optional[str],
+        using_integration: bool,
+    ):
         service = owner.service
         ownerid = owner.ownerid
         private_project_ids = []
@@ -191,100 +359,89 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         repoids = []
         owners_by_id = {}
+
         # We're testing processing repos a page at a time and this helper
         # function avoids duplicating the code in the old and new paths
         def process_repos(repos):
             for repo in repos:
-                # Time how long processing a single repo takes so we can estimate how
-                # performance degrades. Sampling at 10% will be enough.
-                with metrics.timer(f"{metrics_scope}.process_each_repo", rate=0.1):
-                    _ownerid = owners_by_id.get(
+                _ownerid = owners_by_id.get(
+                    (
+                        service,
+                        repo["owner"]["service_id"],
+                        repo["owner"]["username"],
+                    )
+                )
+                if not _ownerid:
+                    _ownerid = self.upsert_owner(
+                        db_session,
+                        service,
+                        repo["owner"]["service_id"],
+                        repo["owner"]["username"],
+                    )
+                    owners_by_id[
                         (
                             service,
                             repo["owner"]["service_id"],
                             repo["owner"]["username"],
                         )
-                    )
-                    if not _ownerid:
-                        _ownerid = self.upsert_owner(
-                            db_session,
-                            service,
-                            repo["owner"]["service_id"],
-                            repo["owner"]["username"],
-                        )
-                        owners_by_id[
-                            (
-                                service,
-                                repo["owner"]["service_id"],
-                                repo["owner"]["username"],
-                            )
-                        ] = _ownerid
+                    ] = _ownerid
 
-                    repoid = self.upsert_repo(
-                        db_session, service, _ownerid, repo["repo"], using_integration
+                repoid = self.upsert_repo(
+                    db_session, service, _ownerid, repo["repo"], using_integration
+                )
+
+                repoids.append(repoid)
+
+                if repo["repo"].get("fork"):
+                    _ownerid = self.upsert_owner(
+                        db_session,
+                        service,
+                        repo["repo"]["fork"]["owner"]["service_id"],
+                        repo["repo"]["fork"]["owner"]["username"],
                     )
 
-                    repoids.append(repoid)
+                    _repoid = self.upsert_repo(
+                        db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
+                    )
 
-                    if repo["repo"].get("fork"):
-                        _ownerid = self.upsert_owner(
-                            db_session,
-                            service,
-                            repo["repo"]["fork"]["owner"]["service_id"],
-                            repo["repo"]["fork"]["owner"]["username"],
-                        )
+                    repoids.append(_repoid)
 
-                        _repoid = self.upsert_repo(
-                            db_session, service, _ownerid, repo["repo"]["fork"]["repo"]
-                        )
-
-                        repoids.append(_repoid)
-
-                        if repo["repo"]["fork"]["repo"]["private"]:
-                            private_project_ids.append(int(_repoid))
-                    if repo["repo"]["private"]:
-                        private_project_ids.append(int(repoid))
-                    db_session.commit()
+                    if repo["repo"]["fork"]["repo"]["private"]:
+                        private_project_ids.append(int(_repoid))
+                if repo["repo"]["private"]:
+                    private_project_ids.append(int(repoid))
+                db_session.commit()
 
         try:
-            if LIST_REPOS_GENERATOR_BY_OWNER_SLUG.check_value(
-                owner_slug(owner), default=False
-            ):
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos_generator"):
-                    async for page in git.list_repos_generator():
-                        process_repos(page)
+            async for page in git.list_repos_generator():
+                process_repos(page)
+
+        except (
+            SoftTimeLimitExceeded,
+            TorngitClientError,
+            TorngitServerFailureError,
+        ) as e:
+            old_permissions = owner.permission or []
+            if isinstance(e, SoftTimeLimitExceeded):
+                error_string = "System timed out while listing repos"
             else:
-                # get my repos (and team repos)
-                with metrics.timer(f"{metrics_scope}.sync_repos.list_repos"):
-                    repos = await git.list_repos()
-                    process_repos(repos)
-        except SoftTimeLimitExceeded:
-            old_permissions = owner.permission or []
-            log.warning(
-                "System timed out while listing repos",
+                error_string = "Torngit failure while listing repos"
+
+            log.error(
+                f"{error_string}. Permissions list may be incomplete",
+                exc_info=True,
                 extra=dict(
                     ownerid=owner.ownerid,
-                    old_permissions=old_permissions[:100],
                     number_old_permissions=len(old_permissions),
+                    number_new_permissions=len(set(private_project_ids)),
                 ),
             )
-            raise
-        except TorngitClientError as e:
-            old_permissions = owner.permission or []
-            log.warning(
-                "Unable to verify user permissions on Github. Dropping all permissions",
-                extra=dict(
-                    ownerid=owner.ownerid,
-                    old_permissions=old_permissions[:100],
-                    number_old_permissions=len(old_permissions),
-                ),
-            )
-            owner.permission = []
-            return
 
         log.info(
             "Updating permissions",
-            extra=dict(ownerid=ownerid, username=username, repoids=private_project_ids),
+            extra=dict(
+                ownerid=ownerid, username=username, privaterepoids=private_project_ids
+            ),
         )
         old_permissions = owner.permission or []
         removed_permissions = set(old_permissions) - set(private_project_ids)
@@ -305,9 +462,20 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         # update user permissions
         owner.permission = sorted(set(private_project_ids))
 
-        log.info("Repo sync done", extra=dict(repoids=repoids))
+        log.info(
+            "Repo sync done",
+            extra=dict(ownerid=ownerid, username=username, repoids=repoids),
+        )
 
-    def upsert_owner(self, db_session, service, service_id, username):
+        return {
+            "service": git.service,
+            "org_usernames": [item[2] for item in owners_by_id.keys()],
+            "repoids": repoids,
+        }
+
+    def upsert_owner(
+        self, db_session: Session, service: str, service_id: int, username: str
+    ):
         log.info(
             "Upserting owner",
             extra=dict(git_service=service, service_id=service_id, username=username),
@@ -322,16 +490,29 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             if (owner.username or "").lower() != username.lower():
                 owner.username = username
         else:
-            owner = Owner(service=service, service_id=service_id, username=username)
+            owner = Owner(
+                service=service,
+                service_id=service_id,
+                username=username,
+                createstamp=datetime.now(),
+            )
             db_session.add(owner)
             db_session.flush()
 
         return owner.ownerid
 
     def upsert_repo(
-        self, db_session, service, ownerid, repo_data, using_integration=None
+        self,
+        db_session: Session,
+        service: str,
+        ownerid: int,
+        repo_data,
+        using_integration: Optional[bool] = None,
     ):
-        log.info("Upserting repo", extra=dict(ownerid=ownerid, repo_data=repo_data))
+        log.info(
+            "Upserting repo",
+            extra=dict(ownerid=ownerid, repo_data=repo_data),
+        )
         repo = (
             db_session.query(Repository)
             .filter(
@@ -343,11 +524,21 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
 
         if repo:
             # Found the exact repo. Let's just update
-            repo.private = repo_data["private"]
-            repo.language = repo_data["language"]
-            repo.name = repo_data["name"]
-            repo.deleted = False
-            repo.updatestamp = datetime.now()
+            has_changes = False
+            if repo.private != repo_data["private"]:
+                repo.private = repo_data["private"]
+                has_changes = True
+            if repo.language != repo_data["language"]:
+                repo.language = repo_data["language"]
+                has_changes = True
+            if repo.name != repo_data["name"]:
+                repo.name = repo_data["name"]
+                has_changes = True
+            if repo.deleted is not False:
+                repo.deleted = False
+                has_changes = True
+            if has_changes:
+                repo.updatestamp = datetime.now()
             repo_id = repo.repoid
             return repo_id
         # repo was not found, could be a different owner
@@ -355,6 +546,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             db_session.query(Repository)
             .join(Owner, Repository.ownerid == Owner.ownerid)
             .filter(
+                Repository.deleted == False,
                 Repository.service_id == repo_data["service_id"],
                 Owner.service == service,
             )
@@ -450,16 +642,30 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
         return new_repo.repoid
 
     def sync_repos_languages(
-        self, ownerid: int, db_session: Session, manual_trigger: bool
+        self, sync_repos_output: dict, manual_trigger: bool, current_owner: Owner
     ):
-        repositories = db_session.query(Repository).filter(
-            Repository.ownerid == ownerid
+        log.info(
+            "Syncing repos languages",
+            extra=dict(
+                ownerid=current_owner.ownerid,
+                sync_repos_output=sync_repos_output,
+                manual_trigger=manual_trigger,
+            ),
         )
-
-        for repository in repositories:
-            self.app.tasks[sync_repo_languages_task_name].apply_async(
-                kwargs=dict(repoid=repository.repoid, manual_trigger=manual_trigger)
-            )
+        if sync_repos_output:
+            if sync_repos_output["service"] == "github":
+                for owner_username in sync_repos_output["org_usernames"]:
+                    self.app.tasks[sync_repo_languages_gql_task_name].apply_async(
+                        kwargs=dict(
+                            org_username=owner_username,
+                            current_owner_id=current_owner.ownerid,
+                        )
+                    )
+            else:
+                for repoid in sync_repos_output["repoids"]:
+                    self.app.tasks[sync_repo_languages_task_name].apply_async(
+                        kwargs=dict(repoid=repoid, manual_trigger=manual_trigger)
+                    )
 
 
 RegisteredSyncReposTask = celery_app.register_task(SyncReposTask())

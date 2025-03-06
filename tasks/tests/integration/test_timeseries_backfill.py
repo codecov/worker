@@ -1,6 +1,7 @@
 import pytest
+from shared.celery_config import timeseries_save_commit_measurements_task_name
 
-from database.models import Measurement, MeasurementName
+from database.models import MeasurementName
 from database.tests.factories import CommitFactory, RepositoryFactory
 from database.tests.factories.timeseries import DatasetFactory
 from services.archive import ArchiveService
@@ -8,10 +9,15 @@ from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 
 @pytest.mark.integration
-@pytest.mark.asyncio
-async def test_backfill_dataset_run_async(dbsession, mocker, mock_storage):
-    mocker.patch("services.timeseries.timeseries_enabled", return_value=True)
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
+def test_backfill_dataset_run_impl(dbsession, mocker, mock_storage):
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
+    mocked_app = mocker.patch.object(
+        TimeseriesBackfillCommitsTask,
+        "app",
+        tasks={
+            timeseries_save_commit_measurements_task_name: mocker.MagicMock(),
+        },
+    )
 
     repository = RepositoryFactory.create()
     dbsession.add(repository)
@@ -43,36 +49,22 @@ async def test_backfill_dataset_run_async(dbsession, mocker, mock_storage):
         mock_storage.write_file("archive", master_chunks_url, content)
 
     task = TimeseriesBackfillCommitsTask()
-    res = await task.run_async(
+    dataset_names = [
+        MeasurementName.coverage.value,
+        MeasurementName.flag_coverage.value,
+    ]
+    res = task.run_impl(
         dbsession,
         commit_ids=[commit.id_],
-        dataset_names=[
-            MeasurementName.coverage.value,
-            MeasurementName.flag_coverage.value,
-        ],
+        dataset_names=dataset_names,
     )
     assert res == {"successful": True}
-
-    coverage_measurement = (
-        dbsession.query(Measurement)
-        .filter_by(
-            name=MeasurementName.coverage.value,
-            commit_sha=commit.commitid,
-        )
-        .one_or_none()
+    mocked_app.tasks[
+        timeseries_save_commit_measurements_task_name
+    ].apply_async.assert_called_once_with(
+        kwargs={
+            "commitid": commit.commitid,
+            "repoid": commit.repoid,
+            "dataset_names": dataset_names,
+        }
     )
-
-    assert coverage_measurement
-    assert coverage_measurement.value == 85.0
-
-    flag_coverage_measurement = (
-        dbsession.query(Measurement)
-        .filter_by(
-            name=MeasurementName.flag_coverage.value,
-            commit_sha=commit.commitid,
-        )
-        .one_or_none()
-    )
-
-    assert flag_coverage_measurement
-    assert flag_coverage_measurement.value == 85.0

@@ -1,35 +1,14 @@
-from shared.rollouts import Feature, FeatureVariant
+from shared.rollouts import Feature
 
-from database.models import Owner, Repository
+# Declare the feature variants and parameters via Django Admin
+CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER = Feature("carryforward_base_search_range")
 
+SYNC_PULL_USE_MERGE_COMMIT_SHA = Feature("sync_pull_use_merge_commit_sha")
 
-def owner_slug(owner: Owner) -> str:
-    return f"{owner.service}/{owner.username}"
+CHECKPOINT_ENABLED_REPOSITORIES = Feature("checkpoint_enabled_repositories")
 
+NEW_TA_TASKS = Feature("new_ta_tasks")
 
-def repo_slug(repo: Repository) -> str:
-    return f"{repo.service}/{repo.owner.username}/{repo.name}"
+PARALLEL_COMPONENT_COMPARISON = Feature("parallel_component_comparison")
 
-
-# By default, features have one variant:
-#    { "enabled": FeatureVariant(True, 1.0) }
-LIST_REPOS_GENERATOR_BY_OWNER_SLUG = Feature(
-    "list_repos_generator",
-    0.0,
-    overrides={
-        "github/codecov": "enabled",
-        "bitbucket/codecov": "enabled",
-        "gitlab/codecov": "enabled",
-    },
-)
-
-# Eventually we want all repos to use this
-# This flag will just help us with the rollout process
-USE_LABEL_INDEX_IN_REPORT_PROCESSING_BY_REPO_SLUG = Feature(
-    "use_label_index_in_report_processing",
-    0.0,
-    overrides={
-        "github/giovanni-guidini/sentry": "enabled",
-        "github/giovanni-guidini/components-demo": "enabled",
-    },
-)
+TA_TIMESERIES = Feature("ta_timeseries")

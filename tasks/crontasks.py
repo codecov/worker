@@ -32,9 +32,7 @@ class CodecovCronTask(BaseCodecovTask):
         """
         raise NotImplementedError()
 
-    async def run_async(
-        self, db_session, *args, cron_task_generation_time_iso, **kwargs
-    ):
+    def run_impl(self, db_session, *args, cron_task_generation_time_iso, **kwargs):
         lock_name = f"worker.executionlock.{self.name}"
         redis_connection = get_redis_connection()
         generation_time = datetime.fromisoformat(cron_task_generation_time_iso)
@@ -60,7 +58,7 @@ class CodecovCronTask(BaseCodecovTask):
                     last_executed_key, min_seconds_interval, generation_time.timestamp()
                 )
                 log.info("Executing cron task")
-                result = await self.run_cron_task(db_session, *args, **kwargs)
+                result = self.run_cron_task(db_session, *args, **kwargs)
                 return {"executed": True, "result": result}
         except LockError:
             log.info("Not executing cron task since another one is already running it")

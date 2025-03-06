@@ -1,97 +1,67 @@
 interactions:
-- request:
-    body: null
-    headers:
-      Accept:
-      - application/vnd.github.machine-man-preview+json
-      User-Agent:
-      - Default
-    method: GET
-    uri: https://api.github.com/installation/repositories?per_page=100&page=1
-  response:
-    content: '{ "total_count": 0, "repositories": [] }'
-    headers:
-      Access-Control-Allow-Origin:
-      - '*'
-      Access-Control-Expose-Headers:
-      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
-        X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
-        X-GitHub-Media-Type
-      Connection:
-      - close
-      Content-Security-Policy:
-      - default-src 'none'
-      Content-Type:
-      - application/json; charset=utf-8
-      Date:
-      - Thu, 20 Feb 2020 03:21:56 GMT
-      Referrer-Policy:
-      - origin-when-cross-origin, strict-origin-when-cross-origin
-      Server:
-      - GitHub.com
-      Status:
-      - 403 Forbidden
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubdomains; preload
-      Transfer-Encoding:
-      - chunked
-      Vary:
-      - Accept-Encoding, Accept, X-Requested-With
-      X-Accepted-Oauth-Scopes:
-      - ''
-      X-Consumed-Content-Encoding:
-      - gzip
-      X-Content-Type-Options:
-      - nosniff
-      X-Frame-Options:
-      - deny
-      X-Github-Media-Type:
-      - github.machine-man-preview; format=json
-      X-Github-Request-Id:
-      - B880:4CF4:AD5BEB:1A3160D:5E4DFB54
-      X-Oauth-Scopes:
-      - repo, user
-      X-Ratelimit-Limit:
-      - '5000'
-      X-Ratelimit-Remaining:
-      - '4999'
-      X-Ratelimit-Reset:
-      - '1582172516'
-      X-Xss-Protection:
-      - 1; mode=block
-    status:
-      code: 200
-      message: OK
-    status_code: 200
-    url: https://api.github.com/installation/repositories?per_page=100&page=1
-- request:
-    body: '{"query": "\nquery {\n    viewer {\n        repositories(\n            ownerAffiliations:
-      [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]\n            affiliations: [OWNER,
-      COLLABORATOR, ORGANIZATION_MEMBER]\n        ) {\n            totalCount\n        }\n    }\n}\n"}'
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-length:
-      - '264'
-      content-type:
-      - application/json
-      host:
-      - api.github.com
-      user-agent:
-      - Default
-    method: POST
-    uri: https://api.github.com/graphql
-  response:
-    content: '{"data":{"viewer":{"repositories":{"totalCount": 0}}}}'
-    headers:
-      Content-Length:
-      - '54'
-      Content-Type:
-      - application/json
-    http_version: HTTP/1.1
-    status_code: 200
+  - request:
+      body: null
+      headers:
+        Accept:
+          - application/vnd.github.machine-man-preview+json
+        User-Agent:
+          - Default
+      method: GET
+      uri: https://api.github.com/installation/repositories?per_page=100&page=1
+    response:
+      content: '{ "total_count": 0, "repositories": [] }'
+      headers:
+        Access-Control-Allow-Origin:
+          - "*"
+        Access-Control-Expose-Headers:
+          - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+            X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval,
+            X-GitHub-Media-Type
+        Connection:
+          - close
+        Content-Security-Policy:
+          - default-src 'none'
+        Content-Type:
+          - application/json; charset=utf-8
+        Date:
+          - Thu, 20 Feb 2020 03:21:56 GMT
+        Referrer-Policy:
+          - origin-when-cross-origin, strict-origin-when-cross-origin
+        Server:
+          - GitHub.com
+        Status:
+          - 403 Forbidden
+        Strict-Transport-Security:
+          - max-age=31536000; includeSubdomains; preload
+        Transfer-Encoding:
+          - chunked
+        Vary:
+          - Accept-Encoding, Accept, X-Requested-With
+        X-Accepted-Oauth-Scopes:
+          - ""
+        X-Consumed-Content-Encoding:
+          - gzip
+        X-Content-Type-Options:
+          - nosniff
+        X-Frame-Options:
+          - deny
+        X-Github-Media-Type:
+          - github.machine-man-preview; format=json
+        X-Github-Request-Id:
+          - B880:4CF4:AD5BEB:1A3160D:5E4DFB54
+        X-Oauth-Scopes:
+          - repo, user
+        X-Ratelimit-Limit:
+          - "5000"
+        X-Ratelimit-Remaining:
+          - "4999"
+        X-Ratelimit-Reset:
+          - "1582172516"
+        X-Xss-Protection:
+          - 1; mode=block
+      status:
+        code: 200
+        message: OK
+      status_code: 200
+      url: https://api.github.com/installation/repositories?per_page=100&page=1
 version: 1

@@ -1,4 +1,4 @@
-import pytest
+from shared.celery_config import timeseries_save_commit_measurements_task_name
 
 from database.models import MeasurementName
 from database.tests.factories import RepositoryFactory
@@ -7,11 +7,14 @@ from database.tests.factories.timeseries import DatasetFactory
 from tasks.timeseries_backfill import TimeseriesBackfillCommitsTask
 
 
-@pytest.mark.asyncio
-async def test_backfill_commits_run_async(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=True)
-    save_commit_measurements_mock = mocker.patch(
-        "tasks.timeseries_backfill.save_commit_measurements"
+def test_backfill_commits_run_impl(dbsession, mocker):
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=True)
+    mocked_app = mocker.patch.object(
+        TimeseriesBackfillCommitsTask,
+        "app",
+        tasks={
+            timeseries_save_commit_measurements_task_name: mocker.MagicMock(),
+        },
     )
 
     repository = RepositoryFactory.create()
@@ -31,25 +34,39 @@ async def test_backfill_commits_run_async(dbsession, mocker):
     dbsession.flush()
 
     task = TimeseriesBackfillCommitsTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         commit_ids=[commit1.id_, commit2.id_],
         dataset_names=[dataset.name],
     )
     assert res == {"successful": True}
 
-    assert save_commit_measurements_mock.call_count == 2
-    assert save_commit_measurements_mock.called_with(commit1)
-    assert save_commit_measurements_mock.called_with(commit2)
+    mocked_app.tasks[
+        timeseries_save_commit_measurements_task_name
+    ].apply_async.assert_any_call(
+        kwargs={
+            "commitid": commit1.commitid,
+            "repoid": commit1.repoid,
+            "dataset_names": [dataset.name],
+        }
+    )
+    mocked_app.tasks[
+        timeseries_save_commit_measurements_task_name
+    ].apply_async.assert_any_call(
+        kwargs={
+            "commitid": commit2.commitid,
+            "repoid": commit2.repoid,
+            "dataset_names": [dataset.name],
+        }
+    )
 
 
-@pytest.mark.asyncio
-async def test_backfill_commits_run_async_timeseries_not_enabled(dbsession, mocker):
-    mocker.patch("tasks.timeseries_backfill.timeseries_enabled", return_value=False)
+def test_backfill_commits_run_impl_timeseries_not_enabled(dbsession, mocker):
+    mocker.patch("tasks.timeseries_backfill.is_timeseries_enabled", return_value=False)
     mock_group = mocker.patch("tasks.timeseries_backfill.group")
 
     task = TimeseriesBackfillCommitsTask()
-    res = await task.run_async(
+    res = task.run_impl(
         dbsession,
         commit_ids=[1, 2, 3],
         dataset_names=["testing"],

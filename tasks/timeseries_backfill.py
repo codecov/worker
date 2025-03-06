@@ -4,27 +4,27 @@ from typing import Iterable, Optional
 
 from celery import group
 from celery.canvas import Signature
+from shared.celery_config import (
+    timeseries_backfill_commits_task_name,
+    timeseries_backfill_dataset_task_name,
+    timeseries_save_commit_measurements_task_name,
+)
+from shared.timeseries.helpers import is_timeseries_enabled
 from sqlalchemy.orm.session import Session
 
 from app import celery_app
 from database.models import Commit, Repository
 from database.models.timeseries import Dataset
-from helpers.timeseries import timeseries_enabled
-from services.timeseries import (
-    backfill_batch_size,
-    repository_commits_query,
-    save_commit_measurements,
-)
+from services.timeseries import backfill_batch_size, repository_commits_query
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
 
 
-# TODO: add name to `shared.celery_config`
 class TimeseriesBackfillCommitsTask(
-    BaseCodecovTask, name="app.tasks.timeseries.backfill_commits"
+    BaseCodecovTask, name=timeseries_backfill_commits_task_name
 ):
-    async def run_async(
+    def run_impl(
         self,
         db_session: Session,
         *,
@@ -32,13 +32,19 @@ class TimeseriesBackfillCommitsTask(
         dataset_names: Iterable[str],
         **kwargs,
     ):
-        if not timeseries_enabled():
+        if not is_timeseries_enabled():
             log.warning("Timeseries not enabled")
             return {"successful": False}
 
         commits = db_session.query(Commit).filter(Commit.id_.in_(commit_ids))
         for commit in commits:
-            save_commit_measurements(commit, dataset_names=dataset_names)
+            self.app.tasks[timeseries_save_commit_measurements_task_name].apply_async(
+                kwargs=dict(
+                    commitid=commit.commitid,
+                    repoid=commit.repoid,
+                    dataset_names=dataset_names,
+                )
+            )
         return {"successful": True}
 
 
@@ -50,12 +56,10 @@ timeseries_backfill_commits_task = celery_app.tasks[
 ]
 
 
-class TimeseriesBackfillDatasetTask(BaseCodecovTask):
-
-    # TODO: add name to `shared.celery_config`
-    name = "app.tasks.timeseries.backfill_dataset"
-
-    async def run_async(
+class TimeseriesBackfillDatasetTask(
+    BaseCodecovTask, name=timeseries_backfill_dataset_task_name
+):
+    def run_impl(
         self,
         db_session: Session,
         *,
@@ -65,7 +69,7 @@ class TimeseriesBackfillDatasetTask(BaseCodecovTask):
         batch_size: Optional[int] = None,
         **kwargs,
     ):
-        if not timeseries_enabled():
+        if not is_timeseries_enabled():
             log.warning("Timeseries not enabled")
             return {"successful": False}
 
@@ -88,7 +92,7 @@ class TimeseriesBackfillDatasetTask(BaseCodecovTask):
             return {"successful": False}
 
         if batch_size is None:
-            batch_size = backfill_batch_size(repository)
+            batch_size = backfill_batch_size(repository, dataset)
 
         try:
             start_date = datetime.fromisoformat(start_date)

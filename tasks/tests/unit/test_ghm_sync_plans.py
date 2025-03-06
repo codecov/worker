@@ -1,10 +1,8 @@
-import json
-
-import pytest
+from freezegun import freeze_time
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
 
 from database.models import Owner, Repository
 from database.tests.factories import OwnerFactory, RepositoryFactory
-from services.billing import BillingPlan
 from tasks.github_marketplace import SyncPlansTask
 
 
@@ -12,7 +10,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
     def test_create_or_update_to_free_plan_known_user(self, dbsession, mocker):
         owner = OwnerFactory.create(
             service="github",
-            plan="users",
+            plan=PlanName.GHM_PLAN_NAME.value,
             plan_user_count=2,
             plan_activated_users=[1, 2],
         )
@@ -29,9 +27,9 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         )
 
         assert not ghm_service.get_user.called
-        assert owner.plan == BillingPlan.users_basic.value
+        assert owner.plan == DEFAULT_FREE_PLAN
         assert owner.plan_user_count == 1
-        assert owner.plan_activated_users == None
+        assert owner.plan_activated_users is None
 
         dbsession.commit()
         # their repos should also be deactivated
@@ -44,6 +42,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         for repo in repos:
             assert repo.activated is False
 
+    @freeze_time("2024-03-28T00:00:00")
     def test_create_or_update_to_free_plan_unknown_user(self, dbsession, mocker):
         service_id = "12345"
         username = "tomcat"
@@ -68,11 +67,12 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.username == username
         assert owner.name == name
         assert owner.email == email
+        assert owner.createstamp.isoformat() == "2024-03-28T00:00:00+00:00"
 
     def test_create_or_update_plan_known_user_with_plan(self, dbsession, mocker):
         owner = OwnerFactory.create(
             service="github",
-            plan="some-plan",
+            plan=DEFAULT_FREE_PLAN,
             plan_user_count=10,
             plan_activated_users=[34123, 231, 2314212],
             stripe_customer_id="cus_123",
@@ -86,7 +86,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.flush()
 
         stripe_mock = mocker.patch(
-            "tasks.github_marketplace.stripe.Subscription.delete"
+            "tasks.github_marketplace.stripe.Subscription.cancel"
         )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(
@@ -94,14 +94,14 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         )
 
         assert not ghm_service.get_user.called
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate == True
         assert owner.plan_activated_users is None
         assert owner.plan_user_count == 5
 
-        # stripe subscription should be deleted but not customer id
-        stripe_mock.assert_called_with("sub_123")
+        # stripe subscription should be canceled but not customer id
+        stripe_mock.assert_called_with("sub_123", prorate=True)
         assert owner.stripe_subscription_id is None
         assert owner.stripe_customer_id == "cus_123"
 
@@ -122,7 +122,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         dbsession.flush()
 
         stripe_mock = mocker.patch(
-            "tasks.github_marketplace.stripe.Subscription.delete"
+            "tasks.github_marketplace.stripe.Subscription.cancel"
         )
         ghm_service = mocker.MagicMock(get_user=mocker.MagicMock())
         SyncPlansTask().create_or_update_plan(
@@ -130,7 +130,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         )
 
         assert not ghm_service.get_user.called
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate == True
         assert owner.plan_activated_users is None
@@ -164,7 +164,7 @@ class TestGHMarketplaceSyncPlansTaskUnit(object):
         assert owner.username == username
         assert owner.name == name
         assert owner.email == email
-        assert owner.plan == "users"
+        assert owner.plan == PlanName.GHM_PLAN_NAME.value
         assert owner.plan_provider == "github"
         assert owner.plan_auto_activate == True
         assert owner.plan_user_count == 5

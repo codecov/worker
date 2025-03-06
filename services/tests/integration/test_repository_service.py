@@ -2,9 +2,7 @@ import pytest
 
 from database.tests.factories import RepositoryFactory
 from services.repository import (
-    fetch_appropriate_parent_for_commit,
     get_repo_provider_service,
-    update_commit_from_provider_info,
 )
 
 

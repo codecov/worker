@@ -6,8 +6,9 @@ import pytest
 
 from helpers.exceptions import ReportExpiredException
 from services.report.languages import clover
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 xml = """<?xml version="1.0" encoding="UTF-8"?>
 <coverage generated="%s">
@@ -66,27 +67,6 @@ xml = """<?xml version="1.0" encoding="UTF-8"?>
 </coverage>
 """
 
-result = {
-    "files": {
-        "file.php": {"l": {"11": {"c": 1, "s": [[0, 1, None, None, None]]}}},
-        "source.php": {
-            "l": {
-                "11": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "21": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "22": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "23": {"c": 0, "s": [[0, 0, None, None, None]]},
-                "5": {"c": 1, "s": [[0, 1, None, None, 0]], "t": "m"},
-                "6": {"c": 2969, "C": 9, "s": [[0, 2969, None, None, 9]], "t": "m"},
-                "1": {"c": "1/2", "s": [[0, "1/2", None, None, None]], "t": "b"},
-                "2": {"c": "1/2", "s": [[0, "1/2", None, None, None]], "t": "b"},
-                "3": {"c": "2/2", "s": [[0, "2/2", None, None, None]], "t": "b"},
-                "4": {"c": "0/2", "s": [[0, "0/2", None, None, None]], "t": "b"},
-                "8": {"c": 0, "s": [[0, 0, None, None, None]]},
-            }
-        },
-    }
-}
-
 
 class TestCloverProcessor(BaseTestCase):
     def test_report(self):
@@ -96,17 +76,12 @@ class TestCloverProcessor(BaseTestCase):
             assert path in ("source.php", "file.php", "nolines")
             return path
 
-        report_builder = ReportBuilder(
-            path_fixer=fixes, ignored_lines={}, sessionid=0, current_yaml=None
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = clover.from_xml(
-            etree.fromstring(xml % int(time())), report_builder_session
-        )
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        clover.from_xml(etree.fromstring(xml % int(time())), report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        expected_result = {
+
+        assert processed_report == {
             "archive": {
                 "file.php": [(11, 1, None, [[0, 1, None, None, None]], None, None)],
                 "source.php": [
@@ -128,16 +103,13 @@ class TestCloverProcessor(BaseTestCase):
                     "file.php": [
                         1,
                         [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 1, 1, 0, 0, "100"], "meta": {"session_count": 1}},
+                        None,
                         None,
                     ],
                     "source.php": [
                         0,
                         [0, 11, 4, 5, 2, "36.36364", 4, 2, 0, 0, 9, 0, 0],
-                        {
-                            "0": [0, 11, 4, 5, 2, "36.36364", 4, 2, 0, 0, 9],
-                            "meta": {"session_count": 1},
-                        },
+                        None,
                         None,
                     ],
                 },
@@ -160,8 +132,6 @@ class TestCloverProcessor(BaseTestCase):
             },
         }
 
-        assert processed_report == expected_result
-
     @pytest.mark.parametrize(
         "date",
         [
@@ -172,11 +142,6 @@ class TestCloverProcessor(BaseTestCase):
         ],
     )
     def test_expired(self, date):
+        report_builder_session = create_report_builder_session()
         with pytest.raises(ReportExpiredException, match="Clover report expired"):
-            report_builder = ReportBuilder(
-                path_fixer=str, ignored_lines={}, sessionid=0, current_yaml=None
-            )
-            report_builder_session = report_builder.create_report_builder_session(
-                "filename"
-            )
             clover.from_xml(etree.fromstring(xml % date), report_builder_session)

@@ -1,11 +1,12 @@
 import logging
 
+from shared.plan.constants import PlanName
+
 from app import celery_app
 from celery_config import trial_expiration_cron_task_name, trial_expiration_task_name
 from database.enums import TrialStatus
 from database.models.core import Owner
 from helpers.clock import get_utc_now
-from services.billing import BillingPlan
 from tasks.crontasks import CodecovCronTask
 
 log = logging.getLogger(__name__)
@@ -18,14 +19,14 @@ class TrialExpirationCronTask(CodecovCronTask, name=trial_expiration_cron_task_n
     def get_min_seconds_interval_between_executions(cls):
         return 86100  # 23 hours and 55 minutes
 
-    async def run_cron_task(self, db_session, *args, **kwargs):
+    def run_cron_task(self, db_session, *args, **kwargs):
         log.info("Doing trial expiration check")
         now = get_utc_now()
 
         ongoing_trial_owners_that_should_be_expired = (
             db_session.query(Owner.ownerid)
             .filter(
-                Owner.plan == BillingPlan.users_trial.value,
+                Owner.plan == PlanName.TRIAL_PLAN_NAME.value,
                 Owner.trial_status == TrialStatus.ONGOING.value,
                 Owner.trial_end_date <= now,
             )

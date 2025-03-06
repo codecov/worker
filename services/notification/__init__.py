@@ -4,24 +4,28 @@ This packages uses the following services:
   - comparison
 
 """
-import asyncio
-import dataclasses
+
 import logging
-from typing import Iterator, List
+from typing import Iterator, List, Optional, TypedDict
 
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.config import get_config
+from shared.django_apps.codecov_auth.models import Plan
 from shared.helpers.yaml import default_if_true
+from shared.plan.constants import TierName
+from shared.torngit.base import TorngitBaseAdapter
 from shared.yaml import UserYaml
 
-from helpers.metrics import metrics
-from services.comparison.types import Comparison
+from database.enums import notification_type_status_or_checks
+from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner, Repository
+from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 from services.license import is_properly_licensed
 from services.notification.commit_notifications import (
     create_or_update_commit_notification_from_notification_result,
 )
 from services.notification.notifiers import (
+    StatusType,
     get_all_notifier_classes_mapping,
     get_pull_request_notifiers,
     get_status_notifier_class,
@@ -34,19 +38,123 @@ from services.notification.notifiers.checks.checks_with_fallback import (
     ChecksWithFallback,
 )
 from services.notification.notifiers.codecov_slack_app import CodecovSlackAppNotifier
+from services.notification.notifiers.mixins.status import StatusState
 from services.yaml import read_yaml_field
 from services.yaml.reader import get_components_from_yaml
 
 log = logging.getLogger(__name__)
 
 
+class IndividualResult(TypedDict):
+    notifier: str
+    title: str
+    result: NotificationResult | None
+
+
 class NotificationService(object):
     def __init__(
-        self, repository, current_yaml: UserYaml, decoration_type=Decoration.standard
+        self,
+        repository: Repository,
+        current_yaml: UserYaml,
+        repository_service: TorngitBaseAdapter,
+        decoration_type=Decoration.standard,
+        gh_installation_name_to_use: str = GITHUB_APP_INSTALLATION_DEFAULT_NAME,
     ) -> None:
         self.repository = repository
         self.current_yaml = current_yaml
         self.decoration_type = decoration_type
+        self.repository_service = repository_service
+        self.gh_installation_name_to_use = gh_installation_name_to_use
+        self.plan = None  # used for caching the plan / tier information
+
+    def _should_use_status_notifier(self, status_type: StatusType) -> bool:
+        owner: Owner = self.repository.owner
+
+        if not self.plan:
+            self.plan = Plan.objects.select_related("tier").get(name=owner.plan)
+
+        if (
+            self.plan.tier.tier_name == TierName.TEAM.value
+            and status_type != StatusType.PATCH.value
+        ):
+            return False
+
+        return True
+
+    def _should_use_checks_notifier(self, status_type: StatusType) -> bool:
+        checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
+        if checks_yaml_field is False:
+            return False
+
+        owner: Owner = self.repository.owner
+        if owner.service not in ["github", "github_enterprise"]:
+            return False
+
+        if not self.plan:
+            self.plan = Plan.objects.select_related("tier").get(name=owner.plan)
+
+        if (
+            self.plan.tier.tier_name == TierName.TEAM.value
+            and status_type != StatusType.PATCH.value
+        ):
+            return False
+
+        app_installation_filter = filter(
+            lambda obj: (
+                obj.name == self.gh_installation_name_to_use and obj.is_configured()
+            ),
+            owner.github_app_installations or [],
+        )
+        # filter is an Iterator, so we need to scan matches
+        for app_installation in app_installation_filter:
+            if app_installation.is_repo_covered_by_integration(self.repository):
+                return True
+        # DEPRECATED FLOW
+        return (
+            self.repository.using_integration
+            and self.repository.owner.integration_id
+            and (self.repository.owner.service in ["github", "github_enterprise"])
+        )
+
+    def _use_status_and_possibly_checks_notifiers(
+        self,
+        key: StatusType,
+        title: str,
+        status_config: dict,
+    ) -> AbstractBaseNotifier:
+        status_notifier_class = get_status_notifier_class(key, "status")
+        if self._should_use_checks_notifier(status_type=key):
+            checks_notifier = get_status_notifier_class(key, "checks")
+            return ChecksWithFallback(
+                checks_notifier=checks_notifier(
+                    repository=self.repository,
+                    title=title,
+                    notifier_yaml_settings=status_config,
+                    notifier_site_settings={},
+                    current_yaml=self.current_yaml,
+                    repository_service=self.repository_service,
+                    decoration_type=self.decoration_type,
+                ),
+                status_notifier=status_notifier_class(
+                    repository=self.repository,
+                    title=title,
+                    notifier_yaml_settings=status_config,
+                    notifier_site_settings={},
+                    current_yaml=self.current_yaml,
+                    repository_service=self.repository_service,
+                    decoration_type=self.decoration_type,
+                ),
+            )
+        else:
+            return status_notifier_class(
+                repository=self.repository,
+                title=title,
+                notifier_yaml_settings=status_config,
+                notifier_site_settings={},
+                current_yaml=self.current_yaml,
+                repository_service=self.repository_service,
+                decoration_type=self.decoration_type,
+            )
 
     def get_notifiers_instances(self) -> Iterator[AbstractBaseNotifier]:
         mapping = get_all_notifier_classes_mapping()
@@ -63,52 +171,23 @@ class NotificationService(object):
                             "services", "notifications", instance_type, default=True
                         ),
                         current_yaml=self.current_yaml,
+                        repository_service=self.repository_service,
                         decoration_type=self.decoration_type,
                     )
-        checks_yaml_field = read_yaml_field(self.current_yaml, ("github_checks",))
+
         current_flags = [rf.flag_name for rf in self.repository.flags if not rf.deleted]
         for key, title, status_config in self.get_statuses(current_flags):
-            status_notifier_class = get_status_notifier_class(key, "status")
-            if (
-                self.repository.using_integration
-                and self.repository.owner.integration_id
-                and (
-                    self.repository.owner.service == "github"
-                    or self.repository.owner.service == "github_enterprise"
-                )
-                and checks_yaml_field is not False
-            ):
-                checks_notifier = get_status_notifier_class(key, "checks")
-                yield ChecksWithFallback(
-                    checks_notifier=checks_notifier(
-                        repository=self.repository,
-                        title=title,
-                        notifier_yaml_settings=status_config,
-                        notifier_site_settings={},
-                        current_yaml=self.current_yaml,
-                        decoration_type=self.decoration_type,
-                    ),
-                    status_notifier=status_notifier_class(
-                        repository=self.repository,
-                        title=title,
-                        notifier_yaml_settings=status_config,
-                        notifier_site_settings={},
-                        current_yaml=self.current_yaml,
-                        decoration_type=self.decoration_type,
-                    ),
-                )
-            else:
-                yield status_notifier_class(
-                    repository=self.repository,
+            if self._should_use_status_notifier(status_type=key):
+                yield self._use_status_and_possibly_checks_notifiers(
+                    key=key,
                     title=title,
-                    notifier_yaml_settings=status_config,
-                    notifier_site_settings={},
-                    current_yaml=self.current_yaml,
-                    decoration_type=self.decoration_type,
+                    status_config=status_config,
                 )
 
         # yield notifier if slack_app field is True, nonexistent, or a non-empty dict
-        slack_app_yaml_field = read_yaml_field(self.current_yaml, ("slack_app",), True)
+        slack_app_yaml_field = get_config(
+            "setup", "slack_app", default=True
+        ) and read_yaml_field(self.current_yaml, ("slack_app",), True)
         if slack_app_yaml_field:
             yield CodecovSlackAppNotifier(
                 repository=self.repository,
@@ -116,6 +195,7 @@ class NotificationService(object):
                 notifier_yaml_settings=slack_app_yaml_field,
                 notifier_site_settings={},
                 current_yaml=self.current_yaml,
+                repository_service=self.repository_service,
                 decoration_type=self.decoration_type,
             )
 
@@ -128,6 +208,7 @@ class NotificationService(object):
                     notifier_yaml_settings=comment_yaml_field,
                     notifier_site_settings={},
                     current_yaml=self.current_yaml,
+                    repository_service=self.repository_service,
                     decoration_type=self.decoration_type,
                 )
 
@@ -169,7 +250,7 @@ class NotificationService(object):
         for component_status in self._get_component_statuses(current_flags):
             yield component_status
 
-    async def notify(self, comparison: Comparison) -> List[NotificationResult]:
+    def notify(self, comparison: ComparisonProxy) -> list[IndividualResult]:
         if not is_properly_licensed(comparison.head.commit.get_db_session()):
             log.warning(
                 "Not sending notifications because the system is not properly licensed"
@@ -179,131 +260,136 @@ class NotificationService(object):
             f"Notifying with decoration type {self.decoration_type}",
             extra=dict(
                 head_commit=comparison.head.commit.commitid,
-                base_commit=comparison.project_coverage_base.commit.commitid
-                if comparison.project_coverage_base.commit is not None
-                else "NO_BASE",
+                base_commit=(
+                    comparison.project_coverage_base.commit.commitid
+                    if comparison.project_coverage_base.commit is not None
+                    else "NO_BASE"
+                ),
                 repoid=comparison.head.commit.repoid,
             ),
         )
-        notification_instances = []
-        for notifier in self.get_notifiers_instances():
-            if notifier.is_enabled():
-                notification_instances.append(notifier)
+
         results = []
-        chunk_size = 3
-        for i in range(0, len(notification_instances), chunk_size):
-            notification_instances_chunk = notification_instances[i : i + chunk_size]
-            task_chunk = [
-                self.notify_individual_notifier(notifier, comparison)
-                for notifier in notification_instances_chunk
-            ]
-            results.extend(await asyncio.gather(*task_chunk))
+        status_or_checks_helper_text = {}
+        notifiers_to_notify = [
+            notifier
+            for notifier in self.get_notifiers_instances()
+            if notifier.is_enabled()
+        ]
+
+        status_or_checks_notifiers = [
+            notifier
+            for notifier in notifiers_to_notify
+            if notifier.notification_type in notification_type_status_or_checks
+        ]
+
+        all_other_notifiers = [
+            notifier
+            for notifier in notifiers_to_notify
+            if notifier.notification_type not in notification_type_status_or_checks
+        ]
+
+        status_or_checks_results = [
+            self.notify_individual_notifier(notifier, comparison)
+            for notifier in status_or_checks_notifiers
+        ]
+
+        if status_or_checks_results and all_other_notifiers:
+            # if the status/check fails, sometimes we want to add helper text to the message of the other notifications,
+            # to better surface that the status/check failed.
+            # so if there are status_and_checks_notifiers and all_other_notifiers, do the status_and_checks_notifiers first,
+            # look at the results of the checks, if any failed AND they are the type we have helper text for,
+            # add that text onto the other notifiers messages through status_or_checks_helper_text.
+            for result in status_or_checks_results:
+                notification_result = result["result"]
+                if (
+                    notification_result is not None
+                    and notification_result.data_sent is not None
+                ):
+                    if (
+                        notification_result.data_sent.get("state")
+                        == StatusState.failure.value
+                    ) and notification_result.data_sent.get("included_helper_text"):
+                        status_or_checks_helper_text.update(
+                            notification_result.data_sent["included_helper_text"]
+                        )
+        results = results + status_or_checks_results
+
+        results = results + [
+            self.notify_individual_notifier(
+                notifier,
+                comparison,
+                status_or_checks_helper_text=status_or_checks_helper_text,
+            )
+            for notifier in all_other_notifiers
+        ]
         return results
 
-    async def notify_individual_notifier(
-        self, notifier, comparison
-    ) -> NotificationResult:
+    def notify_individual_notifier(
+        self,
+        notifier: AbstractBaseNotifier,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> IndividualResult:
         commit = comparison.head.commit
         base_commit = comparison.project_coverage_base.commit
         log.info(
             "Attempting individual notification",
             extra=dict(
                 commit=commit.commitid,
-                base_commit=base_commit.commitid
-                if base_commit is not None
-                else "NO_BASE",
+                base_commit=(
+                    base_commit.commitid if base_commit is not None else "NO_BASE"
+                ),
                 repoid=commit.repoid,
                 notifier=notifier.name,
                 notifier_title=notifier.title,
             ),
         )
+        # individual_result.result is updated in case of success
+        individual_result = IndividualResult(
+            notifier=notifier.name, title=notifier.title, result=None
+        )
         try:
-            with metrics.timer(
-                f"worker.services.notifications.notifiers.{notifier.name}"
-            ) as notify_timer:
-                res = await notifier.notify(comparison)
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": dataclasses.asdict(res),
-            }
+            res = notifier.notify(
+                comparison, status_or_checks_helper_text=status_or_checks_helper_text
+            )
+            individual_result["result"] = res
+
             notifier.store_results(comparison, res)
             log.info(
                 "Individual notification done",
                 extra=dict(
-                    timing_ms=notify_timer.ms,
                     individual_result=individual_result,
                     commit=commit.commitid,
-                    base_commit=base_commit.commitid
-                    if base_commit is not None
-                    else "NO_BASE",
+                    base_commit=(
+                        base_commit.commitid if base_commit is not None else "NO_BASE"
+                    ),
                     repoid=commit.repoid,
                 ),
             )
             return individual_result
         except (CeleryError, SoftTimeLimitExceeded):
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
-            raise
-        except asyncio.TimeoutError:
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
-            log.warning(
-                "Individual notifier timed out",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    individual_result=individual_result,
-                    base_commit=base_commit.commitid
-                    if base_commit is not None
-                    else "NO_BASE",
-                ),
-            )
-            return individual_result
-        except asyncio.CancelledError as e:
-            log.warning(
-                "Individual notifier cancelled",
-                extra=dict(
-                    repoid=commit.repoid, commit=commit.commitid, exception=str(e)
-                ),
-                exc_info=True,
-            )
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
             raise
         except Exception:
-            individual_result = {
-                "notifier": notifier.name,
-                "title": notifier.title,
-                "result": None,
-            }
             log.exception(
                 "Individual notifier failed",
                 extra=dict(
                     repoid=commit.repoid,
                     commit=commit.commitid,
                     individual_result=individual_result,
-                    base_commit=base_commit.commitid
-                    if base_commit is not None
-                    else "NO_BASE",
+                    base_commit=(
+                        base_commit.commitid if base_commit is not None else "NO_BASE"
+                    ),
                 ),
             )
             return individual_result
         finally:
-            if not individual_result["result"] or individual_result["result"].get(
-                "notification_attempted"
+            if (
+                individual_result["result"] is None
+                or individual_result["result"].notification_attempted
             ):
                 # only running if there is no result (indicating some exception)
                 # or there was an actual attempt
                 create_or_update_commit_notification_from_notification_result(
-                    comparison.pull, notifier, individual_result["result"]
+                    comparison, notifier, individual_result["result"]
                 )

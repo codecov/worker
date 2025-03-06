@@ -1,8 +1,10 @@
 import os
+from datetime import datetime, timezone
 
 import mock
 import pytest
 from shared.torngit.exceptions import TorngitClientError, TorngitServerUnreachableError
+from shared.validation.types import CoverageCommentRequiredChanges
 from shared.yaml import UserYaml
 
 from database.tests.factories import CommitFactory
@@ -46,7 +48,7 @@ class TestYamlService(BaseTestCase):
             mock_configuration, "load_yaml_file", side_effect=FileNotFoundError()
         )
         expected_result = {
-            "codecov": {"require_ci_to_pass": True},
+            "codecov": {"require_ci_to_pass": True, "notify": {"wait_for_ci": True}},
             "coverage": {
                 "precision": 2,
                 "round": "down",
@@ -123,7 +125,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -163,7 +167,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -175,7 +181,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -220,7 +228,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -234,7 +244,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -253,6 +265,8 @@ class TestYamlService(BaseTestCase):
             get_source=mock.AsyncMock(return_value=contents_result_future),
         )
         commit = CommitFactory.create(
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
             repository__yaml={
                 "coverage": {
                     "precision": 2,
@@ -260,7 +274,7 @@ class TestYamlService(BaseTestCase):
                     "range": [70.0, 100.0],
                     "status": {"project": True, "patch": True, "changes": False},
                 }
-            }
+            },
         )
 
         dbsession.add(commit)
@@ -276,7 +290,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -293,7 +309,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -304,6 +322,8 @@ class TestYamlService(BaseTestCase):
             )
         )
         commit = CommitFactory.create(
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
             repository__yaml={
                 "coverage": {
                     "precision": 2,
@@ -311,7 +331,7 @@ class TestYamlService(BaseTestCase):
                     "range": [70.0, 100.0],
                     "status": {"project": True, "patch": True, "changes": False},
                 }
-            }
+            },
         )
         dbsession.add(commit)
         res = await get_current_yaml(commit, valid_handler)
@@ -325,7 +345,9 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }
 
@@ -339,7 +361,9 @@ class TestYamlService(BaseTestCase):
                     "comment": {
                         "behavior": "default",
                         "layout": "header, diff",
-                        "require_changes": False,
+                        "require_changes": [
+                            CoverageCommentRequiredChanges.no_requirements.value
+                        ],
                     }
                 }
             }
@@ -350,6 +374,8 @@ class TestYamlService(BaseTestCase):
             )
         )
         commit = CommitFactory.create(
+            # Setting the time to _before_ patch centric default YAMLs start date of 2024-04-30
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
             repository__yaml={
                 "coverage": {
                     "precision": 2,
@@ -357,7 +383,7 @@ class TestYamlService(BaseTestCase):
                     "range": [70.0, 100.0],
                     "status": {"project": True, "patch": True, "changes": False},
                 }
-            }
+            },
         )
         dbsession.add(commit)
         res = await get_current_yaml(commit, valid_handler)
@@ -371,6 +397,8 @@ class TestYamlService(BaseTestCase):
             "comment": {
                 "behavior": "default",
                 "layout": "header, diff",
-                "require_changes": False,
+                "require_changes": [
+                    CoverageCommentRequiredChanges.no_requirements.value
+                ],
             },
         }

@@ -1,15 +1,17 @@
 import logging
-from typing import Any, Dict, Tuple
 
 from database.enums import Notification
-from services.notification.notifiers.mixins.status import StatusChangesMixin
+from services.comparison import ComparisonProxy, FilteredComparison
+from services.notification.notifiers.mixins.status import (
+    StatusChangesMixin,
+    StatusResult,
+)
 from services.notification.notifiers.status.base import StatusNotifier
 
 log = logging.getLogger(__name__)
 
 
 class ChangesStatusNotifier(StatusChangesMixin, StatusNotifier):
-
     """This status analyzes the "unexpected changes" (see services/notification/changes.py
         for a better description) and covered lines within it
 
@@ -23,17 +25,22 @@ class ChangesStatusNotifier(StatusChangesMixin, StatusNotifier):
     """
 
     context = "changes"
+    notification_type_display_name = "status"
 
     @property
     def notification_type(self) -> Notification:
         return Notification.status_changes
 
-    async def build_payload(self, comparison) -> Dict[str, str]:
+    def build_payload(
+        self, comparison: ComparisonProxy | FilteredComparison
+    ) -> StatusResult:
         if self.is_empty_upload():
             state, message = self.get_status_check_for_empty_upload()
-            return {"state": state, "message": message}
-        state, message = await self.get_changes_status(comparison)
+            return StatusResult(state=state, message=message, included_helper_text={})
+        result = self.get_changes_status(
+            comparison, notification_type=self.notification_type_display_name
+        )
         if self.should_use_upgrade_decoration():
-            message = self.get_upgrade_message()
+            result["message"] = self.get_upgrade_message()
 
-        return {"state": state, "message": message}
+        return result

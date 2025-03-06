@@ -1,52 +1,29 @@
-from json import loads
-
 import pytest
 
 from helpers.exceptions import CorruptRawReportError
 from services.report.languages import v1
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
 
-txt = """
-{
+from . import create_report_builder_session
+
+json = {
     "coverage": {
-        "source": [null, 1],
-        "file": {"1": 1, "2": "1", "3": true, "4": "1/2"},
-        "empty": {}
+        "source": [None, 1],
+        "file": {"1": 1, "2": "1", "3": True, "4": "1/2"},
+        "empty": {},
     },
-    "messages": {
-        "source": {
-            "1": "Message"
-        }
-    }
+    "messages": {"source": {"1": "Message"}},
 }
 
-"""
-
-alternative_report_format = """{
+alternative_report_format = {
     "coverage": {
-        "/home/repo/app/scable/channel.rb": {
-            "lines": [
-                1,
-                1,
-                null,
-                null
-            ]
-        },
+        "/home/repo/app/scable/channel.rb": {"lines": [1, 1, None, None]},
         "/home/repo/app/scable/something.rb": {},
-        "/home/repo/app/scable/something_else.rb": { "lines": []},
-        "/home/repo/lib/exceptions.rb": {
-            "lines": [
-                1,
-                0,
-                10,
-                null
-            ]
-        }
+        "/home/repo/app/scable/something_else.rb": {"lines": []},
+        "/home/repo/lib/exceptions.rb": {"lines": [1, 0, 10, None]},
     },
-    "timestamp": 1588372645
+    "timestamp": 1588372645,
 }
-"""
 
 
 class TestVOne(BaseTestCase):
@@ -55,17 +32,11 @@ class TestVOne(BaseTestCase):
             assert path in ("source", "file", "empty")
             return path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=fixes
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = v1.from_json(loads(txt), report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        v1.from_json(json, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
         expected_result_archive = {
             "file": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
@@ -79,22 +50,16 @@ class TestVOne(BaseTestCase):
         assert expected_result_archive == processed_report["archive"]
 
     def test_not_list(self):
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=str
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        assert v1.from_json({"coverage": "<string>"}, report_builder_session) is None
+        report_builder_session = create_report_builder_session()
+        v1.from_json({"coverage": "<string>"}, report_builder_session)
+        report = report_builder_session.output_report()
+
+        assert not report
 
     def test_report_with_alternative_format(self):
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=lambda x: x
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = v1.from_json(loads(alternative_report_format), report_builder_session)
+        report_builder_session = create_report_builder_session()
+        v1.from_json(alternative_report_format, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
         expected_result_archive = {
@@ -117,14 +82,11 @@ class TestVOne(BaseTestCase):
                 "file": {"file1": 1, "file2": 2},
             }
         }
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, ignored_lines={}, path_fixer=lambda x: x
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
+        report_builder_session = create_report_builder_session()
+
         with pytest.raises(CorruptRawReportError) as e:
             v1.from_json(corrupted_report, report_builder_session)
+
         exp = e.value
         assert (
             exp.corruption_error

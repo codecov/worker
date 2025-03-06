@@ -89,7 +89,7 @@ class Diff:
         [line_id] (where line_id is just a unique integer)
         """
         return "\n".join(
-            [f"[{i+1}] {line}" for i, line in enumerate(self._diff.split("\n"))]
+            [f"[{i + 1}] {line}" for i, line in enumerate(self._diff.split("\n"))]
         )
 
     def line_info(self, line_id: int) -> LineInfo:
@@ -294,7 +294,7 @@ class Review:
         if len(self.review_ids) > 0:
             comments_to_update = []
             async for comment in self.pull_wrapper.fetch_review_comments():
-                if not (comment["pull_request_review_id"] in self.review_ids):
+                if comment["pull_request_review_id"] not in self.review_ids:
                     continue
 
                 line_info = LineInfo(

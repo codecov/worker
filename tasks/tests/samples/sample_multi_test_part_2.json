@@ -1,0 +1,11 @@
+{
+    "test_results_files": [
+        {
+            "filename": "codecov-demo/multi-test.xml",
+            "format": "base64+compressed",
+            "data": "eJzNU8tugzAQvOcrVq4UJUoBm7wKCUSVmirqoaeqOVYWGIJKAGHTNn/fxeRBk7TnWgK0492ZweudL762KXyIUiZ55hFmUgIiC/IwyWKPVCoy7sjC78yVkEpWCX78DuA6AZDxrfBIsasRLC7LvJQeQZ6IJ2lVCgwYAfmeFIUI9Yau1ahK6lpqUntCNG+9alAqvi08YlN7ZNCpYTsvbOhS22XMnEydydAx6MilyLXJpWocvD6untdPD+uVY6Z5wFPiHxm124BLAUHKpWzytQurfr9FVRYoPACz2BE47R7xllFqt3mtA/E/0oqqNN1BkGNTRXiQgDO00Riak5aCZtw3DbAFkseYg7yiVMCgG6uZB+PuDaMzGAB8bpAKcQ9KnoX4xKJHb4HRPvFDEf2g1W1t/2Wv714k1AKwlzunPKhfFC3h3OCVlMEfZjtXjV42yx27cK+lMF7Wt3xu7Q/r9yY1sZ4THCKrPUXfoXQB+w==",
+            "labels": ""
+        }
+    ],
+    "metadata": {}
+}

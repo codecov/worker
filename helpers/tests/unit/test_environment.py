@@ -1,8 +1,6 @@
 import os
 from pathlib import PosixPath
 
-from shared.config import get_config
-
 from helpers.environment import (
     Environment,
     _calculate_current_env,
@@ -12,14 +10,19 @@ from helpers.environment import (
 
 class TestEnvironment(object):
     def test_get_current_env(self, mocker):
+        # CURRENT_ENVIRONMENT is a fallback when RUN_ENV is not supplied
+        # have to clear out RUN_ENV to test CURRENT_ENVIRONMENT
+        mocker.patch.dict(os.environ, {}, clear=True)
         mocker.patch.dict(os.environ, {"CURRENT_ENVIRONMENT": ""})
         assert _calculate_current_env() == Environment.production
 
-    def test_get_current_env_local(sel, mocker):
+    def test_get_current_env_local(self, mocker):
+        mocker.patch.dict(os.environ, {}, clear=True)
         mocker.patch.dict(os.environ, {"CURRENT_ENVIRONMENT": "local"})
         assert _calculate_current_env() == Environment.local
 
-    def test_get_current_env_enterprise(sel, mocker):
+    def test_get_current_env_enterprise(self, mocker):
+        mocker.patch.dict(os.environ, {}, clear=True)
         mocker.patch.dict(os.environ, {"CURRENT_ENVIRONMENT": "local"})
         mock_path_exists = mocker.patch(
             "helpers.environment.os.path.exists", return_value=True

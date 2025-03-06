@@ -3,11 +3,51 @@ from decimal import Decimal
 from typing import List, Sequence
 
 from shared.reports.resources import ReportTotals
+from shared.yaml.user_yaml import UserYaml
 
+from services.comparison import ComparisonProxy
 from services.comparison.changes import Change
+from services.yaml import read_yaml_field
 from services.yaml.reader import get_minimum_precision, round_number
 
 zero_change_regex = re.compile("0.0+%?")
+
+
+def has_project_status(yaml: UserYaml) -> bool:
+    project_status_details = read_yaml_field(
+        yaml, ("coverage", "status", "project"), False
+    )
+    if isinstance(project_status_details, bool):
+        return project_status_details
+    # If it's not a bool, it has to be a dict
+    if isinstance(project_status_details, dict):
+        if "enabled" in project_status_details:
+            return project_status_details["enabled"]
+        return True
+    # The config is not according to what we expect
+    # So it's an invalid status definition
+    return False
+
+
+def is_coverage_drop_significant(comparison: ComparisonProxy) -> bool:
+    head_coverage = (
+        comparison.head.report.totals.coverage if comparison.has_head_report() else None
+    )
+    base_coverage = (
+        comparison.project_coverage_base.report.totals.coverage
+        if comparison.has_project_coverage_base_report()
+        else None
+    )
+    if head_coverage is None or base_coverage is None:
+        # No change to be significant
+        return False
+    diff = Decimal(head_coverage) - Decimal(base_coverage)
+    change_is_positive = diff >= 0
+    # head_coverage is the percent of the project covered in HEAD
+    # base_coverage is the percent of the project covered in BASE
+    # So "change_is_significant" is checking if the diff between them is more than 5%
+    change_is_significant = abs(diff) >= Decimal(5)
+    return not change_is_positive and change_is_significant
 
 
 def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
@@ -24,9 +64,9 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
         complexity = " |" if show_complexity else ""
 
     else:
-        if type(before) is list:
+        if isinstance(before, list):
             before = ReportTotals(*before)
-        if type(after) is list:
+        if isinstance(after, list):
             after = ReportTotals(*after)
 
         layout = " `{absolute} <{relative}> ({impact})` |"
@@ -46,20 +86,22 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
                 yaml, after.coverage, style="{0}%", if_null="\u2205"
             ),
             relative=format_number_to_str(
-                yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xF8"
+                yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xf8"
             ),
-            impact=format_number_to_str(
-                yaml,
-                coverage_change,
-                style="{0}%",
-                if_zero="\xF8",
-                if_null="\u2205",
-                plus=True,
-            )
-            if before
-            else "?"
-            if before is None
-            else "\xF8",
+            impact=(
+                format_number_to_str(
+                    yaml,
+                    coverage_change,
+                    style="{0}%",
+                    if_zero="\xf8",
+                    if_null="\u2205",
+                    plus=True,
+                )
+                if before
+                else "?"
+                if before is None
+                else "\xf8"
+            ),
         )
 
         if show_complexity:
@@ -75,15 +117,15 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
                 absolute=style.format(format_number_to_str(yaml, after.complexity)),
                 relative=style.format(
                     format_number_to_str(
-                        yaml, relative.complexity if relative else 0, if_null="\xF8"
+                        yaml, relative.complexity if relative else 0, if_null="\xf8"
                     )
                 ),
                 impact=style.format(
                     format_number_to_str(
                         yaml,
                         complexity_change,
-                        if_zero="\xF8",
-                        if_null="\xF8",
+                        if_zero="\xf8",
+                        if_null="\xf8",
                         plus=True,
                     )
                     if before
@@ -108,9 +150,11 @@ def make_metrics(before, after, relative, show_complexity, yaml, pull_url=None):
             icon = (
                 " :arrow_up: |"
                 if coverage_good
-                else " :arrow_down: |"
-                if coverage_good is False and coverage_change != 0
-                else " |"
+                else (
+                    " :arrow_down: |"
+                    if coverage_good is False and coverage_change != 0
+                    else " |"
+                )
             )
 
     return "".join(("|", coverage, complexity, icon))
@@ -129,7 +173,7 @@ def make_patch_only_metrics(before, after, relative, show_complexity, yaml, pull
 
     else:
         patch_cov = format_number_to_str(
-            yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xF8"
+            yaml, relative.coverage if relative else 0, style="{0}%", if_null="\xf8"
         )
         coverage = f" {patch_cov} |"
         missing_lines = relative.misses if relative else 0
@@ -150,7 +194,6 @@ def make_patch_only_metrics(before, after, relative, show_complexity, yaml, pull
 
 
 def get_table_header(show_complexity):
-
     return (
         "| Coverage \u0394 |"
         + (" Complexity \u0394 |" if show_complexity else "")
@@ -294,7 +337,10 @@ def diff_to_string(current_yaml, base_title, base, head_title, head) -> List[str
     spacer = ["=" * row_w]
 
     title = "@@%s@@" % "{text:{fill}{align}{width}}".format(
-        text="Coverage Diff", fill=" ", align="^", width=row_w - 4, strip=True
+        text="Coverage Diff",
+        fill=" ",
+        align="^",
+        width=row_w - 4,
     )
 
     table = (

@@ -1,6 +1,7 @@
 from services.report.languages.salesforce import SalesforceProcessor
-from services.report.report_processor import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 
 class TestSalesforce(BaseTestCase):
@@ -18,16 +19,11 @@ class TestSalesforce(BaseTestCase):
             None,
         ]
         processor = SalesforceProcessor()
-        name = "name"
-        sessionid = 0
-        report_builder = ReportBuilder(
-            current_yaml=None,
-            sessionid=sessionid,
-            ignored_lines={},
-            path_fixer=lambda x: x,
-        )
-        res = processor.process(name, user_input, report_builder)
-        result = self.convert_report_to_better_readable(res)
+        report_builder_session = create_report_builder_session()
+        processor.process(user_input, report_builder_session)
+        report = report_builder_session.output_report()
+        result = self.convert_report_to_better_readable(report)
+
         assert result == {
             "archive": {
                 "file.py": [(1, 5, None, [[0, 5, None, None, None]], None, None)]
@@ -37,7 +33,7 @@ class TestSalesforce(BaseTestCase):
                     "file.py": [
                         0,
                         [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                        {"0": [0, 1, 1, 0, 0, "100"], "meta": {"session_count": 1}},
+                        None,
                         None,
                     ]
                 },

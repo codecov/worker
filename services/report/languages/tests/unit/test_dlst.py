@@ -1,25 +1,15 @@
 import pytest
 
 from services.report.languages import dlst
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 RAW = b"""       |empty
       1|coverage
 0000000|missed
 this is not line....
 source file.d is 77% covered"""
-
-result = {
-    "files": {
-        "src/file.d": {
-            "l": {
-                "2": {"c": 1, "s": [[0, 1, None, None, None]]},
-                "3": {"c": 0, "s": [[0, 0, None, None, None]]},
-            }
-        }
-    }
-}
 
 
 class TestDLST(BaseTestCase):
@@ -29,32 +19,28 @@ class TestDLST(BaseTestCase):
             if path in ("file.d", "src/file.d"):
                 return "src/file.d"
 
-        report_builder = ReportBuilder(
-            path_fixer=fixer, ignored_lines={}, sessionid=0, current_yaml=None
+        report_builder_session = create_report_builder_session(
+            path_fixer=fixer, filename=filename
         )
-        report_builder_session = report_builder.create_report_builder_session(filename)
-        report = dlst.from_string(RAW, report_builder_session)
+        dlst.from_string(RAW, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        # import pprint
-        # pprint.pprint(processed_report['archive'])
+
         expected_result_archive = {
             "src/file.d": [
                 (2, 1, None, [[0, 1, None, None, None]], None, None),
                 (3, 0, None, [[0, 0, None, None, None]], None, None),
             ]
         }
-
         assert expected_result_archive == processed_report["archive"]
 
     def test_none(self):
-        report_builder = ReportBuilder(
-            path_fixer=lambda a: False, ignored_lines={}, sessionid=0, current_yaml=None
+        report_builder_session = create_report_builder_session(
+            path_fixer=lambda _: False, filename=None
         )
-        report_builder_session = report_builder.create_report_builder_session(None)
-        report = dlst.from_string(
-            b"   1|test\nignore is 100% covered", report_builder_session
-        )
-        assert None is report
+        dlst.from_string(b"   1|test\nignore is 100% covered", report_builder_session)
+        report = report_builder_session.output_report()
+        assert not report
 
     def test_matches_content(self):
         content, first_line, name = (
@@ -62,4 +48,4 @@ class TestDLST(BaseTestCase):
             "   1|test",
             "name",
         )
-        return dlst.DLSTProcessor().matches_content(content, first_line, name)
+        assert dlst.DLSTProcessor().matches_content(content, first_line, name)

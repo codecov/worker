@@ -1,6 +1,11 @@
 import logging
-from typing import Any, List, Mapping
+from datetime import datetime, timezone
+from typing import Any, Mapping, Optional
 
+import sentry_sdk
+from asgiref.sync import async_to_sync
+from shared.metrics import Counter, inc_counter
+from shared.plan.constants import PlanName
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitObjectNotFoundError,
@@ -8,33 +13,45 @@ from shared.torngit.exceptions import (
 )
 
 from database.enums import Notification
-from database.models import Pull
-from helpers.metrics import metrics
+from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
 from services.license import requires_license
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
     NotificationResult,
 )
+from services.notification.notifiers.comment.conditions import (
+    ComparisonHasPull,
+    HasEnoughBuilds,
+    HasEnoughRequiredChanges,
+    NoAutoActivateMessageIfAutoActivateIsOff,
+    NotifyCondition,
+    PullHeadMatchesComparisonHead,
+    PullRequestInProvider,
+)
 from services.notification.notifiers.mixins.message import MessageMixin
-from services.repository import get_repo_provider_service
 from services.urls import append_tracking_params_to_urls, get_members_url, get_plan_url
 
 log = logging.getLogger(__name__)
 
+COMMENT_NOTIFIER_COUNTER = Counter(
+    "notifiers_comment_pull_closed_notifying_anyways",
+    "Number of comment notifier runs when pull is closed",
+    ["repo_using_integration"],
+)
+
 
 class CommentNotifier(MessageMixin, AbstractBaseNotifier):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._repository_service = None
+    notify_conditions: list[NotifyCondition] = [
+        ComparisonHasPull,
+        PullRequestInProvider,
+        PullHeadMatchesComparisonHead,
+        HasEnoughBuilds,
+        HasEnoughRequiredChanges,
+        NoAutoActivateMessageIfAutoActivateIsOff,
+    ]
 
-    @property
-    def repository_service(self):
-        if not self._repository_service:
-            self._repository_service = get_repo_provider_service(self.repository)
-        return self._repository_service
-
-    def store_results(self, comparison: Comparison, result: NotificationResult):
+    def store_results(self, comparison: ComparisonProxy, result: NotificationResult):
         pull = comparison.pull
         if not result.notification_attempted or not result.notification_successful:
             return
@@ -53,106 +70,45 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
     def notification_type(self) -> Notification:
         return Notification.comment
 
-    async def get_diff(self, comparison: Comparison):
-        return await comparison.get_diff()
+    def get_diff(self, comparison: Comparison):
+        return comparison.get_diff()
 
-    async def has_enough_changes(self, comparison):
-        diff = await comparison.get_diff()
-        changes = await comparison.get_changes()
-        if changes:
-            return True
-        res = comparison.head.report.calculate_diff(diff)
-        if res is not None and res["general"].lines > 0:
-            return True
-        return False
+    @sentry_sdk.trace
+    def notify(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> NotificationResult:
+        # TODO: remove this when we don't need it anymore
+        # this line is measuring how often we try to comment on a PR that is closed
+        if comparison.pull is not None and comparison.pull.state != "open":
+            inc_counter(
+                COMMENT_NOTIFIER_COUNTER,
+                labels=dict(
+                    repo_using_integration="true"
+                    if self.repository_service.data["repo"]["using_integration"]
+                    else "false",
+                ),
+            )
 
-    async def notify(self, comparison: Comparison, **extra_data) -> NotificationResult:
-        if comparison.pull is None:
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="no_pull_request",
-                data_sent=None,
-                data_received=None,
+        for condition in self.notify_conditions:
+            condition_result = condition.check_condition(
+                notifier=self, comparison=comparison
             )
-        if (
-            comparison.enriched_pull is None
-            or comparison.enriched_pull.provider_pull is None
-        ):
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_request_not_in_provider",
-                data_sent=None,
-                data_received=None,
-            )
-        if comparison.pull.state != "open":
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_request_closed",
-                data_sent=None,
-                data_received=None,
-            )
-        if comparison.pull.head != comparison.head.commit.commitid:
-            return NotificationResult(
-                notification_attempted=False,
-                notification_successful=None,
-                explanation="pull_head_does_not_match",
-                data_sent=None,
-                data_received=None,
-            )
-        if self.notifier_yaml_settings.get("after_n_builds") is not None:
-            n_builds_present = len(comparison.head.report.sessions)
-            if n_builds_present < self.notifier_yaml_settings.get("after_n_builds"):
-                return NotificationResult(
+            if condition_result == False:
+                side_effect_result = condition.on_failure_side_effect(self, comparison)
+                default_result = NotificationResult(
                     notification_attempted=False,
-                    notification_successful=None,
-                    explanation="not_enough_builds",
+                    explanation=condition.failure_explanation,
                     data_sent=None,
                     data_received=None,
                 )
+                return default_result.merge(side_effect_result)
         pull = comparison.pull
-        if self.notifier_yaml_settings.get("require_changes"):
-            if not (await self.has_enough_changes(comparison)):
-                data_received = None
-                if pull.commentid is not None:
-                    log.info(
-                        "Deleting comment because there are not enough changes according to YAML",
-                        extra=dict(
-                            repoid=pull.repoid,
-                            pullid=pull.pullid,
-                            commentid=pull.commentid,
-                        ),
-                    )
-                    try:
-                        await self.repository_service.delete_comment(
-                            pull.pullid, pull.commentid
-                        )
-                        data_received = {"deleted_comment": True}
-                    except TorngitClientError:
-                        log.warning(
-                            "Comment could not be deleted due to client permissions",
-                            exc_info=True,
-                            extra=dict(
-                                repoid=pull.repoid,
-                                pullid=pull.pullid,
-                                commentid=pull.commentid,
-                            ),
-                        )
-                        data_received = {"deleted_comment": False}
-                return NotificationResult(
-                    notification_attempted=False,
-                    notification_successful=None,
-                    explanation="changes_required",
-                    data_sent=None,
-                    data_received=data_received,
-                )
         try:
-            with metrics.timer(
-                "worker.services.notifications.notifiers.comment.build_message"
-            ):
-                message = await self.build_message(comparison)
+            message = self.build_message(
+                comparison, status_or_checks_helper_text=status_or_checks_helper_text
+            )
         except TorngitClientError:
             log.warning(
                 "Unable to fetch enough information to build message for comment",
@@ -164,17 +120,13 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             )
             return NotificationResult(
                 notification_attempted=False,
-                notification_successful=None,
                 explanation="unable_build_message",
                 data_sent=None,
                 data_received=None,
             )
         data = {"message": message, "commentid": pull.commentid, "pullid": pull.pullid}
         try:
-            with metrics.timer(
-                "worker.services.notifications.notifiers.comment.send_notifications"
-            ):
-                return await self.send_actual_notification(data)
+            return self.send_actual_notification(data)
         except TorngitServerFailureError:
             log.warning(
                 "Unable to send comments because the provider server was not reachable or errored",
@@ -189,7 +141,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 data_received=None,
             )
 
-    async def send_actual_notification(self, data: Mapping[str, Any]):
+    def send_actual_notification(self, data: Mapping[str, Any]):
         message = "\n".join(data["message"])
 
         # Append tracking parameters to any codecov urls in the message
@@ -202,19 +154,19 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
 
         behavior = self.notifier_yaml_settings.get("behavior", "default")
         if behavior == "default":
-            res = await self.send_comment_default_behavior(
+            res = self.send_comment_default_behavior(
                 data["pullid"], data["commentid"], message
             )
         elif behavior == "once":
-            res = await self.send_comment_once_behavior(
+            res = self.send_comment_once_behavior(
                 data["pullid"], data["commentid"], message
             )
         elif behavior == "new":
-            res = await self.send_comment_new_behavior(
+            res = self.send_comment_new_behavior(
                 data["pullid"], data["commentid"], message
             )
         elif behavior == "spammy":
-            res = await self.send_comment_spammy_behavior(
+            res = self.send_comment_spammy_behavior(
                 data["pullid"], data["commentid"], message
             )
         return NotificationResult(
@@ -225,10 +177,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             data_received=res["data_received"],
         )
 
-    async def send_comment_default_behavior(self, pullid, commentid, message):
+    def send_comment_default_behavior(self, pullid, commentid, message):
         if commentid:
             try:
-                res = await self.repository_service.edit_comment(
+                res = async_to_sync(self.repository_service.edit_comment)(
                     pullid, commentid, message
                 )
                 return {
@@ -246,7 +198,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     extra=dict(pullid=pullid, commentid=commentid),
                 )
         try:
-            res = await self.repository_service.post_comment(pullid, message)
+            res = async_to_sync(self.repository_service.post_comment)(pullid, message)
             return {
                 "notification_attempted": True,
                 "notification_successful": True,
@@ -266,10 +218,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 "data_received": None,
             }
 
-    async def send_comment_once_behavior(self, pullid, commentid, message):
+    def send_comment_once_behavior(self, pullid, commentid, message):
         if commentid:
             try:
-                res = await self.repository_service.edit_comment(
+                res = async_to_sync(self.repository_service.edit_comment)(
                     pullid, commentid, message
                 )
                 return {
@@ -297,7 +249,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     "explanation": "no_permissions",
                     "data_received": None,
                 }
-        res = await self.repository_service.post_comment(pullid, message)
+        res = async_to_sync(self.repository_service.post_comment)(pullid, message)
         return {
             "notification_attempted": True,
             "notification_successful": True,
@@ -305,10 +257,10 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             "data_received": {"id": res["id"]},
         }
 
-    async def send_comment_new_behavior(self, pullid, commentid, message):
+    def send_comment_new_behavior(self, pullid, commentid, message):
         if commentid:
             try:
-                await self.repository_service.delete_comment(pullid, commentid)
+                async_to_sync(self.repository_service.delete_comment)(pullid, commentid)
             except TorngitObjectNotFoundError:
                 log.info("Comment was already deleted")
             except TorngitClientError:
@@ -328,7 +280,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                     "data_received": None,
                 }
         try:
-            res = await self.repository_service.post_comment(pullid, message)
+            res = async_to_sync(self.repository_service.post_comment)(pullid, message)
             return {
                 "notification_attempted": True,
                 "notification_successful": True,
@@ -350,8 +302,8 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 "data_received": None,
             }
 
-    async def send_comment_spammy_behavior(self, pullid, commentid, message):
-        res = await self.repository_service.post_comment(pullid, message)
+    def send_comment_spammy_behavior(self, pullid, commentid, message):
+        res = async_to_sync(self.repository_service.post_comment)(pullid, message)
         return {
             "notification_attempted": True,
             "notification_successful": True,
@@ -364,7 +316,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             self.notifier_yaml_settings, dict
         )
 
-    async def build_message(self, comparison: Comparison) -> List[str]:
+    def build_message(
+        self,
+        comparison: ComparisonProxy,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
+    ) -> list[str]:
         if self.should_use_upgrade_decoration():
             return self._create_upgrade_message(comparison)
         if self.is_processing_upload():
@@ -373,21 +329,65 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             return self._create_empty_upload_message()
         if self.should_use_upload_limit_decoration():
             return self._create_reached_upload_limit_message(comparison)
-        if comparison.pull.is_first_pull:
+        if comparison.pull.is_first_coverage_pull:
             return self._create_welcome_message()
         pull_dict = comparison.enriched_pull.provider_pull
-        return await self.create_message(
-            comparison, pull_dict, self.notifier_yaml_settings
+        return self.create_message(
+            comparison,
+            pull_dict,
+            self.notifier_yaml_settings,
+            status_or_checks_helper_text=status_or_checks_helper_text,
         )
 
+    def should_see_project_coverage_cta(self):
+        """
+        Why was this check added? We changed our default behavior on 5/1/2024.
+        Change explained on issue 1078
+        """
+        introduction_date = datetime(2024, 5, 1, 0, 0, 0).replace(tzinfo=timezone.utc)
+
+        if (
+            not self.repository.private
+            and self.repository.owner.createstamp
+            and self.repository.owner.createstamp > introduction_date
+        ):
+            # public repos, only if they signed up after introduction date
+            return True
+
+        if (
+            not (
+                self.repository.owner.plan == PlanName.TEAM_MONTHLY.value
+                or self.repository.owner.plan == PlanName.TEAM_YEARLY.value
+            )
+            and self.repository.owner.createstamp
+            and self.repository.owner.createstamp > introduction_date
+        ):
+            # private repos excluding those on team plans, only if they signed up after introduction date
+            return True
+
+        return False
+
     def _create_welcome_message(self):
-        return [
+        welcome_message = [
             "## Welcome to [Codecov](https://codecov.io) :tada:",
             "",
-            "Once merged to your default branch, Codecov will compare your coverage reports and display the results in this comment.",
+            "Once you merge this PR into your default branch, you're all set! Codecov will compare coverage reports and display results in all future pull requests.",
             "",
             "Thanks for integrating Codecov - We've got you covered :open_umbrella:",
         ]
+        project_coverage_cta = [
+            ":information_source: You can also turn on [project coverage checks](https://docs.codecov.com/docs/common-recipe-list#set-project-coverage-checks-on-a-pull-request) "
+            "and [project coverage reporting on Pull Request comment](https://docs.codecov.com/docs/common-recipe-list#show-project-coverage-changes-on-the-pull-request-comment)",
+            "",
+        ]
+
+        if self.should_see_project_coverage_cta():
+            welcome_message_with_project_coverage_cta = (
+                welcome_message[0:4] + project_coverage_cta + welcome_message[4:]
+            )
+            return welcome_message_with_project_coverage_cta
+
+        return welcome_message
 
     def _create_empty_upload_message(self):
         if self.is_passing_empty_upload():
@@ -402,7 +402,7 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
                 "Files changed in this PR are testable or aren't ignored by Codecov, please run your tests and upload coverage. If you wish to ignore these files, please visit our [ignoring paths docs](https://docs.codecov.com/docs/ignoring-paths).",
             ]
 
-    def _create_reached_upload_limit_message(self, comparison):
+    def _create_reached_upload_limit_message(self, comparison: ComparisonProxy):
         db_pull = comparison.enriched_pull.database_pull
         links = {"plan_url": get_plan_url(db_pull)}
         return [
@@ -410,11 +410,11 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan]({links['plan_url']}).",
-            f"",
-            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+            "",
+            "**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
 
-    def _create_upgrade_message(self, comparison):
+    def _create_upgrade_message(self, comparison: ComparisonProxy):
         db_pull = comparison.enriched_pull.database_pull
         links = {
             "members_url_cloud": get_members_url(db_pull),
@@ -427,15 +427,15 @@ class CommentNotifier(MessageMixin, AbstractBaseNotifier):
             return [
                 f"The author of this PR, {author_username}, is not an activated member of this organization on Codecov.",
                 f"Please [activate this user on Codecov]({links['members_url_cloud']}) to display this PR comment.",
-                f"Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
-                f"Please don't hesitate to email us at support@codecov.io with any questions.",
+                "Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.",
+                "Please don't hesitate to email us at support@codecov.io with any questions.",
             ]
         else:
             return [
                 f"The author of this PR, {author_username}, is not activated in your Codecov Self-Hosted installation.",
                 f"Please [activate this user]({links['members_url_self_hosted']}) to display this PR comment.",
-                f"Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
-                f"Please contact your Codecov On-Premises installation administrator with any questions.",
+                "Coverage data is still being uploaded to Codecov Self-Hosted for the purposes of overall coverage calculations.",
+                "Please contact your Codecov On-Premises installation administrator with any questions.",
             ]
 
     def _create_processing_upload_message(self):

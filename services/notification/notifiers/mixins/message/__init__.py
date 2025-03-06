@@ -1,12 +1,16 @@
 import logging
-from typing import Callable
+from typing import Any, Callable, List, Mapping, Optional
 
-from shared.reports.resources import Report, ReportTotals
+from shared.django_apps.core.models import Repository
+from shared.plan.constants import TierName
+from shared.plan.service import PlanService
+from shared.reports.resources import ReportTotals
 from shared.validation.helpers import LayoutStructure
 
+from database.models.core import Owner
 from helpers.environment import is_enterprise
 from helpers.metrics import metrics
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
 )
@@ -14,6 +18,7 @@ from services.notification.notifiers.mixins.message.sections import (
     NullSectionWriter,
     get_section_class_from_layout_name,
 )
+from services.notification.notifiers.mixins.message.writers import TeamPlanWriter
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field
 
@@ -21,8 +26,12 @@ log = logging.getLogger(__name__)
 
 
 class MessageMixin(object):
-    async def create_message(
-        self, comparison: ComparisonProxy, pull_dict, yaml_settings
+    def create_message(
+        self,
+        comparison: ComparisonProxy | FilteredComparison,
+        pull_dict: Optional[Mapping[str, Any]],
+        yaml_settings: dict,
+        status_or_checks_helper_text: Optional[dict[str, str]] = None,
     ):
         """
         Assemble the various components of the PR comments message in accordance with their YAML configuration.
@@ -33,27 +42,29 @@ class MessageMixin(object):
         Parameters:
             yaml_settings: YAML settings for notifier
 
-                Note: Github Checks Notifers are initialized with "status" YAML settings.
+                Note: Github Checks Notifiers are initialized with "status" YAML settings.
                       Thus, the comment block of the codecov YAML is passed as the "yaml_settings" parameter for these Notifiers.
 
         """
-        changes = await comparison.get_changes()
-        diff = await comparison.get_diff(use_original_base=True)
-        behind_by = await comparison.get_behind_by()
+        changes = comparison.get_changes()
+        diff = comparison.get_diff(use_original_base=True)
+        behind_by = comparison.get_behind_by()
         base_report = comparison.project_coverage_base.report
         head_report = comparison.head.report
         pull = comparison.pull
 
         settings = yaml_settings
 
-        yaml = self.current_yaml
         current_yaml = self.current_yaml
 
         links = {
             "pull": get_pull_url(pull),
-            "base": get_commit_url(comparison.project_coverage_base.commit)
-            if comparison.project_coverage_base.commit is not None
-            else None,
+            "base": (
+                get_commit_url(comparison.project_coverage_base.commit)
+                if comparison.project_coverage_base.commit is not None
+                else None
+            ),
+            "head": get_commit_url(comparison.head.commit),
         }
 
         # bool: show complexity
@@ -65,14 +76,36 @@ class MessageMixin(object):
                 or (head_report.totals if head_report else ReportTotals()).complexity
             )
 
-        message = [
-            f'## [Codecov]({links["pull"]}?src=pr&el=h1) Report',
-        ]
-
-        write = message.append
+        message = []
         # note: since we're using append, calling write("") will add a newline to the message
+        write = message.append
+
+        self._possibly_write_install_app(comparison, write)
+
+        # Write Header
+        write(f"## [Codecov]({links['pull']}?dropdown=coverage&src=pr&el=h1) Report")
+
+        repo = comparison.head.commit.repository
+        owner: Owner = repo.owner
+
+        # Separate PR comment based on plan that can't/won't be tweaked by codecov.yml settings
+        owner_plan = PlanService(owner)
+        if owner_plan.tier_name == TierName.TEAM.value:
+            return self._team_plan_notification(
+                comparison=comparison,
+                message=message,
+                diff=diff,
+                settings=settings,
+                links=links,
+                current_yaml=current_yaml,
+            )
 
         upper_section_names = self.get_upper_section_names(settings)
+        if status_or_checks_helper_text:
+            # add status_or_checks_helper_text to header
+            upper_section_names.append("status_or_checks_helper_text")
+        # We write the header and then the messages_to_user section
+        upper_section_names.append("messages_to_user")
         for upper_section_name in upper_section_names:
             section_writer_class = get_section_class_from_layout_name(
                 upper_section_name
@@ -83,20 +116,14 @@ class MessageMixin(object):
                 show_complexity,
                 settings,
                 current_yaml,
+                status_or_checks_helper_text,
             )
 
-            await self.write_section_to_msg(
+            self.write_section_to_msg(
                 comparison, changes, diff, links, write, section_writer, behind_by
             )
 
         is_compact_message = should_message_be_compact(comparison, settings)
-
-        if base_report is None:
-            base_report = Report()
-
-        # Announcement section specific for the GitHub App Login changes
-        # This might be removed eventually
-        await self._possibly_write_gh_app_login_announcement(comparison, write)
 
         if head_report:
             if is_compact_message:
@@ -125,7 +152,7 @@ class MessageMixin(object):
                         self.repository, layout, show_complexity, settings, current_yaml
                     )
 
-                await self.write_section_to_msg(
+                self.write_section_to_msg(
                     comparison,
                     changes,
                     diff,
@@ -150,7 +177,7 @@ class MessageMixin(object):
                         settings,
                         current_yaml,
                     )
-                    await self.write_section_to_msg(
+                    self.write_section_to_msg(
                         comparison,
                         changes,
                         diff,
@@ -159,37 +186,81 @@ class MessageMixin(object):
                         section_writer,
                     )
 
+        self.write_cross_pollination_message(write=write)
+
         return [m for m in message if m is not None]
 
-    async def _possibly_write_gh_app_login_announcement(
+    def _possibly_write_install_app(
         self, comparison: ComparisonProxy, write: Callable
     ) -> None:
-        repo = comparison.head.commit.repository
-        owner = repo.owner
+        """Write a message if the user does not have any GH installations
+        and will be writing with a Codecov Commenter Account.
+        """
+        repo: Repository = comparison.head.commit.repository
+        repo_owner: Owner = repo.owner
         if (
-            owner.service == "github"
-            and not owner.integration_id
+            repo_owner.service == "github"
             and not is_enterprise()
+            and repo_owner.github_app_installations == []
+            and comparison.context.gh_is_using_codecov_commenter
         ):
-            message_to_display = "Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality."
-            write(f":exclamation: {message_to_display}")
+            message_to_display = ":warning: Please install the !['codecov app svg image'](https://github.com/codecov/engineering-team/assets/152432831/e90313f4-9d3a-4b63-8b54-cfe14e7ec20d) to ensure uploads and comments are reliably processed by Codecov."
+            write(message_to_display)
             write("")
 
-    async def write_section_to_msg(
+    def _team_plan_notification(
+        self,
+        comparison: ComparisonProxy,
+        message: List[str],
+        diff,
+        settings,
+        links,
+        current_yaml,
+    ) -> List[str]:
+        writer_class = TeamPlanWriter()
+
+        with metrics.timer(
+            f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
+        ):
+            # Settings here enable failed tests results for now as a new product
+            message.extend(
+                line
+                for line in writer_class.header_lines(
+                    comparison=comparison, diff=diff, settings=settings
+                )
+            )
+            message.extend(
+                line
+                for line in writer_class.middle_lines(
+                    comparison=comparison,
+                    diff=diff,
+                    links=links,
+                    current_yaml=current_yaml,
+                )
+            )
+            message.extend(line for line in writer_class.footer_lines(comparison))
+
+            return message
+
+    def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer, behind_by=None
     ):
+        wrote_something: bool = False
         with metrics.timer(
             f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
         ):
-            for line in await section_writer.write_section(
+            for line in section_writer.write_section(
                 comparison, diff, changes, links, behind_by=behind_by
             ):
+                wrote_something |= line is not None
                 write(line)
-
-        write("")
+        if wrote_something:
+            write("")
 
     def get_middle_layout_section_names(self, settings):
-        sections = map(lambda l: l.strip(), (settings["layout"] or "").split(","))
+        sections = map(
+            lambda layout: layout.strip(), settings.get("layout", "").split(",")
+        )
         return [
             section
             for section in sections
@@ -206,10 +277,15 @@ class MessageMixin(object):
         ]
 
     def get_upper_section_names(self, settings):
-        sections = list(map(lambda l: l.strip(), (settings["layout"] or "").split(",")))
+        sections = list(
+            map(lambda layout: layout.strip(), settings.get("layout", "").split(","))
+        )
         headers = ["newheader", "header", "condensed_header"]
-        if all(not x in sections for x in headers):
+        if all(x not in sections for x in headers):
             sections.insert(0, "condensed_header")
+
+        if "files" in sections or "tree" in sections:
+            sections.append("newfiles")
 
         return [
             section
@@ -225,8 +301,30 @@ class MessageMixin(object):
         ]
 
     def get_lower_section_name(self, settings):
-        if (
-            "newfooter" in settings["layout"]
-            or "condensed_footer" in settings["layout"]
-        ):
+        if "newfooter" in settings.get(
+            "layout", ""
+        ) or "condensed_footer" in settings.get("layout", ""):
             return "newfooter"
+
+    def write_cross_pollination_message(self, write: Callable):
+        extra_message = []
+
+        ta_message = "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+        ba_message = "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+
+        if not self.repository.test_analytics_enabled:
+            extra_message.append(ta_message)
+
+        if not self.repository.bundle_analysis_enabled and set(
+            {"javascript", "typescript"}
+        ).intersection(self.repository.languages or {}):
+            extra_message.append(ba_message)
+
+        if extra_message:
+            for i in [
+                "<details><summary>🚀 New features to boost your workflow: </summary>",
+                "",
+                *extra_message,
+                "</details>",
+            ]:
+                write(i)

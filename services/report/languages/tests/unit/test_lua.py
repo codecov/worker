@@ -1,6 +1,7 @@
 from services.report.languages import lua
-from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
+
+from . import create_report_builder_session
 
 txt = b"""
 ==============================================================================
@@ -51,18 +52,12 @@ class TestLua(BaseTestCase):
             assert path in ("source.lua", "empty.lua", "file.lua")
             return path
 
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=fixes, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = lua.from_txt(txt, report_builder_session)
+        report_builder_session = create_report_builder_session(path_fixer=fixes)
+        lua.from_txt(txt, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "file.lua": [
                 (1, 1, None, [[0, 1, None, None, None]], None, None),
                 (3, 1, None, [[0, 1, None, None, None]], None, None),
@@ -76,8 +71,6 @@ class TestLua(BaseTestCase):
                 (5, 1, None, [[0, 1, None, None, None]], None, None),
             ],
         }
-
-        assert expected_result_archive == processed_report["archive"]
 
     def test_report_with_line_breaks_in_the_beginning(self):
         content = b"\n".join(
@@ -98,18 +91,12 @@ class TestLua(BaseTestCase):
                 b"<<<<<< EOF",
             ]
         )
-        report_builder = ReportBuilder(
-            current_yaml={}, sessionid=0, path_fixer=lambda x: x, ignored_lines={}
-        )
-        report_builder_session = report_builder.create_report_builder_session(
-            "filename"
-        )
-        report = lua.from_txt(content, report_builder_session)
+        report_builder_session = create_report_builder_session()
+        lua.from_txt(content, report_builder_session)
+        report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
-        import pprint
 
-        pprint.pprint(processed_report["archive"])
-        expected_result_archive = {
+        assert processed_report["archive"] == {
             "socks.lua": [
                 (2, 914, None, [[0, 914, None, None, None]], None, None),
                 (4, 914, None, [[0, 914, None, None, None]], None, None),
@@ -122,9 +109,8 @@ class TestLua(BaseTestCase):
             ]
         }
 
-        assert expected_result_archive == processed_report["archive"]
-
     def test_detect(self):
-        assert lua.detect(b"=========") is True
-        assert lua.detect(b"=== fefef") is False
-        assert lua.detect(b"<xml>") is False
+        processor = lua.LuaProcessor()
+        assert processor.matches_content(b"=========", "", "") is True
+        assert processor.matches_content(b"=== fefef", "", "") is False
+        assert processor.matches_content(b"<xml>", "", "") is False

@@ -1,0 +1,1196 @@
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import pytest
+from mock import AsyncMock
+from shared.plan.constants import DEFAULT_FREE_PLAN, PlanName
+from shared.torngit.exceptions import TorngitClientError
+
+from database.enums import ReportType
+from database.models import (
+    CommitReport,
+    Flake,
+    ReducedError,
+    Repository,
+    RepositoryFlag,
+    Test,
+    TestInstance,
+)
+from database.tests.factories import (
+    CommitFactory,
+    OwnerFactory,
+    PullFactory,
+    UploadFactory,
+)
+from services.repository import EnrichedPull
+from services.test_results import generate_test_id
+from services.urls import get_members_url
+from tasks.test_results_finisher import TestResultsFinisherTask
+from tests.helpers import mock_all_plans_and_tiers
+
+here = Path(__file__)
+
+
+@pytest.fixture
+def test_results_mock_app(mocker):
+    mocked_app = mocker.patch.object(
+        TestResultsFinisherTask,
+        "app",
+        tasks={
+            "app.tasks.notify.Notify": mocker.MagicMock(),
+            "app.tasks.flakes.ProcessFlakesTask": mocker.MagicMock(),
+            "app.tasks.cache_rollup.CacheTestRollupsTask": mocker.MagicMock(),
+        },
+    )
+    return mocked_app
+
+
+@pytest.fixture
+def mock_repo_provider_comments(mocker):
+    m = mocker.MagicMock(
+        edit_comment=AsyncMock(return_value=True),
+        post_comment=AsyncMock(return_value={"id": 1}),
+    )
+    _ = mocker.patch(
+        "helpers.notifier.get_repo_provider_service",
+        return_value=m,
+    )
+    _ = mocker.patch(
+        "tasks.test_results_finisher.get_repo_provider_service",
+        return_value=m,
+    )
+    return m
+
+
+@pytest.fixture
+def test_results_setup(mocker, dbsession):
+    mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
+
+    commit = CommitFactory.create(
+        message="hello world",
+        commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+        repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+        repository__owner__username="test-username",
+        repository__owner__service="github",
+        repository__owner__plan=PlanName.CODECOV_PRO_MONTHLY.value,
+        repository__name="test-repo-name",
+    )
+    commit.branch = "main"
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit.repository.branch = "main"
+    dbsession.flush()
+
+    repoid = commit.repoid
+    commitid = commit.commitid
+
+    current_report_row = CommitReport(
+        commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
+    )
+    dbsession.add(current_report_row)
+    dbsession.flush()
+
+    pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+    dbsession.add(pull)
+    dbsession.flush()
+
+    enriched_pull = EnrichedPull(
+        database_pull=pull,
+        provider_pull={},
+    )
+
+    _ = mocker.patch(
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
+        return_value=enriched_pull,
+    )
+    _ = mocker.patch(
+        "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+        return_value=enriched_pull,
+    )
+
+    uploads = [UploadFactory.create() for _ in range(4)]
+    uploads[3].created_at += timedelta(0, 3)
+
+    for i, upload in enumerate(uploads):
+        upload.report = current_report_row
+        upload.report.commit.repoid = repoid
+        upload.build_url = f"https://example.com/build_url_{i}"
+        dbsession.add(upload)
+    dbsession.flush()
+
+    flags = [RepositoryFlag(repository_id=repoid, flag_name=str(i)) for i in range(2)]
+    for flag in flags:
+        dbsession.add(flag)
+    dbsession.flush()
+
+    uploads[0].flags = [flags[0]]
+    uploads[1].flags = [flags[1]]
+    uploads[2].flags = []
+    uploads[3].flags = [flags[0]]
+    dbsession.flush()
+
+    test_name = "test_name"
+    test_suite = "test_testsuite"
+
+    test_id1 = generate_test_id(repoid, test_name + "0", test_suite, "a")
+    test1 = Test(
+        id_=test_id1,
+        repoid=repoid,
+        name="Class Name\x1f" + test_name + "0",
+        testsuite=test_suite,
+        flags_hash="a",
+    )
+    dbsession.add(test1)
+
+    test_id2 = generate_test_id(repoid, test_name + "1", test_suite, "b")
+    test2 = Test(
+        id_=test_id2,
+        repoid=repoid,
+        name=test_name + "1",
+        testsuite=test_suite,
+        flags_hash="b",
+    )
+    dbsession.add(test2)
+
+    test_id3 = generate_test_id(repoid, test_name + "2", test_suite, "")
+    test3 = Test(
+        id_=test_id3,
+        repoid=repoid,
+        name="Other Class Name\x1f" + test_name + "2",
+        testsuite=test_suite,
+        flags_hash="",
+    )
+    dbsession.add(test3)
+
+    test_id4 = generate_test_id(repoid, test_name + "3", test_suite, "")
+    test4 = Test(
+        id_=test_id4,
+        repoid=repoid,
+        name=test_name + "3",
+        testsuite=test_suite,
+        flags_hash="",
+    )
+    dbsession.add(test4)
+
+    dbsession.flush()
+
+    test_instances = [
+        TestInstance(
+            test_id=test_id1,
+            outcome="failure",
+            failure_message="This should not be in the comment, it will get overwritten by the last test instance",
+            duration_seconds=1.0,
+            upload_id=uploads[0].id,
+            repoid=repoid,
+            commitid=commitid,
+        ),
+        TestInstance(
+            test_id=test_id2,
+            outcome="failure",
+            failure_message="Shared \n\n\n\n <pre> ````````\n \r\n\r\n | test | test | test </pre>failure message",
+            duration_seconds=2.0,
+            upload_id=uploads[1].id,
+            repoid=repoid,
+            commitid=commitid,
+        ),
+        TestInstance(
+            test_id=test_id3,
+            outcome="failure",
+            failure_message="Shared \n\n\n\n <pre> \n  ````````  \n \r\n\r\n | test | test | test </pre>failure message",
+            duration_seconds=3.0,
+            upload_id=uploads[2].id,
+            repoid=repoid,
+            commitid=commitid,
+        ),
+        TestInstance(
+            test_id=test_id1,
+            outcome="failure",
+            failure_message="<pre>Fourth \r\n\r\n</pre> | test  | instance |",
+            duration_seconds=4.0,
+            upload_id=uploads[3].id,
+            repoid=repoid,
+            commitid=commitid,
+        ),
+        TestInstance(
+            test_id=test_id4,
+            outcome="failure",
+            failure_message=None,
+            duration_seconds=5.0,
+            upload_id=uploads[3].id,
+            repoid=repoid,
+            commitid=commitid,
+        ),
+    ]
+    for instance in test_instances:
+        dbsession.add(instance)
+    dbsession.flush()
+
+    return (repoid, commit, pull, test_instances)
+
+
+@pytest.fixture
+def test_results_setup_no_instances(mocker, dbsession):
+    mocker.patch.object(TestResultsFinisherTask, "hard_time_limit_task", 0)
+
+    commit = CommitFactory.create(
+        message="hello world",
+        commitid="cd76b0821854a780b60012aed85af0a8263004ad",
+        repository__owner__unencrypted_oauth_token="test7lk5ndmtqzxlx06rip65nac9c7epqopclnoy",
+        repository__owner__username="joseph-sentry",
+        repository__owner__service="github",
+        repository__owner__plan=PlanName.CODECOV_PRO_MONTHLY.value,
+        repository__name="codecov-demo",
+    )
+    commit.branch = "main"
+    dbsession.add(commit)
+    dbsession.flush()
+
+    repoid = commit.repoid
+
+    current_report_row = CommitReport(
+        commit_id=commit.id_, report_type=ReportType.TEST_RESULTS.value
+    )
+    dbsession.add(current_report_row)
+    dbsession.flush()
+
+    pull = PullFactory.create(repository=commit.repository, head=commit.commitid)
+
+    enriched_pull = EnrichedPull(
+        database_pull=pull,
+        provider_pull={},
+    )
+
+    _ = mocker.patch(
+        "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
+        return_value=enriched_pull,
+    )
+    _ = mocker.patch(
+        "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+        return_value=enriched_pull,
+    )
+
+    uploads = [UploadFactory.create() for _ in range(4)]
+    uploads[3].created_at += timedelta(0, 3)
+
+    for upload in uploads:
+        upload.report = current_report_row
+        upload.report.commit.repoid = repoid
+        dbsession.add(upload)
+    dbsession.flush()
+
+    flags = [RepositoryFlag(repository_id=repoid, flag_name=str(i)) for i in range(2)]
+    for flag in flags:
+        dbsession.add(flag)
+    dbsession.flush()
+
+    uploads[0].flags = [flags[0]]
+    uploads[1].flags = [flags[1]]
+    uploads[2].flags = []
+    uploads[3].flags = [flags[0]]
+    dbsession.flush()
+
+    test_name = "test_name"
+    test_suite = "test_testsuite"
+
+    test_id1 = generate_test_id(repoid, test_name + "0", test_suite, "a")
+    test1 = Test(
+        id_=test_id1,
+        repoid=repoid,
+        name=test_name + "0",
+        testsuite=test_suite,
+        flags_hash="a",
+    )
+    dbsession.add(test1)
+
+    test_id2 = generate_test_id(repoid, test_name + "1", test_suite, "b")
+    test2 = Test(
+        id_=test_id2,
+        repoid=repoid,
+        name=test_name + "1",
+        testsuite=test_suite,
+        flags_hash="b",
+    )
+    dbsession.add(test2)
+
+    test_id3 = generate_test_id(repoid, test_name + "2", test_suite, "")
+    test3 = Test(
+        id_=test_id3,
+        repoid=repoid,
+        name=test_name + "2",
+        testsuite=test_suite,
+        flags_hash="",
+    )
+    dbsession.add(test3)
+
+    test_id4 = generate_test_id(repoid, test_name + "3", test_suite, "")
+    test4 = Test(
+        id_=test_id4,
+        repoid=repoid,
+        name=test_name + "3",
+        testsuite=test_suite,
+        flags_hash="",
+    )
+    dbsession.add(test4)
+
+    dbsession.flush()
+
+    return (repoid, commit, pull, None)
+
+
+class TestUploadTestFinisherTask(object):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        repoid, commit, pull, _ = test_results_setup
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+        assert expected_result == result
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
+
+> 
+> ```python
+> test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````python
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```python
+> Other Class Name test_name2
+> ```
+> 
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````python
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+
+> 
+> ```python
+> Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```python
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
+        )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_no_failures(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        repoid, commit, _, test_instances = test_results_setup
+
+        for instance in test_instances:
+            instance.outcome = "pass"
+        dbsession.flush()
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            "queue_notify": True,
+        }
+        test_results_mock_app.tasks[
+            "app.tasks.notify.Notify"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "commitid": commit.commitid,
+                "current_yaml": {"codecov": {"max_report_age": False}},
+                "repoid": repoid,
+            },
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+        assert expected_result == result
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_no_pull(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        repoid, commit, pull, _ = test_results_setup
+
+        _ = mocker.patch(
+            "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+            return_value=None,
+        )
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
+    @pytest.mark.django_db
+    @pytest.mark.integration
+    def test_upload_finisher_task_call_no_success(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup_no_instances,
+    ):
+        repoid, commit, pull, _ = test_results_setup_no_instances
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            False,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": False,
+            "notify_succeeded": False,
+            "queue_notify": True,
+        }
+
+        assert expected_result == result
+
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.notify.Notify"
+        ].apply_async.assert_called_with(
+            args=None,
+            kwargs={
+                "commitid": commit.commitid,
+                "current_yaml": {"codecov": {"max_report_age": False}},
+                "repoid": repoid,
+            },
+        )
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_upgrade_comment(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        repoid, commit, pull, _ = test_results_setup
+
+        repo = dbsession.query(Repository).filter(Repository.repoid == repoid).first()
+        repo.owner.plan_activated_users = []
+        repo.owner.plan = PlanName.CODECOV_PRO_MONTHLY.value
+        repo.private = True
+        dbsession.flush()
+
+        pr_author = OwnerFactory(service="github", service_id=100)
+        dbsession.add(pr_author)
+        dbsession.flush()
+
+        enriched_pull = EnrichedPull(
+            database_pull=pull,
+            provider_pull={"author": {"id": "100", "username": "test_username"}},
+        )
+        _ = mocker.patch(
+            "helpers.notifier.fetch_and_update_pull_request_information_from_commit",
+            return_value=enriched_pull,
+        )
+        _ = mocker.patch(
+            "tasks.test_results_finisher.fetch_and_update_pull_request_information_from_commit",
+            return_value=enriched_pull,
+        )
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        assert result == {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            f"The author of this PR, test_username, is not an activated member of this organization on Codecov.\nPlease [activate this user on Codecov]({get_members_url(pull)}) to display this PR comment.\nCoverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.\nPlease don't hesitate to email us at support@codecov.io with any questions.",
+        )
+
+        test_results_mock_app.tasks["app.tasks.notify.Notify"].assert_not_called()
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_existing_comment(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        repoid, commit, pull, _ = test_results_setup
+
+        pull.commentid = 1
+        dbsession.flush()
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+        mock_repo_provider_comments.edit_comment.assert_called_with(
+            pull.pullid,
+            1,
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
+
+> 
+> ```python
+> test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````python
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```python
+> Other Class Name test_name2
+> ```
+> 
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````python
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+
+> 
+> ```python
+> Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```python
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
+        )
+
+        assert expected_result == result
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_comment_fails(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        repoid, commit, _, _ = test_results_setup
+
+        mock_repo_provider_comments.post_comment.side_effect = TorngitClientError
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": False,
+            "queue_notify": False,
+        }
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+        assert expected_result == result
+
+    @pytest.mark.parametrize(
+        "fail_count,count,recent_passes_count", [(2, 15, 13), (50, 150, 10)]
+    )
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_with_flaky(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+        fail_count,
+        count,
+        recent_passes_count,
+    ):
+        repoid, commit, pull, test_instances = test_results_setup
+
+        for i, instance in enumerate(test_instances):
+            if i != 2:
+                dbsession.delete(instance)
+        dbsession.flush()
+
+        r = ReducedError()
+        r.message = "failure_message"
+
+        dbsession.add(r)
+        dbsession.flush()
+
+        f = Flake()
+        f.repoid = repoid
+        f.testid = test_instances[2].test_id
+        f.reduced_error = r
+        f.count = count
+        f.fail_count = fail_count
+        f.recent_passes_count = recent_passes_count
+        f.start_date = datetime.now()
+        f.end_date = None
+
+        dbsession.add(f)
+        dbsession.flush()
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={
+                "codecov": {"max_report_age": False},
+                "test_analytics": {"flake_detection": True},
+            },
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            f"""### :x: 1 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 1 | 1 | 0 | 0 |
+<details><summary>{"View the top 1 failed test(s) by shortest run time" if (count - fail_count) == recent_passes_count else "View the full list of 1 :snowflake: flaky tests"}</summary>
+
+> 
+> ```python
+> Other Class Name test_name2
+> ```
+> {f"\n> **Flake rate in main:** 33.33% (Passed {count - fail_count} times, Failed {fail_count} times)" if (count - fail_count) != recent_passes_count else ""}
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````python
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+</details>
+
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
+        )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_main_branch(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        commit_yaml = {
+            "codecov": {"max_report_age": False},
+            "test_analytics": {"flake_detection": True},
+        }
+
+        repoid, commit, pull, test_instances = test_results_setup
+
+        commit.merged = True
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml=commit_yaml,
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
+        test_results_mock_app.tasks[
+            "app.tasks.flakes.ProcessFlakesTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repo_id": repoid,
+                "commit_id": commit.commitid,
+            },
+        )
+        test_results_mock_app.tasks[
+            "app.tasks.cache_rollup.CacheTestRollupsTask"
+        ].apply_async.assert_called_with(
+            kwargs={
+                "repoid": repoid,
+                "branch": "main",
+            },
+        )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    def test_upload_finisher_task_call_computed_name(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+    ):
+        repoid, commit, pull, test_instances = test_results_setup
+
+        for instance in test_instances:
+            instance.test.computed_name = f"hello_{instance.test.name}"
+
+        dbsession.flush()
+
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": False}},
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+        mock_repo_provider_comments.post_comment.assert_called_with(
+            pull.pullid,
+            """### :x: 4 Tests Failed:
+| Tests completed | Failed | Passed | Skipped |
+|---|---|---|---|
+| 4 | 4 | 0 | 0 |
+<details><summary>View the top 3 failed test(s) by shortest run time</summary>
+
+> 
+> ```python
+> hello_test_name1
+> ```
+> 
+> <details><summary>Stack Traces | 2s run time</summary>
+> 
+> > `````````python
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> ````````
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_1) the CI Build
+> 
+> </details>
+
+
+> 
+> ```python
+> hello_Other Class Name test_name2
+> ```
+> 
+> <details><summary>Stack Traces | 3s run time</summary>
+> 
+> > `````````python
+> > Shared 
+> > 
+> > 
+> > 
+> >  <pre> 
+> >   ````````  
+> >  
+> > 
+> >  | test | test | test </pre>failure message
+> > `````````
+> > [View](https://example.com/build_url_2) the CI Build
+> 
+> </details>
+
+
+> 
+> ```python
+> hello_Class Name test_name0
+> ```
+> 
+> <details><summary>Stack Traces | 4s run time</summary>
+> 
+> > 
+> > ```python
+> > <pre>Fourth 
+> > 
+> > </pre> | test  | instance |
+> > ```
+> > 
+> > [View](https://example.com/build_url_3) the CI Build
+> 
+> </details>
+
+</details>
+
+To view more test analytics, go to the [Test Analytics Dashboard](https://app.codecov.io/gh/test-username/test-repo-name/tests/main)
+<sub>📋 Got 3 mins? [Take this short survey](https://forms.gle/BpocVj23nhr2Y45G7) to help us improve Test Analytics.</sub>""",
+        )
+
+    @pytest.mark.integration
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("plan", [DEFAULT_FREE_PLAN, "users-pr-inappm"])
+    def test_upload_finisher_task_call_main_with_plan(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+        test_results_mock_app,
+        mock_repo_provider_comments,
+        test_results_setup,
+        plan,
+    ):
+        mocker.patch.object(TestResultsFinisherTask, "get_flaky_tests")
+
+        commit_yaml = {
+            "codecov": {
+                "max_report_age": False,
+            },
+            "test_analytics": {"flake_detection": True},
+        }
+
+        repoid, commit, pull, test_instances = test_results_setup
+
+        commit.merged = True
+
+        repo = dbsession.query(Repository).filter_by(repoid=repoid).first()
+        repo.owner.plan = plan
+        dbsession.flush()
+        result = TestResultsFinisherTask().run_impl(
+            dbsession,
+            True,
+            repoid=repoid,
+            commitid=commit.commitid,
+            commit_yaml=commit_yaml,
+        )
+
+        expected_result = {
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        }
+
+        assert expected_result == result
+
+        if plan == PlanName.CODECOV_PRO_MONTHLY.value:
+            test_results_mock_app.tasks[
+                "app.tasks.flakes.ProcessFlakesTask"
+            ].apply_async.assert_called_with(
+                kwargs={
+                    "repo_id": repoid,
+                    "commit_id": commit.commitid,
+                },
+            )
+        else:
+            test_results_mock_app.tasks[
+                "app.tasks.flakes.ProcessFlakesTask"
+            ].apply_async.assert_not_called()

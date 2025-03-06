@@ -1,27 +1,24 @@
 import re
-import typing
 from collections import defaultdict
 from io import BytesIO
 
-from shared.reports.resources import Report
+import sentry_sdk
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import CoverageType, ReportBuilderSession
 from services.yaml import read_yaml_field
 
 
 class GcovProcessor(BaseLanguageProcessor):
-    def matches_content(self, content, first_line, name):
-        return detect(content)
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
+        return b"0:Source:" in content.split(b"\n", 1)[0]
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self,
+        content: bytes,
+        report_builder_session: ReportBuilderSession,
+    ) -> None:
         return from_txt(content, report_builder_session)
 
 
@@ -30,43 +27,34 @@ detect_loop = re.compile(r"^\s+(for|while)\s?\(").match
 detect_conditional = re.compile(r"^\s+((if\s?\()|(\} else if\s?\())").match
 
 
-def detect(report):
-    return b"0:Source:" in report.split(b"\n", 1)[0]
-
-
-def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    name, fix, ignored_lines = (
-        report_builder_session._report_filepath,
-        report_builder_session.path_fixer,
-        report_builder_session.ignored_lines,
-    )
+def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> None:
+    filepath = report_builder_session.filepath
+    path_fixer = report_builder_session.path_fixer
 
     line_iterator = iter(BytesIO(string))
     # clean and strip lines
     filename = next(line_iterator).decode(errors="replace").rstrip("\n")
     filename = filename.split(":")[3].lstrip("./")
-    if name and name.endswith(filename + ".gcov"):
-        filename = fix(name[:-5]) or fix(filename)
+    if filepath and filepath.endswith(filename + ".gcov"):
+        filename = path_fixer(filepath[:-5]) or path_fixer(filename)
     else:
-        filename = fix(filename)
+        filename = path_fixer(filename)
     if not filename:
         return None
 
-    report_builder_session.append(
-        _process_gcov_file(
-            filename, ignored_lines.get(filename), line_iterator, report_builder_session
-        )
+    settings = report_builder_session.yaml_field(("parsers", "gcov"))
+    detect_branches_in_methods = read_yaml_field(
+        settings, ("branch_detection", "method"), False
     )
-    return report_builder_session.output_report()
-
-
-def _process_gcov_file(
-    filename,
-    ignore_func,
-    gcov_line_iterator,
-    report_builder_session: ReportBuilderSession,
-):
-    settings = read_yaml_field(report_builder_session.current_yaml, ("parsers", "gcov"))
+    detect_branches_in_loops = read_yaml_field(
+        settings, ("branch_detection", "loop"), False
+    )
+    detect_branches_in_conditions = read_yaml_field(
+        settings, ("branch_detection", "conditional"), False
+    )
+    detect_branches_in_macros = read_yaml_field(
+        settings, ("branch_detection", "macro"), False
+    )
 
     ignore = False
     ln = None
@@ -79,7 +67,7 @@ def _process_gcov_file(
     lines = defaultdict(list)
     line_types = {}
 
-    for encoded_line in gcov_line_iterator:
+    for encoded_line in line_iterator:
         line = encoded_line.decode(errors="replace").rstrip("\n")
         if "LCOV_EXCL_START" in line:
             ignore = True
@@ -106,32 +94,23 @@ def _process_gcov_file(
                 _cur_branch_detected = False  # first set to false, prove me true
 
                 # class
-                if line_types[ln] == CoverageType.method:
-                    if (
-                        read_yaml_field(settings, ("branch_detection", "method"))
-                        is not True
-                    ):
-                        continue
+                if (
+                    line_types[ln] == CoverageType.method
+                    and not detect_branches_in_methods
+                ):
+                    continue
                 # loop
                 elif detect_loop(data):
                     line_types[ln] = CoverageType.branch
-                    if (
-                        read_yaml_field(settings, ("branch_detection", "loop"))
-                        is not True
-                    ):
+                    if not detect_branches_in_loops:
                         continue
                 # conditional
                 elif detect_conditional(data):
                     line_types[ln] = CoverageType.branch
-                    if (
-                        read_yaml_field(settings, ("branch_detection", "conditional"))
-                        is not True
-                    ):
+                    if not detect_branches_in_conditions:
                         continue
                 # else macro
-                elif (
-                    read_yaml_field(settings, ("branch_detection", "macro")) is not True
-                ):
+                elif not detect_branches_in_macros:
                     continue
 
                 _cur_branch_detected = True  # proven true
@@ -211,7 +190,7 @@ def _process_gcov_file(
 
             next_is_func = False
 
-    _file = report_builder_session.file_class(filename, ignore=ignore_func)
+    _file = report_builder_session.create_coverage_file(filename, do_fix_path=False)
     for ln, coverages in lines.items():
         _type = line_types[ln]
         branches = line_branches.get(ln)
@@ -219,17 +198,13 @@ def _process_gcov_file(
             coverage = "%s/%s" % tuple(branches)
             _file.append(
                 ln,
-                report_builder_session.create_coverage_line(
-                    filename=filename, coverage=coverage, coverage_type=_type
-                ),
+                report_builder_session.create_coverage_line(coverage, _type),
             )
         else:
             for coverage in coverages:
                 _file.append(
                     ln,
-                    report_builder_session.create_coverage_line(
-                        filename=filename, coverage=coverage, coverage_type=_type
-                    ),
+                    report_builder_session.create_coverage_line(coverage, _type),
                 )
 
-    return _file
+    report_builder_session.append(_file)

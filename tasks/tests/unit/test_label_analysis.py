@@ -2,8 +2,8 @@ import json
 
 import pytest
 from mock import patch
-from shared.reports.resources import LineSession, Report, ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint
+from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.types import CoverageDatapoint, LineSession
 
 from database.models.labelanalysis import LabelAnalysisRequest
 from database.tests.factories import RepositoryFactory
@@ -418,12 +418,11 @@ def sample_report_with_labels():
     return r
 
 
-@pytest.mark.asyncio
-async def test_simple_call_without_requested_labels_then_with_requested_labels(
+def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
-    mock_metrics_context = mocker.patch("tasks.label_analysis.MetricContext")
+    mock_log_simple_metric = mocker.patch("tasks.label_analysis.log_simple_metric")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -484,7 +483,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession.flush()
 
     task = LabelAnalysisRequestProcessingTask()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_present_report_labels = [
         "apple",
         "applejuice",
@@ -509,18 +508,11 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     }
     assert res == expected_result
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
-    mock_metrics_context.assert_called_with(
-        repo_id=repository.repoid, commit_id=larf.head_commit.id
-    )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
-        "label_analysis.tests_saved_count", 9
-    )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+    mock_log_simple_metric.assert_any_call("label_analysis.tests_saved_count", 9)
+    mock_log_simple_metric.assert_any_call(
         "label_analysis.requests_with_requested_labels", 0.0
     )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
-        "label_analysis.tests_to_run_count", 6
-    )
+    mock_log_simple_metric.assert_any_call("label_analysis.tests_to_run_count", 6)
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
@@ -535,7 +527,7 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     # And trigger the task again to save the new results
     larf.requested_labels = ["tangerine", "pear", "banana", "apple"]
     dbsession.flush()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_present_diff_labels = ["banana"]
     expected_present_report_labels = ["apple", "banana"]
     expected_absent_labels = ["pear", "tangerine"]
@@ -556,26 +548,19 @@ async def test_simple_call_without_requested_labels_then_with_requested_labels(
     mock_metrics.incr.assert_called_with(
         "label_analysis_task.already_calculated.new_result"
     )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
-        "label_analysis.tests_saved_count", 9
-    )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+    mock_log_simple_metric.assert_any_call("label_analysis.tests_saved_count", 9)
+    mock_log_simple_metric.assert_any_call(
         "label_analysis.requests_with_requested_labels", 1.0
     )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
-        "label_analysis.requested_labels_count", 4
-    )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
-        "label_analysis.tests_to_run_count", 3
-    )
+    mock_log_simple_metric.assert_any_call("label_analysis.requested_labels_count", 4)
+    mock_log_simple_metric.assert_any_call("label_analysis.tests_to_run_count", 3)
 
 
-@pytest.mark.asyncio
-async def test_simple_call_with_requested_labels(
+def test_simple_call_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
-    mock_metrics_context = mocker.patch("tasks.label_analysis.MetricContext")
+    mock_log_simple_metric = mocker.patch("tasks.label_analysis.log_simple_metric")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -595,7 +580,7 @@ async def test_simple_call_with_requested_labels(
     dbsession.add(larf)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_present_diff_labels = ["banana"]
     expected_present_report_labels = ["apple", "banana"]
     expected_absent_labels = ["pear", "tangerine"]
@@ -617,18 +602,11 @@ async def test_simple_call_with_requested_labels(
         "global_level_labels": [],
     }
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
-    mock_metrics_context.assert_called_with(
-        repo_id=larf.head_commit.repository.repoid, commit_id=larf.head_commit.id
-    )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
-        "label_analysis.tests_saved_count", 9
-    )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
+    mock_log_simple_metric.assert_any_call("label_analysis.tests_saved_count", 9)
+    mock_log_simple_metric.assert_any_call(
         "label_analysis.requests_with_requested_labels", 1.0
     )
-    mock_metrics_context.return_value.attempt_log_simple_metric.assert_any_call(
-        "label_analysis.tests_to_run_count", 3
-    )
+    mock_log_simple_metric.assert_any_call("label_analysis.tests_to_run_count", 3)
 
 
 def test_get_requested_labels(dbsession, mocker):
@@ -647,11 +625,10 @@ def test_get_requested_labels(dbsession, mocker):
     assert labels == ["tangerine", "pear", "banana", "apple"]
 
 
-@pytest.mark.asyncio
-async def test_call_label_analysis_no_request_object(dbsession, mocker):
+def test_call_label_analysis_no_request_object(dbsession, mocker):
     task = LabelAnalysisRequestProcessingTask()
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
-    res = await task.run_async(db_session=dbsession, request_id=-1)
+    res = task.run_impl(db_session=dbsession, request_id=-1)
     assert res == {
         "success": False,
         "present_report_labels": [],
@@ -824,8 +801,7 @@ def test_get_relevant_executable_lines_with_static_analyses(dbsession, mocker):
     )
 
 
-@pytest.mark.asyncio
-async def test_run_async_with_error(
+def test_run_impl_with_error(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
@@ -840,7 +816,7 @@ async def test_run_async_with_error(
     dbsession.add(larf)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     expected_result = {
         "absent_labels": [],
         "present_diff_labels": [],
@@ -864,14 +840,13 @@ async def test_run_async_with_error(
     )
 
 
-@pytest.mark.asyncio
-async def test_calculate_result_no_report(
+def test_calculate_result_no_report(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
     larf: LabelAnalysisRequest = LabelAnalysisRequestFactory.create(
         # This being not-ordered is important in the test
-        # TO make sure we go through the warning at the bottom of run_async
+        # TO make sure we go through the warning at the bottom of run_impl
         requested_labels=["tangerine", "pear", "banana", "apple"]
     )
     dbsession.add(larf)
@@ -887,7 +862,7 @@ async def test_calculate_result_no_report(
         return_value=(set(), set(), set()),
     )
     task = LabelAnalysisRequestProcessingTask()
-    res = await task.run_async(dbsession, larf.id)
+    res = task.run_impl(dbsession, larf.id)
     assert res == {
         "success": True,
         "absent_labels": larf.requested_labels,
@@ -912,9 +887,8 @@ async def test_calculate_result_no_report(
     )
 
 
-@pytest.mark.asyncio
 @patch("tasks.label_analysis.parse_git_diff_json", return_value=["parsed_git_diff"])
-async def test__get_parsed_git_diff(mock_parse_diff, dbsession, mock_repo_provider):
+def test__get_parsed_git_diff(mock_parse_diff, dbsession, mock_repo_provider):
     repository = RepositoryFactory.create()
     dbsession.add(repository)
     dbsession.flush()
@@ -926,7 +900,7 @@ async def test__get_parsed_git_diff(mock_parse_diff, dbsession, mock_repo_provid
     mock_repo_provider.get_compare.return_value = {"diff": "json"}
     task = LabelAnalysisRequestProcessingTask()
     task.errors = []
-    parsed_diff = await task._get_parsed_git_diff(larq)
+    parsed_diff = task._get_parsed_git_diff(larq)
     assert parsed_diff == ["parsed_git_diff"]
     mock_parse_diff.assert_called_with({"diff": "json"})
     mock_repo_provider.get_compare.assert_called_with(
@@ -934,11 +908,8 @@ async def test__get_parsed_git_diff(mock_parse_diff, dbsession, mock_repo_provid
     )
 
 
-@pytest.mark.asyncio
 @patch("tasks.label_analysis.parse_git_diff_json", return_value=["parsed_git_diff"])
-async def test__get_parsed_git_diff_error(
-    mock_parse_diff, dbsession, mock_repo_provider
-):
+def test__get_parsed_git_diff_error(mock_parse_diff, dbsession, mock_repo_provider):
     repository = RepositoryFactory.create()
     dbsession.add(repository)
     dbsession.flush()
@@ -951,15 +922,14 @@ async def test__get_parsed_git_diff_error(
     task = LabelAnalysisRequestProcessingTask()
     task.errors = []
     task.dbsession = dbsession
-    parsed_diff = await task._get_parsed_git_diff(larq)
-    assert parsed_diff == None
+    parsed_diff = task._get_parsed_git_diff(larq)
+    assert parsed_diff is None
     mock_parse_diff.assert_not_called()
     mock_repo_provider.get_compare.assert_called_with(
         larq.base_commit.commitid, larq.head_commit.commitid
     )
 
 
-@pytest.mark.asyncio
 @patch(
     "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_relevant_executable_lines",
     return_value=[{"all": False, "files": {}}],
@@ -968,7 +938,7 @@ async def test__get_parsed_git_diff_error(
     "tasks.label_analysis.LabelAnalysisRequestProcessingTask._get_parsed_git_diff",
     return_value=["parsed_git_diff"],
 )
-async def test__get_lines_relevant_to_diff(
+def test__get_lines_relevant_to_diff(
     mock_parse_diff, mock_get_relevant_lines, dbsession
 ):
     repository = RepositoryFactory.create()
@@ -980,13 +950,12 @@ async def test__get_lines_relevant_to_diff(
     dbsession.add(larq)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
-    lines = await task._get_lines_relevant_to_diff(larq)
+    lines = task._get_lines_relevant_to_diff(larq)
     assert lines == [{"all": False, "files": {}}]
     mock_parse_diff.assert_called_with(larq)
     mock_get_relevant_lines.assert_called_with(larq, ["parsed_git_diff"])
 
 
-@pytest.mark.asyncio
 @patch(
     "tasks.label_analysis.LabelAnalysisRequestProcessingTask.get_relevant_executable_lines"
 )
@@ -994,7 +963,7 @@ async def test__get_lines_relevant_to_diff(
     "tasks.label_analysis.LabelAnalysisRequestProcessingTask._get_parsed_git_diff",
     return_value=None,
 )
-async def test__get_lines_relevant_to_diff_error(
+def test__get_lines_relevant_to_diff_error(
     mock_parse_diff, mock_get_relevant_lines, dbsession
 ):
     repository = RepositoryFactory.create()
@@ -1006,7 +975,7 @@ async def test__get_lines_relevant_to_diff_error(
     dbsession.add(larq)
     dbsession.flush()
     task = LabelAnalysisRequestProcessingTask()
-    lines = await task._get_lines_relevant_to_diff(larq)
-    assert lines == None
+    lines = task._get_lines_relevant_to_diff(larq)
+    assert lines is None
     mock_parse_diff.assert_called_with(larq)
     mock_get_relevant_lines.assert_not_called()

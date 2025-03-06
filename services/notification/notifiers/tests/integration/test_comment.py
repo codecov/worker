@@ -1,19 +1,20 @@
-from unittest.mock import PropertyMock, patch
+from unittest.mock import PropertyMock
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
 
 from database.tests.factories import CommitFactory, PullFactory, RepositoryFactory
-from services.comparison import ComparisonProxy
+from services.comparison import ComparisonContext, ComparisonProxy
 from services.comparison.types import Comparison, EnrichedPull, FullCommit
 from services.decoration import Decoration
 from services.notification.notifiers.comment import CommentNotifier
+from tests.helpers import mock_all_plans_and_tiers
 
 
 @pytest.fixture
 def is_not_first_pull(mocker):
     mocker.patch(
-        "database.models.core.Pull.is_first_pull",
+        "database.models.core.Pull.is_first_coverage_pull",
         return_value=False,
         new_callable=PropertyMock,
     )
@@ -169,7 +170,7 @@ def sample_comparison_gitlab(dbsession, request, sample_report, small_report):
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=1,
+        pullid=5,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
@@ -232,7 +233,7 @@ def sample_comparison_for_upgrade(dbsession, request, sample_report, small_repor
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=4,
+        pullid=2,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
@@ -297,7 +298,7 @@ def sample_comparison_for_limited_upload(
         repository=repository,
         base=base_commit.commitid,
         head=head_commit.commitid,
-        pullid=1,
+        pullid=3,
     )
     dbsession.add(base_commit)
     dbsession.add(head_commit)
@@ -335,8 +336,15 @@ def sample_comparison_for_limited_upload(
 
 @pytest.mark.usefixtures("is_not_first_pull")
 class TestCommentNotifierIntegration(object):
-    @pytest.mark.asyncio
-    async def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        mock_all_plans_and_tiers()
+
+    @pytest.mark.django_db
+    def test_notify(self, sample_comparison, codecov_vcr, mock_configuration):
+        sample_comparison.context = ComparisonContext(
+            all_tests_passed=True, test_results_error=None
+        )
         mock_configuration._params["setup"] = {
             "codecov_url": None,
             "codecov_dashboard_url": None,
@@ -348,16 +356,19 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
+            "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d?dropdown=coverage&el=desc).",
             "> Report is 2 commits behind head on main.",
+            "",
+            ":white_check_mark: All tests successful. No failed tests found.",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
             "",
@@ -390,10 +401,10 @@ class TestCommentNotifierIntegration(object):
             "",
             "------",
             "",
-            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
@@ -402,8 +413,84 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669247}
 
-    @pytest.mark.asyncio
-    async def test_notify_upgrade(
+    @pytest.mark.django_db
+    def test_notify_test_results_error(
+        self, sample_comparison, codecov_vcr, mock_configuration
+    ):
+        sample_comparison.context = ComparisonContext(
+            all_tests_passed=False,
+            test_results_error=":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+        )
+        mock_configuration._params["setup"] = {
+            "codecov_url": None,
+            "codecov_dashboard_url": None,
+        }
+        comparison = sample_comparison
+        notifier = CommentNotifier(
+            repository=comparison.head.commit.repository,
+            title="title",
+            notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
+            notifier_site_settings=True,
+            current_yaml={},
+            repository_service=comparison.repository_service,
+        )
+        result = notifier.notify(comparison)
+        assert result.notification_attempted
+        assert result.notification_successful
+        assert result.explanation is None
+        message = [
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
+            "All modified and coverable lines are covered by tests :white_check_mark:",
+            "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d?dropdown=coverage&el=desc).",
+            "> Report is 2 commits behind head on main.",
+            "",
+            ":x: We are unable to process any of the uploaded JUnit XML files. Please ensure your files are in the right format.",
+            "",
+            ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
+            "",
+            "[![Impacted file tree graph](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=tree)",
+            "",
+            "```diff",
+            "@@              Coverage Diff              @@",
+            "##               main       #9       +/-   ##",
+            "=============================================",
+            "+ Coverage     50.00%   60.00%   +10.00%     ",
+            "+ Complexity       11       10        -1     ",
+            "=============================================",
+            "  Files             2        2               ",
+            "  Lines             6       10        +4     ",
+            "  Branches          0        1        +1     ",
+            "=============================================",
+            "+ Hits              3        6        +3     ",
+            "  Misses            3        3               ",
+            "- Partials          0        1        +1     ",
+            "```",
+            "",
+            "| [Flag](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
+            "|---|---|---|---|",
+            "| [integration](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "",
+            "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
+            "",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9/indirect-changes?src=pr&el=tree-more)",
+            "",
+            "------",
+            "",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).",
+            "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
+            "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
+            "> Powered by [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=footer). Last update [5b174c2...5601846](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "",
+        ]
+        for exp, res in zip(result.data_sent["message"], message):
+            assert exp == res
+        assert result.data_sent["message"] == message
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
+        assert result.data_received == {"id": 1699669247}
+
+    @pytest.mark.django_db
+    def test_notify_upgrade(
         self, dbsession, sample_comparison_for_upgrade, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
@@ -414,9 +501,10 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
             decoration_type=Decoration.upgrade,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
@@ -432,12 +520,12 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {
             "commentid": None,
             "message": expected_message,
-            "pullid": 4,
+            "pullid": 2,
         }
         assert result.data_received == {"id": 1361234119}
 
-    @pytest.mark.asyncio
-    async def test_notify_upload_limited(
+    @pytest.mark.django_db
+    def test_notify_upload_limited(
         self,
         dbsession,
         sample_comparison_for_limited_upload,
@@ -455,19 +543,20 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
             decoration_type=Decoration.upload_limit,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
         expected_message = [
-            f"## [Codecov](https://app.codecov.io/plan/gh/test-acc9) upload limit reached :warning:",
-            f"This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
+            "## [Codecov](https://app.codecov.io/plan/gh/test-acc9) upload limit reached :warning:",
+            "This org is currently on the free Basic Plan; which includes 250 free private repo uploads each rolling month.\
                  This limit has been reached and additional reports cannot be generated. For unlimited uploads,\
                       upgrade to our [pro plan](https://app.codecov.io/plan/gh/test-acc9).",
-            f"",
-            f"**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
+            "",
+            "**Do you have questions or need help?** Connect with our sales team today at ` sales@codecov.io `",
         ]
         for exp, res in zip(result.data_sent["message"], expected_message):
             assert exp == res
@@ -475,12 +564,12 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {
             "commentid": None,
             "message": expected_message,
-            "pullid": 1,
+            "pullid": 3,
         }
         assert result.data_received == {"id": 1111984446}
 
-    @pytest.mark.asyncio
-    async def test_notify_gitlab(
+    @pytest.mark.django_db
+    def test_notify_gitlab(
         self, sample_comparison_gitlab, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {
@@ -494,21 +583,22 @@ class TestCommentNotifierIntegration(object):
             notifier_yaml_settings={"layout": "reach, diff, flags, files, footer"},
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            "> Comparison is base [(`0fc784a`)](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?el=desc) 50.00% compared to head [(`0b6a213`)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=desc) 60.00%.",
+            "> Project coverage is 60.00%. Comparing base [(`0fc784a`)](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0fc784af11c401449e56b24a174bae7b9af86c98?dropdown=coverage&el=desc) to head [(`0b6a213`)](https://app.codecov.io/gl/joseph-sentry/example-python/commit/0b6a213fc300cd328c0625f38f30432ee6e066e5?dropdown=coverage&el=desc).",
             "",
-            "[![Impacted file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=tree)",
+            "[![Impacted file tree graph](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/graphs/tree.svg?width=650&height=150&src=pr&token=abcdefghij)](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?src=pr&el=tree)",
             "",
             "```diff",
             "@@              Coverage Diff              @@",
-            "##               main       #1       +/-   ##",
+            "##               main       #5       +/-   ##",
             "=============================================",
             "+ Coverage     50.00%   60.00%   +10.00%     ",
             "+ Complexity       11       10        -1     ",
@@ -522,31 +612,31 @@ class TestCommentNotifierIntegration(object):
             "- Partials          0        1        +1     ",
             "```",
             "",
-            "| [Flag](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
+            "| [Flag](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/flags?src=pr&el=flags) | Coverage Δ | Complexity Δ | |",
             "|---|---|---|---|",
-            "| [integration](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flag) | `?` | `?` | |",
-            "| [unit](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
+            "| [integration](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/flags?src=pr&el=flag) | `?` | `?` | |",
+            "| [unit](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/flags?src=pr&el=flag) | `100.00% <ø> (?)` | `0.00 <ø> (?)` | |",
             "",
             "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more.",
             "",
-            "[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1/indirect-changes?src=pr&el=tree-more)",
+            "[see 2 files with indirect coverage changes](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5/indirect-changes?src=pr&el=tree-more)",
             "",
             "------",
             "",
-            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=continue).",
+            "[Continue to review full report in Codecov by Sentry](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=continue).",
             "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)",
             "> `Δ = absolute <relative> (impact)`, `ø = not affected`, `? = missing data`",
-            "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/1?src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
+            "> Powered by [Codecov](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=footer). Last update [0fc784a...0b6a213](https://app.codecov.io/gl/joseph-sentry/example-python/pull/5?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs](https://docs.codecov.io/docs/pull-request-comments).",
             "",
         ]
         for exp, res in zip(result.data_sent["message"], message):
             assert exp == res
         assert result.data_sent["message"] == message
-        assert result.data_sent == {"commentid": None, "message": message, "pullid": 1}
+        assert result.data_sent == {"commentid": None, "message": message, "pullid": 5}
         assert result.data_received == {"id": 1457135397}
 
-    @pytest.mark.asyncio
-    async def test_notify_new_layout(
+    @pytest.mark.django_db
+    def test_notify_new_layout(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
@@ -560,15 +650,16 @@ class TestCommentNotifierIntegration(object):
             },
             notifier_site_settings=True,
             current_yaml={},
+            repository_service=comparison.repository_service,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
+            "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d?dropdown=coverage&el=desc).",
             "> Report is 2 commits behind head on main.",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
@@ -604,7 +695,7 @@ class TestCommentNotifierIntegration(object):
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]
@@ -615,8 +706,8 @@ class TestCommentNotifierIntegration(object):
         assert result.data_sent == {"commentid": None, "message": message, "pullid": 9}
         assert result.data_received == {"id": 1699669290}
 
-    @pytest.mark.asyncio
-    async def test_notify_with_components(
+    @pytest.mark.django_db
+    def test_notify_with_components(
         self, sample_comparison, codecov_vcr, mock_configuration
     ):
         mock_configuration._params["setup"] = {"codecov_dashboard_url": None}
@@ -636,15 +727,16 @@ class TestCommentNotifierIntegration(object):
                     ]
                 }
             },
+            repository_service=comparison.repository_service,
         )
-        result = await notifier.notify(comparison)
+        result = notifier.notify(comparison)
         assert result.notification_attempted
         assert result.notification_successful
         assert result.explanation is None
         message = [
-            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=h1) Report",
+            "## [Codecov](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=h1) Report",
             "All modified and coverable lines are covered by tests :white_check_mark:",
-            "> Comparison is base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?el=desc) 50.00% compared to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=desc) 60.00%.",
+            "> Project coverage is 60.00%. Comparing base [(`5b174c2`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5b174c2b40d501a70c479e91025d5109b1ad5c1b?dropdown=coverage&el=desc) to head [(`5601846`)](https://app.codecov.io/gh/joseph-sentry/codecov-demo/commit/5601846871b8142ab0df1e0b8774756c658bcc7d?dropdown=coverage&el=desc).",
             "> Report is 2 commits behind head on main.",
             "",
             ":exclamation: Your organization needs to install the [Codecov GitHub app](https://github.com/apps/codecov/installations/select_target) to enable full functionality.",
@@ -684,7 +776,7 @@ class TestCommentNotifierIntegration(object):
             "",
             "</details>",
             "",
-            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?src=pr&el=continue).   ",
+            "[:umbrella: View full report in Codecov by Sentry](https://app.codecov.io/gh/joseph-sentry/codecov-demo/pull/9?dropdown=coverage&src=pr&el=continue).   ",
             ":loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/).",
             "",
         ]

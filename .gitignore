@@ -25,6 +25,9 @@ wheels/
 *.egg
 MANIFEST
 .mutmut-cache
+gha-creds-*.json
+
+*.pem
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -48,6 +51,8 @@ nosetests.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+*.junit.xml
+junit.xml
 
 # Translations
 *.mo
@@ -78,11 +83,6 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
-.python-version
-
-# vscode/
-.vscode
 # celery beat schedule file
 celerybeat-schedule
 
@@ -98,7 +98,6 @@ ENV/
 env.bak/
 venv.bak/
 .testenv
-.envrc
 
 # Spyder project settings
 .spyderproject
@@ -126,3 +125,13 @@ background_app/.report.json
 # Vim temporary files
 *.swp
 *.swo
+
+# Pycharm/Intellij
+.idea/
+
+# VCS
+.sl
+.git
+
+# MacOS
+.DS_Store

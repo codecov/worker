@@ -7,7 +7,6 @@ from database.models.timeseries import Dataset, Measurement
 
 
 class MeasurementFactory(factory.Factory):
-
     owner_id = 1
     repo_id = 1
     name = "testing"
@@ -20,7 +19,6 @@ class MeasurementFactory(factory.Factory):
 
 
 class DatasetFactory(factory.Factory):
-
     repository_id = 1
     name = "testing"
     backfilled = False

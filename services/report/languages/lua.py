@@ -1,63 +1,48 @@
 import re
-import typing
 
-from shared.reports.resources import Report
+import sentry_sdk
 
 from services.report.languages.base import BaseLanguageProcessor
-from services.report.report_builder import (
-    CoverageType,
-    ReportBuilder,
-    ReportBuilderSession,
-)
+from services.report.report_builder import ReportBuilderSession
 
 
 class LuaProcessor(BaseLanguageProcessor):
-    def matches_content(self, content: bytes, first_line, name):
-        return detect(content)
+    def matches_content(self, content: bytes, first_line: str, name: str) -> bool:
+        return content[:7] == b"======="
 
+    @sentry_sdk.trace
     def process(
-        self, name: str, content: typing.Any, report_builder: ReportBuilder
-    ) -> Report:
-        report_builder_session = report_builder.create_report_builder_session(name)
+        self, content: bytes, report_builder_session: ReportBuilderSession
+    ) -> None:
         return from_txt(content, report_builder_session)
 
 
 docs = re.compile(r"^=+\n", re.M).split
 
 
-def detect(report: bytes):
-    return report[:7] == b"======="
+def from_txt(input: bytes, report_builder_session: ReportBuilderSession) -> None:
+    _file = None
+    for line in docs(input.decode(errors="replace").replace("\t", " ")):
+        line = line.rstrip()
+        if line == "Summary":
+            _file = None
 
+        elif line.endswith((".lua", ".lisp")):
+            _file = report_builder_session.create_coverage_file(line)
 
-def from_txt(string: bytes, report_builder_session: ReportBuilderSession) -> Report:
-    filename = None
-    ignored_lines = report_builder_session.ignored_lines
-    for string in docs(string.decode(errors="replace").replace("\t", " ")):
-        string = string.rstrip()
-        if string == "Summary":
-            filename = None
-            continue
-
-        elif string.endswith((".lua", ".lisp")):
-            filename = report_builder_session.path_fixer(string)
-            if filename is None:
-                continue
-
-        elif filename:
-            _file = report_builder_session.file_class(
-                filename, ignore=ignored_lines.get(filename)
-            )
-            for ln, source in enumerate(string.splitlines(), start=1):
+        elif _file is not None:
+            for ln, source in enumerate(line.splitlines(), start=1):
                 try:
                     cov = source.strip().split(" ")[0]
                     cov = 0 if cov[-2:] in ("*0", "0") else int(cov)
-                    _file[ln] = report_builder_session.create_coverage_line(
-                        filename=filename, coverage=cov, coverage_type=CoverageType.line
+                    _file.append(
+                        ln,
+                        report_builder_session.create_coverage_line(
+                            cov,
+                        ),
                     )
 
                 except Exception:
                     pass
 
             report_builder_session.append(_file)
-
-    return report_builder_session.output_report()
