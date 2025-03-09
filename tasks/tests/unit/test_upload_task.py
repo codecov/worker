@@ -362,6 +362,80 @@ class TestUploadTaskIntegration(object):
         assert call([processor_sig]) in chain.mock_calls
 
     @pytest.mark.django_db(databases={"default"}, transaction=True)
+    def test_upload_task_call_bundle_analysis_carryforward_only_once(
+        self,
+        mocker,
+        mock_configuration,
+        dbsession,
+        codecov_vcr,
+        mock_storage,
+        mock_redis,
+        celery_app,
+    ):
+        chain = mocker.patch("tasks.upload.chain")
+        storage_path = "v4/raw/2019-05-22/C3C4715CA57C910D11D5EB899FC86A7E/4c4e4654ac25037ae869caeb3619d485970b6304/a84d445c-9c1e-434f-8275-f18f1f320f81.txt"
+        redis_queue = [{"url": storage_path, "build_code": "some_random_build"}]
+        jsonified_redis_queue = [json.dumps(x) for x in redis_queue]
+        mocker.patch.object(UploadTask, "app", celery_app)
+
+        commit = CommitFactory.create(
+            message="",
+            commitid="abf6d4df662c47e32460020ab14abf9303581429",
+            repository__owner__oauth_token="GHTZB+Mi+kbl/ubudnSKTJYb/fgN4hRJVJYSIErtidEsCLDJBb8DZzkbXqLujHAnv28aKShXddE/OffwRuwKug==",
+            repository__owner__username="ThiagoCodecov",
+            repository__owner__service="github",
+            repository__yaml={"codecov": {"max_report_age": "1y ago"}},
+            repository__name="example-python",
+            pullid=1,
+            repository__owner__createstamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
+        )
+        dbsession.add(commit)
+        dbsession.flush()
+        dbsession.refresh(commit)
+
+        mock_redis.lists[
+            f"uploads/{commit.repoid}/{commit.commitid}/bundle_analysis"
+        ] = jsonified_redis_queue
+
+        # First run
+        UploadTask().run_impl(
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            report_type="test_results",
+        )
+
+        # Check that the bundle_analysis_processor_task was called
+        processor_sig = bundle_analysis_processor_task.s(
+            {},
+            repoid=commit.repoid,
+            commitid=commit.commitid,
+            commit_yaml={"codecov": {"max_report_age": "1y ago"}},
+            params={
+                "url": storage_path,
+                "flags": [],
+                "build_code": "some_random_build",
+                "upload_pk": None,
+            },
+        )
+
+        chain.assert_called_with([processor_sig])
+
+        # Reset the mock to check for the second run
+        chain.reset_mock()
+
+        # Second run
+        UploadTask().run_impl(
+            dbsession,
+            commit.repoid,
+            commit.commitid,
+            report_type="test_results",
+        )
+
+        # Check that the bundle_analysis_processor_task was not called
+        chain.assert_not_called()
+
+    @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_call_test_results(
         self,
         mocker,
@@ -1241,6 +1315,7 @@ class TestUploadTaskUnit(object):
             redis_connection=mock_redis,
         )
         result = UploadTask().schedule_task(
+            dbsession,
             commit,
             commit_yaml,
             [{"upload_id": 1, "upload_pk": 1}],
