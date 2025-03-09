@@ -842,7 +842,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             .filter(
                 CommitReport.commit_id == commit.id,
                 CommitReport.report_type == ReportType.BUNDLE_ANALYSIS.value,
-                Upload.state != "error"
+                Upload.state != "error",
             )
             .first()
         )

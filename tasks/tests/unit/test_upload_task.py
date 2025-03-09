@@ -934,6 +934,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         mocked_schedule_task.assert_called_with(
+            dbsession,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -1002,6 +1003,7 @@ class TestUploadTaskIntegration(object):
         assert commit.message == ""
         assert commit.parent_commit_id is None
         mocked_schedule_task.assert_called_with(
+            dbsession,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -1087,6 +1089,7 @@ class TestUploadTaskIntegration(object):
             .first()
         )
         mocked_schedule_task.assert_called_with(
+            dbsession,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
@@ -1183,6 +1186,7 @@ class TestUploadTaskIntegration(object):
         assert commit.parent_commit_id is None
         assert commit.report is not None
         mocked_schedule_task.assert_called_with(
+            dbsession,
             commit,
             {"codecov": {"max_report_age": "764y ago"}},
             [
