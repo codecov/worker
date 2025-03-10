@@ -211,53 +211,18 @@ class HeaderSectionWriter(BaseSectionWriter):
 
 
 class AnnouncementSectionWriter(BaseSectionWriter):
-    ats_message = (
-        "We’re building smart automated test selection to slash your CI/CD build times. [Learn more](https://about.codecov.io/iterative-testing/)",
-    )
     current_active_messages = [
         "Codecov offers a browser extension for seamless coverage viewing on GitHub. Try it in [Chrome](https://chrome.google.com/webstore/detail/codecov/gedikamndpbemklijjkncpnolildpbgo) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/codecov/) today!"
         #   "Codecov can now indicate which changes are the most critical in Pull Requests. [Learn more](https://about.codecov.io/product/feature/runtime-insights/)"  # This is disabled as of CODE-1885. But we might bring it back later.
     ]
 
     def do_write_section(self, comparison: ComparisonProxy, *args, **kwargs):
-        if self._potential_ats_user(comparison):
-            message_to_display = AnnouncementSectionWriter.ats_message
-        else:
-            # This allows us to shift through active messages while respecting the annoucement limit.
-            message_to_display = random.choice(
-                AnnouncementSectionWriter.current_active_messages
-            )
+        # This allows us to shift through active messages while respecting the annoucement limit.
+        message_to_display = random.choice(
+            AnnouncementSectionWriter.current_active_messages
+        )
 
         yield f":mega: {message_to_display}"
-
-    def _has_ats_configured(self):
-        if not self.current_yaml:
-            return False
-        flags = self.current_yaml.read_yaml_field(
-            "flag_management", "individual_flags", _else=[]
-        )
-        for flag_info in flags:
-            if flag_info.get("carryforward_mode") == "labels":
-                return True
-        return False
-
-    def _potential_ats_user(self, comparison: ComparisonProxy) -> bool:
-        if self.repository and self.repository.language == "python":
-            if not self._has_ats_configured() and comparison.has_head_report():
-                report = comparison.head.report
-
-                # we're using the total chunks size as a proxy for potential CI
-                # runtime - assuming that if you have more files + uploads then
-                # perhaps your CI is running longer
-                #
-                # this value was just chosen empirically by looking at some of our
-                # own repos and relating chunks size to CI time - ideally we'd like
-                # to target repos w/ CI time > 20 min but we don't really have that
-                # info available
-                if report.size > 80_000_000:
-                    return True
-
-        return False
 
 
 class FooterSectionWriter(BaseSectionWriter):
