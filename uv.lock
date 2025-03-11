@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = "==3.13.*"
 resolution-markers = [
     "platform_python_implementation != 'PyPy'",
@@ -1308,6 +1307,8 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/39/1b/d0b013bf7d1af7cf0a6a4fce13f5fe5813ab225313755367b36e714a63f8/pycryptodome-3.21.0-cp36-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:18caa8cfbc676eaaf28613637a89980ad2fd96e00c564135bf90bc3f0b34dd93", size = 2254397 },
     { url = "https://files.pythonhosted.org/packages/14/71/4cbd3870d3e926c34706f705d6793159ac49d9a213e3ababcdade5864663/pycryptodome-3.21.0-cp36-abi3-win32.whl", hash = "sha256:280b67d20e33bb63171d55b1067f61fbd932e0b1ad976b3a184303a3dad22764", size = 1775641 },
     { url = "https://files.pythonhosted.org/packages/43/1d/81d59d228381576b92ecede5cd7239762c14001a828bdba30d64896e9778/pycryptodome-3.21.0-cp36-abi3-win_amd64.whl", hash = "sha256:b7aa25fc0baa5b1d95b7633af4f5f1838467f1815442b22487426f94e0d66c53", size = 1812863 },
+    { url = "https://files.pythonhosted.org/packages/25/b3/09ff7072e6d96c9939c24cf51d3c389d7c345bf675420355c22402f71b68/pycryptodome-3.21.0-pp27-pypy_73-manylinux2010_x86_64.whl", hash = "sha256:2cb635b67011bc147c257e61ce864879ffe6d03342dc74b6045059dfbdedafca", size = 1691593 },
+    { url = "https://files.pythonhosted.org/packages/a8/91/38e43628148f68ba9b68dedbc323cf409e537fd11264031961fd7c744034/pycryptodome-3.21.0-pp27-pypy_73-win32.whl", hash = "sha256:4c26a2f0dc15f81ea3afa3b0c87b87e501f235d332b7f27e2225ecb80c0b1cdd", size = 1765997 },
 ]
 
 [[package]]
@@ -1701,7 +1702,7 @@ wheels = [
 [[package]]
 name = "shared"
 version = "0.1.0"
-source = { git = "https://github.com/codecov/shared?rev=4755e7f77efc711c6ca34c2fb284edce71836402#4755e7f77efc711c6ca34c2fb284edce71836402" }
+source = { git = "https://github.com/codecov/shared?rev=e9567e60e40893fd873c319b7dcc7ca05b5685e3#e9567e60e40893fd873c319b7dcc7ca05b5685e3" }
 dependencies = [
     { name = "amplitude-analytics" },
     { name = "boto3" },
@@ -2040,7 +2041,7 @@ requires-dist = [
     { name = "regex", specifier = ">=2023.12.25" },
     { name = "requests", specifier = ">=2.32.0" },
     { name = "sentry-sdk", specifier = ">=2.13.0" },
-    { name = "shared", git = "https://github.com/codecov/shared?rev=4755e7f77efc711c6ca34c2fb284edce71836402" },
+    { name = "shared", git = "https://github.com/codecov/shared?rev=e9567e60e40893fd873c319b7dcc7ca05b5685e3" },
     { name = "sqlalchemy", specifier = "==1.3.*" },
     { name = "sqlparse", specifier = "==0.5.0" },
     { name = "statsd", specifier = ">=3.3.0" },
