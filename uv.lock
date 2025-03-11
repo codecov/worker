@@ -1702,7 +1702,7 @@ wheels = [
 [[package]]
 name = "shared"
 version = "0.1.0"
-source = { git = "https://github.com/codecov/shared?rev=e9567e60e40893fd873c319b7dcc7ca05b5685e3#e9567e60e40893fd873c319b7dcc7ca05b5685e3" }
+source = { git = "https://github.com/codecov/shared?rev=0e628785869c8ce4492a3f83bc0b445dee00150a#0e628785869c8ce4492a3f83bc0b445dee00150a" }
 dependencies = [
     { name = "amplitude-analytics" },
     { name = "boto3" },
@@ -2041,7 +2041,7 @@ requires-dist = [
     { name = "regex", specifier = ">=2023.12.25" },
     { name = "requests", specifier = ">=2.32.0" },
     { name = "sentry-sdk", specifier = ">=2.13.0" },
-    { name = "shared", git = "https://github.com/codecov/shared?rev=e9567e60e40893fd873c319b7dcc7ca05b5685e3" },
+    { name = "shared", git = "https://github.com/codecov/shared?rev=0e628785869c8ce4492a3f83bc0b445dee00150a" },
     { name = "sqlalchemy", specifier = "==1.3.*" },
     { name = "sqlparse", specifier = "==0.5.0" },
     { name = "statsd", specifier = ">=3.3.0" },

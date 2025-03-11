@@ -3,7 +3,9 @@ from datetime import datetime, timezone
 import pytest
 from celery import group
 from shared.reports.readonly import ReadOnlyReport
-from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import ReportLine
 from shared.utils.sessions import Session
 from shared.yaml import UserYaml
 

@@ -4,7 +4,9 @@ from urllib.parse import quote_plus
 
 import pytest
 from shared.reports.readonly import ReadOnlyReport
-from shared.reports.resources import Report, ReportFile, ReportLine
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import ReportLine
 from shared.torngit.exceptions import TorngitClientGeneralError, TorngitError
 from shared.torngit.status import Status
 from shared.yaml.user_yaml import UserYaml

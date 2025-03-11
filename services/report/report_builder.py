@@ -3,8 +3,9 @@ import logging
 from enum import Enum
 from typing import Any, List, Sequence
 
-from shared.reports.resources import Report, ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint, LineSession
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import CoverageDatapoint, LineSession, ReportLine
 from shared.yaml.user_yaml import UserYaml
 
 from helpers.labels import SpecialLabelsEnum

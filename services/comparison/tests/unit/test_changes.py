@@ -1,6 +1,7 @@
 import pytest
-from shared.reports.resources import Report, ReportFile, ReportLine
-from shared.reports.types import ReportTotals
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import ReportLine, ReportTotals
 
 from services.comparison.changes import (
     Change,

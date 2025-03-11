@@ -6,8 +6,9 @@ import mock
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.plan.constants import PlanName
-from shared.reports.resources import Report, ReportFile, ReportLine
-from shared.reports.types import Change, ReportTotals
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import Change, ReportLine, ReportTotals
 from shared.torngit.status import Status
 from shared.yaml import UserYaml
 
