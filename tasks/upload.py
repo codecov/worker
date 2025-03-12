@@ -771,6 +771,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         argument_list: list[UploadArguments],
         commit_report: CommitReport,
     ):
+        new_ta_tasks = NEW_TA_TASKS.check_value(commit.repoid, default="old")
         task_group = [
             test_results_processor_task.s(
                 repoid=commit.repoid,
@@ -778,6 +779,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 commit_yaml=commit_yaml,
                 arguments_list=list(chunk),
                 report_code=commit_report.code,
+                impl_type=new_ta_tasks,
             )
             for chunk in itertools.batched(argument_list, CHUNK_SIZE)
         ]
@@ -788,31 +790,15 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
             "repoid": commit.repoid,
             "commitid": commit.commitid,
             "commit_yaml": commit_yaml,
+            "impl_type": new_ta_tasks,
         }
         finisher_kwargs = TestResultsFlow.save_to_kwargs(finisher_kwargs)
         task_group.append(
             test_results_finisher_task.signature(kwargs=finisher_kwargs),
         )
-        first_chain_result = chain(*task_group).apply_async()
+        chain_result = chain(*task_group).apply_async()
 
-        if NEW_TA_TASKS.check_value(commit.repoid):
-            new_task_group = [
-                test_results_processor_task.s(
-                    repoid=commit.repoid,
-                    commitid=commit.commitid,
-                    commit_yaml=commit_yaml,
-                    arguments_list=list(chunk),
-                    report_code=commit_report.code,
-                    new_impl=True,
-                )
-                for chunk in itertools.batched(argument_list, CHUNK_SIZE)
-            ]
-
-            new_task_group[0].args = (False,)
-
-            _ = chain(*new_task_group).apply_async()
-
-        return first_chain_result
+        return chain_result
 
     def possibly_carryforward_bundle_report(
         self,
