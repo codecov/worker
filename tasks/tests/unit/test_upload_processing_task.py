@@ -4,7 +4,9 @@ import celery
 import pytest
 from celery.exceptions import Retry
 from shared.config import get_config
-from shared.reports.resources import Report, ReportFile, ReportLine, ReportTotals
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import ReportLine, ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
 from shared.upload.constants import UploadErrorCode
 from shared.yaml import UserYaml

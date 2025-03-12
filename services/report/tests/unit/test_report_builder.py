@@ -1,6 +1,6 @@
 import pytest
-from shared.reports.resources import ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint, LineSession
+from shared.reports.reportfile import ReportFile
+from shared.reports.types import CoverageDatapoint, LineSession, ReportLine
 
 from services.report.report_builder import (
     CoverageType,
