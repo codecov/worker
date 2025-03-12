@@ -11,7 +11,6 @@ from database.models.staticanalysis import (
     StaticAnalysisSuite,
     StaticAnalysisSuiteFilepath,
 )
-from helpers.telemetry import log_simple_metric
 from services.archive import ArchiveService
 from tasks.base import BaseCodecovTask
 
@@ -65,8 +64,6 @@ class StaticAnalysisSuiteCheckTask(BaseCodecovTask, name=static_analysis_task_na
                 )
 
         db_session.commit()
-        log_simple_metric("static_analysis.data_sent_for_commit", float(True))
-        log_simple_metric("static_analysis.files_changed", changed_count)
         return {"successful": True, "changed_count": changed_count}
 
 

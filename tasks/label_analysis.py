@@ -16,7 +16,6 @@ from database.models.labelanalysis import (
 from database.models.staticanalysis import StaticAnalysisSuite
 from helpers.labels import get_all_report_labels, get_labels_per_session
 from helpers.metrics import metrics
-from helpers.telemetry import log_simple_metric
 from services.report import Report, ReportService
 from services.report.report_builder import SpecialLabelsEnum
 from services.repository import get_repo_provider_service
@@ -431,11 +430,6 @@ class LabelAnalysisRequestProcessingTask(
                 commit=commit_sha,
             ),
         )
-        log_simple_metric("label_analysis.tests_saved_count", len(all_report_labels))
-        log_simple_metric(
-            "label_analysis.requests_with_requested_labels",
-            float(requested_labels is not None),
-        )
         if requested_labels is not None:
             requested_labels = set(requested_labels)
             ans = {
@@ -446,22 +440,7 @@ class LabelAnalysisRequestProcessingTask(
                 "absent_labels": sorted(requested_labels - all_report_labels),
                 "global_level_labels": sorted(global_level_labels & requested_labels),
             }
-            log_simple_metric(
-                "label_analysis.requested_labels_count", len(requested_labels)
-            )
-            log_simple_metric(
-                "label_analysis.tests_to_run_count",
-                len(
-                    ans["present_diff_labels"]
-                    + ans["global_level_labels"]
-                    + ans["absent_labels"]
-                ),
-            )
             return ans
-        log_simple_metric(
-            "label_analysis.tests_to_run_count",
-            len(executable_lines_labels | global_level_labels),
-        )
         return {
             "present_report_labels": sorted(all_report_labels),
             "present_diff_labels": sorted(executable_lines_labels),

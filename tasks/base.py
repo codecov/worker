@@ -33,7 +33,6 @@ from helpers.clock import get_seconds_to_next_hour
 from helpers.exceptions import NoConfiguredAppsAvailable, RepositoryWithoutValidBotError
 from helpers.log_context import LogContext, set_log_context
 from helpers.save_commit_error import save_commit_error
-from helpers.telemetry import TimeseriesTimer, log_simple_metric
 from services.repository import get_repo_provider_service
 
 log = logging.getLogger("worker")
@@ -300,9 +299,8 @@ class BaseCodecovTask(celery_app.Task):
             self._emit_queue_metrics()
 
             try:
-                with TimeseriesTimer(f"{self.metrics_prefix}.core_runtime", sync=True):
-                    with self.task_core_runtime.time():  # Timer isn't tested
-                        return self.run_impl(db_session, *args, **kwargs)
+                with self.task_core_runtime.time():  # Timer isn't tested
+                    return self.run_impl(db_session, *args, **kwargs)
             except (DataError, IntegrityError):
                 log.exception(
                     "Errors related to the constraints of database happened",
@@ -367,13 +365,11 @@ class BaseCodecovTask(celery_app.Task):
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         res = super().on_retry(exc, task_id, args, kwargs, einfo)
         self.task_retry_counter.inc()
-        log_simple_metric(f"{self.metrics_prefix}.retry", 1.0)
         return res
 
     def on_success(self, retval, task_id, args, kwargs):
         res = super().on_success(retval, task_id, args, kwargs)
         self.task_success_counter.inc()
-        log_simple_metric(f"{self.metrics_prefix}.success", 1.0)
         return res
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -382,7 +378,6 @@ class BaseCodecovTask(celery_app.Task):
         """
         res = super().on_failure(exc, task_id, args, kwargs, einfo)
         self.task_failure_counter.inc()
-        log_simple_metric(f"{self.metrics_prefix}.failure", 1.0)
 
         if UploadFlow.has_begun():
             UploadFlow.log(UploadFlow.CELERY_FAILURE)
