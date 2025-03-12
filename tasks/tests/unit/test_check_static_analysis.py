@@ -16,9 +16,6 @@ class TestStaticAnalysisCheckTask(object):
     def test_simple_call_with_suite_all_created(
         self, dbsession, mock_storage, mock_configuration, mocker
     ):
-        mock_log_simple_metric = mocker.patch(
-            "tasks.static_analysis_suite_check.log_simple_metric"
-        )
         obj = StaticAnalysisSuiteFactory.create()
         dbsession.add(obj)
         dbsession.flush()
@@ -42,10 +39,6 @@ class TestStaticAnalysisCheckTask(object):
         dbsession.add(fp_obj)
         dbsession.flush()
         res = task.run_impl(dbsession, suite_id=obj.id_)
-        mock_log_simple_metric.assert_any_call(
-            "static_analysis.data_sent_for_commit", float(True)
-        )
-        mock_log_simple_metric.assert_any_call("static_analysis.files_changed", 8)
         assert res == {"changed_count": 8, "successful": True}
 
     def test_simple_call_with_suite_mix_from_other(
