@@ -4,10 +4,7 @@ from shared.config import get_config
 
 def should_use_timeseries(repoid: int) -> bool:
     timeseries_enabled = get_config("setup", "timeseries", "enabled", default=False)
-    test_analytics_database_enabled = get_config(
-        "setup", "test_analytics_database", "enabled", default=False
-    )
-    if timeseries_enabled and test_analytics_database_enabled:
+    if timeseries_enabled:
         return True
     return False
 
