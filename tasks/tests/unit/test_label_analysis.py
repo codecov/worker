@@ -2,8 +2,9 @@ import json
 
 import pytest
 from mock import patch
-from shared.reports.resources import Report, ReportFile, ReportLine
-from shared.reports.types import CoverageDatapoint, LineSession
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import CoverageDatapoint, LineSession, ReportLine
 
 from database.models.labelanalysis import LabelAnalysisRequest
 from database.tests.factories import RepositoryFactory
@@ -422,7 +423,6 @@ def test_simple_call_without_requested_labels_then_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
-    mock_log_simple_metric = mocker.patch("tasks.label_analysis.log_simple_metric")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -508,11 +508,6 @@ def test_simple_call_without_requested_labels_then_with_requested_labels(
     }
     assert res == expected_result
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
-    mock_log_simple_metric.assert_any_call("label_analysis.tests_saved_count", 9)
-    mock_log_simple_metric.assert_any_call(
-        "label_analysis.requests_with_requested_labels", 0.0
-    )
-    mock_log_simple_metric.assert_any_call("label_analysis.tests_to_run_count", 6)
     dbsession.flush()
     dbsession.refresh(larf)
     assert larf.state_id == LabelAnalysisRequestState.FINISHED.db_id
@@ -548,19 +543,12 @@ def test_simple_call_without_requested_labels_then_with_requested_labels(
     mock_metrics.incr.assert_called_with(
         "label_analysis_task.already_calculated.new_result"
     )
-    mock_log_simple_metric.assert_any_call("label_analysis.tests_saved_count", 9)
-    mock_log_simple_metric.assert_any_call(
-        "label_analysis.requests_with_requested_labels", 1.0
-    )
-    mock_log_simple_metric.assert_any_call("label_analysis.requested_labels_count", 4)
-    mock_log_simple_metric.assert_any_call("label_analysis.tests_to_run_count", 3)
 
 
 def test_simple_call_with_requested_labels(
     dbsession, mock_storage, mocker, sample_report_with_labels, mock_repo_provider
 ):
     mock_metrics = mocker.patch("tasks.label_analysis.metrics")
-    mock_log_simple_metric = mocker.patch("tasks.label_analysis.log_simple_metric")
     mocker.patch.object(
         LabelAnalysisRequestProcessingTask,
         "_get_lines_relevant_to_diff",
@@ -602,11 +590,6 @@ def test_simple_call_with_requested_labels(
         "global_level_labels": [],
     }
     mock_metrics.incr.assert_called_with("label_analysis_task.success")
-    mock_log_simple_metric.assert_any_call("label_analysis.tests_saved_count", 9)
-    mock_log_simple_metric.assert_any_call(
-        "label_analysis.requests_with_requested_labels", 1.0
-    )
-    mock_log_simple_metric.assert_any_call("label_analysis.tests_to_run_count", 3)
 
 
 def test_get_requested_labels(dbsession, mocker):

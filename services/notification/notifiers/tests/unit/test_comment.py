@@ -16,7 +16,6 @@ from shared.torngit.exceptions import (
 )
 from shared.utils.sessions import Session
 from shared.validation.types import CoverageCommentRequiredChanges
-from shared.yaml import UserYaml
 
 from database.models.core import Commit, GithubAppInstallation, Pull, Repository
 from database.tests.factories import RepositoryFactory
@@ -3557,26 +3556,6 @@ class TestAnnouncementsSectionWriter(object):
         assert line.startswith(":mega: ")
         message = line[7:]
         assert message in AnnouncementSectionWriter.current_active_messages
-
-    def test_announcement_section_writer_ats(self, mocker, create_sample_comparison):
-        comparison = create_sample_comparison()
-        current_yaml = UserYaml({})
-
-        writer = AnnouncementSectionWriter(
-            repository=comparison.head.commit.repository,
-            layout=mocker.MagicMock(),
-            show_complexity=mocker.MagicMock(),
-            settings=mocker.MagicMock(),
-            current_yaml=current_yaml,
-        )
-        writer.repository.language = "python"
-        comparison.head.report._chunks = ["xx"] * 80_000_000
-
-        res = list(writer.write_section(comparison))
-        assert len(res) == 1
-        line = res[0]
-        assert line.startswith(":mega: ")
-        assert "smart automated test selection" in line
 
 
 class TestNewFooterSectionWriter(object):

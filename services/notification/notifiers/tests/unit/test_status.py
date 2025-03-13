@@ -3,8 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 from mock import AsyncMock
 from shared.reports.readonly import ReadOnlyReport
-from shared.reports.resources import Report, ReportFile, ReportLine
-from shared.reports.types import ReportTotals
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import ReportLine, ReportTotals
 from shared.torngit.exceptions import (
     TorngitClientError,
     TorngitRepoNotFoundError,

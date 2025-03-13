@@ -1,14 +1,10 @@
 import pytest
 from mock import MagicMock
 from shared.reports.editable import EditableReport, EditableReportFile
-from shared.reports.resources import (
-    Report,
-    ReportFile,
-    ReportLine,
-    Session,
-    SessionType,
-)
-from shared.reports.types import CoverageDatapoint, LineSession
+from shared.reports.reportfile import ReportFile
+from shared.reports.resources import Report
+from shared.reports.types import CoverageDatapoint, LineSession, ReportLine
+from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
 
 from helpers.labels import SpecialLabelsEnum

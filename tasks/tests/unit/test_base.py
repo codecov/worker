@@ -7,7 +7,7 @@ import pytest
 from celery import chain
 from celery.contrib.testing.mocks import TaskMessage
 from celery.exceptions import Retry, SoftTimeLimitExceeded
-from mock import ANY, call
+from mock import call
 from prometheus_client import REGISTRY
 from shared.celery_config import sync_repos_task_name, upload_task_name
 from shared.plan.constants import PlanName
@@ -105,8 +105,7 @@ class TestBaseCodecovTask(object):
         assert r.hard_time_limit_task == 480
 
     @patch("tasks.base.datetime", MockDateTime)
-    @patch("helpers.telemetry.log_simple_metric")
-    def test_sample_run(self, mock_simple_metric, mocker, dbsession):
+    def test_sample_run(self, mocker, dbsession):
         mocked_get_db_session = mocker.patch("tasks.base.get_db_session")
         mock_task_request = mocker.patch("tasks.base.BaseCodecovTask.request")
         fake_request_values = dict(
@@ -126,9 +125,6 @@ class TestBaseCodecovTask(object):
                 labels={"task": SampleTask.name, "queue": "my-queue"},
             )
             == 61.000123
-        )
-        mock_simple_metric.assert_has_calls(
-            [call("worker.task.test.SampleTask.core_runtime", ANY)]
         )
 
     @patch("tasks.base.BaseCodecovTask._emit_queue_metrics")

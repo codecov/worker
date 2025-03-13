@@ -36,7 +36,6 @@ from helpers.exceptions import (
     ReportExpiredException,
     RepositoryWithoutValidBotError,
 )
-from helpers.telemetry import log_simple_metric
 from rollouts import CARRYFORWARD_BASE_SEARCH_RANGE_BY_OWNER
 from services.archive import ArchiveService
 from services.processing.metrics import (
@@ -441,7 +440,6 @@ class ReportService(BaseReportService):
                 "Could not find parent for possible carryforward",
                 extra=dict(commit=commit.commitid, repoid=commit.repoid),
             )
-            log_simple_metric("worker_service_report_carryforward_base_not_found", 1)
             return Report()
 
         parent_report = self.get_existing_report_for_commit(parent_commit)
@@ -498,7 +496,6 @@ class ReportService(BaseReportService):
         self._possibly_shift_carryforward_report(
             carryforward_report, parent_commit, commit
         )
-        log_simple_metric("worker_service_report_carryforward_success", 1)
         return carryforward_report
 
     @sentry_sdk.trace
