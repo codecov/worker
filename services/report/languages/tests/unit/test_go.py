@@ -363,7 +363,7 @@ class TestGo(BaseTestCase):
             sessions=0,
             complexity=0,
             complexity_total=0,
-            diff=0,
+            diff=None,
         )
 
     def test_huge_report_partials_as_hits(self):
@@ -592,7 +592,7 @@ class TestGo(BaseTestCase):
             sessions=0,
             complexity=0,
             complexity_total=0,
-            diff=0,
+            diff=None,
         )
 
     def test_combine_partials(self):

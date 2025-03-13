@@ -199,23 +199,13 @@ class TestProcessRawUpload(BaseTestCase):
             diff=0,
         )
         assert original_report.flags.get("fruits") is None
-        general_totals, json_data = original_report.to_database()
-        assert general_totals == {
-            "f": 2,
-            "n": 10,
-            "h": 6,
-            "m": 3,
-            "p": 1,
-            "c": "60.00000",
-            "b": 1,
-            "d": 0,
-            "M": 0,
-            "s": 1,
-            "C": 10,
-            "N": 2,
-            "diff": None,
-        }
-        assert loads(json_data) == {
+
+        report_json, _chunks, totals = original_report.serialize()
+
+        assert totals == ReportTotals(
+            2, 10, 6, 3, 1, "60.00000", 1, 0, 0, 1, 10, 2, None
+        )
+        assert loads(report_json) == {
             "files": {
                 "file_1.go": [
                     0,
@@ -247,6 +237,7 @@ class TestProcessRawUpload(BaseTestCase):
                     "se": {},
                 }
             },
+            "totals": [2, 10, 6, 3, 1, "60.00000", 1, 0, 0, 1, 10, 2, None],
         }
 
     def test_none(self):
