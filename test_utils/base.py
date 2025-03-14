@@ -1,11 +1,16 @@
 import dataclasses
 from json import loads
 
+from services.report import legacy_totals
+
 
 class BaseTestCase(object):
     def convert_report_to_better_readable(self, report):
-        totals_dict, report_dict = report.to_database()
-        report_dict = loads(report_dict)
+        report_json, _chunks, _totals = report.serialize()
+
+        totals_dict = legacy_totals(report)
+        report_dict = loads(report_json)
+        report_dict.pop("totals")
         archive_dict = {}
         for filename in report.files:
             file_report = report.get(filename)

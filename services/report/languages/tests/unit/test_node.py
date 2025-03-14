@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from services.report import legacy_totals
 from services.report.languages import node
 from test_utils.base import BaseTestCase
 
@@ -94,17 +95,16 @@ class TestNodeProcessor(BaseTestCase):
         )
         node.from_json(nodejson, report_builder_session)
         report = report_builder_session.output_report()
-
-        totals_dict, report_dict = report.to_database()
-        report_dict = loads(report_dict)
-        archive = report.to_archive()
+        report_json, chunks, _totals = report.serialize()
+        loaded_json = loads(report_json)
+        loaded_json.pop("totals")
 
         expected_result = loads(self.readfile("node/node%s-result.json" % i))
-
-        assert report_dict == expected_result["report"]
-        assert totals_dict == expected_result["totals"]
-
-        assert archive.split("<<<<< end_of_chunk >>>>>") == expected_result["archive"]
+        assert {
+            "report": loaded_json,
+            "archive": chunks.decode().split("<<<<< end_of_chunk >>>>>"),
+            "totals": legacy_totals(report),
+        } == expected_result
 
     @pytest.mark.parametrize("name", ["inline", "ifbinary", "ifbinarymb"])
     def test_singles(self, name):
