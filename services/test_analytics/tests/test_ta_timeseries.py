@@ -84,7 +84,9 @@ def test_pr_comment_agg():
 
     agg = get_pr_comment_agg(1, "commit_sha")
     assert agg == {
-        "pass": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
     }
 
 
