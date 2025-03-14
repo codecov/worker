@@ -52,6 +52,9 @@ def insert_testrun(
         )
         outcome = testrun["outcome"]
 
+        if outcome == "error":
+            outcome = "failure"
+
         if outcome == "failure" and flaky_test_ids and test_id in flaky_test_ids:
             outcome = "flaky_failure"
 
@@ -114,7 +117,13 @@ def get_pr_comment_failures(repo_id: int, commit_sha: str) -> list[TestInstance]
         ]
 
 
-def get_pr_comment_agg(repo_id: int, commit_sha: str) -> dict[str, int]:
+class PRCommentAgg(TypedDict):
+    passed: int
+    failed: int
+    skipped: int
+
+
+def get_pr_comment_agg(repo_id: int, commit_sha: str) -> PRCommentAgg:
     with connections["timeseries"].cursor() as cursor:
         cursor.execute(
             """
@@ -130,7 +139,14 @@ def get_pr_comment_agg(repo_id: int, commit_sha: str) -> dict[str, int]:
             """,
             [repo_id, commit_sha],
         )
-        return {outcome: count for outcome, count in cursor.fetchall()}
+        outcome_dict = {outcome: count for outcome, count in cursor.fetchall()}
+
+        return {
+            "passed": outcome_dict.get("pass", 0),
+            "failed": outcome_dict.get("failure", 0)
+            + outcome_dict.get("flaky_failure", 0),
+            "skipped": outcome_dict.get("skip", 0),
+        }
 
 
 def get_testruns_for_flake_detection(
@@ -208,13 +224,13 @@ def get_testrun_branch_summary_via_testrun(
                 time_bucket(interval '1 days', timestamp) as timestamp_bin,
 
                 min(computed_name) as computed_name,
-                COUNT(DISTINCT CASE WHEN outcome = 'failure' OR outcome = 'flaky_fail' THEN commit_sha ELSE NULL END) AS failing_commits,
+                COUNT(DISTINCT CASE WHEN outcome = 'failure' OR outcome = 'flaky_failure' THEN commit_sha ELSE NULL END) AS failing_commits,
                 last(duration_seconds, timestamp) as last_duration_seconds,
                 avg(duration_seconds) as avg_duration_seconds,
                 COUNT(*) FILTER (WHERE outcome = 'pass') AS pass_count,
                 COUNT(*) FILTER (WHERE outcome = 'failure') AS fail_count,
                 COUNT(*) FILTER (WHERE outcome = 'skip') AS skip_count,
-                COUNT(*) FILTER (WHERE outcome = 'flaky_fail') AS flaky_fail_count,
+                COUNT(*) FILTER (WHERE outcome = 'flaky_failure') AS flaky_fail_count,
                 MAX(timestamp) AS updated_at,
                 array_merge_dedup_agg(flags) as flags
             from timeseries_testrun
