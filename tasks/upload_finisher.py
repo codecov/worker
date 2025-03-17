@@ -375,9 +375,14 @@ upload_finisher_task = celery_app.tasks[RegisteredUploadTask.name]
 def get_report_lock(repoid: int, commitid: str, hard_time_limit: int) -> Lock:
     lock_name = UPLOAD_PROCESSING_LOCK_NAME(repoid, commitid)
     redis_connection = get_redis_connection()
+
+    timeout = 60 * 5
+    if hard_time_limit:
+        timeout = max(timeout, hard_time_limit)
+
     return redis_connection.lock(
         lock_name,
-        timeout=max(60 * 5, hard_time_limit),
+        timeout=timeout,
         blocking_timeout=5,
     )
 
