@@ -133,31 +133,6 @@ def sample_commit_with_report_big(dbsession, mock_storage):
             [0, 11, 8, 0, 3, "72.72727", 0, 0, 0, 0, 0, 0, 0],
             None,
         ],
-        "file_10.py": [
-            10,
-            [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            None,
-        ],
-        "file_11.py": [
-            11,
-            [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
-            None,
-        ],
-        "file_12.py": [
-            12,
-            [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
-            None,
-        ],
-        "file_13.py": [
-            13,
-            [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
-            None,
-        ],
-        "file_14.py": [
-            14,
-            [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
-            None,
-        ],
         "file_02.py": [
             2,
             [0, 13, 9, 0, 4, "69.23077", 0, 0, 0, 0, 0, 0, 0],
@@ -196,6 +171,31 @@ def sample_commit_with_report_big(dbsession, mock_storage):
         "file_09.py": [
             9,
             [0, 14, 10, 1, 3, "71.42857", 0, 0, 0, 0, 0, 0, 0],
+            None,
+        ],
+        "file_10.py": [
+            10,
+            [0, 10, 6, 1, 3, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            None,
+        ],
+        "file_11.py": [
+            11,
+            [0, 23, 15, 1, 7, "65.21739", 0, 0, 0, 0, 0, 0, 0],
+            None,
+        ],
+        "file_12.py": [
+            12,
+            [0, 14, 8, 0, 6, "57.14286", 0, 0, 0, 0, 0, 0, 0],
+            None,
+        ],
+        "file_13.py": [
+            13,
+            [0, 15, 9, 0, 6, "60.00000", 0, 0, 0, 0, 0, 0, 0],
+            None,
+        ],
+        "file_14.py": [
+            14,
+            [0, 23, 13, 0, 10, "56.52174", 0, 0, 0, 0, 0, 0, 0],
             None,
         ],
     }
@@ -2118,7 +2118,8 @@ class TestReportService(BaseTestCase):
             diff=0,
         )
         readable_report = self.convert_report_to_better_readable(report)
-        expected_results = {
+
+        assert readable_report == {
             "archive": {
                 "file_10.py": [
                     (2, 1, None, [[3, 1, None, None, None]], None, None),
@@ -2475,31 +2476,31 @@ class TestReportService(BaseTestCase):
             "report": {
                 "files": {
                     "file_10.py": [
-                        10,
+                        0,
                         [0, 8, 3, 0, 5, "37.50000", 0, 0, 0, 0, 0, 0, 0],
                         None,
                         None,
                     ],
                     "file_11.py": [
-                        11,
+                        1,
                         [0, 22, 8, 5, 9, "36.36364", 0, 0, 0, 0, 0, 0, 0],
                         None,
                         None,
                     ],
                     "file_12.py": [
-                        12,
+                        2,
                         [0, 12, 4, 3, 5, "33.33333", 0, 0, 0, 0, 0, 0, 0],
                         None,
                         None,
                     ],
                     "file_13.py": [
-                        13,
+                        3,
                         [0, 11, 6, 0, 5, "54.54545", 0, 0, 0, 0, 0, 0, 0],
                         None,
                         None,
                     ],
                     "file_14.py": [
-                        14,
+                        4,
                         [0, 22, 8, 2, 12, "36.36364", 0, 0, 0, 0, 0, 0, 0],
                         None,
                         None,
@@ -2554,22 +2555,6 @@ class TestReportService(BaseTestCase):
                 "s": 2,
             },
         }
-        assert (
-            expected_results["report"]["sessions"]["2"]
-            == readable_report["report"]["sessions"]["2"]
-        )
-        assert (
-            expected_results["report"]["sessions"]["3"]
-            == readable_report["report"]["sessions"]["3"]
-        )
-        assert (
-            expected_results["report"]["sessions"]
-            == readable_report["report"]["sessions"]
-        )
-        assert expected_results["report"]["files"] == readable_report["report"]["files"]
-        assert expected_results["report"] == readable_report["report"]
-        assert expected_results["totals"] == readable_report["totals"]
-        assert expected_results == readable_report
 
     def test_create_new_report_for_commit_no_flags(
         self, dbsession, sample_commit_with_report_big, mocker
@@ -2731,25 +2716,23 @@ class TestReportService(BaseTestCase):
         report = ReportService(UserYaml(yaml_dict)).create_new_report_for_commit(commit)
         assert report is not None
         mock_possibly_shift.assert_called()
-        assert sorted(report.files) == sorted(
-            [
-                "file_00.py",
-                "file_01.py",
-                "file_02.py",
-                "file_03.py",
-                "file_04.py",
-                "file_05.py",
-                "file_06.py",
-                "file_07.py",
-                "file_08.py",
-                "file_09.py",
-                "file_10.py",
-                "file_11.py",
-                "file_12.py",
-                "file_13.py",
-                "file_14.py",
-            ]
-        )
+        assert sorted(report.files) == [
+            "file_00.py",
+            "file_01.py",
+            "file_02.py",
+            "file_03.py",
+            "file_04.py",
+            "file_05.py",
+            "file_06.py",
+            "file_07.py",
+            "file_08.py",
+            "file_09.py",
+            "file_10.py",
+            "file_11.py",
+            "file_12.py",
+            "file_13.py",
+            "file_14.py",
+        ]
         assert report.totals == ReportTotals(
             files=15,
             lines=188,
@@ -2766,7 +2749,7 @@ class TestReportService(BaseTestCase):
             diff=0,
         )
         readable_report = self.convert_report_to_better_readable(report)
-        expected_results_report = {
+        assert readable_report["report"] == {
             "files": {
                 "file_00.py": [
                     0,
@@ -2892,18 +2875,6 @@ class TestReportService(BaseTestCase):
                 },
             },
         }
-        assert (
-            expected_results_report["sessions"]["2"]
-            == readable_report["report"]["sessions"]["2"]
-        )
-        assert (
-            expected_results_report["sessions"]["3"]
-            == readable_report["report"]["sessions"]["3"]
-        )
-        assert (
-            expected_results_report["sessions"] == readable_report["report"]["sessions"]
-        )
-        assert expected_results_report == readable_report["report"]
 
     @pytest.mark.django_db(databases={"default", "timeseries"})
     def test_create_new_report_for_commit_parent_not_ready_but_skipped(
@@ -3223,7 +3194,11 @@ class TestReportService(BaseTestCase):
             "N": 0,
             "diff": None,
         }
-        assert commit.report_json == {"files": {}, "sessions": {}}
+        assert commit.report_json == {
+            "files": {},
+            "sessions": {},
+            "totals": [0, 0, 0, 0, 0, None, 0, 0, 0, 0, 0, 0, None],
+        }
         assert res["url"] in mock_storage.storage["archive"]
         assert (
             mock_storage.storage["archive"][res["url"]].decode()
@@ -3294,6 +3269,7 @@ class TestReportService(BaseTestCase):
                     "se": {},
                 },
             },
+            "totals": [2, 10, 6, 3, 1, "60.00000", 1, 0, 0, 2, 10, 2, None],
         }
         assert res["url"] in mock_storage.storage["archive"]
         expected_content = "\n".join(
@@ -3364,119 +3340,6 @@ class TestReportService(BaseTestCase):
                 "",
                 "",
                 '["1/2","b",[[0,1]]]',
-            ]
-        )
-        assert mock_storage.storage["archive"][res["url"]].decode() == expected_content
-
-    def test_save_report_file_needing_repack(
-        self, dbsession, mock_storage, sample_report
-    ):
-        commit = CommitFactory.create()
-        dbsession.add(commit)
-        dbsession.flush()
-        current_report_row = CommitReport(commit_id=commit.id_)
-        dbsession.add(current_report_row)
-        dbsession.flush()
-        report_service = ReportService({})
-        f = ReportFile("hahafile.txt")
-        f.append(1, ReportLine.create(1))
-        sample_report.append(f)
-        f2 = ReportFile("poultry.c")
-        f2.append(12, ReportLine.create(1))
-        sample_report.append(f2)
-        f3 = ReportFile("pulse.py")
-        f3.append(2, ReportLine.create(1))
-        sample_report.append(f3)
-        del sample_report["file_2.py"]
-        del sample_report["hahafile.txt"]
-        del sample_report["pulse.py"]
-        assert len(sample_report._chunks) > 2 * len(sample_report._files)
-        res = report_service.save_report(commit, sample_report)
-        storage_hash = report_service.get_archive_service(
-            commit.repository
-        ).storage_hash
-        assert res == {
-            "url": f"v4/repos/{storage_hash}/commits/{commit.commitid}/chunks.txt"
-        }
-        assert len(current_report_row.uploads) == 0
-        assert commit.report_json == {
-            "files": {
-                "file_1.go": [
-                    0,
-                    [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                    None,
-                    None,
-                ],
-                "poultry.c": [
-                    1,
-                    [0, 1, 1, 0, 0, "100", 0, 0, 0, 0, 0, 0, 0],
-                    None,
-                    None,
-                ],
-            },
-            "sessions": {
-                "0": {
-                    "t": [2, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    "d": None,
-                    "a": None,
-                    "f": ["unit"],
-                    "c": "circleci",
-                    "n": "aycaramba",
-                    "N": None,
-                    "j": None,
-                    "u": None,
-                    "p": None,
-                    "e": None,
-                    "st": "uploaded",
-                    "se": {},
-                },
-                "1": {
-                    "t": None,
-                    "d": None,
-                    "a": None,
-                    "f": ["integration"],
-                    "c": "travis",
-                    "n": "poli",
-                    "N": None,
-                    "j": None,
-                    "u": None,
-                    "p": None,
-                    "e": None,
-                    "st": "carriedforward",
-                    "se": {},
-                },
-            },
-        }
-        assert res["url"] in mock_storage.storage["archive"]
-        expected_content = "\n".join(
-            [
-                "{}",
-                "<<<<< end_of_header >>>>>",
-                '{"present_sessions":[0,1]}',
-                "[1,null,[[0,1]],null,[10,2]]",
-                "[0,null,[[0,1]]]",
-                "[1,null,[[0,1]]]",
-                "",
-                "[1,null,[[0,1],[1,1]]]",
-                "[0,null,[[0,1]]]",
-                "",
-                "[1,null,[[0,1],[1,0]]]",
-                "[1,null,[[0,1]]]",
-                "[0,null,[[0,1]]]",
-                "<<<<< end_of_chunk >>>>>",
-                '{"present_sessions":[]}',
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "[1]",
             ]
         )
         assert mock_storage.storage["archive"][res["url"]].decode() == expected_content

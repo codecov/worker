@@ -43,9 +43,7 @@ def load_intermediate_reports(upload_ids: list[int]) -> list[IntermediateReport]
 
 @sentry_sdk.trace
 def save_intermediate_report(upload_id: int, report: Report):
-    _totals, report_json = report.to_database()
-    report_json = report_json.encode()
-    chunks = report.to_archive().encode()
+    report_json, chunks, _totals = report.serialize(with_totals=False)
     zstd_report_json, zstd_chunks = emit_size_metrics(report_json, chunks)
 
     report_key = intermediate_report_key(upload_id)

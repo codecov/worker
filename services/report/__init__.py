@@ -15,6 +15,7 @@ from shared.reports.carryforward import generate_carryforward_report
 from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
+from shared.reports.types import TOTALS_MAP
 from shared.storage.exceptions import FileNotInStorageError
 from shared.torngit.exceptions import TorngitError
 from shared.upload.constants import UploadErrorCode
@@ -676,12 +677,9 @@ class ReportService(BaseReportService):
 
     @sentry_sdk.trace
     def save_report(self, commit: Commit, report: Report, report_code=None):
-        if len(report._chunks) > 2 * len(report._files) and len(report._files) > 0:
-            report.repack()
         archive_service = self.get_archive_service(commit.repository)
 
-        totals, report_json = report.to_database()
-        chunks = report.to_archive().encode()
+        report_json, chunks, _totals = report.serialize()
 
         PYREPORT_REPORT_JSON_SIZE.observe(len(report_json))
         PYREPORT_CHUNKS_FILE_SIZE.observe(len(chunks))
@@ -689,7 +687,7 @@ class ReportService(BaseReportService):
         chunks_url = archive_service.write_chunks(commit.commitid, chunks, report_code)
 
         commit.state = "complete" if report else "error"
-        commit.totals = totals
+        commit.totals = legacy_totals(report)
         if (
             commit.totals is not None
             and "c" in commit.totals
@@ -825,3 +823,9 @@ def delete_uploads_by_sessionid(
         synchronize_session=False
     )
     db_session.flush()
+
+
+def legacy_totals(report: Report) -> dict:
+    totals = dict(zip(TOTALS_MAP, report.totals))
+    totals["diff"] = report.diff_totals
+    return totals
