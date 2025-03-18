@@ -44,14 +44,15 @@ def get_repo_flag_ids(db_session: Session, repoid: int, flags: list[str]) -> set
     if not flags:
         return set()
 
-    return set(
-        db_session.query(RepositoryFlag.id_)
+    return {
+        flag.id_
+        for flag in db_session.query(RepositoryFlag.id_)
         .filter(
             RepositoryFlag.repository_id == repoid,
             RepositoryFlag.flag_name.in_(flags),
         )
         .all()
-    )
+    }
 
 
 def create_daily_totals(
