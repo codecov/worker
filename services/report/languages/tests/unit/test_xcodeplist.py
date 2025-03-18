@@ -52,10 +52,9 @@ class TestXCodePlist(BaseTestCase):
             self.readfile("xccoverage.xml").encode(), report_builder_session
         )
         report = report_builder_session.output_report()
-        archive = report.to_archive()
+        _report_json, chunks, _totals = report.serialize()
 
-        expect = self.readfile("xcodeplist.txt")
-        assert archive == expect
+        assert chunks.decode() == self.readfile("xcodeplist.txt")
 
     def test_detect(self):
         processor = xcodeplist.XCodePlistProcessor()
