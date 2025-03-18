@@ -1,10 +1,14 @@
-name: Upload Overwatch
+# Created on 2025-03-18 17:17:41
+name: Upload Overwatch - 2025-03-18 17:17:41
 
 on:
   pull_request:
     types:
       - opened
       - synchronize
+  push:
+    branches-ignore:
+      - main
 
 jobs:
   upload-overwatch:
@@ -23,7 +27,7 @@ jobs:
       - name: Install Static Analysis Tools
         run: |
           pip install mypy==1.15.0
-          pip install ruff==0.9.8
+          pip install ruff==0.9.6
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
@@ -39,5 +43,6 @@ jobs:
           ./overwatch-cli \
             --auth-token ${{ secrets.SENTRY_AUTH_TOKEN }} \
             --organization-slug codecov \
+            --pullid 1131 \
             python \
             --python-path $(which python3)
