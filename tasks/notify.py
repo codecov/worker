@@ -544,6 +544,8 @@ class NotifyTask(BaseCodecovTask, name=notify_task_name):
                 )
                 compare_commit.patch_totals = minimal_totals(patch_coverage)
 
+        db_session.commit()
+
     @sentry_sdk.trace
     def get_gitlab_extra_shas_to_notify(
         self, commit: Commit, repository_service: TorngitBaseAdapter
