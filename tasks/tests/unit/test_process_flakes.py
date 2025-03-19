@@ -320,7 +320,7 @@ def test_it_handles_only_passes(transactional_db):
 def test_it_creates_flakes_from_processed_uploads(transactional_db):
     rs = RepoSimulator()
     c1 = rs.create_commit()
-    rs.add_test_instance(c1, state="v2_finished")
+    rs.add_test_instance(c1, state="finished")
     rs.add_test_instance(
         c1, outcome=TestInstance.Outcome.FAILURE.value, state="processed"
     )
@@ -340,7 +340,7 @@ def test_it_creates_flakes_from_processed_uploads(transactional_db):
 def test_it_does_not_create_flakes_from_flake_processed_uploads():
     rs = RepoSimulator()
     c1 = rs.create_commit()
-    rs.add_test_instance(c1, state="v2_processed")
+    rs.add_test_instance(c1, state="processed")
     rs.add_test_instance(
         c1, outcome=TestInstance.Outcome.FAILURE.value, state="flake_processed"
     )
