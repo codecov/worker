@@ -11,7 +11,6 @@ from mock import call
 from prometheus_client import REGISTRY
 from shared.celery_config import sync_repos_task_name, upload_task_name
 from shared.plan.constants import PlanName
-from shared.utils.test_utils import mock_config_helper
 from sqlalchemy.exc import (
     DBAPIError,
     IntegrityError,
@@ -208,40 +207,8 @@ class TestBaseCodecovTask(object):
         assert fake_session.close.call_count == 0
         assert mocked_get_db_session.remove.call_count == 1
 
-    def test_commit_django_with_timeseries(self, mocker):
-        mock_config_helper(mocker, configs={"setup.timeseries.enabled": True})
-        mock_commit = mocker.patch("tasks.base.django_transaction.commit")
-        task = BaseCodecovTask()
-        task._commit_django()
-        assert mock_commit.call_args_list == [call(), call("timeseries")]
-
-    def test_commit_django_without_timeseries(self, mocker):
-        mock_config_helper(mocker, configs={"setup.timeseries.enabled": False})
-        mock_commit = mocker.patch("tasks.base.django_transaction.commit")
-        task = BaseCodecovTask()
-        task._commit_django()
-        assert mock_commit.call_args_list == [call()]
-
-    def test_rollback_django_with_timeseries(self, mocker):
-        mock_config_helper(mocker, configs={"setup.timeseries.enabled": True})
-        mock_rollback = mocker.patch("tasks.base.django_transaction.rollback")
-        task = BaseCodecovTask()
-        task._rollback_django()
-        assert mock_rollback.call_args_list == [call(), call("timeseries")]
-
-    def test_rollback_django_without_timeseries(self, mocker):
-        mock_config_helper(mocker, configs={"setup.timeseries.enabled": False})
-        mock_rollback = mocker.patch("tasks.base.django_transaction.rollback")
-        task = BaseCodecovTask()
-        task._rollback_django()
-        assert mock_rollback.call_args_list == [call()]
-
-    def test_run_success_commits_both_orms(self, mocker, dbsession):
-        mock_django_commit = mocker.patch("tasks.base.BaseCodecovTask._commit_django")
+    def test_run_success_commits_sqlalchemy(self, mocker, dbsession):
         mock_wrap_up = mocker.patch("tasks.base.BaseCodecovTask.wrap_up_dbsession")
-        mock_django_rollback = mocker.patch(
-            "tasks.base.BaseCodecovTask._rollback_django"
-        )
         mock_dbsession_rollback = mocker.patch.object(dbsession, "rollback")
         mock_get_db_session = mocker.patch(
             "tasks.base.get_db_session", return_value=dbsession
@@ -250,17 +217,11 @@ class TestBaseCodecovTask(object):
         task = SampleTask()
         task.run()
 
-        assert mock_django_commit.call_args_list == [call()]
         assert mock_wrap_up.call_args_list == [call(dbsession)]
 
-        assert mock_django_rollback.call_count == 0
         assert mock_dbsession_rollback.call_count == 0
 
     def test_run_db_errors_rollback(self, mocker, dbsession, celery_app):
-        mock_django_commit = mocker.patch("tasks.base.BaseCodecovTask._commit_django")
-        mock_django_rollback = mocker.patch(
-            "tasks.base.BaseCodecovTask._rollback_django"
-        )
         mock_dbsession_rollback = mocker.patch.object(dbsession, "rollback")
         mock_wrap_up = mocker.patch("tasks.base.BaseCodecovTask.wrap_up_dbsession")
         mock_get_db_session = mocker.patch(
@@ -274,17 +235,11 @@ class TestBaseCodecovTask(object):
         task = celery_app.tasks[registered_task.name]
         task.apply()
 
-        assert mock_django_rollback.call_args_list == [call()]
         assert mock_dbsession_rollback.call_args_list == [call()]
 
-        assert mock_django_commit.call_args_list == [call()]
         assert mock_wrap_up.call_args_list == [call(dbsession)]
 
     def test_run_sqlalchemy_error_rollback(self, mocker, dbsession, celery_app):
-        mock_django_commit = mocker.patch("tasks.base.BaseCodecovTask._commit_django")
-        mock_django_rollback = mocker.patch(
-            "tasks.base.BaseCodecovTask._rollback_django"
-        )
         mock_dbsession_rollback = mocker.patch.object(dbsession, "rollback")
         mock_wrap_up = mocker.patch("tasks.base.BaseCodecovTask.wrap_up_dbsession")
         mock_get_db_session = mocker.patch(
@@ -299,10 +254,8 @@ class TestBaseCodecovTask(object):
         task = celery_app.tasks[registered_task.name]
         task.apply()
 
-        assert mock_django_rollback.call_args_list == [call()]
         assert mock_dbsession_rollback.call_args_list == [call()]
 
-        assert mock_django_commit.call_args_list == [call()]
         assert mock_wrap_up.call_args_list == [call(dbsession)]
 
     def test_get_repo_provider_service_working(self, mocker):

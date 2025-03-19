@@ -5,7 +5,7 @@ from shared.celery_config import delete_owner_task_name
 
 from app import celery_app
 from services.cleanup.owner import cleanup_owner
-from services.cleanup.utils import CleanupSummary, with_autocommit
+from services.cleanup.utils import CleanupSummary
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)
@@ -17,8 +17,7 @@ class DeleteOwnerTask(BaseCodecovTask, name=delete_owner_task_name):
 
     def run_impl(self, _db_session, ownerid: int) -> CleanupSummary:
         try:
-            with with_autocommit():
-                return cleanup_owner(ownerid)
+            return cleanup_owner(ownerid)
         except SoftTimeLimitExceeded:
             raise self.retry()
 

@@ -8,10 +8,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 ALLOWED_HOSTS = []
 
-DATABASES["default"]["AUTOCOMMIT"] = False
-if "timeseries" in DATABASES:
-    DATABASES["timeseries"]["AUTOCOMMIT"] = False
-
 IS_DEV = os.getenv("RUN_ENV") == "DEV"
 IS_ENTERPRISE = os.getenv("RUN_ENV") == "ENTERPRISE"
 
