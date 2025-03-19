@@ -1,6 +1,7 @@
 import logging
 import random
 from base64 import b64encode
+from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum, auto
 from itertools import starmap
@@ -8,6 +9,7 @@ from urllib.parse import urlencode
 
 from shared.helpers.yaml import walk
 from shared.reports.resources import Report
+from shared.validation.helpers import LayoutStructure
 
 from helpers.environment import is_enterprise
 from helpers.reports import get_totals_from_file_in_reports
@@ -31,32 +33,69 @@ log = logging.getLogger(__name__)
 
 ALL_TESTS_PASSED_MSG = ":white_check_mark: All tests successful. No failed tests found."
 
+SectionList = list[tuple[str, type["BaseSectionWriter"]]]
 
-def get_section_class_from_layout_name(layout_name):
-    if layout_name.startswith("flag"):
-        return FlagSectionWriter
-    if layout_name == "diff":
-        return DiffSectionWriter
-    if layout_name.startswith(("files", "tree")):
-        return FileSectionWriter
-    if layout_name == "reach":
-        return ReachSectionWriter
-    if layout_name == "footer":
-        return FooterSectionWriter
-    if layout_name == "announcements":
-        return AnnouncementSectionWriter
-    if layout_name in ["header", "newheader", "condensed_header"]:
-        return HeaderSectionWriter
-    if layout_name == "newfooter" or layout_name == "condensed_footer":
-        return NewFooterSectionWriter
-    if layout_name.startswith("component"):
-        return ComponentsSectionWriter
-    if layout_name == "newfiles" or layout_name == "condensed_files":
-        return NewFilesSectionWriter
-    if layout_name == "status_or_checks_helper_text":
-        return HelperTextSectionWriter
-    if layout_name == "messages_to_user":
-        return MessagesToUserSectionWriter
+
+@dataclass
+class MessageLayout:
+    upper: SectionList
+    middle: SectionList
+    lower: SectionList
+
+
+HEADER_SECTIONS = {"header", "newheader", "condensed_header"}
+
+
+def get_message_layout(
+    settings, status_or_checks_helper_text: dict[str, str] | None
+) -> MessageLayout:
+    sections = [s.strip() for s in settings.get("layout", "").split(",")]
+
+    # force at least the `condensed_header` if no header has been configured
+    if not any(s in HEADER_SECTIONS for s in sections):
+        sections.insert(0, "condensed_header")
+
+    # append the `newfiles` section if there is a `files` or `tree` section
+    if "files" in sections or "tree" in sections:
+        sections.append("newfiles")
+
+    upper: SectionList = []
+    middle: SectionList = []
+    lower: SectionList = []
+
+    for section in sections:
+        if section in HEADER_SECTIONS:
+            upper.append((section, HeaderSectionWriter))
+        elif section == "newfiles" or section == "condensed_files":
+            upper.append((section, NewFilesSectionWriter))
+
+        elif section.startswith("flag"):
+            middle.append((section, FlagSectionWriter))
+        elif section == "diff":
+            middle.append((section, DiffSectionWriter))
+        elif section.startswith(("files", "tree")):
+            middle.append((section, FileSectionWriter))
+        elif section == "reach":
+            middle.append((section, ReachSectionWriter))
+        elif section == "announcements":
+            middle.append((section, AnnouncementSectionWriter))
+        elif section.startswith("component"):
+            middle.append((section, ComponentsSectionWriter))
+        elif section == "footer":
+            middle.append((section, FooterSectionWriter))
+
+        elif section == "newfooter" or section == "condensed_footer":
+            lower.append(("newfooter", NewFooterSectionWriter))
+
+        elif section not in LayoutStructure.acceptable_objects:
+            log.warning("Improper layout name", extra={"layout": section})
+
+    # append the helper text and messages to user to the upper section
+    if status_or_checks_helper_text:
+        upper.append(("status_or_checks_helper_text", HelperTextSectionWriter))
+    upper.append(("messages_to_user", MessagesToUserSectionWriter))
+
+    return MessageLayout(upper, middle, lower)
 
 
 class BaseSectionWriter(object):
@@ -80,50 +119,40 @@ class BaseSectionWriter(object):
     def name(self):
         return self.__class__.__name__
 
-    def write_section(self, *args, **kwargs):
-        return [i for i in self.do_write_section(*args, **kwargs)]
-
-
-class NullSectionWriter(BaseSectionWriter):
-    def write_section(*args, **kwargs):
-        return []
+    def write_section(self, *args, **kwargs) -> list[str]:
+        return list(self.do_write_section(*args, **kwargs))
 
 
 class NewFooterSectionWriter(BaseSectionWriter):
     def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         hide_project_coverage = self.settings.get("hide_project_coverage", False)
         if hide_project_coverage:
-            yield ("")
-            yield (
-                ":loudspeaker: Thoughts on this report? [Let us know!]({0})".format(
-                    "https://about.codecov.io/pull-request-comment-report/"
-                )
+            yield ""
+            yield ":loudspeaker: Thoughts on this report? [Let us know!]({0})".format(
+                "https://about.codecov.io/pull-request-comment-report/"
             )
+
         else:
             repo_service = comparison.repository_service.service
-            yield ("")
-            yield (
-                "[:umbrella: View full report in Codecov by Sentry]({0}?dropdown=coverage&src=pr&el=continue).   ".format(
-                    links["pull"]
-                )
+            yield ""
+            yield "[:umbrella: View full report in Codecov by Sentry]({0}?dropdown=coverage&src=pr&el=continue).   ".format(
+                links["pull"]
             )
-            yield (
-                ":loudspeaker: Have feedback on the report? [Share it here]({0}).".format(
-                    "https://about.codecov.io/codecov-pr-comment-feedback/"
-                    if repo_service == "github"
-                    else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
-                )
+            yield ":loudspeaker: Have feedback on the report? [Share it here]({0}).".format(
+                "https://about.codecov.io/codecov-pr-comment-feedback/"
+                if repo_service == "github"
+                else "https://gitlab.com/codecov-open-source/codecov-user-feedback/-/issues/4"
             )
 
 
 class HeaderSectionWriter(BaseSectionWriter):
     def _possibly_include_test_result_setup_confirmation(self, comparison):
         if ta_error_msg := comparison.test_results_error():
-            yield ("")
-            yield (ta_error_msg)
+            yield ""
+            yield ta_error_msg
         elif comparison.all_tests_passed():
             yield ""
-            yield (ALL_TESTS_PASSED_MSG)
+            yield ALL_TESTS_PASSED_MSG
 
     def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         yaml = self.current_yaml
@@ -195,16 +224,14 @@ class HeaderSectionWriter(BaseSectionWriter):
                     ],
                 ),
             )
-            yield ("")
+            yield ""
             pull_head = comparison.enriched_pull.provider_pull["head"]["commitid"][:7]
             current_head = comparison.head.commit.commitid[:7]
             yield (
                 f"> :exclamation: **Current head {current_head} differs from pull request most recent head {pull_head}**"
             )
-            yield ("> ")
-            yield (
-                f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {pull_head} to get more accurate results."
-            )
+            yield "> "
+            yield f"> Please [upload](https://docs.codecov.com/docs/codecov-uploader) reports for the commit {pull_head} to get more accurate results."
 
         for msg in self._possibly_include_test_result_setup_confirmation(comparison):
             yield msg
@@ -228,19 +255,16 @@ class AnnouncementSectionWriter(BaseSectionWriter):
 class FooterSectionWriter(BaseSectionWriter):
     def do_write_section(self, comparison, diff, changes, links, behind_by=None):
         pull_dict = comparison.enriched_pull.provider_pull
-        yield ("------")
-        yield ("")
+        yield "------"
+        yield ""
         yield (
             "[Continue to review full report in Codecov by Sentry]({0}?dropdown=coverage&src=pr&el=continue).".format(
                 links["pull"]
             )
         )
-        yield (
-            "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)"
-        )
-        yield (
-            "> `\u0394 = absolute <relative> (impact)`, `\xf8 = not affected`, `? = missing data`"
-        )
+        yield "> **Legend** - [Click here to learn more](https://docs.codecov.io/docs/codecov-delta)"
+        yield "> `\u0394 = absolute <relative> (impact)`, `\xf8 = not affected`, `? = missing data`"
+
         yield (
             "> Powered by [Codecov]({pull}?dropdown=coverage&src=pr&el=footer). Last update [{base}...{head}]({pull}?dropdown=coverage&src=pr&el=lastupdated). Read the [comment docs]({comment}).".format(
                 pull=links["pull"],
@@ -277,7 +301,7 @@ class DiffSectionWriter(BaseSectionWriter):
             base_report = Report()
         pull_dict = comparison.enriched_pull.provider_pull
         pull = comparison.enriched_pull.database_pull
-        yield ("```diff")
+        yield "```diff"
         lines = diff_to_string(
             self.current_yaml,
             pull_dict["base"]["branch"],  # important because base may be null
@@ -285,9 +309,8 @@ class DiffSectionWriter(BaseSectionWriter):
             "#%s" % pull.pullid,
             head_report.totals,
         )
-        for li in lines:
-            yield (li)
-        yield ("```")
+        yield from lines
+        yield "```"
 
 
 def _get_tree_cell(typ, path, metrics, compare, is_critical):
@@ -363,13 +386,13 @@ class NewFilesSectionWriter(BaseSectionWriter):
                         links["pull"], table_header
                     )
                 )
-                yield (table_layout)
+                yield table_layout
             for file in changed_files_with_missing_lines:
                 if printed_files == limit:
                     remaining_files += 1
                 else:
                     printed_files += 1
-                    yield (tree_cell(file[0], file[1], file[2]))
+                    yield tree_cell(file[0], file[1], file[2])
             if remaining_files:
                 yield (
                     "| ... and [{n} more]({href}?src=pr&el=tree-more) | |".format(
@@ -432,12 +455,11 @@ class FileSectionWriter(BaseSectionWriter):
                     links["pull"], table_header
                 )
             )
-            yield (table_layout)
-            for line in starmap(
+            yield table_layout
+            yield from starmap(
                 tree_cell,
                 sorted(files_in_diff, key=lambda a: a[3] or Decimal("0"))[:limit],
-            ):
-                yield (line)
+            )
             remaining = len(files_in_diff) - limit
             if remaining > 0:
                 yield (
@@ -449,7 +471,7 @@ class FileSectionWriter(BaseSectionWriter):
         if changes:
             len_changes_not_in_diff = len(all_files or []) - len(files_in_diff or [])
             if files_in_diff and len_changes_not_in_diff > 0:
-                yield ("")
+                yield ""
                 yield (
                     "... and [{n} file{s} with indirect coverage changes]({href}/indirect-changes?src=pr&el=tree-more)".format(
                         n=len_changes_not_in_diff,
@@ -539,7 +561,7 @@ class FlagSectionWriter(BaseSectionWriter):
                 "| [Flag]({href}/flags?src=pr&el=flags) ".format(href=links["pull"])
                 + table_header
             )
-            yield (table_layout)
+            yield table_layout
             for flag in sorted(flags, key=lambda f: f["name"]):
                 carriedforward, carriedforward_from = (
                     flag["carriedforward"],
@@ -586,12 +608,12 @@ class FlagSectionWriter(BaseSectionWriter):
                 )
 
             if has_carriedforward_flags and show_carriedforward_flags:
-                yield ("")
+                yield ""
                 yield (
                     "*This pull request uses carry forward flags. [Click here](https://docs.codecov.io/docs/carryforward-flags) to find out more."
                 )
             elif not show_carriedforward_flags:
-                yield ("")
+                yield ""
                 yield (
                     "Flags with carried forward coverage won't be shown. [Click here](https://docs.codecov.io/docs/carryforward-flags#carryforward-flags-in-the-pull-request-comment) to find out more."
                 )

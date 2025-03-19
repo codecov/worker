@@ -1,23 +1,18 @@
 import logging
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional
 
 from shared.django_apps.core.models import Repository
 from shared.plan.constants import TierName
 from shared.plan.service import PlanService
 from shared.reports.resources import ReportTotals
-from shared.validation.helpers import LayoutStructure
 
 from database.models.core import Owner
 from helpers.environment import is_enterprise
-from helpers.metrics import metrics
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
 )
-from services.notification.notifiers.mixins.message.sections import (
-    NullSectionWriter,
-    get_section_class_from_layout_name,
-)
+from services.notification.notifiers.mixins.message.sections import get_message_layout
 from services.notification.notifiers.mixins.message.writers import TeamPlanWriter
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import read_yaml_field
@@ -76,7 +71,7 @@ class MessageMixin(object):
                 or (head_report.totals if head_report else ReportTotals()).complexity
             )
 
-        message = []
+        message: list[str] = []
         # note: since we're using append, calling write("") will add a newline to the message
         write = message.append
 
@@ -100,16 +95,9 @@ class MessageMixin(object):
                 current_yaml=current_yaml,
             )
 
-        upper_section_names = self.get_upper_section_names(settings)
-        if status_or_checks_helper_text:
-            # add status_or_checks_helper_text to header
-            upper_section_names.append("status_or_checks_helper_text")
-        # We write the header and then the messages_to_user section
-        upper_section_names.append("messages_to_user")
-        for upper_section_name in upper_section_names:
-            section_writer_class = get_section_class_from_layout_name(
-                upper_section_name
-            )
+        sections = get_message_layout(settings, status_or_checks_helper_text)
+
+        for upper_section_name, section_writer_class in sections.upper:
             section_writer = section_writer_class(
                 self.repository,
                 upper_section_name,
@@ -118,74 +106,44 @@ class MessageMixin(object):
                 current_yaml,
                 status_or_checks_helper_text,
             )
-
             self.write_section_to_msg(
                 comparison, changes, diff, links, write, section_writer, behind_by
             )
 
-        is_compact_message = should_message_be_compact(comparison, settings)
-
         if head_report:
+            is_compact_message = sections.middle and should_message_be_compact(
+                comparison, settings
+            )
             if is_compact_message:
                 write(
                     "<details><summary>Additional details and impacted files</summary>\n"
                 )
                 write("")
 
-            for layout in self.get_middle_layout_section_names(settings):
-                section_writer_class = get_section_class_from_layout_name(layout)
-                if section_writer_class is not None:
-                    section_writer = section_writer_class(
-                        self.repository, layout, show_complexity, settings, current_yaml
-                    )
-                else:
-                    if layout not in LayoutStructure.acceptable_objects:
-                        log.warning(
-                            "Improper layout name",
-                            extra=dict(
-                                repoid=comparison.head.commit.repoid,
-                                layout_name=layout,
-                                commit=comparison.head.commit.commitid,
-                            ),
-                        )
-                    section_writer = NullSectionWriter(
-                        self.repository, layout, show_complexity, settings, current_yaml
-                    )
-
+            for layout, section_writer_class in sections.middle:
+                section_writer = section_writer_class(
+                    self.repository, layout, show_complexity, settings, current_yaml
+                )
                 self.write_section_to_msg(
-                    comparison,
-                    changes,
-                    diff,
-                    links,
-                    write,
-                    section_writer,
+                    comparison, changes, diff, links, write, section_writer
                 )
 
             if is_compact_message:
                 write("</details>")
 
-            lower_section_name = self.get_lower_section_name(settings)
-            if lower_section_name is not None:
-                section_writer_class = get_section_class_from_layout_name(
-                    lower_section_name
+            for lower_section_name, section_writer_class in sections.lower:
+                section_writer = section_writer_class(
+                    self.repository,
+                    lower_section_name,
+                    show_complexity,
+                    settings,
+                    current_yaml,
                 )
-                if section_writer_class is not None:
-                    section_writer = section_writer_class(
-                        self.repository,
-                        lower_section_name,
-                        show_complexity,
-                        settings,
-                        current_yaml,
-                    )
-                    self.write_section_to_msg(
-                        comparison,
-                        changes,
-                        diff,
-                        links,
-                        write,
-                        section_writer,
-                    )
+                self.write_section_to_msg(
+                    comparison, changes, diff, links, write, section_writer
+                )
 
+        # TODO(swatinem): should this rather be part of the `announcements` section
         self.write_cross_pollination_message(write=write)
 
         return [m for m in message if m is not None]
@@ -211,100 +169,40 @@ class MessageMixin(object):
     def _team_plan_notification(
         self,
         comparison: ComparisonProxy,
-        message: List[str],
+        message: list[str],
         diff,
         settings,
         links,
         current_yaml,
-    ) -> List[str]:
+    ) -> list[str]:
         writer_class = TeamPlanWriter()
 
-        with metrics.timer(
-            f"worker.services.notifications.notifiers.comment.section.{writer_class.name}"
-        ):
-            # Settings here enable failed tests results for now as a new product
-            message.extend(
-                line
-                for line in writer_class.header_lines(
-                    comparison=comparison, diff=diff, settings=settings
-                )
+        # Settings here enable failed tests results for now as a new product
+        message.extend(
+            writer_class.header_lines(
+                comparison=comparison, diff=diff, settings=settings
             )
-            message.extend(
-                line
-                for line in writer_class.middle_lines(
-                    comparison=comparison,
-                    diff=diff,
-                    links=links,
-                    current_yaml=current_yaml,
-                )
+        )
+        message.extend(
+            writer_class.middle_lines(
+                comparison=comparison, diff=diff, links=links, current_yaml=current_yaml
             )
-            message.extend(line for line in writer_class.footer_lines(comparison))
+        )
+        message.extend(writer_class.footer_lines(comparison))
 
-            return message
+        return message
 
     def write_section_to_msg(
         self, comparison, changes, diff, links, write, section_writer, behind_by=None
     ):
-        wrote_something: bool = False
-        with metrics.timer(
-            f"worker.services.notifications.notifiers.comment.section.{section_writer.name}"
+        wrote_something = False
+        for line in section_writer.write_section(
+            comparison, diff, changes, links, behind_by=behind_by
         ):
-            for line in section_writer.write_section(
-                comparison, diff, changes, links, behind_by=behind_by
-            ):
-                wrote_something |= line is not None
-                write(line)
+            wrote_something |= line is not None
+            write(line)
         if wrote_something:
             write("")
-
-    def get_middle_layout_section_names(self, settings):
-        sections = map(
-            lambda layout: layout.strip(), settings.get("layout", "").split(",")
-        )
-        return [
-            section
-            for section in sections
-            if section
-            not in [
-                "header",
-                "newheader",
-                "newfooter",
-                "newfiles",
-                "condensed_header",
-                "condensed_footer",
-                "condensed_files",
-            ]
-        ]
-
-    def get_upper_section_names(self, settings):
-        sections = list(
-            map(lambda layout: layout.strip(), settings.get("layout", "").split(","))
-        )
-        headers = ["newheader", "header", "condensed_header"]
-        if all(x not in sections for x in headers):
-            sections.insert(0, "condensed_header")
-
-        if "files" in sections or "tree" in sections:
-            sections.append("newfiles")
-
-        return [
-            section
-            for section in sections
-            if section
-            in [
-                "header",
-                "newheader",
-                "condensed_header",
-                "newfiles",
-                "condensed_files",
-            ]
-        ]
-
-    def get_lower_section_name(self, settings):
-        if "newfooter" in settings.get(
-            "layout", ""
-        ) or "condensed_footer" in settings.get("layout", ""):
-            return "newfooter"
 
     def write_cross_pollination_message(self, write: Callable):
         extra_message = []

@@ -222,7 +222,8 @@ class TestNotifyTask(object):
             commitid=commit.commitid,
             current_yaml={"coverage": {"status": {"project": True}}},
         )
-        expected_result = {
+
+        assert result == {
             "notified": True,
             "notifications": [
                 {
@@ -259,7 +260,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -297,7 +298,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -338,14 +339,6 @@ class TestNotifyTask(object):
                 },
             ],
         }
-        assert result is not None
-        assert (
-            result["notifications"][0]["result"]
-            == expected_result["notifications"][0]["result"]
-        )
-        assert result["notifications"][0] == expected_result["notifications"][0]
-        assert result["notifications"] == expected_result["notifications"]
-        assert result == expected_result
 
         comparison = (
             dbsession.query(CompareCommit)
@@ -430,7 +423,8 @@ class TestNotifyTask(object):
                 }
             },
         )
-        expected_result = {
+
+        assert result == {
             "notified": True,
             "notifications": [
                 {
@@ -501,7 +495,7 @@ class TestNotifyTask(object):
                                     "branch": "test-branch-1",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -539,7 +533,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -580,19 +574,6 @@ class TestNotifyTask(object):
                 },
             ],
         }
-        assert (
-            result["notifications"][0]["result"]
-            == expected_result["notifications"][0]["result"]
-        )
-        assert result["notifications"][0] == expected_result["notifications"][0]
-        assert result["notifications"][1] == expected_result["notifications"][1]
-        assert (
-            result["notifications"][2]["result"]
-            == expected_result["notifications"][2]["result"]
-        )
-        assert result["notifications"][2] == expected_result["notifications"][2]
-        assert result["notifications"] == expected_result["notifications"]
-        assert result == expected_result
 
     @patch("requests.post")
     @pytest.mark.django_db
@@ -661,7 +642,8 @@ class TestNotifyTask(object):
                 }
             },
         )
-        expected_result = {
+
+        assert result == {
             "notified": True,
             "notifications": [
                 {
@@ -729,7 +711,7 @@ class TestNotifyTask(object):
                                     "branch": "thiago/base-no-base",
                                     "message": "",
                                     "author": "rolabuhasna",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -767,7 +749,7 @@ class TestNotifyTask(object):
                                     "branch": "master",
                                     "message": "",
                                     "author": "bateslouis",
-                                    "timestamp": "2019-02-01T17:59:47+00:00",
+                                    "timestamp": "2019-02-01T17:59:47",
                                     "ci_passed": True,
                                     "totals": {
                                         "C": 0,
@@ -808,7 +790,6 @@ class TestNotifyTask(object):
                 },
             ],
         }
-        assert result == expected_result
 
     @patch("requests.post")
     @pytest.mark.django_db

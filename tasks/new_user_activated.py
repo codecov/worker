@@ -70,10 +70,10 @@ class NewUserActivatedTask(BaseCodecovTask, name=new_user_activated_task_name):
                 )
 
         return {
-            "notifies_scheduled": bool(len(pulls_notified)),
+            "notifies_scheduled": bool(pulls_notified),
             "pulls_notified": pulls_notified,
             "reason": None
-            if len(pulls_notified)
+            if pulls_notified
             else "no pulls/pull notifications met criteria",
         }
 

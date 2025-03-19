@@ -19,7 +19,6 @@ from database.models import (
     RepositoryFlag,
     TestInstance,
     Upload,
-    UploadError,
 )
 from helpers.notifier import BaseNotifier, NotifierResult
 from services.license import requires_license
@@ -150,6 +149,12 @@ class TestResultsNotificationPayload:
     info: TACommentInDepthInfo | None = None
 
 
+@dataclass
+class ErrorPayload:
+    error_code: str
+    error_message: str | None = None
+
+
 def wrap_in_details(summary: str, content: str):
     result = f"<details><summary>{summary}</summary>\n{content}\n</details>"
     return result
@@ -243,17 +248,17 @@ def messagify_flake(
     return make_quoted(f"{test_name}\n{flake_rate_section}\n{stack_trace}")
 
 
-def specific_error_message(upload_error: UploadError) -> str:
-    title = f"### :x: {upload_error.error_code.replace('_', ' ').capitalize()}"
-    if upload_error.error_code == "unsupported_file_format":
+def specific_error_message(error: ErrorPayload) -> str:
+    title = f"### :x: {error.error_code.replace('_', ' ').capitalize()}"
+    if error.error_code == "unsupported_file_format":
         description = "\n".join(
             [
                 "Upload processing failed due to unsupported file format. Please review the parser error message:",
-                f"`{upload_error.error_params['error_message']}`",
+                f"`{error.error_message}`",
                 "For more help, visit our [troubleshooting guide](https://docs.codecov.com/docs/test-analytics#troubleshooting).",
             ]
         )
-    elif upload_error.error_code == "file_not_in_storage":
+    elif error.error_code == "file_not_in_storage":
         description = "\n".join(
             [
                 "No result to display due to the CLI not being able to find the file.",
@@ -273,7 +278,7 @@ def specific_error_message(upload_error: UploadError) -> str:
 @dataclass
 class TestResultsNotifier(BaseNotifier):
     payload: TestResultsNotificationPayload | None = None
-    error: UploadError | None = None
+    error: ErrorPayload | None = None
 
     def build_message(self) -> str:
         if self.payload is None:

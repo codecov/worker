@@ -612,7 +612,9 @@ class TestDecorationServiceTestCase(object):
         [
             (True, "email", "dependabot[bot]@users.noreply.github.com"),
             (True, "email", "29139614+renovate[bot]@users.noreply.github.com"),
+            (True, "email", "157164994+sentry-autofix[bot]@users.noreply.github.com"),
             (True, "service_id", "29139614"),
+            (True, "service_id", "157164994"),
             (False, None, None),
         ],
     )

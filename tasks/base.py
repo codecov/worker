@@ -5,10 +5,8 @@ import sentry_sdk
 from celery._state import get_current_task
 from celery.exceptions import MaxRetriesExceededError, SoftTimeLimitExceeded
 from celery.worker.request import Request
-from django.db import transaction as django_transaction
 from shared.celery_router import route_tasks_based_on_user_plan
 from shared.metrics import Counter, Histogram
-from shared.timeseries.helpers import is_timeseries_enabled
 from shared.torngit.base import TorngitBaseAdapter
 from shared.typings.torngit import AdditionalData
 from sqlalchemy.exc import (
@@ -180,46 +178,6 @@ class BaseCodecovTask(celery_app.Task):
         }
         return super().apply_async(args=args, kwargs=kwargs, headers=headers, **options)
 
-    def _commit_django(self):
-        try:
-            django_transaction.commit()
-        except Exception as e:
-            log.warning(
-                "Django transaction failed to commit.",
-                exc_info=True,
-                extra=dict(e=e),
-            )
-
-        if is_timeseries_enabled():
-            try:
-                django_transaction.commit("timeseries")
-            except Exception as e:
-                log.warning(
-                    "Django transaction failed to commit in the timeseries database.",
-                    exc_info=True,
-                    extra=dict(e=e),
-                )
-
-    def _rollback_django(self):
-        try:
-            django_transaction.rollback()
-        except Exception as e:
-            log.warning(
-                "Django transaction failed to roll back.",
-                exc_info=True,
-                extra=dict(e=e),
-            )
-
-        if is_timeseries_enabled():
-            try:
-                django_transaction.rollback("timeseries")
-            except Exception as e:
-                log.warning(
-                    "Django transaction failed to roll back in the timeseries database.",
-                    exc_info=True,
-                    extra=dict(e=e),
-                )
-
     # Called when attempting to retry the task on db error
     def _retry(self, countdown=None):
         if not countdown:
@@ -307,12 +265,10 @@ class BaseCodecovTask(celery_app.Task):
                     extra=dict(task_args=args, task_kwargs=kwargs),
                 )
                 db_session.rollback()
-                self._rollback_django()
                 self._retry()
             except SQLAlchemyError as ex:
                 self._analyse_error(ex, args, kwargs)
                 db_session.rollback()
-                self._rollback_django()
                 self._retry()
             except MaxRetriesExceededError as ex:
                 if UploadFlow.has_begun():
@@ -321,7 +277,6 @@ class BaseCodecovTask(celery_app.Task):
                     TestResultsFlow.log(TestResultsFlow.UNCAUGHT_RETRY_EXCEPTION)
             finally:
                 self.wrap_up_dbsession(db_session)
-                self._commit_django()
 
     def wrap_up_dbsession(self, db_session):
         """
