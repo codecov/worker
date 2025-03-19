@@ -3,7 +3,6 @@ import logging
 from decimal import Decimal
 
 import sentry_sdk
-from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState
 from shared.reports.resources import Report, ReportTotals
 from shared.yaml import UserYaml
@@ -24,7 +23,7 @@ log = logging.getLogger(__name__)
 @sentry_sdk.trace
 def merge_reports(
     commit_yaml: UserYaml,
-    master_report: EditableReport,
+    master_report: Report,
     intermediate_reports: list[IntermediateReport],
 ) -> tuple[Report, MergeResult]:
     session_mapping: dict[int, int] = dict()

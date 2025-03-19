@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 
 import sentry_sdk
-from shared.reports.editable import EditableReport
 from shared.reports.resources import Report
 from shared.utils.sessions import Session, SessionType
 from shared.yaml import UserYaml
@@ -113,7 +112,7 @@ def process_raw_upload(
 
 @sentry_sdk.trace
 def clear_carryforward_sessions(
-    original_report: EditableReport,
+    original_report: Report,
     to_merge_report: Report,
     to_merge_flags: list[str],
     current_yaml: UserYaml,
