@@ -480,6 +480,7 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             extra=dict(git_service=service, service_id=service_id, username=username),
         )
         print("trigger overwatch")
+        
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == service, Owner.service_id == service_id)
