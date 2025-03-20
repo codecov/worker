@@ -3088,9 +3088,9 @@ class TestFileSectionWriter(object):
         dbsession.flush()
         result = notifier.build_message(comparison)
 
-        header = "<details><summary>🚀 New features to boost your workflow: </summary>"
-        ta_message = "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
-        ba_message = "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+        header = "<details><summary> :rocket: New features to boost your workflow: </summary>"
+        ta_message = "- :snowflake: [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+        ba_message = "- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
 
         end_of_message = []
 
