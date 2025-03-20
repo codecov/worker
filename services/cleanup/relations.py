@@ -4,6 +4,7 @@ from graphlib import TopologicalSorter
 
 from django.db.models import Model
 from django.db.models.expressions import Col, Expression
+from django.db.models.fields import Field
 from django.db.models.lookups import Exact, In
 from django.db.models.query import QuerySet
 from shared.django_apps.bundle_analysis.models import CacheConfig
@@ -191,3 +192,28 @@ def simplified_lookup(queryset: QuerySet) -> QuerySet | list[int]:
             return condition.rhs
 
     return queryset
+
+
+def reverse_filter(queryset: QuerySet) -> None | tuple[str, QuerySet]:
+    if queryset.query.is_sliced:
+        return None
+
+    where = queryset.query.where
+    if len(where.children) != 1:
+        return None
+
+    condition = where.children[0]
+    if (
+        not isinstance(condition, In)
+        or not isinstance(condition.lhs, Col)
+        or not isinstance(condition.lhs.target, Field)
+        or condition.rhs_is_direct_value()
+    ):
+        return None
+
+    column = condition.lhs.target.name
+
+    query = condition.rhs
+    model = query.model
+
+    return (column, QuerySet(model=model, query=query))

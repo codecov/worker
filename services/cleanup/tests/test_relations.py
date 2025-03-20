@@ -3,10 +3,16 @@ import sqlparse
 from django.db.models.query import QuerySet
 from django.db.models.sql.subqueries import DeleteQuery
 from shared.django_apps.codecov_auth.models import Owner
+from shared.django_apps.codecov_auth.tests.factories import OwnerFactory
 from shared.django_apps.core.models import Repository
-from shared.django_apps.reports.models import ReportDetails
+from shared.django_apps.core.tests.factories import RepositoryFactory
+from shared.django_apps.reports.models import ReportDetails, TestInstance
 
-from services.cleanup.relations import build_relation_graph, simplified_lookup
+from services.cleanup.relations import (
+    build_relation_graph,
+    reverse_filter,
+    simplified_lookup,
+)
 
 
 def dump_delete_queries(queryset: QuerySet) -> str:
@@ -60,3 +66,34 @@ def test_can_simplify_queries():
 def test_leaf_table(snapshot):
     query = ReportDetails.objects.all()
     assert dump_delete_queries(query) == snapshot("leaf.txt")
+
+
+@pytest.mark.django_db
+def test_can_reverse_filter():
+    query = TestInstance.objects.filter(repoid=123)
+    assert reverse_filter(query) is None
+
+    query = TestInstance.objects.filter(repoid__in=[123, 234])
+    assert reverse_filter(query) is None
+
+    query = TestInstance.objects.filter(
+        repoid__in=Repository.objects.filter(author=123), branch="foo"
+    )
+    assert reverse_filter(query) is None
+
+    owner = OwnerFactory()
+    r1 = RepositoryFactory(author=owner)
+    r2 = RepositoryFactory(author=owner)
+    r3 = RepositoryFactory(author=owner)
+
+    filtered_qs = Repository.objects.filter(author=owner.ownerid)
+    query = TestInstance.objects.filter(repoid__in=filtered_qs)
+
+    column, reversed_query = reverse_filter(query)
+
+    assert column == "repoid"
+    # ideally, we would assert that the `QuerySet` itself is the same,
+    # but that is not really doable. but in essense we only care that it yields
+    # the same results, which it does:
+    assert set(reversed_query) == set(filtered_qs)
+    assert set(reversed_query) == {r1, r2, r3}
