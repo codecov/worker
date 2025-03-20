@@ -393,11 +393,17 @@ class TestUploadTaskIntegration(object):
         dbsession.flush()
         dbsession.refresh(commit)
 
-        mock_redis.lists[
-            f"uploads/{commit.repoid}/{commit.commitid}/bundle_analysis"
-        ] = jsonified_redis_queue
+        repository = commit.repository
+        repository.bundle_analysis_enabled = True
+        dbsession.add(repository)
+        dbsession.flush()
+        dbsession.refresh(repository)
 
-        # First run
+        mock_redis.lists[f"uploads/{commit.repoid}/{commit.commitid}/test_results"] = (
+            jsonified_redis_queue
+        )
+
+        # First run -- should enter BA processor task
         UploadTask().run_impl(
             dbsession,
             commit.repoid,
@@ -418,22 +424,18 @@ class TestUploadTaskIntegration(object):
                 "upload_pk": None,
             },
         )
+        assert call([processor_sig]) in chain.mock_calls
 
-        chain.assert_called_with([processor_sig])
-
-        # Reset the mock to check for the second run
         chain.reset_mock()
 
-        # Second run
+        # Second run -- A new BA processor task was not created
         UploadTask().run_impl(
             dbsession,
             commit.repoid,
             commit.commitid,
             report_type="test_results",
         )
-
-        # Check that the bundle_analysis_processor_task was not called
-        chain.assert_not_called()
+        assert call([processor_sig]) not in chain.mock_calls
 
     @pytest.mark.django_db(databases={"default"}, transaction=True)
     def test_upload_task_call_test_results(
