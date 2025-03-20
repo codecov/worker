@@ -33,6 +33,5 @@ jobs:
           ./overwatch-cli \
             --auth-token ${{ secrets.SENTRY_AUTH_TOKEN }} \
             --organization-slug codecov \
-            --pullid 1131 \
             python \
             --python-path $(which python3)
