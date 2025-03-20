@@ -17,7 +17,7 @@ from tasks.cache_test_rollups import CacheTestRollupsTask
 
 class TestCacheTestRollupsTask:
     def read_table(self, mock_storage, storage_path: str):
-        decompressed_table: bytes = mock_storage.read_file("codecov", storage_path)
+        decompressed_table: bytes = mock_storage.read_file("archive", storage_path)
         return pl.read_ipc(decompressed_table)
 
     def test_cache_test_rollups(self, mock_storage, transactional_db):
