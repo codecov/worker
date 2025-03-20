@@ -1,7 +1,6 @@
 import orjson
 import sentry_sdk
 import zstandard
-from shared.reports.editable import EditableReport
 from shared.reports.resources import Report
 
 from services.redis import get_redis_connection
@@ -20,9 +19,9 @@ def load_intermediate_reports(upload_ids: list[int]) -> list[IntermediateReport]
 
     for upload_id in upload_ids:
         key = intermediate_report_key(upload_id)
-        report_dict = redis.hgetall(key)
+        report_dict: dict = redis.hgetall(key)
         if not report_dict:
-            intermediate_reports.append(IntermediateReport(upload_id, EditableReport()))
+            intermediate_reports.append(IntermediateReport(upload_id, Report()))
             continue
 
         # NOTE: our redis client is configured to return `bytes` everywhere,
@@ -30,7 +29,7 @@ def load_intermediate_reports(upload_ids: list[int]) -> list[IntermediateReport]
         chunks = dctx.decompress(report_dict[b"chunks"]).decode(errors="replace")
         report_json = orjson.loads(dctx.decompress(report_dict[b"report_json"]))
 
-        report = EditableReport.from_chunks(
+        report = Report.from_chunks(
             chunks=chunks,
             files=report_json["files"],
             sessions=report_json["sessions"],

@@ -1,6 +1,5 @@
 import pytest
 from mock import MagicMock
-from shared.reports.editable import EditableReport, EditableReportFile
 from shared.reports.reportfile import ReportFile
 from shared.reports.resources import Report
 from shared.reports.types import CoverageDatapoint, LineSession, ReportLine
@@ -21,7 +20,7 @@ from test_utils.base import BaseTestCase
 class TestAdjustSession(BaseTestCase):
     @pytest.fixture
     def sample_first_report(self):
-        first_report = EditableReport(
+        first_report = Report(
             sessions={
                 0: Session(
                     flags=["enterprise"],
@@ -39,7 +38,7 @@ class TestAdjustSession(BaseTestCase):
                 ),
             }
         )
-        first_file = EditableReportFile("first_file.py")
+        first_file = ReportFile("first_file.py")
         c = 0
         for list_of_lists_of_labels in [
             [["one_label"]],
@@ -58,7 +57,7 @@ class TestAdjustSession(BaseTestCase):
                     ),
                 )
                 c += 1
-        second_file = EditableReportFile("second_file.py")
+        second_file = ReportFile("second_file.py")
         first_report.append(first_file)
         first_report.append(second_file)
         assert self.convert_report_to_better_readable(first_report)["archive"] == {

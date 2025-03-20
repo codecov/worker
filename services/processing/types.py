@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, NotRequired, TypedDict
 
-from shared.reports.editable import EditableReport
+from shared.reports.resources import Report
 from shared.upload.constants import UploadErrorCode
 
 
@@ -46,7 +46,7 @@ class IntermediateReport:
     The `Upload` id for which this report was loaded.
     """
 
-    report: EditableReport
+    report: Report
     """
     The loaded Report.
     """
