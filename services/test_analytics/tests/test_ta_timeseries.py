@@ -243,9 +243,8 @@ def test_update_testrun_to_flaky():
     assert testrun.outcome == "flaky_failure"
 
 
-@pytest.mark.integration
-@pytest.mark.django_db(databases=["timeseries"], transaction=True)
-def test_get_testrun_summary():
+@pytest.fixture
+def continuous_aggregate_policy():
     connection = connections["timeseries"]
     with connection.cursor() as cursor:
         cursor.execute(
@@ -257,15 +256,34 @@ def test_get_testrun_summary():
         cursor.execute(
             """
             SELECT remove_continuous_aggregate_policy('timeseries_testrun_summary_1day');
-            select add_continuous_aggregate_policy(
+            SELECT add_continuous_aggregate_policy(
                 'timeseries_testrun_summary_1day',
                 start_offset => '7 days',
                 end_offset => NULL,
-                schedule_interval => INTERVAL '1 milliseconds'
+                schedule_interval => INTERVAL '10 milliseconds'
             );
             """
         )
 
+        yield
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT remove_continuous_aggregate_policy('timeseries_testrun_summary_1day');
+                SELECT add_continuous_aggregate_policy(
+                    'timeseries_testrun_summary_1day',
+                    start_offset => '7 days',
+                    end_offset => '1 days',
+                    schedule_interval => INTERVAL '1 days'
+                );
+                """
+            )
+
+
+@pytest.mark.integration
+@pytest.mark.django_db(databases=["timeseries"], transaction=True)
+def test_get_testrun_summary(continuous_aggregate_policy):
     insert_testrun(
         timestamp=datetime.now(),
         repo_id=1,
@@ -340,9 +358,15 @@ def test_get_testrun_summary():
         },
     )
 
-    time.sleep(5)
-
+    i = 0
     summaries = get_summary(1)
+    while len(summaries) < 2:
+        i += 1
+        time.sleep(1)
+        summaries = get_summary(1)
+        if i > 10:
+            raise Exception("summaries not found")
+
     assert len(summaries) == 2
     assert summaries[0].testsuite == "test_suite"
     assert summaries[0].classname == "test_classname"
@@ -365,19 +389,6 @@ def test_get_testrun_summary():
     assert summaries[1].flaky_fail_count == 0
     assert summaries[1].skip_count == 0
     assert summaries[1].flags == ["flag1", "flag2"]
-
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT remove_continuous_aggregate_policy('timeseries_testrun_summary_1day');
-            select add_continuous_aggregate_policy(
-                'timeseries_testrun_summary_1day',
-                start_offset => '7 days',
-                end_offset => '1 days',
-                schedule_interval => INTERVAL '1 days'
-            );
-            """
-        )
 
 
 @pytest.mark.integration
