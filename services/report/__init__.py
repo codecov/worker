@@ -12,7 +12,6 @@ from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from shared.django_apps.reports.models import ReportType
 from shared.reports.carryforward import generate_carryforward_report
-from shared.reports.editable import EditableReport
 from shared.reports.enums import UploadState, UploadType
 from shared.reports.resources import Report
 from shared.reports.types import TOTALS_MAP
@@ -254,26 +253,6 @@ class ReportService(BaseReportService):
             self.flag_dict = {flag.flag_name: flag for flag in existing_flags_on_repo}
         return self.flag_dict
 
-    @sentry_sdk.trace
-    def build_report(
-        self, chunks, files, sessions: dict, totals, report_class=None
-    ) -> Report:
-        if report_class is None:
-            report_class = Report
-            for session_id, session in sessions.items():
-                if isinstance(session, Session):
-                    if session.session_type == SessionType.carriedforward:
-                        report_class = EditableReport
-                else:
-                    # make sure the `Session` objects get an `id` when decoded:
-                    session["id"] = int(session_id)
-                    if session.get("st") == "carriedforward":
-                        report_class = EditableReport
-
-        return report_class.from_chunks(
-            chunks=chunks, files=files, sessions=sessions, totals=totals
-        )
-
     def get_archive_service(self, repository: Repository) -> ArchiveService:
         return ArchiveService(repository)
 
@@ -303,10 +282,18 @@ class ReportService(BaseReportService):
         files = commit.report_json["files"]
         sessions = commit.report_json["sessions"]
         totals = commit.totals
-        res = self.build_report(
-            chunks, files, sessions, totals, report_class=report_class
+
+        if report_class is None:
+            report_class = Report
+
+            # TODO(swatinem): move this logic into the `Report` constructor
+            for session_id, session in sessions.items():
+                if not isinstance(session, Session):
+                    session["id"] = int(session_id)
+
+        return report_class.from_chunks(
+            chunks=chunks, files=files, sessions=sessions, totals=totals
         )
-        return res
 
     def get_appropriate_commit_to_carryforward_from(
         self, commit: Commit, max_parenthood_deepness: int = 10
@@ -419,9 +406,7 @@ class ReportService(BaseReportService):
             "Creating new report for commit",
             extra=dict(commit=commit.commitid, repoid=commit.repoid),
         )
-        if not self.current_yaml:
-            return Report()
-        if not self.current_yaml.has_any_carryforward():
+        if not self.current_yaml or not self.current_yaml.has_any_carryforward():
             return Report()
 
         repo = commit.repository

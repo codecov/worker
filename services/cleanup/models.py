@@ -9,7 +9,12 @@ from shared.bundle_analysis import StoragePaths
 from shared.django_apps.compare.models import CommitComparison
 from shared.django_apps.core.models import Commit, Pull, Repository
 from shared.django_apps.profiling.models import ProfilingUpload
-from shared.django_apps.reports.models import CommitReport, ReportDetails
+from shared.django_apps.reports.models import (
+    CommitReport,
+    DailyTestRollup,
+    ReportDetails,
+    TestInstance,
+)
 from shared.django_apps.reports.models import ReportSession as Upload
 from shared.django_apps.staticanalysis.models import StaticAnalysisSingleFileSnapshot
 from shared.django_apps.timeseries.models import Dataset, Measurement
@@ -18,6 +23,7 @@ from shared.timeseries.helpers import is_timeseries_enabled
 from shared.utils.sessions import SessionType
 
 from services.archive import ArchiveService, MinioEndpoints
+from services.cleanup.relations import reverse_filter
 from services.cleanup.utils import CleanupContext, CleanupResult
 
 MANUAL_QUERY_CHUNKSIZE = 1_000
@@ -220,6 +226,21 @@ def cleanup_repository(context: CleanupContext, query: QuerySet) -> CleanupResul
     return CleanupResult(query._raw_delete(query.db))
 
 
+def unroll_subquery(context: CleanupContext, query: QuerySet) -> CleanupResult:
+    reversed_query = reverse_filter(query)
+    if not reversed_query:
+        return CleanupResult(query._raw_delete(query.db))
+    field, subquery = reversed_query
+
+    cleaned_models = 0
+    for parent in subquery:
+        cleaned_models += query.model.objects.filter(**{field: parent.pk})._raw_delete(
+            query.db
+        )
+
+    return CleanupResult(cleaned_models)
+
+
 # All the models that need custom python code for deletions so a bulk `DELETE` query does not work.
 MANUAL_CLEANUP: dict[
     type[Model], Callable[[CleanupContext, QuerySet], CleanupResult]
@@ -235,4 +256,6 @@ MANUAL_CLEANUP: dict[
         cleanup_with_storage_field, "content_location"
     ),
     Repository: cleanup_repository,
+    TestInstance: unroll_subquery,
+    DailyTestRollup: unroll_subquery,
 }
