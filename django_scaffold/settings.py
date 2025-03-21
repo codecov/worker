@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "shared.django_apps.reports",
     "shared.django_apps.staticanalysis",
     "shared.django_apps.ta_timeseries",
+    "shared.django_apps.timeseries",
 ]
 
 TELEMETRY_VANILLA_DB = "default"

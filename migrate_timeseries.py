@@ -15,8 +15,22 @@ logger = logging.getLogger(__name__)
 
 def run_migrate_commands():
     try:
+        if settings.TIMESERIES_ENABLED:
+            logger.info("Running timeseries migrations")
+
+            call_command(
+                "migrate",
+                database="timeseries",
+                app_label="timeseries",
+                settings="django_scaffold.settings",
+                verbosity=1,
+            )
+        else:
+            logger.info("Skipping timeseries migrations")
+
         if settings.TA_TIMESERIES_ENABLED:
             logger.info("Running ta_timeseries migrations")
+
             call_command(
                 "migrate",
                 database="ta_timeseries",
