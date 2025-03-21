@@ -9,6 +9,7 @@ import orjson
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from celery import chain, chord
+from django.conf import settings
 from django.db import transaction as django_transaction
 from django.utils import timezone
 from redis import Redis
@@ -772,6 +773,9 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         commit_report: CommitReport,
     ):
         new_ta_tasks = NEW_TA_TASKS.check_value(commit.repoid, default="old")
+        if not settings.TA_TIMESERIES_ENABLED:
+            new_ta_tasks = "old"
+
         task_group = [
             test_results_processor_task.s(
                 repoid=commit.repoid,

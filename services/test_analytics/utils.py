@@ -1,12 +1,4 @@
 import mmh3
-from shared.config import get_config
-
-
-def should_use_timeseries(repoid: int) -> bool:
-    timeseries_enabled = get_config("setup", "timeseries", "enabled", default=False)
-    if timeseries_enabled:
-        return True
-    return False
 
 
 def calc_test_id(name: str, classname: str, testsuite: str) -> bytes:
