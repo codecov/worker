@@ -1,3 +1,4 @@
+import logging
 import os
 
 import django
@@ -9,11 +10,13 @@ django.setup()
 
 from django.conf import settings  # noqa: E402
 
+logger = logging.getLogger(__name__)
+
 
 def run_migrate_commands():
     try:
         if settings.TA_TIMESERIES_ENABLED:
-            print("Running ta_timeseries migrations")
+            logger.info("Running ta_timeseries migrations")
             call_command(
                 "migrate",
                 database="ta_timeseries",
@@ -22,10 +25,10 @@ def run_migrate_commands():
                 verbosity=1,
             )
         else:
-            print("Skipping ta_timeseries migrations")
+            logger.info("Skipping ta_timeseries migrations")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
