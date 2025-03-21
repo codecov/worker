@@ -481,6 +481,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
                 len(upload_argument_list)
             )
             scheduled_tasks = self.schedule_task(
+                db_session,
                 commit,
                 commit_yaml.to_dict(),
                 upload_argument_list,
@@ -662,6 +663,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def schedule_task(
         self,
+        db_session: Session,
         commit: Commit,
         commit_yaml: dict,
         argument_list: list[UploadArguments],
@@ -671,7 +673,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         # Carryforward the parent BA report for the current commit's BA report when handling uploads
         # that's not bundle analysis type.
         self.possibly_carryforward_bundle_report(
-            commit, commit_report, commit_yaml, argument_list
+            db_session, commit, commit_report, commit_yaml, argument_list
         )
 
         if upload_context.report_type == ReportType.COVERAGE:
@@ -806,6 +808,7 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
 
     def possibly_carryforward_bundle_report(
         self,
+        db_session: Session,
         commit: Commit,
         commit_report: CommitReport,
         commit_yaml: dict,
@@ -819,6 +822,30 @@ class UploadTask(BaseCodecovTask, name=upload_task_name):
         This implementation is similar to carryforward flag mechanism in coverage, note the the difference it
         that instead of traversing the commit tree during fetch, we always create a permanent report on every upload.
         """
+
+        # If there exists a BA report for the commit, we don't need to create a new one
+        # we validate this by checking if there is an report_upload object for the commit
+        # that has a report type of "bundle_analysis"
+        report_upload = (
+            db_session.query(Upload)
+            .join(CommitReport)
+            .filter(
+                CommitReport.commit_id == commit.id,
+                CommitReport.report_type == ReportType.BUNDLE_ANALYSIS.value,
+                Upload.state != "error",
+            )
+            .first()
+        )
+        if report_upload:
+            log.info(
+                "Bundle analysis report already exists for commit, skipping carryforward",
+                extra=dict(
+                    repoid=commit.repoid,
+                    commit=commit.commitid,
+                ),
+            )
+            return
+
         if (
             commit_report.report_type != ReportType.BUNDLE_ANALYSIS.value
             and commit.repository.bundle_analysis_enabled
