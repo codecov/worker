@@ -27,9 +27,6 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
         task = ComputeComparisonTask()
         mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
-        )
-        mocker.patch.object(
             ReportService,
             "get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(Report()),
@@ -89,9 +86,6 @@ class TestComputeComparisonTask(object):
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
-        mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
-        )
         mocker.patch.object(
             ReportService,
             "get_existing_report_for_commit",
@@ -194,9 +188,6 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
         task = ComputeComparisonTask()
         mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
-        )
-        mocker.patch.object(
             ReportService,
             "get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report_without_flags),
@@ -283,9 +274,6 @@ class TestComputeComparisonTask(object):
         dbsession.flush()
         task = ComputeComparisonTask()
         mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
-        )
-        mocker.patch.object(
             ReportService,
             "get_existing_report_for_commit",
             return_value=ReadOnlyReport.create_from_report(sample_report),
@@ -354,9 +342,6 @@ class TestComputeComparisonTask(object):
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
-        mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
-        )
         result = task.run_impl(dbsession, comparison.id)
         dbsession.flush()
         assert result == {"successful": False, "error": "missing_base_report"}
@@ -379,9 +364,6 @@ class TestComputeComparisonTask(object):
         dbsession.add(comparison)
         dbsession.flush()
         task = ComputeComparisonTask()
-        mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
-        )
         mocker.patch.object(
             ReportService,
             "get_existing_report_for_commit",
@@ -433,9 +415,6 @@ class TestComputeComparisonTask(object):
     ):
         mocker.patch.object(
             PARALLEL_COMPONENT_COMPARISON, "check_value", return_value=False
-        )
-        mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
         )
         mocker.patch.object(
             ReportService,
@@ -586,9 +565,6 @@ class TestComputeComparisonTask(object):
         mocker.patch.object(group, "apply_async", group.apply)
         mocker.patch.object(
             PARALLEL_COMPONENT_COMPARISON, "check_value", return_value=True
-        )
-        mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
         )
         mocker.patch.object(
             ReportService,
@@ -760,9 +736,6 @@ class TestComputeComparisonTask(object):
     ):
         mocker.patch.object(
             PARALLEL_COMPONENT_COMPARISON, "check_value", return_value=False
-        )
-        mocker.patch.object(
-            ReadOnlyReport, "should_load_rust_version", return_value=True
         )
         mocker.patch.object(
             ReportService,
