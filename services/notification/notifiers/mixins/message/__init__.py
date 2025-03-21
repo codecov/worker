@@ -207,8 +207,8 @@ class MessageMixin(object):
     def write_cross_pollination_message(self, write: Callable):
         extra_message = []
 
-        ta_message = "- ❄ [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
-        ba_message = "- 📦 [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
+        ta_message = "- :snowflake: [Test Analytics](https://docs.codecov.com/docs/test-analytics): Detect flaky tests, report on failures, and find test suite problems."
+        ba_message = "- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges."
 
         if not self.repository.test_analytics_enabled:
             extra_message.append(ta_message)
@@ -220,7 +220,7 @@ class MessageMixin(object):
 
         if extra_message:
             for i in [
-                "<details><summary>🚀 New features to boost your workflow: </summary>",
+                "<details><summary> :rocket: New features to boost your workflow: </summary>",
                 "",
                 *extra_message,
                 "</details>",

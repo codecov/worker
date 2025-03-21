@@ -5,6 +5,8 @@ setup:
   encryption_secret: "zp^P9*i8aR3"
   timeseries:
     enabled: true
+  ta_timeseries:
+    enabled: true
 
 services:
   database_url: postgres://postgres:password@postgres:5432/postgres
@@ -16,6 +18,8 @@ services:
     access_key_id: codecov-default-key
     secret_access_key: codecov-default-secret
     verify_ssl: false
+    port: 9000
+    host: minio
   smtp:
     host: mailhog
     port: 1025

@@ -7,12 +7,12 @@ from typing import TypedDict
 import test_results_parser
 from django.db import connections
 from django.db.models import Q
-from shared.django_apps.test_analytics.models import Flake
-from shared.django_apps.timeseries.models import (
+from shared.django_apps.ta_timeseries.models import (
     Testrun,
     TestrunBranchSummary,
     TestrunSummary,
 )
+from shared.django_apps.test_analytics.models import Flake
 
 from services.test_analytics.utils import calc_test_id
 from services.test_results import FlakeInfo
@@ -90,7 +90,7 @@ class TestInstance(TypedDict):
 
 
 def get_pr_comment_failures(repo_id: int, commit_sha: str) -> list[TestInstance]:
-    with connections["timeseries"].cursor() as cursor:
+    with connections["ta_timeseries"].cursor() as cursor:
         cursor.execute(
             """
             SELECT 
@@ -99,7 +99,7 @@ def get_pr_comment_failures(repo_id: int, commit_sha: str) -> list[TestInstance]
                 LAST(failure_message, timestamp) as failure_message,
                 LAST(upload_id, timestamp) as upload_id,
                 LAST(duration_seconds, timestamp) as duration_seconds
-            FROM timeseries_testrun
+            FROM ta_timeseries_testrun
             WHERE repo_id = %s AND commit_sha = %s AND outcome IN ('failure', 'flaky_failure')
             GROUP BY test_id
             """,
@@ -124,14 +124,14 @@ class PRCommentAgg(TypedDict):
 
 
 def get_pr_comment_agg(repo_id: int, commit_sha: str) -> PRCommentAgg:
-    with connections["timeseries"].cursor() as cursor:
+    with connections["ta_timeseries"].cursor() as cursor:
         cursor.execute(
             """
             SELECT outcome, count(*) FROM (
                 SELECT 
                     test_id,
                     LAST(outcome, timestamp) as outcome
-                FROM timeseries_testrun
+                FROM ta_timeseries_testrun
                 WHERE repo_id = %s AND commit_sha = %s
                 GROUP BY test_id
             ) AS t
@@ -166,9 +166,9 @@ def get_testruns_for_flake_detection(
 
 
 def update_testrun_to_flaky(timestamp: datetime, test_id: bytes):
-    with connections["timeseries"].cursor() as cursor:
+    with connections["ta_timeseries"].cursor() as cursor:
         cursor.execute(
-            "UPDATE timeseries_testrun SET outcome = %s WHERE timestamp = %s AND test_id = %s",
+            "UPDATE ta_timeseries_testrun SET outcome = %s WHERE timestamp = %s AND test_id = %s",
             ["flaky_failure", timestamp, test_id],
         )
 
@@ -214,7 +214,7 @@ class BranchSummary:
 def get_testrun_branch_summary_via_testrun(
     repo_id: int, branch: str
 ) -> list[BranchSummary]:
-    with connections["timeseries"].cursor() as cursor:
+    with connections["ta_timeseries"].cursor() as cursor:
         cursor.execute(
             """
             select
@@ -233,7 +233,7 @@ def get_testrun_branch_summary_via_testrun(
                 COUNT(*) FILTER (WHERE outcome = 'flaky_failure') AS flaky_fail_count,
                 MAX(timestamp) AS updated_at,
                 array_merge_dedup_agg(flags) as flags
-            from timeseries_testrun
+            from ta_timeseries_testrun
             where repo_id = %s and branch = %s and timestamp > %s
             group by
                 testsuite, classname, name, timestamp_bin;

@@ -7,6 +7,7 @@ services:
       - postgres
       - redis
       - timescale
+      - minio
     volumes:
       - ./:/app/apps/worker
       - ./docker/test_codecov_config.yml:/config/codecov.yml
@@ -38,7 +39,22 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_PASSWORD=password
+    volumes:
+      - ./docker/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
 
+  minio:
+    image: minio/minio:latest
+    command: server /export
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+    environment:
+      - MINIO_ACCESS_KEY=codecov-default-key
+      - MINIO_SECRET_KEY=codecov-default-secret
+    volumes:
+      - type: tmpfs
+        target: /export
+        tmpfs:
+          size: 256M
   redis:
     image: redis:6-alpine
 
