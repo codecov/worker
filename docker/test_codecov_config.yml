@@ -5,6 +5,8 @@ setup:
   encryption_secret: "zp^P9*i8aR3"
   timeseries:
     enabled: true
+  ta_timeseries:
+    enabled: true
 
 services:
   database_url: postgres://postgres:password@postgres:5432/postgres

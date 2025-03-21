@@ -38,6 +38,8 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_PASSWORD=password
+    volumes:
+      - ./docker/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
 
   redis:
     image: redis:6-alpine

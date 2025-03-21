@@ -1,9 +1,9 @@
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from django.db import connections
-from shared.django_apps.timeseries.models import Testrun
+from shared.django_apps.ta_timeseries.models import Testrun
 from time_machine import travel
 
 from services.test_analytics.ta_timeseries import (
@@ -18,7 +18,7 @@ from services.test_analytics.ta_timeseries import (
 )
 
 
-@pytest.mark.django_db(databases=["timeseries"])
+@pytest.mark.django_db(databases=["ta_timeseries"])
 def test_insert_testrun():
     insert_testrun(
         timestamp=datetime.now(),
@@ -55,7 +55,7 @@ def test_insert_testrun():
     assert t.outcome == "pass"
 
 
-@pytest.mark.django_db(databases=["timeseries"])
+@pytest.mark.django_db(databases=["ta_timeseries"])
 def test_pr_comment_agg():
     insert_testrun(
         timestamp=datetime.now(),
@@ -90,7 +90,7 @@ def test_pr_comment_agg():
     }
 
 
-@pytest.mark.django_db(databases=["timeseries"])
+@pytest.mark.django_db(databases=["ta_timeseries"])
 def test_pr_comment_failures():
     insert_testrun(
         timestamp=datetime.now(),
@@ -129,7 +129,7 @@ def test_pr_comment_failures():
     assert failure["upload_id"] == 1
 
 
-@pytest.mark.django_db(databases=["timeseries"])
+@pytest.mark.django_db(databases=["ta_timeseries"])
 def test_get_testruns_for_flake_detection(db):
     test_ids = {calc_test_id("flaky_test_name", "test_classname", "test_suite")}
     insert_testrun(
@@ -204,7 +204,7 @@ def test_get_testruns_for_flake_detection(db):
     assert testruns[2].name == "flaky_test_name"
 
 
-@pytest.mark.django_db(databases=["timeseries"])
+@pytest.mark.django_db(databases=["ta_timeseries"])
 @travel(datetime(2025, 1, 1), tick=False)
 def test_update_testrun_to_flaky():
     insert_testrun(
@@ -244,20 +244,22 @@ def test_update_testrun_to_flaky():
 
 
 @pytest.fixture
+@pytest.mark.django_db(databases=["ta_timeseries"], transaction=True)
 def continuous_aggregate_policy():
-    connection = connections["timeseries"]
+    connection = connections["ta_timeseries"]
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            TRUNCATE TABLE timeseries_testrun;
-            TRUNCATE TABLE timeseries_testrun_summary_1day;
+            TRUNCATE TABLE ta_timeseries_testrun;
+            TRUNCATE TABLE ta_timeseries_testrun_summary_1day;
             """
         )
         cursor.execute(
             """
-            SELECT remove_continuous_aggregate_policy('timeseries_testrun_summary_1day');
+            SELECT _timescaledb_internal.start_background_workers();
+            SELECT remove_continuous_aggregate_policy('ta_timeseries_testrun_summary_1day');
             SELECT add_continuous_aggregate_policy(
-                'timeseries_testrun_summary_1day',
+                'ta_timeseries_testrun_summary_1day',
                 start_offset => '7 days',
                 end_offset => NULL,
                 schedule_interval => INTERVAL '10 milliseconds'
@@ -270,9 +272,9 @@ def continuous_aggregate_policy():
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT remove_continuous_aggregate_policy('timeseries_testrun_summary_1day');
+                SELECT remove_continuous_aggregate_policy('ta_timeseries_testrun_summary_1day');
                 SELECT add_continuous_aggregate_policy(
-                    'timeseries_testrun_summary_1day',
+                    'ta_timeseries_testrun_summary_1day',
                     start_offset => '7 days',
                     end_offset => '1 days',
                     schedule_interval => INTERVAL '1 days'
@@ -282,10 +284,10 @@ def continuous_aggregate_policy():
 
 
 @pytest.mark.integration
-@pytest.mark.django_db(databases=["timeseries"], transaction=True)
+@pytest.mark.django_db(databases=["ta_timeseries"], transaction=True)
 def test_get_testrun_summary(continuous_aggregate_policy):
     insert_testrun(
-        timestamp=datetime.now(),
+        timestamp=datetime.now() - timedelta(days=2),
         repo_id=1,
         commit_sha="commit_sha",
         branch="branch",
@@ -309,7 +311,7 @@ def test_get_testrun_summary(continuous_aggregate_policy):
         },
     )
     insert_testrun(
-        timestamp=datetime.now(),
+        timestamp=datetime.now() - timedelta(days=2),
         repo_id=1,
         commit_sha="commit_sha",
         branch="branch",
@@ -334,7 +336,7 @@ def test_get_testrun_summary(continuous_aggregate_policy):
     )
 
     insert_testrun(
-        timestamp=datetime.now(),
+        timestamp=datetime.now() - timedelta(days=2),
         repo_id=1,
         commit_sha="commit_sha",
         branch="branch",
@@ -392,7 +394,7 @@ def test_get_testrun_summary(continuous_aggregate_policy):
 
 
 @pytest.mark.integration
-@pytest.mark.django_db(databases=["timeseries"], transaction=True)
+@pytest.mark.django_db(databases=["ta_timeseries"], transaction=True)
 def test_get_testrun_branch_summary_via_testrun():
     insert_testrun(
         timestamp=datetime.now(),
