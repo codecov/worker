@@ -13,6 +13,18 @@ from django.conf import settings  # noqa: E402
 def run_migrate_commands():
     try:
         if settings.TA_TIMESERIES_ENABLED:
+            print("Running timeseries migrations")
+            call_command(
+                "migrate",
+                database="timeseries",
+                app_label="timeseries",
+                settings="django_scaffold.settings",
+                verbosity=1,
+            )
+        else:
+            print("Skipping timeseries migrations")
+
+        if settings.TA_TIMESERIES_ENABLED:
             print("Running ta_timeseries migrations")
             call_command(
                 "migrate",
