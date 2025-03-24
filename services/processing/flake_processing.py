@@ -20,6 +20,21 @@ def process_flake_for_repo_commit(
     repo_id: int,
     commit_id: str,
 ):
+    with django_transaction.atomic():
+        process_flake_in_transaction(repo_id, commit_id)
+
+    log.info(
+        "Successfully processed flakes",
+        extra=dict(repoid=repo_id, commit=commit_id),
+    )
+
+    return {"successful": True}
+
+
+def process_flake_in_transaction(
+    repo_id: int,
+    commit_id: str,
+):
     uploads = ReportSession.objects.filter(
         report__report_type=CommitReport.ReportType.TEST_RESULTS.value,
         report__commit__repository__repoid=repo_id,
@@ -90,14 +105,6 @@ def process_flake_for_repo_commit(
 
         upload.state = "flake_processed"
         upload.save()
-        django_transaction.commit()
-
-    log.info(
-        "Successfully processed flakes",
-        extra=dict(repoid=repo_id, commit=commit_id),
-    )
-
-    return {"successful": True}
 
 
 def get_test_instances(
