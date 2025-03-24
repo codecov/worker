@@ -1,9 +1,9 @@
 import datetime
 import os
-import xml.etree.cElementTree as etree
 from time import time
 
 import pytest
+from lxml import etree
 
 from helpers.exceptions import ReportExpiredException
 from services.path_fixer import PathFixer
@@ -534,13 +534,17 @@ class TestCobertura(BaseTestCase):
 
 
 def test_empty_filename():
-    xml = """
+    xml = b"""
 <coverage>
     <class filename="" name="">
-        <line number="1" hits="1" />
+        <lines>
+            <line number="1" hits="1" />
+        </lines>
     </class>
     <class filename="non-empty" name="">
-        <line number="1" hits="1" />
+        <lines>
+            <line number="1" hits="1" />
+        </lines>
     </class>
 </coverage>
 """
