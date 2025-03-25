@@ -34,8 +34,6 @@ from tasks.process_flakes import (
 )
 from tests.helpers import mock_all_plans_and_tiers
 
-pytestmark = pytest.mark.django_db
-
 
 class RepoSimulator:
     def __init__(self):
@@ -134,7 +132,8 @@ class RepoSimulator:
         self.test_count = 0
 
 
-def test_generate_flake_dict(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_generate_flake_dict():
     repo = RepositoryFactory()
 
     flake_dict = fetch_curr_flakes(repo.repoid)
@@ -150,7 +149,8 @@ def test_generate_flake_dict(transactional_db):
     assert "id" in flake_dict
 
 
-def test_get_test_instances_when_test_is_flaky(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_get_test_instances_when_test_is_flaky():
     repo = RepositoryFactory()
     commit = CommitFactory()
     upload = UploadFactory(report__commit=commit)
@@ -169,7 +169,8 @@ def test_get_test_instances_when_test_is_flaky(transactional_db):
     assert tis[0].commitid
 
 
-def test_get_test_instances_when_instance_is_failure(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_get_test_instances_when_instance_is_failure():
     repo = RepositoryFactory()
     commit = CommitFactory()
     upload = UploadFactory(report__commit=commit)
@@ -188,7 +189,8 @@ def test_get_test_instances_when_instance_is_failure(transactional_db):
     assert tis[0].commitid
 
 
-def test_get_test_instances_when_test_is_flaky_and_instance_is_skip(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_get_test_instances_when_test_is_flaky_and_instance_is_skip():
     repo = RepositoryFactory()
     commit = CommitFactory()
     upload = UploadFactory(report__commit=commit)
@@ -206,7 +208,8 @@ def test_get_test_instances_when_test_is_flaky_and_instance_is_skip(transactiona
     assert len(tis) == 0
 
 
-def test_get_test_instances_when_instance_is_pass(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_get_test_instances_when_instance_is_pass():
     repo = RepositoryFactory()
     commit = CommitFactory()
     upload = UploadFactory(report__commit=commit)
@@ -224,7 +227,8 @@ def test_get_test_instances_when_instance_is_pass(transactional_db):
     assert len(tis) == 0
 
 
-def test_update_flake_pass(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_update_flake_pass():
     rs = RepoSimulator()
     c = rs.create_commit()
     ti = rs.add_test_instance(c, outcome=TestInstance.Outcome.PASS.value)
@@ -240,7 +244,8 @@ def test_update_flake_pass(transactional_db):
     assert f.recent_passes_count == 1
 
 
-def test_update_flake_fail(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_update_flake_fail():
     rs = RepoSimulator()
     c = rs.create_commit()
     ti = rs.add_test_instance(c, outcome=TestInstance.Outcome.FAILURE.value)
@@ -257,7 +262,8 @@ def test_update_flake_fail(transactional_db):
     assert f.fail_count == 1
 
 
-def test_upsert_failed_flakes(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_upsert_failed_flakes():
     repo = RepositoryFactory()
     repo.save()
     commit = CommitFactory()
@@ -286,6 +292,7 @@ def test_upsert_failed_flakes(transactional_db):
     assert r.flaky_fail_count == 1
 
 
+@pytest.mark.django_db(transaction=False)
 def test_upsert_failed_flakes_rollup_is_none():
     repo = RepositoryFactory()
     repo.save()
@@ -305,7 +312,8 @@ def test_upsert_failed_flakes_rollup_is_none():
     assert r is None
 
 
-def test_it_handles_only_passes(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_it_handles_only_passes():
     rs = RepoSimulator()
     c1 = rs.create_commit()
     rs.add_test_instance(c1)
@@ -317,10 +325,11 @@ def test_it_handles_only_passes(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_creates_flakes_from_processed_uploads(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_it_creates_flakes_from_processed_uploads():
     rs = RepoSimulator()
     c1 = rs.create_commit()
-    rs.add_test_instance(c1, state="v2_finished")
+    rs.add_test_instance(c1, state="finished")
     rs.add_test_instance(
         c1, outcome=TestInstance.Outcome.FAILURE.value, state="processed"
     )
@@ -337,10 +346,11 @@ def test_it_creates_flakes_from_processed_uploads(transactional_db):
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
+@pytest.mark.django_db(transaction=True)
 def test_it_does_not_create_flakes_from_flake_processed_uploads():
     rs = RepoSimulator()
     c1 = rs.create_commit()
-    rs.add_test_instance(c1, state="v2_processed")
+    rs.add_test_instance(c1, state="processed")
     rs.add_test_instance(
         c1, outcome=TestInstance.Outcome.FAILURE.value, state="flake_processed"
     )
@@ -351,7 +361,8 @@ def test_it_does_not_create_flakes_from_flake_processed_uploads():
 
 
 @time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False)
-def test_it_processes_two_commits_separately(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_it_processes_two_commits_separately():
     rs = RepoSimulator()
     c1 = rs.create_commit()
     rs.add_test_instance(c1, outcome=TestInstance.Outcome.FAILURE.value)
@@ -373,7 +384,8 @@ def test_it_processes_two_commits_separately(transactional_db):
     assert flake.start_date == dt.datetime.now(dt.UTC)
 
 
-def test_it_creates_flakes_expires(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_it_creates_flakes_expires():
     with time_machine.travel(dt.datetime.now(tz=dt.UTC), tick=False) as traveller:
         rs = RepoSimulator()
         commits: list[str] = []
@@ -419,7 +431,8 @@ def test_it_creates_flakes_expires(transactional_db):
         assert flake.end_date == new_time
 
 
-def test_it_creates_rollups(transactional_db):
+@pytest.mark.django_db(transaction=True)
+def test_it_creates_rollups():
     with time_machine.travel("1970-1-1T00:00:00Z"):
         rs = RepoSimulator()
         c1 = rs.create_commit()
@@ -456,6 +469,7 @@ def test_it_creates_rollups(transactional_db):
         assert rollups[3].date == dt.date.today()
 
 
+@pytest.mark.django_db(transaction=False)
 def test_it_locks(mocker):
     mock_all_plans_and_tiers()
     result2 = None
