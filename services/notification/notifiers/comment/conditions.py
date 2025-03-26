@@ -108,7 +108,7 @@ class HasEnoughRequiredChanges(NotifyCondition):
     def _check_coverage_change(comparison: ComparisonProxy) -> bool:
         """Returns a bool that indicates wether there is any change in coverage"""
         diff = comparison.get_diff()
-        res = comparison.head.report.calculate_diff(diff)
+        res = None if diff is None else comparison.head.report.calculate_diff(diff)
         return res is not None and res["general"].lines > 0
 
     @staticmethod
@@ -151,7 +151,7 @@ class HasEnoughRequiredChanges(NotifyCondition):
     @staticmethod
     def _check_uncovered_patch(comparison: ComparisonProxy) -> bool:
         diff = comparison.get_diff(use_original_base=True)
-        totals = comparison.head.report.apply_diff(diff)
+        totals = None if diff is None else comparison.head.report.apply_diff(diff)
         coverage_not_affected_by_patch = totals and totals.lines == 0
         if totals is None or coverage_not_affected_by_patch:
             # The patch doesn't affect coverage. So we don't show a comment.
