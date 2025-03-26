@@ -1,9 +1,9 @@
 import datetime
 import logging
-import xml.etree.cElementTree as etree
 from time import time
 
 import pytest
+from lxml import etree
 from pytest import LogCaptureFixture
 
 from helpers.exceptions import ReportExpiredException
@@ -69,7 +69,9 @@ class TestJacoco(BaseTestCase):
         report_builder_session = create_report_builder_session(path_fixer=fixes)
 
         with self.caplog.at_level(logging.WARNING, logger=jacoco.__name__):
-            jacoco.from_xml(etree.fromstring(xml % int(time())), report_builder_session)
+            jacoco.from_xml(
+                etree.fromstring((xml % int(time())).encode()), report_builder_session
+            )
 
             assert (
                 self.caplog.records[-1].message
@@ -102,7 +104,9 @@ class TestJacoco(BaseTestCase):
             current_yaml={"parsers": {"jacoco": {"partials_as_hits": True}}},
             path_fixer=fixes,
         )
-        jacoco.from_xml(etree.fromstring(xml % int(time())), report_builder_session)
+        jacoco.from_xml(
+            etree.fromstring((xml % int(time())).encode()), report_builder_session
+        )
         report = report_builder_session.output_report()
         processed_report = self.convert_report_to_better_readable(report)
 
@@ -134,7 +138,7 @@ class TestJacoco(BaseTestCase):
             </package>
         </report>"""
             % module
-        )
+        ).encode()
 
         def fixes(path):
             if module == "a":
@@ -162,4 +166,6 @@ class TestJacoco(BaseTestCase):
         report_builder_session = create_report_builder_session()
 
         with pytest.raises(ReportExpiredException, match="Jacoco report expired"):
-            jacoco.from_xml(etree.fromstring(xml % date), report_builder_session)
+            jacoco.from_xml(
+                etree.fromstring((xml % date).encode()), report_builder_session
+            )
