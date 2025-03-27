@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Generic, Sequence, TypeVar
+from typing import Generic, Sequence, TypedDict, TypeVar
 
 from shared.django_apps.codecov_auth.models import Plan
 from shared.plan.constants import TierName
@@ -26,6 +26,13 @@ from services.processing.types import UploadArguments
 from services.report import BaseReportService
 from services.urls import get_members_url, get_test_analytics_url
 from services.yaml import read_yaml_field
+
+
+class FinisherResult(TypedDict):
+    notify_attempted: bool
+    notify_succeeded: bool
+    queue_notify: bool
+
 
 log = logging.getLogger(__name__)
 

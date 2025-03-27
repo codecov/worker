@@ -1,6 +1,5 @@
 import logging
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from asgiref.sync import async_to_sync
 from shared.reports.types import UploadType
@@ -9,8 +8,8 @@ from shared.yaml import UserYaml
 from sqlalchemy.orm import Session
 
 from app import celery_app
-from database.enums import FlakeSymptomType, ReportType
-from database.models import Commit, Flake, TestResultReportTotals
+from database.enums import ReportType
+from database.models import Commit, Flake, Repository, TestResultReportTotals
 from helpers.checkpoint_logger.flows import TestResultsFlow
 from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
@@ -23,6 +22,7 @@ from services.repository import (
 )
 from services.seats import ShouldActivateSeat, determine_seat_activation
 from services.test_results import (
+    FinisherResult,
     FlakeInfo,
     TACommentInDepthInfo,
     TestResultsNotificationFailure,
@@ -46,13 +46,6 @@ ESCAPE_FAILURE_MESSAGE_DEFN = [
 ]
 
 
-@dataclass
-class FlakeUpdateInfo:
-    new_flake_ids: list[str]
-    old_flake_ids: list[str]
-    newly_calculated_flakes: dict[str, set[FlakeSymptomType]]
-
-
 class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_name):
     def run_impl(
         self,
@@ -62,11 +55,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         repoid: int,
         commitid: str,
         commit_yaml: dict,
+        impl_type: Literal["old", "new", "both"] = "old",
         **kwargs,
     ):
+        if impl_type == "both":
+            impl_type = "old"
+
         repoid = int(repoid)
 
-        self.extra_dict: dict[str, Any] = {"commit_yaml": commit_yaml}
+        self.extra_dict: dict[str, Any] = {
+            "commit_yaml": commit_yaml,
+            "impl_type": impl_type,
+        }
         log.info("Starting test results finisher task", extra=self.extra_dict)
 
         lock_manager = LockManager(
@@ -89,6 +89,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     commitid=commitid,
                     commit_yaml=UserYaml.from_dict(commit_yaml),
                     chain_result=chain_result,
+                    impl_type=impl_type,
                     **kwargs,
                 )
             if finisher_result["queue_notify"]:
@@ -114,8 +115,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         commitid: str,
         commit_yaml: UserYaml,
         chain_result: bool,
+        impl_type: Literal["old", "new"],
         **kwargs,
-    ):
+    ) -> FinisherResult:
         log.info("Running test results finishers", extra=self.extra_dict)
         TestResultsFlow.log(TestResultsFlow.TEST_RESULTS_FINISHER_BEGIN)
 
@@ -125,6 +127,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
         repo = commit.repository
 
+        return self.old_impl(db_session, repo, commit, chain_result, commit_yaml)
+
+    def old_impl(
+        self,
+        db_session: Session,
+        repo: Repository,
+        commit: Commit,
+        chain_result: bool,
+        commit_yaml: UserYaml,
+    ) -> FinisherResult:
+        repoid = repo.repoid
+        commitid = commit.commitid
         redis_client = get_redis_connection()
 
         if should_do_flaky_detection(repo, commit_yaml):
@@ -348,7 +362,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         self,
         db_session: Session,
         repoid: int,
-        failures: list[TestResultsNotificationFailure],
+        failures: list[TestResultsNotificationFailure[str]],
     ) -> dict[str, FlakeInfo]:
         failure_test_ids = [failure.test_id for failure in failures]
 
