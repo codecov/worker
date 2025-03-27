@@ -211,11 +211,17 @@ class BundleAnalysisReportService(BaseReportService):
                 repo_id=commit.repoid,
             ).values_list("bundle_name", flat=True)
 
-            # Delete the bundle from the report if it's not to be cached
+            # For each bundle:
+            # if caching is on then update bundle.is_cached property to true
+            # if caching is off then delete that bundle from the report
+            update_fields = {}
             for bundle in bundle_report.bundle_reports():
-                if bundle.name not in bundles_to_be_cached:
+                if bundle.name in bundles_to_be_cached:
+                    update_fields[bundle.name] = True
+                else:
                     bundle_report.delete_bundle_by_name(bundle.name)
-
+            if update_fields:
+                bundle_report.update_is_cached(update_fields)
             return bundle_report
         # fallback to create a fresh bundle analysis report if there is no previous report to carry over
         return BundleAnalysisReport()

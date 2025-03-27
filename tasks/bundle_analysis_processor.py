@@ -114,12 +114,17 @@ class BundleAnalysisProcessorTask(
         if upload_id is not None:
             upload = db_session.query(Upload).filter_by(id_=upload_id).first()
         else:
-            # If the upload is not provided that means this is a processor task for caching
-            # coming from a non-BA upload. To ensure don't cache the same parent report
-            # multiple times, we check that if a BA report already exists for the commit
-            # and that there's any uploads that's not in error state. If that's the case we
-            # can just quick exit the task. If not we will create a new BA report and upload then
-            # move forward with caching from the parent report.
+            # This processor task handles caching for reports. When the 'upload' parameter is missing,
+            # it indicates this task was triggered by a non-BA upload.
+            #
+            # To prevent redundant caching of the same parent report:
+            # 1. We first check if a BA report already exists for this commit
+            # 2. We then verify there are uploads associated with it that aren't in an error state
+            #
+            # If both conditions are met, we can exit the task early since the caching was likely
+            # already handled. Otherwise, we need to:
+            # 1. Create a new BA report and upload
+            # 2. Proceed with caching data from the parent report
             commit_report = (
                 db_session.query(CommitReport)
                 .filter_by(
