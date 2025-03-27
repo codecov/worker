@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime
-from typing import Any
 
 import pytest
 import test_results_parser
-import yaml
-from shared.config import _get_config_instance
 from shared.django_apps.reports.models import UploadError
 from shared.django_apps.reports.tests.factories import UploadFactory
 from shared.django_apps.ta_timeseries.models import Testrun
@@ -23,30 +19,6 @@ from services.test_analytics.ta_processing import (
     should_delete_archive_settings,
 )
 from services.yaml import UserYaml
-
-
-@pytest.fixture()
-def custom_config(tmp_path):
-    config_instance = _get_config_instance()
-    saved_config = config_instance._params
-
-    file_path = tmp_path / "codecov.yml"
-    os.environ["CODECOV_YML"] = str(file_path)
-
-    _conf = config_instance._params or {}
-
-    def set(custom_config: dict[Any, Any]):
-        # clear cache
-        config_instance._params = None
-
-        # for overwrites
-        _conf.update(custom_config)
-        file_path.write_text(yaml.dump(_conf))
-
-    yield set
-
-    os.environ.pop("CODECOV_YML")
-    config_instance._params = saved_config
 
 
 @pytest.fixture(autouse=True)
