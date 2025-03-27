@@ -122,11 +122,23 @@ def sqlalchemy_db(request: pytest.FixtureRequest, django_db_blocker, django_db_s
         original_test_name = settings.DATABASES["default"]["TEST"]["NAME"]
         settings.DATABASES["default"]["NAME"] = "sqlalchemy"
         settings.DATABASES["default"]["TEST"]["NAME"] = "test_postgres_sqlalchemy"
+        for connection in connections:
+            if "timeseries" in connection:
+                with connections[connection].cursor() as cursor:
+                    cursor.execute(
+                        "SELECT _timescaledb_internal.stop_background_workers();"
+                    )
         db_cfg = setup_databases(
             verbosity=request.config.option.verbose,
             interactive=False,
             keepdb=keepdb,
         )
+        for connection in connections:
+            if "timeseries" in connection:
+                with connections[connection].cursor() as cursor:
+                    cursor.execute(
+                        "SELECT _timescaledb_internal.start_background_workers();"
+                    )
         settings.DATABASES["default"]["NAME"] = original_db_name
         settings.DATABASES["default"]["TEST"]["NAME"] = original_test_name
 
