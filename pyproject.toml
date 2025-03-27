@@ -83,4 +83,4 @@ dev-dependencies = [
 [tool.uv.sources]
 timestring = { git = "https://github.com/codecov/timestring", rev = "d37ceacc5954dff3b5bd2f887936a98a668dda42" }
 test-results-parser = { git = "https://github.com/codecov/test-results-parser", rev = "190bbc8a911099749928e13d5fe57f6027ca1e74" }
-shared = { git = "https://github.com/codecov/shared", rev = "fd909cc93000489899b583beb14bf795202dfbd8" }
+shared = { git = "https://github.com/codecov/shared", rev = "1c6200a3f1a6cdefab730b3f7d731c9a5fa036da" }
