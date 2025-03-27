@@ -1,5 +1,4 @@
 from json import loads
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -21,41 +20,8 @@ from services.report.parser.types import LegacyParsedRawReport, ParsedUploadedRe
 from services.report.report_builder import ReportBuilder
 from test_utils.base import BaseTestCase
 
-here = Path(__file__)
-folder = here.parent
-
-
-@pytest.mark.skip(reason="this is supposed to be invoked manually")
-def test_manual():
-    # The intention of this test is to easily reproduce production problems with real reports.
-    # So download the relevant report, fill in its filename below, comment out the `skip` annotation,
-    # and run this test directly.
-    filename = "..."
-    with open(filename, "rb") as d:
-        contents = d.read()
-
-    parsed_report = LegacyReportParser().parse_raw_report_from_bytes(contents)
-    master = process.process_raw_upload(None, parsed_report, Session())
-
-    assert not master.is_empty()
-
 
 class TestProcessRawUpload(BaseTestCase):
-    def readjson(self, filename):
-        with open(folder / filename, "r") as d:
-            contents = loads(d.read())
-            return contents
-
-    def get_v3_report(self):
-        filename = "report.v3.json"
-        with open(folder / filename, "r") as d:
-            contents = loads(d.read())
-            return Report(**contents)
-
-    @property
-    def data(self):
-        return {"yaml": {}}
-
     @pytest.mark.parametrize("keys", ["nm", "n", "m", "nme", "ne", "M"])
     def test_process_raw_upload(self, keys):
         report = []
