@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
 from database.enums import ReportType
-from database.models import Commit, Upload
+from database.models import Commit, CommitReport, Upload
 from services.bundle_analysis.report import (
     BundleAnalysisReportService,
     ProcessingResult,
@@ -114,7 +114,42 @@ class BundleAnalysisProcessorTask(
         if upload_id is not None:
             upload = db_session.query(Upload).filter_by(id_=upload_id).first()
         else:
-            commit_report = report_service.initialize_and_save_report(commit)
+            # This processor task handles caching for reports. When the 'upload' parameter is missing,
+            # it indicates this task was triggered by a non-BA upload.
+            #
+            # To prevent redundant caching of the same parent report:
+            # 1. We first check if a BA report already exists for this commit
+            # 2. We then verify there are uploads associated with it that aren't in an error state
+            #
+            # If both conditions are met, we can exit the task early since the caching was likely
+            # already handled. Otherwise, we need to:
+            # 1. Create a new BA report and upload
+            # 2. Proceed with caching data from the parent report
+            commit_report = (
+                db_session.query(CommitReport)
+                .filter_by(
+                    commit_id=commit.id,
+                    report_type=ReportType.BUNDLE_ANALYSIS.value,
+                )
+                .first()
+            )
+            if commit_report:
+                upload_states = [upload.state for upload in commit_report.uploads]
+                if upload_states and any(
+                    upload_state != "error" for upload_state in upload_states
+                ):
+                    log.info(
+                        "Bundle analysis report already exists for commit, skipping carryforward",
+                        extra=dict(
+                            repoid=commit.repoid,
+                            commit=commit.commitid,
+                        ),
+                    )
+                    return processing_results
+            else:
+                # If the commit report does not exist, we will create a new one
+                commit_report = report_service.initialize_and_save_report(commit)
+
             upload = report_service.create_report_upload({"url": ""}, commit_report)
             carriedforward = True
 
@@ -161,6 +196,17 @@ class BundleAnalysisProcessorTask(
 
             processing_results.append(result.as_dict())
         except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
+            log.exception(
+                "Unable to process bundle analysis upload",
+                extra=dict(
+                    repoid=repoid,
+                    commit=commitid,
+                    commit_yaml=commit_yaml,
+                    params=params,
+                    upload_id=upload.id_,
+                    parent_task=self.request.parent_id,
+                ),
+            )
             raise
         except Exception:
             log.exception(
