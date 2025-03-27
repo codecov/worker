@@ -1293,3 +1293,123 @@ def test_bundle_analysis_processor_task_no_upload(
     assert commit.state == "complete"
     assert upload.state == "processed"
     assert upload.upload_type == "carriedforward"
+
+
+@pytest.mark.django_db(databases={"default", "timeseries"})
+def test_bundle_analysis_processor_task_carryforward(
+    mocker,
+    dbsession,
+    mock_storage,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
+
+    commit = CommitFactory.create(state="pending")
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(
+        commit_id=commit.id_, report_type=ReportType.BUNDLE_ANALYSIS.value
+    )
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(
+        storage_path=storage_path, report=commit_report, state="processed"
+    )
+    dbsession.add(upload)
+    dbsession.flush()
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_id": None,
+            "commit": commit.commitid,
+        },
+    )
+
+    # A new upload wasn't created because the caching was skipped
+    total_uploads = (
+        dbsession.query(Upload).filter_by(report_id=commit_report.id).count()
+    )
+    assert total_uploads == 1
+
+    # A new report wasn't created either
+    total_ba_reports = (
+        dbsession.query(CommitReport).filter_by(commit_id=commit.id).count()
+    )
+    assert total_ba_reports == 1
+
+
+@pytest.mark.django_db(databases={"default", "timeseries"})
+def test_bundle_analysis_processor_task_carryforward_error(
+    mocker,
+    dbsession,
+    mock_storage,
+):
+    storage_path = (
+        "v1/repos/testing/ed1bdd67-8fd2-4cdb-ac9e-39b99e4a3892/bundle_report.sqlite"
+    )
+    mock_storage.write_file(get_bucket_name(), storage_path, "test-content")
+
+    mocker.patch.object(
+        BundleAnalysisProcessorTask,
+        "app",
+        tasks={
+            bundle_analysis_save_measurements_task_name: mocker.MagicMock(),
+        },
+    )
+
+    commit = CommitFactory.create(state="pending")
+    dbsession.add(commit)
+    dbsession.flush()
+
+    commit_report = CommitReport(
+        commit_id=commit.id_, report_type=ReportType.BUNDLE_ANALYSIS.value
+    )
+    dbsession.add(commit_report)
+    dbsession.flush()
+
+    upload = UploadFactory.create(
+        storage_path=storage_path, report=commit_report, state="error"
+    )
+    dbsession.add(upload)
+    dbsession.flush()
+
+    BundleAnalysisProcessorTask().run_impl(
+        dbsession,
+        {"results": [{"previous": "result"}]},
+        repoid=commit.repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        params={
+            "upload_id": None,
+            "commit": commit.commitid,
+        },
+    )
+
+    # A new upload was created because all the previous uploads were in error states
+    total_uploads = (
+        dbsession.query(Upload).filter_by(report_id=commit_report.id).count()
+    )
+    assert total_uploads == 2
+
+    # There should still only be 1 BA report
+    total_ba_reports = (
+        dbsession.query(CommitReport).filter_by(commit_id=commit.id).count()
+    )
+    assert total_ba_reports == 1

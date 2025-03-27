@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
 from database.enums import ReportType
-from database.models import Commit, Upload
+from database.models import Commit, CommitReport, Upload
 from services.bundle_analysis.report import (
     BundleAnalysisReportService,
     ProcessingResult,
@@ -114,7 +114,37 @@ class BundleAnalysisProcessorTask(
         if upload_id is not None:
             upload = db_session.query(Upload).filter_by(id_=upload_id).first()
         else:
-            commit_report = report_service.initialize_and_save_report(commit)
+            # If the upload is not provided that means this is a processor task for caching
+            # coming from a non-BA upload. To ensure don't cache the same parent report
+            # multiple times, we check that if a BA report already exists for the commit
+            # and that there's any uploads that's not in error state. If that's the case we
+            # can just quick exit the task. If not we will create a new BA report and upload then
+            # move forward with caching from the parent report.
+            commit_report = (
+                db_session.query(CommitReport)
+                .filter_by(
+                    commit_id=commit.id,
+                    report_type=ReportType.BUNDLE_ANALYSIS.value,
+                )
+                .first()
+            )
+            if commit_report:
+                upload_states = [upload.state for upload in commit_report.uploads]
+                if upload_states and any(
+                    upload_state != "error" for upload_state in upload_states
+                ):
+                    log.info(
+                        "Bundle analysis report already exists for commit, skipping carryforward",
+                        extra=dict(
+                            repoid=commit.repoid,
+                            commit=commit.commitid,
+                        ),
+                    )
+                    return processing_results
+            else:
+                # If the commit report does not exist, we will create a new one
+                commit_report = report_service.initialize_and_save_report(commit)
+
             upload = report_service.create_report_upload({"url": ""}, commit_report)
             carriedforward = True
 
