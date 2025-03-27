@@ -201,7 +201,8 @@ def wrap_in_code(content: str) -> str:
 
 
 def display_duration(f: float) -> str:
-    before_dot, after_dot = str(f).split(".")
+    split_duration = str(f).split(".")
+    before_dot = split_duration[0]
     if len(before_dot) > 3:
         return before_dot
     else:
