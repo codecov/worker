@@ -9,6 +9,7 @@ from shared.django_apps.ta_timeseries.models import Testrun
 from shared.django_apps.test_analytics.models import Flake
 
 from services.redis import get_redis_connection
+from services.test_analytics.ta_metrics import process_flakes_summary
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ def handle_failure(
         curr_flakes[test_id] = new_flake
 
 
+@process_flakes_summary.labels("new").time()
 def process_flakes_for_commit(repo_id: int, commit_id: str):
     uploads = get_relevant_uploads(repo_id, commit_id)
 
