@@ -13,6 +13,10 @@ from app import celery_app
 from django_scaffold import settings
 from services.redis import get_redis_connection
 from services.test_analytics.ta_cache_rollups import cache_rollups
+from services.test_analytics.ta_metrics import (
+    read_rollups_from_db_summary,
+    rollup_size_summary,
+)
 from tasks.base import BaseCodecovTask
 
 # Reminder: `a BETWEEN x AND y` is equivalent to `a >= x AND a <= y`
@@ -168,8 +172,9 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                     "interval_end": f"{interval_end + 1 if interval_end else 0} days",
                 }
 
-                cursor.execute(ROLLUP_QUERY, query_params)
-                aggregation_of_test_results = cursor.fetchall()
+                with read_rollups_from_db_summary.labels("old").time():
+                    cursor.execute(ROLLUP_QUERY, query_params)
+                    aggregation_of_test_results = cursor.fetchall()
 
                 df = pl.DataFrame(
                     aggregation_of_test_results,
@@ -203,6 +208,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                 storage_service.write_file(
                     settings.GCS_BUCKET_NAME, storage_key, serialized_table
                 )
+                rollup_size_summary.labels("old").observe(serialized_table.tell())
 
 
 RegisteredCacheTestRollupTask = celery_app.register_task(CacheTestRollupsTask())

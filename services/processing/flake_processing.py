@@ -10,12 +10,15 @@ from shared.django_apps.reports.models import (
     TestInstance,
 )
 
+from services.test_analytics.ta_metrics import process_flakes_summary
+
 log = logging.getLogger(__name__)
 
 
 FLAKE_EXPIRY_COUNT = 30
 
 
+@process_flakes_summary.labels("old").time()
 def process_flake_for_repo_commit(
     repo_id: int,
     commit_id: str,
