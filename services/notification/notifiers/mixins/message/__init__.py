@@ -49,7 +49,6 @@ class MessageMixin(object):
         pull = comparison.pull
 
         settings = yaml_settings
-
         current_yaml = self.current_yaml
 
         links = {
@@ -63,7 +62,7 @@ class MessageMixin(object):
         }
 
         # bool: show complexity
-        if read_yaml_field(self.current_yaml, ("codecov", "ui", "hide_complexity")):
+        if read_yaml_field(current_yaml, ("codecov", "ui", "hide_complexity")):
             show_complexity = False
         else:
             show_complexity = bool(
