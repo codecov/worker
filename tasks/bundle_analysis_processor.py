@@ -4,7 +4,6 @@ from typing import Any
 from celery.exceptions import CeleryError, SoftTimeLimitExceeded
 from shared.reports.enums import UploadState
 from shared.yaml import UserYaml
-from sqlalchemy.exc import SQLAlchemyError
 
 from app import celery_app
 from database.enums import ReportType
