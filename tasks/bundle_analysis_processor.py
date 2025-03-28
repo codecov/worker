@@ -195,18 +195,10 @@ class BundleAnalysisProcessorTask(
             result.update_upload(carriedforward=carriedforward)
 
             processing_results.append(result.as_dict())
-        except (CeleryError, SoftTimeLimitExceeded, SQLAlchemyError):
-            log.exception(
-                "Unable to process bundle analysis upload",
-                extra=dict(
-                    repoid=repoid,
-                    commit=commitid,
-                    commit_yaml=commit_yaml,
-                    params=params,
-                    upload_id=upload.id_,
-                    parent_task=self.request.parent_id,
-                ),
-            )
+        except (CeleryError, SoftTimeLimitExceeded):
+            # This generally happens when the task needs to be retried because we attempt to access
+            # the upload before it is saved to GCS. Anecdotally, it takes around 30s for it to be
+            # saved, but if the BA processor runs before that we will error and need to retry.
             raise
         except Exception:
             log.exception(
