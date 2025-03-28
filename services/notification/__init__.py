@@ -21,9 +21,7 @@ from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner, Re
 from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 from services.license import is_properly_licensed
-from services.notification.commit_notifications import (
-    create_or_update_commit_notification_from_notification_result,
-)
+from services.notification.commit_notifications import store_notification_results
 from services.notification.notifiers import (
     StatusType,
     get_all_notifier_classes_mapping,
@@ -162,6 +160,8 @@ class NotificationService(object):
         if yaml_field is not None:
             for instance_type, instance_configs in yaml_field.items():
                 class_to_use = mapping.get(instance_type)
+                if not class_to_use:
+                    continue
                 for title, individual_config in instance_configs.items():
                     yield class_to_use(
                         repository=self.repository,
@@ -269,127 +269,101 @@ class NotificationService(object):
             ),
         )
 
-        results = []
-        status_or_checks_helper_text = {}
-        notifiers_to_notify = [
+        status_or_checks_notifiers, all_other_notifiers = split_notifiers(
             notifier
             for notifier in self.get_notifiers_instances()
             if notifier.is_enabled()
-        ]
+        )
 
-        status_or_checks_notifiers = [
-            notifier
-            for notifier in notifiers_to_notify
-            if notifier.notification_type in notification_type_status_or_checks
-        ]
-
-        all_other_notifiers = [
-            notifier
-            for notifier in notifiers_to_notify
-            if notifier.notification_type not in notification_type_status_or_checks
-        ]
-
-        status_or_checks_results = [
+        results = [
             self.notify_individual_notifier(notifier, comparison)
             for notifier in status_or_checks_notifiers
         ]
 
-        if status_or_checks_results and all_other_notifiers:
+        status_or_checks_helper_text = {}
+        if results and all_other_notifiers:
             # if the status/check fails, sometimes we want to add helper text to the message of the other notifications,
             # to better surface that the status/check failed.
             # so if there are status_and_checks_notifiers and all_other_notifiers, do the status_and_checks_notifiers first,
             # look at the results of the checks, if any failed AND they are the type we have helper text for,
             # add that text onto the other notifiers messages through status_or_checks_helper_text.
-            for result in status_or_checks_results:
-                notification_result = result["result"]
-                if (
-                    notification_result is not None
-                    and notification_result.data_sent is not None
-                ):
+            for _notifier, result in results:
+                if result is not None and result.data_sent is not None:
                     if (
-                        notification_result.data_sent.get("state")
-                        == StatusState.failure.value
-                    ) and notification_result.data_sent.get("included_helper_text"):
+                        result.data_sent.get("state") == StatusState.failure.value
+                    ) and result.data_sent.get("included_helper_text"):
                         status_or_checks_helper_text.update(
-                            notification_result.data_sent["included_helper_text"]
+                            result.data_sent["included_helper_text"]
                         )
-        results = results + status_or_checks_results
 
-        results = results + [
+        results.extend(
             self.notify_individual_notifier(
                 notifier,
                 comparison,
                 status_or_checks_helper_text=status_or_checks_helper_text,
             )
             for notifier in all_other_notifiers
+        )
+
+        store_notification_results(comparison, results)
+
+        return [
+            IndividualResult(
+                notifier=notifier.name, title=notifier.title, result=result
+            )
+            for notifier, result in results
         ]
-        return results
 
     def notify_individual_notifier(
         self,
         notifier: AbstractBaseNotifier,
         comparison: ComparisonProxy,
         status_or_checks_helper_text: Optional[dict[str, str]] = None,
-    ) -> IndividualResult:
+    ) -> tuple[AbstractBaseNotifier, NotificationResult | None]:
         commit = comparison.head.commit
         base_commit = comparison.project_coverage_base.commit
-        log.info(
-            "Attempting individual notification",
-            extra=dict(
-                commit=commit.commitid,
-                base_commit=(
-                    base_commit.commitid if base_commit is not None else "NO_BASE"
-                ),
-                repoid=commit.repoid,
-                notifier=notifier.name,
-                notifier_title=notifier.title,
-            ),
-        )
-        # individual_result.result is updated in case of success
-        individual_result = IndividualResult(
-            notifier=notifier.name, title=notifier.title, result=None
-        )
+        log_extra = {
+            "commit": commit.commitid,
+            "base_commit": base_commit.commitid
+            if base_commit is not None
+            else "NO_BASE",
+            "repoid": commit.repoid,
+            "notifier": notifier.name,
+            "notifier_title": notifier.title,
+        }
+
+        log.info("Attempting individual notification", extra=log_extra)
         try:
             res = notifier.notify(
                 comparison, status_or_checks_helper_text=status_or_checks_helper_text
             )
-            individual_result["result"] = res
+            log_extra["result"] = res
 
+            # TODO: The `CommentNotifier` is the only one implementing this method,
+            # so maybe we should just move it there
             notifier.store_results(comparison, res)
-            log.info(
-                "Individual notification done",
-                extra=dict(
-                    individual_result=individual_result,
-                    commit=commit.commitid,
-                    base_commit=(
-                        base_commit.commitid if base_commit is not None else "NO_BASE"
-                    ),
-                    repoid=commit.repoid,
-                ),
-            )
-            return individual_result
+
+            log.info("Individual notification done", extra=log_extra)
+            return notifier, res
         except (CeleryError, SoftTimeLimitExceeded):
             raise
         except Exception:
-            log.exception(
-                "Individual notifier failed",
-                extra=dict(
-                    repoid=commit.repoid,
-                    commit=commit.commitid,
-                    individual_result=individual_result,
-                    base_commit=(
-                        base_commit.commitid if base_commit is not None else "NO_BASE"
-                    ),
-                ),
-            )
-            return individual_result
-        finally:
-            if (
-                individual_result["result"] is None
-                or individual_result["result"].notification_attempted
-            ):
-                # only running if there is no result (indicating some exception)
-                # or there was an actual attempt
-                create_or_update_commit_notification_from_notification_result(
-                    comparison, notifier, individual_result["result"]
-                )
+            log.exception("Individual notifier failed", extra=log_extra)
+            return notifier, None
+
+
+def split_notifiers(
+    notifiers: Iterator[AbstractBaseNotifier],
+) -> tuple[list[AbstractBaseNotifier], list[AbstractBaseNotifier]]:
+    "Splits the input notifiers based on whether they are a status/check, or other notifier."
+
+    status_or_checks_notifiers = []
+    all_other_notifiers = []
+
+    for notifier in notifiers:
+        if notifier.notification_type in notification_type_status_or_checks:
+            status_or_checks_notifiers.append(notifier)
+        else:
+            all_other_notifiers.append(notifier)
+
+    return status_or_checks_notifiers, all_other_notifiers

@@ -1,10 +1,10 @@
 import logging
 
+import sentry_sdk
 from sqlalchemy.orm.session import Session
 
 from database.enums import NotificationState
 from database.models import CommitNotification, Pull
-from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
 from services.notification.notifiers.base import (
     AbstractBaseNotifier,
@@ -14,30 +14,27 @@ from services.notification.notifiers.base import (
 log = logging.getLogger(__name__)
 
 
-def _get_notification_state_from_result(
-    notification_result: NotificationResult | None,
-) -> NotificationState:
-    """
-    Take notification result from notification service and convert to
-    the proper NotificationState enum
-    """
-    if notification_result is None:
-        return NotificationState.error
-
-    successful = notification_result.notification_successful
-
-    if successful:
-        return NotificationState.success
-    else:
-        return NotificationState.error
+@sentry_sdk.trace
+def store_notification_results(
+    comparison: ComparisonProxy,
+    results: list[tuple[AbstractBaseNotifier, NotificationResult | None]],
+):
+    # TODO: we should change this to a batch "INSERT ON CONFLICT UPDATE" eventually,
+    # as this currently results in quite some inefficient query patterns.
+    for notifier, result in results:
+        if result is None or result.notification_attempted:
+            # only running if there is no result (indicating some exception)
+            # or there was an actual attempt
+            create_or_update_commit_notification_from_notification_result(
+                comparison, notifier, result
+            )
 
 
-@metrics.timer("internal.services.notification.store_notification_result")
 def create_or_update_commit_notification_from_notification_result(
     comparison: ComparisonProxy,
     notifier: AbstractBaseNotifier,
     notification_result: NotificationResult | None,
-) -> CommitNotification:
+) -> CommitNotification | None:
     """Saves a CommitNotification entry in the database.
     We save an entry in the following scenarios:
         - We save all notification attempts for commits that are part of a PullRequest
@@ -54,12 +51,12 @@ def create_or_update_commit_notification_from_notification_result(
         or notification_result.notification_successful == False
     )
     if not_pull and (not_head_commit or not_github_app_info or failed):
-        return
+        return None
 
     commit = pull.get_head_commit() if pull else comparison.head.commit
     if not commit:
         log.warning("Head commit not found for pull", extra=dict(pull=pull))
-        return
+        return None
 
     db_session: Session = commit.get_db_session()
 
@@ -72,7 +69,9 @@ def create_or_update_commit_notification_from_notification_result(
         .first()
     )
 
-    notification_state = _get_notification_state_from_result(notification_result)
+    notification_state = (
+        NotificationState.error if failed else NotificationState.success
+    )
     github_app_used = (
         notification_result.github_app_used if notification_result else None
     )

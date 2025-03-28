@@ -42,7 +42,7 @@ COMMENT_NOTIFIER_COUNTER = Counter(
 
 
 class CommentNotifier(MessageMixin, AbstractBaseNotifier):
-    notify_conditions: list[NotifyCondition] = [
+    notify_conditions: list[type[NotifyCondition]] = [
         ComparisonHasPull,
         PullRequestInProvider,
         PullHeadMatchesComparisonHead,
