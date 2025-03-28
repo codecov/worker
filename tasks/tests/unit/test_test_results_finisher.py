@@ -366,6 +366,7 @@ class TestUploadTestFinisherTask(object):
             repoid=repoid,
             commitid=commit.commitid,
             commit_yaml={"codecov": {"max_report_age": False}},
+            impl_type="both",
         )
 
         expected_result = {
@@ -380,6 +381,7 @@ class TestUploadTestFinisherTask(object):
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "both",
             },
         )
 
@@ -512,6 +514,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "old",
             },
         )
 
@@ -610,6 +613,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "old",
             },
         )
 
@@ -680,6 +684,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "old",
             },
         )
 
@@ -723,6 +728,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "old",
             },
         )
 
@@ -845,6 +851,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "old",
             },
         )
 
@@ -922,6 +929,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "old",
             },
         )
 
@@ -1007,6 +1015,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repo_id": repoid,
                 "commit_id": commit.commitid,
+                "impl_type": "old",
             },
         )
         test_results_mock_app.tasks[
@@ -1015,6 +1024,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             kwargs={
                 "repoid": repoid,
                 "branch": "main",
+                "impl_type": "old",
             },
         )
 
@@ -1188,6 +1198,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
                 kwargs={
                     "repo_id": repoid,
                     "commit_id": commit.commitid,
+                    "impl_type": "old",
                 },
             )
         else:
