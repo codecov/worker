@@ -1,6 +1,5 @@
 import logging
 
-import sentry_sdk
 from sqlalchemy.orm.session import Session
 
 from database.enums import NotificationState
@@ -12,22 +11,6 @@ from services.notification.notifiers.base import (
 )
 
 log = logging.getLogger(__name__)
-
-
-@sentry_sdk.trace
-def store_notification_results(
-    comparison: ComparisonProxy,
-    results: list[tuple[AbstractBaseNotifier, NotificationResult | None]],
-):
-    # TODO: we should change this to a batch "INSERT ON CONFLICT UPDATE" eventually,
-    # as this currently results in quite some inefficient query patterns.
-    for notifier, result in results:
-        if result is None or result.notification_attempted:
-            # only running if there is no result (indicating some exception)
-            # or there was an actual attempt
-            create_or_update_commit_notification_from_notification_result(
-                comparison, notifier, result
-            )
 
 
 def create_or_update_commit_notification_from_notification_result(

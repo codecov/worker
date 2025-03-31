@@ -21,7 +21,9 @@ from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME, Owner, Re
 from services.comparison import ComparisonProxy
 from services.decoration import Decoration
 from services.license import is_properly_licensed
-from services.notification.commit_notifications import store_notification_results
+from services.notification.commit_notifications import (
+    create_or_update_commit_notification_from_notification_result,
+)
 from services.notification.notifiers import (
     StatusType,
     get_all_notifier_classes_mapping,
@@ -305,8 +307,6 @@ class NotificationService(object):
             for notifier in all_other_notifiers
         )
 
-        store_notification_results(comparison, results)
-
         return [
             IndividualResult(
                 notifier=notifier.name, title=notifier.title, result=result
@@ -333,6 +333,7 @@ class NotificationService(object):
         }
 
         log.info("Attempting individual notification", extra=log_extra)
+        res: NotificationResult | None = None
         try:
             res = notifier.notify(
                 comparison, status_or_checks_helper_text=status_or_checks_helper_text
@@ -349,7 +350,14 @@ class NotificationService(object):
             raise
         except Exception:
             log.exception("Individual notifier failed", extra=log_extra)
-            return notifier, None
+            return notifier, res
+        finally:
+            if res is None or res.notification_attempted:
+                # only running if there is no result (indicating some exception)
+                # or there was an actual attempt
+                create_or_update_commit_notification_from_notification_result(
+                    comparison, notifier, res
+                )
 
 
 def split_notifiers(
