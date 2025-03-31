@@ -62,9 +62,6 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         impl_type: Literal["old", "new", "both"] = "old",
         **kwargs,
     ):
-        if impl_type == "both":
-            impl_type = "old"
-
         repoid = int(repoid)
 
         self.extra_dict: dict[str, Any] = {
@@ -119,7 +116,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         commitid: str,
         commit_yaml: UserYaml,
         chain_result: bool,
-        impl_type: Literal["old", "new"],
+        impl_type: Literal["old", "both", "new"],
         **kwargs,
     ) -> FinisherResult:
         log.info("Running test results finishers", extra=self.extra_dict)
@@ -131,7 +128,9 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         assert commit, "commit not found"
         repo = commit.repository
 
-        return self.old_impl(db_session, repo, commit, chain_result, commit_yaml)
+        return self.old_impl(
+            db_session, repo, commit, chain_result, commit_yaml, impl_type
+        )
 
     def old_impl(
         self,
@@ -140,6 +139,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         commit: Commit,
         chain_result: bool,
         commit_yaml: UserYaml,
+        impl_type: Literal["old", "both", "new"],
     ) -> FinisherResult:
         repoid = repo.repoid
         commitid = commit.commitid
@@ -152,12 +152,17 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
                     kwargs=dict(
                         repo_id=repoid,
                         commit_id=commit.commitid,
+                        impl_type=impl_type,
                     )
                 )
 
         if commit.branch is not None:
             self.app.tasks[cache_test_rollups_task_name].apply_async(
-                kwargs=dict(repoid=repoid, branch=commit.branch),
+                kwargs=dict(
+                    repoid=repoid,
+                    branch=commit.branch,
+                    impl_type=impl_type,
+                ),
             )
 
         commit_report = commit.commit_report(ReportType.TEST_RESULTS)
