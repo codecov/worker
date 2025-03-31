@@ -5,6 +5,10 @@ import polars as pl
 import shared.storage
 
 from django_scaffold import settings
+from services.test_analytics.ta_metrics import (
+    read_rollups_from_db_summary,
+    rollup_size_summary,
+)
 from services.test_analytics.ta_timeseries import (
     get_branch_summary,
     get_summary,
@@ -39,13 +43,14 @@ def cache_rollups(repoid: int, branch: str | None = None):
     storage_service = shared.storage.get_appropriate_storage_service(repoid)
     serialized_table: BytesIO
 
-    if branch:
-        if branch in {"main", "master", "develop"}:
-            summaries = get_branch_summary(repoid, branch)
+    with read_rollups_from_db_summary.labels("new").time():
+        if branch:
+            if branch in {"main", "master", "develop"}:
+                summaries = get_branch_summary(repoid, branch)
+            else:
+                summaries = get_testrun_branch_summary_via_testrun(repoid, branch)
         else:
-            summaries = get_testrun_branch_summary_via_testrun(repoid, branch)
-    else:
-        summaries = get_summary(repoid)
+            summaries = get_summary(repoid)
 
     data = [
         {
@@ -75,3 +80,4 @@ def cache_rollups(repoid: int, branch: str | None = None):
     storage_service.write_file(
         settings.GCS_BUCKET_NAME, rollup_blob_path(repoid, branch), serialized_table
     )
+    rollup_size_summary.labels("new").observe(serialized_table.tell())

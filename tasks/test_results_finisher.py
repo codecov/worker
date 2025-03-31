@@ -21,6 +21,10 @@ from services.repository import (
     get_repo_provider_service,
 )
 from services.seats import ShouldActivateSeat, determine_seat_activation
+from services.test_analytics.ta_metrics import (
+    read_failures_summary,
+    read_tests_totals_summary,
+)
 from services.test_results import (
     FinisherResult,
     FlakeInfo,
@@ -200,16 +204,18 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
             "test_analytics", "shorten_paths", _else=True
         )
 
-        test_summary = get_test_summary_for_commit(db_session, repoid, commitid)
+        with read_tests_totals_summary.labels("old").time():
+            test_summary = get_test_summary_for_commit(db_session, repoid, commitid)
         failed_tests = test_summary.get("error", 0) + test_summary.get("failure", 0)
         passed_tests = test_summary.get("pass", 0)
         skipped_tests = test_summary.get("skip", 0)
 
         failures = []
         if failed_tests:
-            failed_test_instances = latest_failures_for_commit(
-                db_session, repoid, commitid
-            )
+            with read_failures_summary.labels("old").time():
+                failed_test_instances = latest_failures_for_commit(
+                    db_session, repoid, commitid
+                )
 
             for test_instance in failed_test_instances:
                 failure_message = test_instance.failure_message
