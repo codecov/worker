@@ -1,11 +1,11 @@
-import xml.etree.cElementTree as etree
+from lxml import etree
 
 from services.report.languages import vb
 from test_utils.base import BaseTestCase
 
 from . import create_report_builder_session
 
-txt = """<?xml version="1.0" encoding="UTF-8"?>
+txt = b"""<?xml version="1.0" encoding="UTF-8"?>
 <results>
   <modules>
     <module name="riosock.dll" path="riosock.dll" id="A8980752D35C194D988F77B70FC7950101000000" block_coverage="59.29" line_coverage="66.67" blocks_covered="166" blocks_not_covered="114" lines_covered="186" lines_partially_covered="4" lines_not_covered="89">
