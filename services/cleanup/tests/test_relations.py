@@ -6,7 +6,7 @@ from shared.django_apps.codecov_auth.models import Owner
 from shared.django_apps.codecov_auth.tests.factories import OwnerFactory
 from shared.django_apps.core.models import Repository
 from shared.django_apps.core.tests.factories import RepositoryFactory
-from shared.django_apps.reports.models import ReportDetails, TestInstance
+from shared.django_apps.reports.models import TestInstance, UploadLevelTotals
 
 from services.cleanup.relations import (
     build_relation_graph,
@@ -64,7 +64,7 @@ def test_can_simplify_queries():
 
 @pytest.mark.django_db
 def test_leaf_table(snapshot):
-    query = ReportDetails.objects.all()
+    query = UploadLevelTotals.objects.all()
     assert dump_delete_queries(query) == snapshot("leaf.txt")
 
 

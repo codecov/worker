@@ -1,9 +1,6 @@
 import logging
 import random
 
-from shared.django_apps.profiling.models import ProfilingUpload
-from shared.django_apps.reports.models import ReportDetails
-
 from services.cleanup.cleanup import run_cleanup
 from services.cleanup.utils import CleanupResult, CleanupSummary, cleanup_context
 
@@ -15,10 +12,7 @@ def run_regular_cleanup() -> CleanupSummary:
     complete_summary = CleanupSummary(CleanupResult(0), summary={})
 
     # Usage of these model was removed, and we should clean up all its data before dropping the table for good.
-    cleanups_to_run = [
-        ReportDetails.objects.all(),
-        ProfilingUpload.objects.all(),
-    ]
+    cleanups_to_run = []
 
     # as we expect this job to have frequent retries, and cleanup to take a long time,
     # lets shuffle the various cleanups so that each one of those makes a little progress.

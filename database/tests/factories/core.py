@@ -212,14 +212,6 @@ class ReportLevelTotalsFactory(Factory):
     files = 0
 
 
-class ReportDetailsFactory(Factory):
-    class Meta:
-        model = models.ReportDetails
-
-    report = factory.SubFactory(ReportFactory)
-    _files_array = factory.LazyFunction(list)
-
-
 class ReportResultsFactory(Factory):
     class Meta:
         model = models.ReportResults
