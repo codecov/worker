@@ -610,11 +610,7 @@ class TestNotificationService(object):
         res = notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )
-        assert res == {
-            "notifier": notifier.name,
-            "result": None,
-            "title": "fake_notifier",
-        }
+        assert res == (notifier, None)
 
     @pytest.mark.django_db
     def test_notify_individual_checks_project_notifier(
@@ -649,10 +645,9 @@ class TestNotificationService(object):
             notifier, sample_comparison
         )
 
-        assert res == {
-            "notifier": "checks-project",
-            "title": "title",
-            "result": NotificationResult(
+        assert res == (
+            notifier,
+            NotificationResult(
                 notification_attempted=True,
                 notification_successful=True,
                 explanation=None,
@@ -668,7 +663,7 @@ class TestNotificationService(object):
                 },
                 data_received=None,
             ),
-        }
+        )
 
     @pytest.mark.django_db
     def test_notify_individual_checks_patch_and_project_notifier_included_helper_text(
@@ -894,11 +889,8 @@ class TestNotificationService(object):
         res = notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )
-        assert res == {
-            "notifier": notifier.name,
-            "result": None,
-            "title": "fake_notifier",
-        }
+        assert res == (notifier, None)
+
         dbsession.flush()
         pull = sample_comparison.enriched_pull.database_pull
         pull_commit_notifications = pull.get_head_commit_notifications()
@@ -930,11 +922,8 @@ class TestNotificationService(object):
         res = notifications_service.notify_individual_notifier(
             notifier, sample_comparison
         )
-        assert res == {
-            "notifier": notifier.name,
-            "result": None,
-            "title": "fake_notifier",
-        }
+        assert res == (notifier, None)
+
         dbsession.flush()
         pull = sample_comparison.enriched_pull.database_pull
         pull_commit_notifications = pull.get_head_commit_notifications()
