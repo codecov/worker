@@ -1,11 +1,9 @@
 import json
-from unittest.mock import PropertyMock, call
+from unittest.mock import PropertyMock
 
 from mock import MagicMock, patch
 from shared.plan.constants import DEFAULT_FREE_PLAN
-from shared.reports.types import ReportTotals
 from shared.storage.exceptions import FileNotInStorageError
-from shared.utils.ReportEncoder import ReportEncoder
 from sqlalchemy.orm import Session
 
 from database.models import (
@@ -22,7 +20,6 @@ from database.models.core import (
     AccountsUsers,
     GithubAppInstallation,
 )
-from database.models.reports import ReportDetails
 from database.tests.factories import (
     BranchFactory,
     CommitFactory,
@@ -32,7 +29,7 @@ from database.tests.factories import (
     PullFactory,
     RepositoryFactory,
 )
-from database.tests.factories.core import ReportDetailsFactory, UserFactory
+from database.tests.factories.core import UserFactory
 
 
 class TestReprModels(object):
@@ -290,263 +287,6 @@ class TestAccountModels(object):
         through_table_obj = dbsession.query(AccountsUsers).first()
         assert through_table_obj.user_id == user.id
         assert through_table_obj.account_id == account.id
-
-
-class TestReportDetailsModel(object):
-    sample_files_array = [
-        {
-            "filename": "file_1.go",
-            "file_index": 0,
-            "file_totals": ReportTotals(
-                *[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]
-            ),
-            "diff_totals": None,
-        },
-        {
-            "filename": "file_2.py",
-            "file_index": 1,
-            "file_totals": ReportTotals(
-                *[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]
-            ),
-            "diff_totals": None,
-        },
-    ]
-
-    def test_rehydrate_already_hydrated(self):
-        fully_encoded_sample = [
-            {
-                "filename": "file_1.go",
-                "file_index": 0,
-                "file_totals": [0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0],
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_2.py",
-                "file_index": 1,
-                "file_totals": [0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0],
-                "diff_totals": None,
-            },
-        ]
-        half_encoded_sample = [
-            {
-                "filename": "file_1.go",
-                "file_index": 0,
-                "file_totals": ReportTotals(
-                    *[0, 8, 5, 3, 0, "62.50000", 0, 0, 0, 0, 10, 2, 0]
-                ),
-                "diff_totals": None,
-            },
-            {
-                "filename": "file_2.py",
-                "file_index": 1,
-                "file_totals": ReportTotals(
-                    *[0, 2, 1, 0, 1, "50.00000", 1, 0, 0, 0, 0, 0, 0]
-                ),
-                "diff_totals": None,
-            },
-        ]
-        rd: ReportDetails = ReportDetailsFactory()
-        assert (
-            rd.rehydrate_encoded_data(self.sample_files_array)
-            == self.sample_files_array
-        )
-        assert (
-            rd.rehydrate_encoded_data(fully_encoded_sample) == self.sample_files_array
-        )
-        assert rd.rehydrate_encoded_data(half_encoded_sample) == self.sample_files_array
-
-    def test_get_files_array_from_db(self, dbsession, mocker):
-        factory_report_details: ReportDetails = ReportDetailsFactory()
-        factory_report_details._files_array = self.sample_files_array
-        factory_report_details._files_array_storage_path = None
-        dbsession.add(factory_report_details)
-        dbsession.flush()
-
-        mock_archive_service = mocker.patch("database.utils.ArchiveService")
-        retrieved_instance = dbsession.query(ReportDetails).get(
-            factory_report_details.id_
-        )
-        assert retrieved_instance.external_id == factory_report_details.external_id
-        files_array = retrieved_instance.files_array
-        assert files_array == self.sample_files_array
-        mock_archive_service.assert_not_called()
-
-    def test_get_files_array_from_storage(self, dbsession, mocker):
-        factory_report_details: ReportDetails = ReportDetailsFactory()
-        factory_report_details._files_array = None
-        factory_report_details._files_array_storage_path = (
-            "https://storage-url/path/to/item.json"
-        )
-        dbsession.add(factory_report_details)
-        dbsession.flush()
-
-        mock_archive_service = mocker.patch("database.utils.ArchiveService")
-        mock_archive_service.return_value.read_file.return_value = json.dumps(
-            self.sample_files_array, cls=ReportEncoder
-        )
-        retrieved_instance = dbsession.query(ReportDetails).get(
-            factory_report_details.id_
-        )
-        assert retrieved_instance.external_id == factory_report_details.external_id
-        files_array = retrieved_instance.files_array
-        assert files_array == self.sample_files_array
-        assert mock_archive_service.call_count == 1
-        mock_archive_service.return_value.read_file.assert_has_calls(
-            [call("https://storage-url/path/to/item.json")]
-        )
-        # Check that caching works within the instance
-        files_array = retrieved_instance.files_array
-        assert mock_archive_service.call_count == 1
-        assert mock_archive_service.return_value.read_file.call_count == 1
-
-    def test_get_files_array_from_storage_error(self, dbsession, mocker):
-        factory_report_details: ReportDetails = ReportDetailsFactory()
-        factory_report_details._files_array = None
-        factory_report_details._files_array_storage_path = (
-            "https://storage-url/path/to/item.json"
-        )
-        dbsession.add(factory_report_details)
-        dbsession.flush()
-
-        mocker.patch(
-            "database.utils.ArchiveField.read_timeout",
-            new_callable=PropertyMock,
-            return_value=0.1,
-        )
-        mock_archive_service = mocker.patch("database.utils.ArchiveService")
-
-        def side_effect(path):
-            assert path == "https://storage-url/path/to/item.json"
-            raise FileNotInStorageError()
-
-        mock_archive_service.return_value.read_file.side_effect = side_effect
-        retrieved_instance = dbsession.query(ReportDetails).get(
-            factory_report_details.id_
-        )
-        files_array = retrieved_instance.files_array
-        assert files_array == []
-        assert mock_archive_service.call_count == 1
-        mock_archive_service.return_value.read_file.assert_has_calls(
-            [call("https://storage-url/path/to/item.json")]
-        )
-
-    def test__should_write_to_storage(self, dbsession, mocker, mock_configuration):
-        factory_report_details: ReportDetails = ReportDetailsFactory()
-        codecov_report_details: ReportDetails = ReportDetailsFactory(
-            report__commit__repository__owner__username="codecov"
-        )
-        allowlisted_repo: ReportDetails = ReportDetailsFactory()
-        dbsession.add(factory_report_details)
-        dbsession.add(codecov_report_details)
-        dbsession.add(allowlisted_repo)
-        dbsession.flush()
-
-        mock_configuration.set_params(
-            {
-                "setup": {
-                    "save_report_data_in_storage": {
-                        "repo_ids": [allowlisted_repo.report.commit.repository.repoid],
-                        "report_details_files_array": "restricted_access",
-                    },
-                }
-            }
-        )
-        assert factory_report_details._should_write_to_storage() == False
-        assert allowlisted_repo._should_write_to_storage() == True
-        assert codecov_report_details._should_write_to_storage() == True
-        mock_configuration.set_params(
-            {
-                "setup": {
-                    "save_report_data_in_storage": {
-                        "repo_ids": [],
-                        "report_details_files_array": False,
-                    },
-                }
-            }
-        )
-        assert factory_report_details._should_write_to_storage() == False
-        assert allowlisted_repo._should_write_to_storage() == False
-        assert codecov_report_details._should_write_to_storage() == False
-
-    def test_set_files_array_to_db(self, dbsession, mocker, mock_configuration):
-        mock_configuration.set_params(
-            {
-                "setup": {
-                    "save_report_data_in_storage": {
-                        "only_codecov": False,
-                        "report_details_files_array": False,
-                    },
-                }
-            }
-        )
-        mock_archive_service = mocker.patch("database.utils.ArchiveService")
-
-        factory_report_details: ReportDetails = ReportDetailsFactory()
-        # Setting files_array.
-        factory_report_details.files_array = self.sample_files_array
-        dbsession.add(factory_report_details)
-        dbsession.flush()
-
-        retrieved_instance = dbsession.query(ReportDetails).get(
-            factory_report_details.id_
-        )
-        assert retrieved_instance.external_id == factory_report_details.external_id
-        files_array = retrieved_instance.files_array
-        assert files_array == self.sample_files_array
-        mock_archive_service.assert_not_called()
-
-    def test_set_files_array_to_storage(self, dbsession, mocker, mock_configuration):
-        mock_configuration.set_params(
-            {
-                "setup": {
-                    "save_report_data_in_storage": {
-                        "report_details_files_array": "general_access",
-                    },
-                }
-            }
-        )
-        mock_archive_service = mocker.patch("database.utils.ArchiveService")
-        mock_archive_service.return_value.read_file.return_value = json.dumps(
-            self.sample_files_array, cls=ReportEncoder
-        )
-        mock_archive_service.return_value.write_json_data_to_storage.return_value = (
-            "https://storage-url/path/to/item.json"
-        )
-
-        factory_report_details: ReportDetails = ReportDetailsFactory()
-        dbsession.add(factory_report_details)
-        dbsession.flush()
-
-        retrieved_instance = dbsession.query(ReportDetails).get(
-            factory_report_details.id_
-        )
-        # The default value from factory is []
-        assert retrieved_instance.files_array == []
-        assert mock_archive_service.call_count == 0
-        assert mock_archive_service.return_value.read_file.call_count == 0
-        # Set the new value
-        retrieved_instance.files_array = self.sample_files_array
-        assert mock_archive_service.call_count == 1
-        mock_archive_service.return_value.write_json_data_to_storage.assert_has_calls(
-            [
-                call(
-                    commit_id=retrieved_instance.report.commit.commitid,
-                    table="reports_reportdetails",
-                    field="files_array",
-                    external_id=retrieved_instance.external_id,
-                    data=self.sample_files_array,
-                    encoder=ReportEncoder,
-                )
-            ]
-        )
-        # Retrieve the set value
-        files_array = retrieved_instance.files_array
-        assert files_array == self.sample_files_array
-        assert mock_archive_service.call_count == 1
-        # Check that caching works within the instance
-        files_array = retrieved_instance.files_array
-        assert mock_archive_service.call_count == 1
-        assert mock_archive_service.return_value.read_file.call_count == 0
 
 
 class TestCommitModel(object):

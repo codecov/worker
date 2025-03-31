@@ -8,11 +8,9 @@ from django.db.models import Model, Q, QuerySet
 from shared.bundle_analysis import StoragePaths
 from shared.django_apps.compare.models import CommitComparison
 from shared.django_apps.core.models import Commit, Pull, Repository
-from shared.django_apps.profiling.models import ProfilingUpload
 from shared.django_apps.reports.models import (
     CommitReport,
     DailyTestRollup,
-    ReportDetails,
     TestInstance,
 )
 from shared.django_apps.reports.models import ReportSession as Upload
@@ -247,11 +245,9 @@ MANUAL_CLEANUP: dict[
 ] = {
     Commit: partial(cleanup_archivefield, "report"),
     Pull: partial(cleanup_archivefield, "flare"),
-    ReportDetails: partial(cleanup_archivefield, "files_array"),
     CommitReport: cleanup_commitreport,
     Upload: cleanup_upload,
     CommitComparison: partial(cleanup_with_storage_field, "report_storage_path"),
-    ProfilingUpload: partial(cleanup_with_storage_field, "raw_upload_location"),
     StaticAnalysisSingleFileSnapshot: partial(
         cleanup_with_storage_field, "content_location"
     ),

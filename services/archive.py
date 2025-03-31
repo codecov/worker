@@ -4,7 +4,6 @@ from base64 import b16encode
 from datetime import datetime
 from enum import Enum
 from hashlib import md5
-from uuid import uuid4
 
 import sentry_sdk
 import shared.storage
@@ -22,11 +21,8 @@ class MinioEndpoints(Enum):
     json_data_no_commit = (
         "{version}/repos/{repo_hash}/json_data/{table}/{field}/{external_id}.json"
     )
-    profiling_summary = "{version}/repos/{repo_hash}/profilingsummaries/{profiling_commit_id}/{location}"
     raw = "v4/raw/{date}/{repo_hash}/{commit_sha}/{reportid}.txt"
-    profiling_collection = "{version}/repos/{repo_hash}/profilingcollections/{profiling_commit_id}/{location}"
     computed_comparison = "{version}/repos/{repo_hash}/comparisons/{comparison_id}.json"
-    profiling_normalization = "{version}/repos/{repo_hash}/profilingnormalizations/{profiling_commit_id}/{location}"
 
     def get_path(self, **kwaargs) -> str:
         return self.value.format(**kwaargs)
@@ -101,41 +97,6 @@ class ArchiveService(object):
             version="v4", repo_hash=self.storage_hash, comparison_id=comparison.id
         )
         self.write_file(path, json.dumps(data))
-        return path
-
-    def write_profiling_collection_result(self, version_identifier, data):
-        location = uuid4().hex
-        path = MinioEndpoints.profiling_collection.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            profiling_commit_id=version_identifier,
-            location=location,
-        )
-
-        self.write_file(path, data)
-        return path
-
-    def write_profiling_summary_result(self, version_identifier, data):
-        location = f"{uuid4().hex}.txt"
-        path = MinioEndpoints.profiling_summary.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            profiling_commit_id=version_identifier,
-            location=location,
-        )
-
-        self.write_file(path, data)
-        return path
-
-    def write_profiling_normalization_result(self, version_identifier, data):
-        location = f"{uuid4().hex}.txt"
-        path = MinioEndpoints.profiling_normalization.get_path(
-            version="v4",
-            repo_hash=self.storage_hash,
-            profiling_commit_id=version_identifier,
-            location=location,
-        )
-        self.write_file(path, data)
         return path
 
     def write_json_data_to_storage(

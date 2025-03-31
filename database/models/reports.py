@@ -3,7 +3,6 @@ import uuid
 from decimal import Decimal
 from functools import cached_property
 
-from shared.reports.types import ReportTotals
 from sqlalchemy import Column, ForeignKey, Table, UniqueConstraint, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
@@ -11,9 +10,7 @@ from sqlalchemy.orm import backref, relationship
 
 from database.base import CodecovBaseModel, MixinBaseClass, MixinBaseClassNoExternalID
 from database.models.core import Commit, CompareCommit, Repository
-from database.utils import ArchiveField
 from helpers.clock import get_utc_now
-from helpers.config import should_write_data_to_storage_config_check
 from helpers.number import precise_round
 
 log = logging.getLogger(__name__)
@@ -37,13 +34,6 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
         foreign_keys=[commit_id],
         back_populates="reports_list",
         cascade="all, delete",
-    )
-    details = relationship(
-        "ReportDetails",
-        back_populates="report",
-        uselist=False,
-        cascade="all, delete",
-        passive_deletes=True,
     )
     totals = relationship(
         "ReportLevelTotals",
@@ -127,62 +117,6 @@ class UploadError(CodecovBaseModel, MixinBaseClass):
     upload_id = Column("upload_id", types.BigInteger, ForeignKey("reports_upload.id"))
     error_code = Column(types.String(100), nullable=False)
     error_params = Column(postgresql.JSON, default=dict)
-
-
-class ReportDetails(CodecovBaseModel, MixinBaseClass):
-    __tablename__ = "reports_reportdetails"
-    report_id = Column(types.BigInteger, ForeignKey("reports_commitreport.id"))
-    report: CommitReport = relationship(
-        "CommitReport", foreign_keys=[report_id], back_populates="details"
-    )
-    _files_array = Column("files_array", postgresql.ARRAY(postgresql.JSONB))
-    _files_array_storage_path = Column(
-        "files_array_storage_path", types.Text, nullable=True
-    )
-
-    def get_repository(self):
-        return self.report.commit.repository
-
-    def get_commitid(self):
-        return self.report.commit.commitid
-
-    def rehydrate_encoded_data(self, json_files_array):
-        """This ensures that we always use the files_array with the correct underlying classes.
-        No matter where the data comes from.
-        """
-        return [
-            {
-                **v,
-                "file_totals": ReportTotals(*(v.get("file_totals", []))),
-                "diff_totals": (
-                    ReportTotals(*v["diff_totals"]) if v["diff_totals"] else None
-                ),
-            }
-            for v in json_files_array
-        ]
-
-    def _should_write_to_storage(self) -> bool:
-        # Safety check to see if the path to repository is valid
-        # Because we had issues around this before
-        if (
-            self.report is None
-            or self.report.commit is None
-            or self.report.commit.repository is None
-            or self.report.commit.repository.owner is None
-        ):
-            return False
-        is_codecov_repo = self.report.commit.repository.owner.username == "codecov"
-        return should_write_data_to_storage_config_check(
-            "report_details_files_array",
-            is_codecov_repo,
-            self.report.commit.repository.repoid,
-        )
-
-    files_array = ArchiveField(
-        should_write_to_storage_fn=_should_write_to_storage,
-        rehydrate_fn=rehydrate_encoded_data,
-        default_value_class=list,
-    )
 
 
 class AbstractTotals(MixinBaseClass):
