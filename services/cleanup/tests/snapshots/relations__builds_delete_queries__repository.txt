@@ -115,18 +115,6 @@ WHERE "reports_reportresults"."report_id" IN
           WHERE U0."repoid" IN (%s)));
 
 
--- ReportDetails
-DELETE
-FROM "reports_reportdetails"
-WHERE "reports_reportdetails"."report_id" IN
-    (SELECT V0."id"
-     FROM "reports_commitreport" V0
-     WHERE V0."commit_id" IN
-         (SELECT U0."id"
-          FROM "commits" U0
-          WHERE U0."repoid" IN (%s)));
-
-
 -- ReportLevelTotals
 DELETE
 FROM "reports_reportleveltotals"
@@ -205,15 +193,6 @@ FROM "pulls"
 WHERE "pulls"."repoid" IN (%s);
 
 
--- ProfilingUpload
-DELETE
-FROM "profiling_profilingupload"
-WHERE "profiling_profilingupload"."profiling_commit_id" IN
-    (SELECT U0."id"
-     FROM "profiling_profilingcommit" U0
-     WHERE U0."repoid" IN (%s));
-
-
 -- TestFlagBridge
 DELETE
 FROM "reports_test_results_flag_bridge"
@@ -290,12 +269,6 @@ WHERE "staticanalysis_staticanalysissuite"."commit_id" IN
 DELETE
 FROM "staticanalysis_staticanalysissinglefilesnapshot"
 WHERE "staticanalysis_staticanalysissinglefilesnapshot"."repository_id" IN (%s);
-
-
--- ProfilingCommit
-DELETE
-FROM "profiling_profilingcommit"
-WHERE "profiling_profilingcommit"."repoid" IN (%s);
 
 
 -- RepositoryFlag
