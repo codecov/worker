@@ -88,7 +88,7 @@ class TestCacheTestRollupsTask:
 
             task = CacheTestRollupsTask()
             result = task.run_impl(
-                _db_session=None, repoid=self.repo.repoid, branch="main"
+                _db_session=None, repo_id=self.repo.repoid, branch="main"
             )
             assert result == {"success": True}
 
@@ -191,7 +191,7 @@ class TestCacheTestRollupsTask:
             task = CacheTestRollupsTask()
             _ = task.run_impl(
                 _db_session=None,
-                repoid=rollup_date.repository_id,
+                repo_id=rollup_date.repository_id,
                 branch=rollup_date.branch,
                 update_date=False,
             )
@@ -213,7 +213,7 @@ class TestCacheTestRollupsTask:
             task = CacheTestRollupsTask()
             _ = task.run_impl(
                 _db_session=None,
-                repoid=rollup_date.repository_id,
+                repo_id=rollup_date.repository_id,
                 branch="main",
                 update_date=True,
             )
@@ -231,7 +231,7 @@ class TestCacheTestRollupsTask:
             task = CacheTestRollupsTask()
             _ = task.run_impl(
                 _db_session=None,
-                repoid=self.repo.repoid,
+                repo_id=self.repo.repoid,
                 branch="main",
                 update_date=True,
             )
@@ -249,7 +249,7 @@ class TestCacheTestRollupsTask:
         with time_machine.travel(dt.datetime.now(dt.UTC), tick=False):
             _ = task.run_impl(
                 _db_session=None,
-                repoid=self.repo.repoid,
+                repo_id=self.repo.repoid,
                 branch="main",
                 update_date=True,
                 impl_type="both",

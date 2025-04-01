@@ -78,7 +78,7 @@ def test_cache_test_rollups(storage, snapshot):
 
     CacheTestRollupsTask().run_impl(
         _db_session=None,
-        repoid=1,
+        repo_id=1,
         branch=None,
         impl_type="new",
     )
@@ -170,7 +170,7 @@ def test_cache_test_rollups_use_timeseries_main(storage, snapshot):
 
     CacheTestRollupsTask().run_impl(
         _db_session=None,
-        repoid=1,
+        repo_id=1,
         branch="main",
         impl_type="new",
     )
@@ -262,7 +262,7 @@ def test_cache_test_rollups_use_timeseries_branch(storage, snapshot):
 
     CacheTestRollupsTask().run_impl(
         _db_session=None,
-        repoid=1,
+        repo_id=1,
         branch="feature",
         impl_type="new",
     )
