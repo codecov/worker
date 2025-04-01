@@ -14,14 +14,12 @@ from app import celery_app
 from database.models import Commit, Repository
 from helpers.notifier import NotifierResult
 from helpers.string import shorten_file_paths
-from services.activation import activate_user, schedule_new_user_activated_task
 from services.redis import get_redis_connection
 from services.repository import (
-    EnrichedPull,
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
 )
-from services.seats import ShouldActivateSeat, determine_seat_activation
+from services.seats import check_seat_activation
 from services.test_analytics.ta_metrics import (
     read_failures_summary,
     read_tests_totals_summary,
@@ -122,34 +120,6 @@ def queue_followup_tasks(
                 "impl_type": impl_type,
             },
         )
-
-
-def check_seat_activation(db_session: Session, pull: EnrichedPull) -> bool:
-    activate_seat_info = determine_seat_activation(pull)
-
-    should_show_upgrade_message = True
-
-    match activate_seat_info.should_activate_seat:
-        case ShouldActivateSeat.AUTO_ACTIVATE:
-            assert activate_seat_info.owner_id
-            assert activate_seat_info.author_id
-            successful_activation = activate_user(
-                db_session=db_session,
-                org_ownerid=activate_seat_info.owner_id,
-                user_ownerid=activate_seat_info.author_id,
-            )
-            if successful_activation:
-                schedule_new_user_activated_task(
-                    activate_seat_info.owner_id,
-                    activate_seat_info.author_id,
-                )
-                should_show_upgrade_message = False
-        case ShouldActivateSeat.MANUAL_ACTIVATE:
-            pass
-        case ShouldActivateSeat.NO_ACTIVATE:
-            should_show_upgrade_message = False
-
-    return should_show_upgrade_message
 
 
 @sentry_sdk.trace

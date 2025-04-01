@@ -6,6 +6,7 @@ from shared.plan.service import PlanService
 from sqlalchemy.orm import Session
 
 from database.models import Owner
+from services.activation import activate_user, schedule_new_user_activated_task
 from services.decoration import _is_bot_account
 from services.repository import EnrichedPull
 
@@ -109,3 +110,31 @@ def determine_seat_activation(pull: EnrichedPull) -> SeatActivationInfo:
             pr_author.ownerid,
             reason="auto_activate",
         )
+
+
+def check_seat_activation(db_session: Session, pull: EnrichedPull) -> bool:
+    activate_seat_info = determine_seat_activation(pull)
+
+    match activate_seat_info.should_activate_seat:
+        case ShouldActivateSeat.AUTO_ACTIVATE:
+            assert activate_seat_info.owner_id
+            assert activate_seat_info.author_id
+            successful_activation = activate_user(
+                db_session=db_session,
+                org_ownerid=activate_seat_info.owner_id,
+                user_ownerid=activate_seat_info.author_id,
+            )
+            if successful_activation:
+                schedule_new_user_activated_task(
+                    activate_seat_info.owner_id,
+                    activate_seat_info.author_id,
+                )
+                should_show_upgrade_message = False
+            else:
+                should_show_upgrade_message = True
+        case ShouldActivateSeat.MANUAL_ACTIVATE:
+            should_show_upgrade_message = True
+        case ShouldActivateSeat.NO_ACTIVATE:
+            should_show_upgrade_message = False
+
+    return should_show_upgrade_message
