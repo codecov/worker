@@ -343,15 +343,15 @@ class TestBundleAnalysisPRCommentNotificationContext:
             reason="mocked",
         )
         mocker.patch(
-            "services.bundle_analysis.notify.contexts.commit_status.determine_seat_activation",
+            "services.seats.determine_seat_activation",
             return_value=activation_result,
         )
         mocker.patch(
-            "services.bundle_analysis.notify.contexts.commit_status.activate_user",
+            "services.seats.activate_user",
             return_value=auto_activate_succeeds,
         )
         mocker.patch(
-            "services.bundle_analysis.notify.contexts.commit_status.schedule_new_user_activated_task",
+            "services.seats.schedule_new_user_activated_task",
             return_value=auto_activate_succeeds,
         )
         head_commit, _ = get_commit_pair(dbsession)
