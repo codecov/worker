@@ -5,6 +5,7 @@ import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.celery_config import cache_test_rollups_task_name, process_flakes_task_name
 from shared.django_apps.reports.models import ReportSession, UploadError
+from shared.helpers.redis import get_redis_connection
 from shared.reports.types import UploadType
 from shared.typings.torngit import AdditionalData
 from shared.yaml import UserYaml
@@ -14,7 +15,6 @@ from app import celery_app
 from database.models import Commit, Repository
 from helpers.notifier import NotifierResult
 from helpers.string import shorten_file_paths
-from services.redis import get_redis_connection
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,
@@ -44,7 +44,7 @@ from services.test_results import (
 log = logging.getLogger(__name__)
 
 
-def get_upload_ids(commitid: str) -> dict[int, ReportSession]:
+def get_relevant_upload_ids(commitid: str) -> dict[int, ReportSession]:
     return {
         upload.id: upload
         for upload in ReportSession.objects.filter(
@@ -55,7 +55,11 @@ def get_upload_ids(commitid: str) -> dict[int, ReportSession]:
 
 
 def get_upload_error(upload_ids: list[int]) -> ErrorPayload | None:
-    error = UploadError.objects.filter(report_session_id__in=upload_ids).first()
+    error = (
+        UploadError.objects.filter(report_session_id__in=upload_ids)
+        .order_by("created_at")
+        .first()
+    )
     if error:
         return ErrorPayload(
             error_code=error.error_code,
@@ -151,7 +155,7 @@ def new_impl(
             "queue_notify": False,
         }
 
-    upload_ids = get_upload_ids(commitid)
+    upload_ids = get_relevant_upload_ids(commitid)
     error = get_upload_error(list(upload_ids.keys()))
 
     with read_tests_totals_summary.labels(impl="new").time():
