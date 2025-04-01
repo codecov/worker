@@ -190,21 +190,6 @@ WHERE "reports_reportresults"."report_id" IN
                WHERE U0."ownerid" IN (%s))));
 
 
--- ReportDetails
-DELETE
-FROM "reports_reportdetails"
-WHERE "reports_reportdetails"."report_id" IN
-    (SELECT W0."id"
-     FROM "reports_commitreport" W0
-     WHERE W0."commit_id" IN
-         (SELECT V0."id"
-          FROM "commits" V0
-          WHERE V0."repoid" IN
-              (SELECT U0."repoid"
-               FROM "repos" U0
-               WHERE U0."ownerid" IN (%s))));
-
-
 -- ReportLevelTotals
 DELETE
 FROM "reports_reportleveltotals"
@@ -302,18 +287,6 @@ WHERE "pulls"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
      WHERE U0."ownerid" IN (%s));
-
-
--- ProfilingUpload
-DELETE
-FROM "profiling_profilingupload"
-WHERE "profiling_profilingupload"."profiling_commit_id" IN
-    (SELECT V0."id"
-     FROM "profiling_profilingcommit" V0
-     WHERE V0."repoid" IN
-         (SELECT U0."repoid"
-          FROM "repos" U0
-          WHERE U0."ownerid" IN (%s)));
 
 
 -- TestFlagBridge
@@ -425,15 +398,6 @@ WHERE "staticanalysis_staticanalysissuite"."commit_id" IN
 DELETE
 FROM "staticanalysis_staticanalysissinglefilesnapshot"
 WHERE "staticanalysis_staticanalysissinglefilesnapshot"."repository_id" IN
-    (SELECT U0."repoid"
-     FROM "repos" U0
-     WHERE U0."ownerid" IN (%s));
-
-
--- ProfilingCommit
-DELETE
-FROM "profiling_profilingcommit"
-WHERE "profiling_profilingcommit"."repoid" IN
     (SELECT U0."repoid"
      FROM "repos" U0
      WHERE U0."ownerid" IN (%s));
