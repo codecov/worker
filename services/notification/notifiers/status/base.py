@@ -271,7 +271,7 @@ class StatusNotifier(AbstractBaseNotifier):
         )
         head_commit = comparison.head.commit if comparison.head else None
 
-        cache_key = make_hash_sha256(
+        cache_key = "cache:" + make_hash_sha256(
             dict(
                 type="status_check_notification",
                 repoid=head_commit.repoid,
