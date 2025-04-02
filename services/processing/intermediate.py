@@ -1,9 +1,8 @@
 import orjson
 import sentry_sdk
 import zstandard
+from shared.helpers.redis import get_redis_connection
 from shared.reports.resources import Report
-
-from services.redis import get_redis_connection
 
 from .metrics import INTERMEDIATE_REPORT_SIZE
 from .types import IntermediateReport

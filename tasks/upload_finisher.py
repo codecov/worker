@@ -16,6 +16,7 @@ from shared.celery_config import (
     upload_finisher_task_name,
 )
 from shared.helpers.cache import cache
+from shared.helpers.redis import get_redis_connection
 from shared.reports.resources import Report
 from shared.timeseries.helpers import is_timeseries_enabled
 from shared.torngit.exceptions import TorngitError
@@ -38,7 +39,6 @@ from services.processing.intermediate import (
 from services.processing.merging import merge_reports, update_uploads
 from services.processing.state import ProcessingState, should_trigger_postprocessing
 from services.processing.types import ProcessingResult
-from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import get_repo_provider_service
 from services.timeseries import repository_datasets_query

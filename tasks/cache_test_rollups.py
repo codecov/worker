@@ -8,10 +8,10 @@ from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_task_name
 from shared.config import get_config
 from shared.django_apps.reports.models import LastCacheRollupDate
+from shared.helpers.redis import get_redis_connection
 
 from app import celery_app
 from django_scaffold import settings
-from services.redis import get_redis_connection
 from services.test_analytics.ta_cache_rollups import cache_rollups
 from services.test_analytics.ta_metrics import (
     read_rollups_from_db_summary,

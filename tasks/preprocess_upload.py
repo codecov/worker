@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 
 from redis.exceptions import LockError
+from shared.helpers.redis import get_redis_connection
 from shared.torngit.base import TorngitBaseAdapter
 
 from app import celery_app
@@ -10,7 +11,6 @@ from database.models import Commit
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.save_commit_error import save_commit_error
-from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import (
     fetch_commit_yaml_and_possibly_store,

@@ -23,9 +23,8 @@ meaning that:
 
 from dataclasses import dataclass
 
+from shared.helpers.redis import get_redis_connection
 from shared.metrics import Counter
-
-from services.redis import get_redis_connection
 
 MERGE_BATCH_SIZE = 10
 

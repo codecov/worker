@@ -1,10 +1,10 @@
 import logging
 from typing import Set
 
+import shared.helpers.redis as redis_service
 from shared.celery_config import health_check_task_name
 from shared.config import get_config
 
-import services.redis as redis_service
 from app import celery_app
 from helpers.metrics import metrics
 from tasks.crontasks import CodecovCronTask

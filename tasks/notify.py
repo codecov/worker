@@ -16,6 +16,7 @@ from shared.celery_config import (
 )
 from shared.config import get_config
 from shared.django_apps.codecov_auth.models import Service
+from shared.helpers.redis import Redis, get_redis_connection
 from shared.reports.readonly import ReadOnlyReport
 from shared.torngit.base import TokenType, TorngitBaseAdapter
 from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
@@ -53,7 +54,6 @@ from services.decoration import determine_decoration_details
 from services.github import get_github_app_for_commit, set_github_app_for_commit
 from services.lock_manager import LockManager, LockRetry, LockType
 from services.notification import NotificationService
-from services.redis import Redis, get_redis_connection
 from services.report import ReportService
 from services.repository import (
     EnrichedPull,

@@ -2,6 +2,7 @@ import logging
 from typing import Any, Literal
 
 from asgiref.sync import async_to_sync
+from shared.helpers.redis import get_redis_connection
 from shared.reports.types import UploadType
 from shared.typings.torngit import AdditionalData
 from shared.yaml import UserYaml
@@ -15,7 +16,6 @@ from helpers.notifier import NotifierResult
 from helpers.string import EscapeEnum, Replacement, StringEscaper, shorten_file_paths
 from services.activation import activate_user, schedule_new_user_activated_task
 from services.lock_manager import LockManager, LockRetry, LockType
-from services.redis import get_redis_connection
 from services.repository import (
     fetch_and_update_pull_request_information_from_commit,
     get_repo_provider_service,

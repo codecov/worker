@@ -17,6 +17,7 @@ from redis.exceptions import LockError
 from shared.celery_config import upload_task_name
 from shared.config import get_config
 from shared.django_apps.user_measurements.models import UserMeasurement
+from shared.helpers.redis import get_redis_connection
 from shared.metrics import Histogram
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
 from shared.upload.utils import UploaderType, bulk_insert_coverage_measurements
@@ -34,7 +35,6 @@ from rollouts import NEW_TA_TASKS
 from services.bundle_analysis.report import BundleAnalysisReportService
 from services.processing.state import ProcessingState
 from services.processing.types import UploadArguments
-from services.redis import get_redis_connection
 from services.report import (
     BaseReportService,
     NotReadyToBuildReportYetError,
