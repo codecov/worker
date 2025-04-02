@@ -114,28 +114,33 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
     def run_impl(
         self,
         _db_session,
-        repoid: int,
         branch: str,
+        repo_id: int | None = None,
+        repoid: int | None = None,
         update_date: bool = True,
         impl_type: Literal["old", "new", "both"] = "old",
         **kwargs,
     ):
+        repo_id = repo_id or repoid
+        if repo_id is None:
+            raise ValueError("repo_id or repoid must be provided")
+
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(
-                f"rollups:{repoid}:{branch}", timeout=300, blocking_timeout=2
+                f"rollups:{repo_id}:{branch}", timeout=300, blocking_timeout=2
             ):
                 if impl_type == "new" or impl_type == "both":
-                    cache_rollups(repoid, branch)
-                    cache_rollups(repoid, None)
+                    cache_rollups(repo_id, branch)
+                    cache_rollups(repo_id, None)
                     if impl_type == "new":
                         return {"success": True}
 
-                self.run_impl_within_lock(repoid, branch)
+                self.run_impl_within_lock(repo_id, branch)
 
                 if update_date:
                     LastCacheRollupDate.objects.update_or_create(
-                        repository_id=repoid,
+                        repository_id=repo_id,
                         branch=branch,
                         defaults={"last_rollup_date": dt.date.today()},
                     )
@@ -143,8 +148,8 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
         except LockError:
             return {"in_progress": True}
 
-    def run_impl_within_lock(self, repoid: int, branch: str):
-        storage_service = shared.storage.get_appropriate_storage_service(repoid)
+    def run_impl_within_lock(self, repo_id: int, branch: str):
+        storage_service = shared.storage.get_appropriate_storage_service(repo_id)
 
         if get_config("setup", "database", "read_replica_enabled", default=False):
             connection = connections["default_read"]
@@ -164,7 +169,7 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                 (60, 30),
             ]:
                 query_params = {
-                    "repoid": repoid,
+                    "repoid": repo_id,  # query is expecting repoid
                     "branch": branch,
                     "interval_start": f"{interval_start} days",
                     # SQL `BETWEEN` syntax is equivalent to `<= end`, with an inclusive end date,
@@ -201,9 +206,9 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
                 serialized_table.seek(0)  # avoids Stream must be at beginning errors
 
                 storage_key = (
-                    f"test_results/rollups/{repoid}/{branch}/{interval_start}"
+                    f"test_results/rollups/{repo_id}/{branch}/{interval_start}"
                     if interval_end is None
-                    else f"test_results/rollups/{repoid}/{branch}/{interval_start}_{interval_end}"
+                    else f"test_results/rollups/{repo_id}/{branch}/{interval_start}_{interval_end}"
                 )
                 storage_service.write_file(
                     settings.GCS_BUCKET_NAME, storage_key, serialized_table
