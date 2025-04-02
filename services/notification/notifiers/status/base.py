@@ -4,10 +4,9 @@ from typing import Optional
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from shared.config import get_config
-from shared.helpers.cache import NO_VALUE, make_hash_sha256
+from shared.helpers.cache import NO_VALUE, cache, make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError, TorngitError
 
-from helpers.cache import cache
 from helpers.match import match
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.base import (

@@ -4,10 +4,9 @@ from typing import TypedDict
 import sentry_sdk
 from asgiref.sync import async_to_sync
 from django.template import loader
-from shared.helpers.cache import make_hash_sha256
+from shared.helpers.cache import cache, make_hash_sha256
 from shared.torngit.exceptions import TorngitClientError
 
-from helpers.cache import cache
 from services.bundle_analysis.notify.contexts.commit_status import (
     CommitStatusLevel,
     CommitStatusNotificationContext,
