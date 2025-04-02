@@ -72,7 +72,7 @@ class CommitStatusMessageStrategy(MessageStrategyInterface):
         )
 
     def _cache_key(self, context: CommitStatusNotificationContext) -> str:
-        return make_hash_sha256(
+        return "cache:" + make_hash_sha256(
             dict(
                 type="status_check_notification",
                 repoid=context.repository.repoid,
