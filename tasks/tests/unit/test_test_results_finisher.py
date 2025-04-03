@@ -1014,7 +1014,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
         ].apply_async.assert_called_with(
             kwargs={
                 "repo_id": repoid,
-                "commit_id": commit.commitid,
                 "impl_type": "old",
             },
         )
@@ -1197,7 +1196,6 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             ].apply_async.assert_called_with(
                 kwargs={
                     "repo_id": repoid,
-                    "commit_id": commit.commitid,
                     "impl_type": "old",
                 },
             )
