@@ -15,13 +15,12 @@ from shared.celery_config import (
     health_check_task_name,
 )
 from shared.config import get_config
-from shared.helpers.cache import RedisBackend
+from shared.helpers.cache import RedisBackend, cache
+from shared.helpers.redis import get_redis_connection
 
 from celery_task_router import route_task
-from helpers.cache import cache
 from helpers.clock import get_utc_now_as_iso_format
 from helpers.health_check import get_health_check_interval_seconds
-from services.redis import get_redis_connection
 
 log = logging.getLogger(__name__)
 

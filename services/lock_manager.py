@@ -6,9 +6,9 @@ from typing import Optional
 
 from redis import Redis
 from redis.exceptions import LockError
+from shared.helpers.redis import get_redis_connection
 
 from database.enums import ReportType
-from services.redis import get_redis_connection
 
 log = logging.getLogger(__name__)
 

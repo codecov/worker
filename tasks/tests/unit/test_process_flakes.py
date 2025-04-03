@@ -18,6 +18,7 @@ from shared.django_apps.reports.tests.factories import (
     TestInstanceFactory,
     UploadFactory,
 )
+from shared.helpers.redis import get_redis_connection
 
 from services.processing.flake_processing import (
     create_flake,
@@ -25,7 +26,6 @@ from services.processing.flake_processing import (
     get_test_instances,
     update_flake,
 )
-from services.redis import get_redis_connection
 from tasks.process_flakes import (
     NEW_KEY,
     OLD_KEY,

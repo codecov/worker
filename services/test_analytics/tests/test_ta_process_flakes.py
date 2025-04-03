@@ -6,8 +6,8 @@ from shared.django_apps.reports.models import CommitReport, ReportSession
 from shared.django_apps.reports.tests.factories import CommitReportFactory
 from shared.django_apps.ta_timeseries.models import Testrun
 from shared.django_apps.test_analytics.models import Flake
+from shared.helpers.redis import get_redis_connection
 
-from services.redis import get_redis_connection
 from services.test_analytics.ta_process_flakes import KEY_NAME, process_flakes_for_repo
 
 

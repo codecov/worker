@@ -15,6 +15,8 @@ from shared.celery_config import (
     timeseries_save_commit_measurements_task_name,
     upload_finisher_task_name,
 )
+from shared.helpers.cache import cache
+from shared.helpers.redis import get_redis_connection
 from shared.reports.resources import Report
 from shared.timeseries.helpers import is_timeseries_enabled
 from shared.torngit.exceptions import TorngitError
@@ -25,7 +27,6 @@ from celery_config import notify_error_task_name
 from database.enums import CommitErrorTypes
 from database.models import Commit, Pull
 from database.models.core import GITHUB_APP_INSTALLATION_DEFAULT_NAME
-from helpers.cache import cache
 from helpers.checkpoint_logger.flows import UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.github_installation import get_installation_name_for_owner_for_task
@@ -38,7 +39,6 @@ from services.processing.intermediate import (
 from services.processing.merging import merge_reports, update_uploads
 from services.processing.state import ProcessingState, should_trigger_postprocessing
 from services.processing.types import ProcessingResult
-from services.redis import get_redis_connection
 from services.report import ReportService
 from services.repository import get_repo_provider_service
 from services.timeseries import repository_datasets_query

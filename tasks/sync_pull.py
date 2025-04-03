@@ -10,6 +10,7 @@ import sqlalchemy.orm
 from asgiref.sync import async_to_sync
 from redis.exceptions import LockError
 from shared.celery_config import notify_task_name, pulls_task_name
+from shared.helpers.redis import get_redis_connection
 from shared.metrics import Counter, inc_counter
 from shared.reports.types import Change
 from shared.torngit.exceptions import TorngitClientError
@@ -23,7 +24,6 @@ from helpers.github_installation import get_installation_name_for_owner_for_task
 from helpers.metrics import metrics
 from rollouts import SYNC_PULL_USE_MERGE_COMMIT_SHA
 from services.comparison.changes import get_changes
-from services.redis import get_redis_connection
 from services.report import Report, ReportService
 from services.repository import (
     EnrichedPull,

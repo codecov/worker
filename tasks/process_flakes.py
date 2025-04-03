@@ -4,11 +4,11 @@ from typing import Any, Literal, cast
 from redis import Redis
 from redis.exceptions import LockError
 from shared.celery_config import process_flakes_task_name
+from shared.helpers.redis import get_redis_connection
 from sqlalchemy.orm import Session
 
 from app import celery_app
 from services.processing.flake_processing import process_flake_for_repo_commit
-from services.redis import get_redis_connection
 from services.test_analytics.ta_process_flakes import process_flakes_for_repo
 from tasks.base import BaseCodecovTask
 

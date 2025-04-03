@@ -8,6 +8,7 @@ import pytest
 from celery.exceptions import Retry
 from mock import AsyncMock, call
 from redis.exceptions import LockError
+from shared.helpers.redis import get_redis_connection
 from shared.reports.enums import UploadState, UploadType
 from shared.torngit import GitlabEnterprise
 from shared.torngit.exceptions import TorngitClientError, TorngitRepoNotFoundError
@@ -27,7 +28,6 @@ from helpers.checkpoint_logger import _kwargs_key
 from helpers.checkpoint_logger.flows import TestResultsFlow, UploadFlow
 from helpers.exceptions import RepositoryWithoutValidBotError
 from helpers.log_context import LogContext, set_log_context
-from services.redis import get_redis_connection
 from services.report import NotReadyToBuildReportYetError, ReportService
 from tasks.bundle_analysis_notify import bundle_analysis_notify_task
 from tasks.bundle_analysis_processor import bundle_analysis_processor_task
@@ -110,7 +110,7 @@ class FakeRedis(object):
 
 @pytest.fixture
 def mock_redis(mocker):
-    m = mocker.patch("services.redis._get_redis_instance_from_url")
+    m = mocker.patch("shared.helpers.redis._get_redis_instance_from_url")
     redis_server = FakeRedis(mocker)
     m.return_value = redis_server
     yield redis_server

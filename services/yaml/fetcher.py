@@ -1,12 +1,12 @@
 import logging
 
 import shared.torngit as torngit
+from shared.helpers.cache import cache
 from shared.yaml import (
     fetch_current_yaml_from_provider_via_reference as shared_fetch_current_yaml_from_provider_via_reference,
 )
 
 from database.models import Commit
-from helpers.cache import cache
 from services.yaml.parser import parse_yaml_file
 
 log = logging.getLogger(__name__)

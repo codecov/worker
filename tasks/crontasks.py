@@ -2,8 +2,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from redis.exceptions import LockError
+from shared.helpers.redis import get_redis_connection
 
-from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
 
 log = logging.getLogger(__name__)

@@ -3,11 +3,11 @@ import datetime as dt
 import shared.storage
 from redis.exceptions import LockError
 from shared.celery_config import cache_test_rollups_redis_task_name
+from shared.helpers.redis import get_redis_connection
 from shared.storage.exceptions import FileNotInStorageError
 
 from app import celery_app
 from django_scaffold import settings
-from services.redis import get_redis_connection
 from tasks.base import BaseCodecovTask
 
 
