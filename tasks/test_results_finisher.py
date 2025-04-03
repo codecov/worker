@@ -158,7 +158,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         if commit.branch is not None:
             self.app.tasks[cache_test_rollups_task_name].apply_async(
                 kwargs=dict(
-                    repoid=repoid,
+                    repo_id=repoid,
                     branch=commit.branch,
                     impl_type=impl_type,
                 ),

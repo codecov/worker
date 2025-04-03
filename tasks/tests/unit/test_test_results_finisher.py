@@ -379,7 +379,7 @@ class TestUploadTestFinisherTask(object):
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "both",
             },
@@ -512,7 +512,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "old",
             },
@@ -611,7 +611,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "old",
             },
@@ -682,7 +682,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "old",
             },
@@ -726,7 +726,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "old",
             },
@@ -849,7 +849,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "old",
             },
@@ -927,7 +927,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "old",
             },
@@ -1021,7 +1021,7 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             "app.tasks.cache_rollup.CacheTestRollupsTask"
         ].apply_async.assert_called_with(
             kwargs={
-                "repoid": repoid,
+                "repo_id": repoid,
                 "branch": "main",
                 "impl_type": "old",
             },
