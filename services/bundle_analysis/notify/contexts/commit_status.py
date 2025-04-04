@@ -9,7 +9,6 @@ from shared.config import get_config
 from shared.yaml import UserYaml
 
 from database.models.core import Commit
-from services.activation import activate_user, schedule_new_user_activated_task
 from services.bundle_analysis.comparison import ComparisonLoader
 from services.bundle_analysis.exceptions import (
     MissingBaseCommit,
@@ -32,7 +31,9 @@ from services.repository import (
     EnrichedPull,
     fetch_and_update_pull_request_information_from_commit,
 )
-from services.seats import ShouldActivateSeat, determine_seat_activation
+from services.seats import (
+    check_seat_activation,
+)
 from services.urls import get_bundle_analysis_pull_url, get_commit_url
 
 
@@ -169,26 +170,15 @@ class CommitStatusNotificationContextBuilder(NotificationContextBuilder):
         if self._notification_context.pull is None:
             self._notification_context.should_use_upgrade_comment = False
             return self
-        activate_seat_info = determine_seat_activation(self._notification_context.pull)
-        match activate_seat_info.should_activate_seat:
-            case ShouldActivateSeat.AUTO_ACTIVATE:
-                successful_activation = activate_user(
-                    db_session=self._notification_context.commit.get_db_session(),
-                    org_ownerid=activate_seat_info.owner_id,
-                    user_ownerid=activate_seat_info.author_id,
-                )
-                if successful_activation:
-                    schedule_new_user_activated_task(
-                        activate_seat_info.owner_id,
-                        activate_seat_info.author_id,
-                    )
-                    self._notification_context.should_use_upgrade_comment = False
-                else:
-                    self._notification_context.should_use_upgrade_comment = True
-            case ShouldActivateSeat.MANUAL_ACTIVATE:
-                self._notification_context.should_use_upgrade_comment = True
-            case ShouldActivateSeat.NO_ACTIVATE:
-                self._notification_context.should_use_upgrade_comment = False
+
+        pull = self._notification_context.pull
+        db_session = self._notification_context.commit.get_db_session()
+
+        self._notification_context.should_use_upgrade_comment = check_seat_activation(
+            db_session,
+            pull,
+        )
+
         return self
 
     def build_context(self) -> Self:

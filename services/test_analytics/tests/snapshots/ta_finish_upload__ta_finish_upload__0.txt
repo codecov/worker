@@ -1,0 +1,4 @@
+The author of this PR, test-user, is not an activated member of this organization on Codecov.
+Please [activate this user on Codecov](https://app.codecov.io/members/gh/test-user) to display this PR comment.
+Coverage data is still being uploaded to Codecov.io for purposes of overall coverage calculations.
+Please don't hesitate to email us at support@codecov.io with any questions.

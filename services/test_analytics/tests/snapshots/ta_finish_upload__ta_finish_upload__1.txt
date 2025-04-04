@@ -1,0 +1,5 @@
+### :x: File not in storage
+
+> No result to display due to the CLI not being able to find the file.
+> Please ensure the file contains `junit` in the name and automated file search is enabled,
+> or the desired file specified by the `file` and `search_dir` arguments of the CLI.
