@@ -13,7 +13,7 @@ from shared.yaml import UserYaml
 from app import celery_app
 from database.enums import CompareCommitError, CompareCommitState
 from database.models import CompareCommit, CompareComponent, CompareFlag
-from database.models.reports import ReportLevelTotals, RepositoryFlag
+from database.models.reports import RepositoryFlag
 from helpers.comparison import minimal_totals
 from helpers.github_installation import get_installation_name_for_owner_for_task
 from rollouts import PARALLEL_COMPONENT_COMPARISON
@@ -216,7 +216,7 @@ class ComputeComparisonTask(BaseCodecovTask, name=compute_comparison_task_name):
         db_session,
         comparison: CompareCommit,
         repositoryflag: RepositoryFlag,
-        totals: ReportLevelTotals,
+        totals,
     ):
         flag_comparison = CompareFlag(
             commit_comparison=comparison,
