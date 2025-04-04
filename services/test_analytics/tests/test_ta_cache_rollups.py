@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import cast
 
 import polars as pl
 import pytest
@@ -8,14 +9,22 @@ from shared.django_apps.ta_timeseries.models import (
     TestrunBranchSummary,
     TestrunSummary,
 )
+from shared.storage.minio import MinioStorageService
 
+from services.test_analytics.ta_cache_rollups import VERSION
 from services.test_analytics.utils import calc_test_id
 from tasks.cache_test_rollups import CacheTestRollupsTask
 
 
-def read_table(storage, storage_path: str):
+def read_table(
+    storage: MinioStorageService,
+    storage_path: str,
+    meta_container: dict[str, str] | None = None,
+):
     decompressed_table: bytes = storage.read_file(
-        get_config("services", "minio", "bucket", default="archive"), storage_path
+        cast(str, get_config("services", "minio", "bucket", default="archive")),
+        storage_path,
+        metadata_container=meta_container,
     )
     return pl.read_ipc(decompressed_table)
 
@@ -82,8 +91,11 @@ def test_cache_test_rollups(storage, snapshot):
         branch=None,
         impl_type="new",
     )
-
-    table = read_table(storage, "test_analytics/repo_rollups/1.arrow")
+    meta = {}
+    table = read_table(
+        storage, "test_analytics/repo_rollups/1.arrow", meta_container=meta
+    )
+    assert meta["version"] == VERSION
     table_dict = table.to_dict(as_series=False)
     del table_dict["timestamp_bin"]
     del table_dict["updated_at"]
@@ -174,8 +186,11 @@ def test_cache_test_rollups_use_timeseries_main(storage, snapshot):
         branch="main",
         impl_type="new",
     )
-
-    table = read_table(storage, "test_analytics/branch_rollups/1/main.arrow")
+    meta = {}
+    table = read_table(
+        storage, "test_analytics/branch_rollups/1/main.arrow", meta_container=meta
+    )
+    assert meta["version"] == VERSION
     table_dict = table.to_dict(as_series=False)
     del table_dict["timestamp_bin"]
     del table_dict["updated_at"]

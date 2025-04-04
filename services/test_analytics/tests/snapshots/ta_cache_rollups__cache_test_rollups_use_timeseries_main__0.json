@@ -3,6 +3,10 @@
     "computed_name2",
     "computed_name"
   ],
+  "testsuite": [
+    "testsuite2",
+    "testsuite"
+  ],
   "flags": [
     [
       "test-rollups2"

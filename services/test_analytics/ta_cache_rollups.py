@@ -1,5 +1,6 @@
 from datetime import UTC
 from io import BytesIO
+from typing import cast
 
 import polars as pl
 import shared.storage
@@ -24,8 +25,33 @@ def rollup_blob_path(repoid: int, branch: str | None = None) -> str:
     )
 
 
-POLARS_SCHEMA = [
+# version number that the cache rollup task will be writing to GCS
+# if you're creating a new version of the schema, increment this
+VERSION = "1"
+
+# list of schemas, you should leave the old ones here as a reference for now
+# old schemas should basically be expired after 60 days, since there would be
+# no relevant data included in those files after that amount of time
+
+# so from the time you deprecate an old schema, you only have to keep handling it
+# for 60 days
+NO_VERSION_POLARS_SCHEMA = [
     "computed_name",
+    ("flags", pl.List(pl.String)),
+    "failing_commits",
+    "last_duration",
+    "avg_duration",
+    "pass_count",
+    "fail_count",
+    "flaky_fail_count",
+    "skip_count",
+    ("updated_at", pl.Datetime(time_zone=UTC)),
+    "timestamp_bin",
+]
+
+V1_POLARS_SCHEMA = [
+    "computed_name",
+    "testsuite",
     ("flags", pl.List(pl.String)),
     "failing_commits",
     "last_duration",
@@ -40,7 +66,6 @@ POLARS_SCHEMA = [
 
 
 def cache_rollups(repoid: int, branch: str | None = None):
-    storage_service = shared.storage.get_appropriate_storage_service(repoid)
     serialized_table: BytesIO
 
     with read_rollups_from_db_summary.labels("new").time():
@@ -55,6 +80,7 @@ def cache_rollups(repoid: int, branch: str | None = None):
     data = [
         {
             "computed_name": summary.computed_name,
+            "testsuite": summary.testsuite,
             "flags": summary.flags,
             "failing_commits": summary.failing_commits,
             "last_duration": summary.last_duration_seconds,
@@ -69,15 +95,20 @@ def cache_rollups(repoid: int, branch: str | None = None):
         for summary in summaries
     ]
 
-    serialized_table = pl.DataFrame(
+    df = pl.DataFrame(
         data,
-        POLARS_SCHEMA,
+        V1_POLARS_SCHEMA,
         orient="row",
-    ).write_ipc(None)
+    )
+    serialized_table = df.write_ipc(None)
 
     serialized_table.seek(0)
 
+    storage_service = shared.storage.get_appropriate_storage_service(repoid)
     storage_service.write_file(
-        settings.GCS_BUCKET_NAME, rollup_blob_path(repoid, branch), serialized_table
+        cast(str, settings.GCS_BUCKET_NAME),
+        rollup_blob_path(repoid, branch),
+        serialized_table,
+        metadata={"version": VERSION},
     )
     rollup_size_summary.labels("new").observe(serialized_table.tell())
