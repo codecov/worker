@@ -1,21 +1,23 @@
-sha := $(shell git rev-parse --short=7 HEAD)
-full_sha := $(shell git rev-parse HEAD)
+sha ?= $(shell git rev-parse --short=7 HEAD)
+full_sha ?= $(shell git rev-parse HEAD)
 release_version = `cat VERSION`
 _gcr := ${CODECOV_WORKER_GCR_REPO_BASE}
-merge_sha := $(shell git merge-base HEAD^ origin/main)
+merge_sha ?= $(shell git merge-base HEAD^ origin/main)
 build_date ?= $(shell git show -s --date=iso8601-strict --pretty=format:%cd $$sha)
 name ?= worker
-branch = $(shell git branch | grep \* | cut -f2 -d' ')
+branch ?= $(shell git branch | grep \* | cut -f2 -d' ')
 gh_access_token := $(shell echo ${GH_ACCESS_TOKEN})
-epoch := $(shell date +"%s")
+epoch ?= $(shell date +"%s")
 
 AR_REPO ?= codecov/worker
 DOCKERHUB_REPO ?= codecov/self-hosted-worker
-REQUIREMENTS_TAG := requirements-v1-$(shell sha1sum uv.lock | cut -d ' ' -f 1)-$(shell sha1sum docker/Dockerfile.requirements | cut -d ' ' -f 1)
-VERSION := release-${sha}
+VERSION ?= release-${sha}
 CODECOV_UPLOAD_TOKEN ?= "notset"
 CODECOV_STATIC_TOKEN ?= "notset"
 CODECOV_URL ?= "https://api.codecov.io"
+
+DEFAULT_REQS_TAG := requirements-v1-$(shell sha1sum uv.lock | cut -d ' ' -f 1)-$(shell sha1sum docker/Dockerfile.requirements | cut -d ' ' -f 1)
+REQUIREMENTS_TAG ?= ${DEFAULT_REQS_TAG}
 
 # We allow this to be overridden so that we can run `pytest` from this directory
 # but have the junit file use paths relative to a parent directory. This will
@@ -89,6 +91,12 @@ lint.check:
 	ruff format --check
 
 build.requirements:
+	# If make was given a different requirements tag, we assume a suitable image
+	# was already built (e.g. by umbrella) and don't want to build this one.
+	ifneq (${REQUIREMENTS_TAG},${DEFAULT_REQS_TAG})
+	echo "Error: building worker reqs image despite another being provided"
+	exit 1
+	endif
 	# if docker pull succeeds, we have already build this version of
 	# requirements.txt.  Otherwise, build and push a version tagged
 	# with the hash of this requirements.txt
