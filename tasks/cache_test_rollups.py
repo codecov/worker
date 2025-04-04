@@ -115,16 +115,11 @@ class CacheTestRollupsTask(BaseCodecovTask, name=cache_test_rollups_task_name):
         self,
         _db_session,
         branch: str,
-        repo_id: int | None = None,
-        repoid: int | None = None,
+        repo_id: int,
         update_date: bool = True,
         impl_type: Literal["old", "new", "both"] = "old",
         **kwargs,
     ):
-        repo_id = repo_id or repoid
-        if repo_id is None:
-            raise ValueError("repo_id or repoid must be provided")
-
         redis_conn = get_redis_connection()
         try:
             with redis_conn.lock(
