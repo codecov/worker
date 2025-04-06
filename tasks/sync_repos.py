@@ -5,15 +5,14 @@ from typing import List, Optional, Tuple
 from asgiref.sync import async_to_sync
 from celery.exceptions import SoftTimeLimitExceeded
 from redis.exceptions import LockError
-from shared.celery_config import (
-    sync_repo_languages_gql_task_name,
-    sync_repo_languages_task_name,
-    sync_repos_task_name,
-)
+from shared.celery_config import (sync_repo_languages_gql_task_name,
+                                  sync_repo_languages_task_name,
+                                  sync_repos_task_name)
 from shared.config import get_config
 from shared.helpers.redis import get_redis_connection
 from shared.torngit.base import TorngitBaseAdapter
-from shared.torngit.exceptions import TorngitClientError, TorngitServerFailureError
+from shared.torngit.exceptions import (TorngitClientError,
+                                       TorngitServerFailureError)
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
 
@@ -480,6 +479,8 @@ class SyncReposTask(BaseCodecovTask, name=sync_repos_task_name):
             "Upserting owner",
             extra=dict(git_service=service, service_id=service_id, username=username),
         )
+        print("trigger overwatch")
+        
         owner = (
             db_session.query(Owner)
             .filter(Owner.service == service, Owner.service_id == service_id)
