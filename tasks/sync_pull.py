@@ -48,6 +48,8 @@ class PullSyncTask(BaseCodecovTask, name=pulls_task_name):
     """
         This is the task that syncs pull with the information the Git Provider gives us
 
+    adding another commit to dummy pr to test pr migration script
+
     The most characteristic piece of this task is that it centers around the PR.
         We receive a (repoid, pullid) pair. And we fetch all the information
             from the git provider to update it as needed.
