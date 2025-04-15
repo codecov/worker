@@ -71,6 +71,8 @@ class UploadContext:
     """
     Encapsulates the arguments passed to an upload task. This includes both the
     Celery task arguments as well as the arguments list passed via Redis.
+
+    Testing a PR migration script, ignore
     """
 
     def __init__(

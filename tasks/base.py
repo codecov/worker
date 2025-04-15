@@ -48,6 +48,10 @@ REQUEST_HARD_TIMEOUT_COUNTER = Counter(
 
 
 class BaseCodecovRequest(Request):
+    """
+    i am testing a PR migration script, don't merge this
+    """
+
     @property
     def metrics_prefix(self):
         return f"worker.task.{self.name}"
