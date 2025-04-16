@@ -1203,3 +1203,41 @@ To view more test analytics, go to the [Test Analytics Dashboard](https://app.co
             test_results_mock_app.tasks[
                 "app.tasks.flakes.ProcessFlakesTask"
             ].apply_async.assert_not_called()
+
+
+def test_upload_finisher_new_impl(mocker, dbsession, test_results_setup):
+    repoid, commit, pull, test_instances = test_results_setup
+
+    new_impl = mocker.patch(
+        "tasks.test_results_finisher.new_impl",
+        return_value={
+            "notify_attempted": True,
+            "notify_succeeded": True,
+            "queue_notify": False,
+        },
+    )
+
+    result = TestResultsFinisherTask().run_impl(
+        dbsession,
+        True,
+        repoid=repoid,
+        commitid=commit.commitid,
+        commit_yaml={},
+        impl_type="new",
+    )
+
+    assert result == {
+        "notify_attempted": True,
+        "notify_succeeded": True,
+        "queue_notify": False,
+    }
+
+    assert new_impl.call_count == 1
+    repo = dbsession.query(Repository).filter_by(repoid=repoid).first()
+    assert (
+        dbsession,
+        repo,
+        commit,
+        mocker.ANY,
+        "new",
+    ) == new_impl.call_args[0]

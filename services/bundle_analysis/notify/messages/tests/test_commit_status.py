@@ -200,7 +200,7 @@ class TestCommitStatusMessage:
             return_value=None,
         )
         mocker.patch(
-            "services.bundle_analysis.notify.contexts.commit_status.determine_seat_activation",
+            "services.seats.determine_seat_activation",
             return_value=SeatActivationInfo(
                 should_activate_seat=ShouldActivateSeat.NO_ACTIVATE
             ),
