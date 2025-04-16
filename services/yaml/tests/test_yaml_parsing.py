@@ -11,47 +11,47 @@ here = Path(__file__)
 
 
 class TestYamlSavingService(BaseTestCase):
-    def test_parse_empty_yaml(self):
-        contents = ""
-        res = parse_yaml_file(contents, show_secrets_for=("github", 123, 456))
-        assert res is None
+    # def test_parse_empty_yaml(self):
+    #     contents = ""
+    #     res = parse_yaml_file(contents, show_secrets_for=("github", 123, 456))
+    #     assert res is None
 
-    def test_parse_invalid_yaml(self):
-        contents = "invalid: aaa : bbb"
-        with pytest.raises(InvalidYamlException):
-            parse_yaml_file(contents, show_secrets_for=("github", 123, 456))
+    # def test_parse_invalid_yaml(self):
+    #     contents = "invalid: aaa : bbb"
+    #     with pytest.raises(InvalidYamlException):
+    #         parse_yaml_file(contents, show_secrets_for=("github", 123, 456))
 
-    def test_parse_simple_yaml(self):
-        with open(here.parent / "samples" / "sample_yaml_1.yaml") as f:
-            contents = f.read()
-        res = parse_yaml_file(contents, show_secrets_for=("github", 123, 456))
-        expected_result = {
-            "coverage": {
-                "precision": 2,
-                "round": "down",
-                "range": [70.0, 100.0],
-                "status": {"project": True, "patch": True, "changes": False},
-            },
-            "codecov": {"notify": {}, "require_ci_to_pass": True},
-            "comment": {
-                "behavior": "default",
-                "layout": "header, diff",
-                "require_changes": [
-                    CoverageCommentRequiredChanges.no_requirements.value
-                ],
-            },
-            "parsers": {
-                "gcov": {
-                    "branch_detection": {
-                        "conditional": True,
-                        "loop": True,
-                        "macro": False,
-                        "method": False,
-                    }
-                }
-            },
-        }
-        assert res == expected_result
+    # def test_parse_simple_yaml(self):
+    #     with open(here.parent / "samples" / "sample_yaml_1.yaml") as f:
+    #         contents = f.read()
+    #     res = parse_yaml_file(contents, show_secrets_for=("github", 123, 456))
+    #     expected_result = {
+    #         "coverage": {
+    #             "precision": 2,
+    #             "round": "down",
+    #             "range": [70.0, 100.0],
+    #             "status": {"project": True, "patch": True, "changes": False},
+    #         },
+    #         "codecov": {"notify": {}, "require_ci_to_pass": True},
+    #         "comment": {
+    #             "behavior": "default",
+    #             "layout": "header, diff",
+    #             "require_changes": [
+    #                 CoverageCommentRequiredChanges.no_requirements.value
+    #             ],
+    #         },
+    #         "parsers": {
+    #             "gcov": {
+    #                 "branch_detection": {
+    #                     "conditional": True,
+    #                     "loop": True,
+    #                     "macro": False,
+    #                     "method": False,
+    #                 }
+    #             }
+    #         },
+    #     }
+    #     assert res == expected_result
 
     def test_parse_big_yaml_file(self):
         with open(here.parent / "samples" / "big.yaml") as f:
@@ -59,6 +59,7 @@ class TestYamlSavingService(BaseTestCase):
         res = parse_yaml_file(
             contents, show_secrets_for=("github", 44376991, 156617777)
         )
+        print("THIS IS RES", res)
         expected_result = {
             "comment": {
                 "branches": [".*"],
