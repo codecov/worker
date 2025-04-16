@@ -36,32 +36,32 @@ VERSION = "1"
 # so from the time you deprecate an old schema, you only have to keep handling it
 # for 60 days
 NO_VERSION_POLARS_SCHEMA = [
-    "computed_name",
+    ("computed_name", pl.String),
     ("flags", pl.List(pl.String)),
-    "failing_commits",
-    "last_duration",
-    "avg_duration",
-    "pass_count",
-    "fail_count",
-    "flaky_fail_count",
-    "skip_count",
+    ("failing_commits", pl.Int64),
+    ("last_duration", pl.Float64),
+    ("avg_duration", pl.Float64),
+    ("pass_count", pl.Int64),
+    ("fail_count", pl.Int64),
+    ("flaky_fail_count", pl.Int64),
+    ("skip_count", pl.Int64),
     ("updated_at", pl.Datetime(time_zone=UTC)),
-    "timestamp_bin",
+    ("timestamp_bin", pl.Date()),
 ]
 
 V1_POLARS_SCHEMA = [
-    "computed_name",
-    "testsuite",
+    ("computed_name", pl.String),
+    ("testsuite", pl.String),
     ("flags", pl.List(pl.String)),
-    "failing_commits",
-    "last_duration",
-    "avg_duration",
-    "pass_count",
-    "fail_count",
-    "flaky_fail_count",
-    "skip_count",
+    ("failing_commits", pl.Int64),
+    ("last_duration", pl.Float64),
+    ("avg_duration", pl.Float64),
+    ("pass_count", pl.Int64),
+    ("fail_count", pl.Int64),
+    ("flaky_fail_count", pl.Int64),
+    ("skip_count", pl.Int64),
     ("updated_at", pl.Datetime(time_zone=UTC)),
-    "timestamp_bin",
+    ("timestamp_bin", pl.Date()),
 ]
 
 

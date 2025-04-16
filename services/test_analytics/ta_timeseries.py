@@ -66,7 +66,8 @@ def insert_testrun(
                 name=testrun["name"],
                 classname=testrun["classname"],
                 testsuite=testrun["testsuite"],
-                computed_name=testrun["computed_name"],
+                computed_name=testrun["computed_name"]
+                or f"{testrun['classname']}::{testrun['name']}",
                 outcome=outcome,
                 duration_seconds=testrun["duration"],
                 failure_message=testrun["failure_message"],
