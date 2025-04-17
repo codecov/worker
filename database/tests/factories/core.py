@@ -212,15 +212,6 @@ class ReportLevelTotalsFactory(Factory):
     files = 0
 
 
-class ReportResultsFactory(Factory):
-    class Meta:
-        model = models.ReportResults
-
-    report = factory.SubFactory(ReportFactory)
-    state = "success"
-    result = {"state": "success", "message": "somemessage"}
-
-
 class UploadFactory(Factory):
     class Meta:
         model = models.Upload

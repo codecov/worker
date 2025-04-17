@@ -45,13 +45,6 @@ class CommitReport(CodecovBaseModel, MixinBaseClass):
     uploads = relationship(
         "Upload", back_populates="report", cascade="all, delete", passive_deletes=True
     )
-    patch_results = relationship(
-        "ReportResults",
-        uselist=False,
-        back_populates="report",
-        cascade="all, delete",
-        passive_deletes=True,
-    )
     test_result_totals = relationship(
         "TestResultReportTotals",
         back_populates="report",
@@ -67,15 +60,6 @@ uploadflagmembership = Table(
     Column("upload_id", types.BigInteger, ForeignKey("reports_upload.id")),
     Column("flag_id", types.BigInteger, ForeignKey("reports_repositoryflag.id")),
 )
-
-
-class ReportResults(MixinBaseClass, CodecovBaseModel):
-    __tablename__ = "reports_reportresults"
-    state = Column(types.Text)
-    completed_at = Column(types.DateTime(timezone=True), nullable=True)
-    result = Column(postgresql.JSON)
-    report_id = Column(types.BigInteger, ForeignKey("reports_commitreport.id"))
-    report = relationship("CommitReport", foreign_keys=[report_id])
 
 
 class Upload(CodecovBaseModel, MixinBaseClass):
