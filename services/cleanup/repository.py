@@ -1,6 +1,7 @@
 import logging
 from uuid import uuid4
 
+import sentry_sdk
 from django.db import DatabaseError, IntegrityError, transaction
 from shared.django_apps.codecov_auth.models import Owner
 from shared.django_apps.core.models import Repository
@@ -17,10 +18,11 @@ def cleanup_repo(repo_id: int) -> CleanupSummary:
     except Repository.DoesNotExist:
         log.warning("Repository does not exist / was already cleaned up")
         return CleanupSummary(CleanupResult(0), {})
-    except (DatabaseError, IntegrityError) as _:
+    except (DatabaseError, IntegrityError) as e:
         # `DatabaseError` means that the `SELECT FOR UPDATE NOWAIT` is currently locked.
         # `IntegrityError` means that the `Owner.create` has a duplicated `service_id`.
-        log.warning("Cleanup could not be started because of conflicting job")
+        sentry_sdk.capture_exception(e)
+        log.exception("Cleanup could not be started because of conflicting job")
         return CleanupSummary(CleanupResult(0), {})
 
     if cleanup_started:
