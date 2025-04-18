@@ -2,6 +2,12 @@ import re
 from typing import List, Optional
 
 
+def _convert_glob_to_regex(pattern: str) -> str:
+    if pattern == "*":
+        return ".*"
+    return pattern
+
+
 def match(patterns: Optional[List[str]], string: str) -> bool:
     if patterns is None or string in patterns:
         return True
@@ -13,13 +19,15 @@ def match(patterns: Optional[List[str]], string: str) -> bool:
     # must not match
     for pattern in negatives:
         # matched a negative search
-        if re.match(pattern.replace("!", ""), string):
+        regex_pattern = _convert_glob_to_regex(pattern.replace("!", ""))
+        if re.match(regex_pattern, string):
             return False
 
     if positives:
         for pattern in positives:
             # match was found
-            if re.match(pattern, string):
+            regex_pattern = _convert_glob_to_regex(pattern)
+            if re.match(regex_pattern, string):
                 return True
 
         # did not match any required paths
