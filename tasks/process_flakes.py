@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app import celery_app
 from services.processing.flake_processing import process_flake_for_repo_commit
+from services.test_analytics.ta_metrics import process_flakes_summary
 from services.test_analytics.ta_process_flakes import process_flakes_for_repo
 from tasks.base import BaseCodecovTask
 
@@ -89,7 +90,8 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                         break
 
                     for commit_sha in commit_shas:
-                        process_func(repo_id, commit_sha.decode())
+                        with process_flakes_summary.labels("old").time():
+                            process_func(repo_id, commit_sha.decode())
 
         except LockError:
             log.warning("Unable to acquire process flakeslock for key %s.", lock_name)
