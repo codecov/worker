@@ -1,4 +1,4 @@
-from shared.metrics import Summary
+from shared.metrics import Counter, Summary
 
 write_tests_summary = Summary(
     "write_tests_summary",
@@ -36,4 +36,10 @@ process_flakes_summary = Summary(
     "process_flakes_summary",
     "The time it takes to process flakes",
     ["impl"],
+)
+
+
+new_ta_tasks_repo_summary = Counter(
+    "new_ta_tasks_repo_summary",
+    "Number of repos that were processed using 'new' ta tasks, due to being created after 2025-04-25",
 )
