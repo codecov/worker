@@ -1,0 +1,50 @@
+-- UploadError
+DELETE
+FROM "reports_uploaderror"
+WHERE "reports_uploaderror"."upload_id" IN
+    (SELECT U0."id"
+     FROM "reports_upload" U0
+     WHERE (U0."created_at" >= %s
+            AND U0."created_at" < %s));
+-- [2024-10-25 00:00:00+00:00, 2024-11-24 00:00:00+00:00]
+
+
+-- UploadFlagMembership
+DELETE
+FROM "reports_uploadflagmembership"
+WHERE "reports_uploadflagmembership"."upload_id" IN
+    (SELECT U0."id"
+     FROM "reports_upload" U0
+     WHERE (U0."created_at" >= %s
+            AND U0."created_at" < %s));
+-- [2024-10-25 00:00:00+00:00, 2024-11-24 00:00:00+00:00]
+
+
+-- UploadLevelTotals
+DELETE
+FROM "reports_uploadleveltotals"
+WHERE "reports_uploadleveltotals"."upload_id" IN
+    (SELECT U0."id"
+     FROM "reports_upload" U0
+     WHERE (U0."created_at" >= %s
+            AND U0."created_at" < %s));
+-- [2024-10-25 00:00:00+00:00, 2024-11-24 00:00:00+00:00]
+
+
+-- TestInstance
+DELETE
+FROM "reports_testinstance"
+WHERE "reports_testinstance"."upload_id" IN
+    (SELECT U0."id"
+     FROM "reports_upload" U0
+     WHERE (U0."created_at" >= %s
+            AND U0."created_at" < %s));
+-- [2024-10-25 00:00:00+00:00, 2024-11-24 00:00:00+00:00]
+
+
+-- ReportSession
+DELETE
+FROM "reports_upload"
+WHERE ("reports_upload"."created_at" >= %s
+       AND "reports_upload"."created_at" < %s);
+-- [2024-10-25 00:00:00+00:00, 2024-11-24 00:00:00+00:00]
