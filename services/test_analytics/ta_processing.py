@@ -51,8 +51,6 @@ def get_ta_processing_info(
 
     commit = Commit.objects.get(repository=repository, commitid=commitid)
     branch = commit.branch
-    if branch is None:
-        raise ValueError("Branch is None")
 
     user_yaml: UserYaml = UserYaml(commit_yaml)
     return TAProcInfo(
