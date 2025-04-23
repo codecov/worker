@@ -110,7 +110,6 @@ def queue_followup_tasks(
             process_flakes_task_name,
             kwargs={
                 "repo_id": repo.repoid,
-                "commit_id": commit.commitid,
                 "impl_type": impl_type,
             },
         )
@@ -119,7 +118,7 @@ def queue_followup_tasks(
         celery_app.send_task(
             cache_test_rollups_task_name,
             kwargs={
-                "repoid": repo.repoid,
+                "repo_id": repo.repoid,
                 "branch": commit.branch,
                 "impl_type": impl_type,
             },

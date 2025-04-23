@@ -16,10 +16,7 @@ from shared.django_apps.ta_timeseries.tests.factories import TestrunFactory
 from shared.django_apps.test_analytics.models import Flake
 
 from database.enums import ReportType
-from database.tests.factories import (
-    PullFactory,
-    UploadFactory,
-)
+from database.tests.factories import PullFactory, UploadFactory
 from services.test_analytics.ta_finish_upload import FinisherResult, new_impl
 from services.yaml import UserYaml
 from tests.helpers import mock_all_plans_and_tiers
@@ -147,7 +144,7 @@ def test_ta_finish_upload(
             "cache_rollup": call(
                 "app.tasks.cache_rollup.CacheTestRollupsTask",
                 kwargs={
-                    "repoid": repo.repoid,
+                    "repo_id": repo.repoid,
                     "branch": commit.branch,
                     "impl_type": "new",
                 },

@@ -25,7 +25,7 @@ class CacheRollupTask(CodecovCronTask, name=cache_rollup_cron_task_name):
                 repo_branch.delete()
             else:
                 self.app.tasks[cache_test_rollups_task_name].s(
-                    repoid=repo.repoid,
+                    repo_id=repo.repoid,
                     branch=branch,
                     update_date=False,
                 ).apply_async()
