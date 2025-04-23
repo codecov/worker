@@ -94,7 +94,7 @@ class ProcessFlakesTask(BaseCodecovTask, name=process_flakes_task_name):
                             process_func(repo_id, commit_sha.decode())
 
         except LockError:
-            log.warning("Unable to acquire process flakeslock for key %s.", lock_name)
+            log.warning("Unable to acquire process flakes lock for key %s.", lock_name)
             return {"successful": False}
 
         return {"successful": True}
