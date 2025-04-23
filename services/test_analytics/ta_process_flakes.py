@@ -77,7 +77,6 @@ def handle_failure(
         curr_flakes[test_id] = new_flake
 
 
-@process_flakes_summary.labels("new").time()
 def process_flakes_for_commit(repo_id: int, commit_id: str):
     uploads = get_relevant_uploads(repo_id, commit_id)
 
@@ -116,7 +115,8 @@ def process_flakes_for_repo(repo_id: int):
         with redis_client.lock(lock_name, timeout=300, blocking_timeout=3):
             while commit_ids := redis_client.lpop(key_name, 10):
                 for commit_id in commit_ids:
-                    process_flakes_for_commit(repo_id, commit_id.decode())
+                    with process_flakes_summary.labels("new").time():
+                        process_flakes_for_commit(repo_id, commit_id.decode())
             return True
     except LockError:
         log.warning("Failed to acquire lock for repo %s", repo_id)
