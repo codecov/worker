@@ -39,7 +39,7 @@ def ta_processor_impl(
     if upload_id is None:
         return False
 
-    upload = ReportSession.objects.get(id=upload_id)
+    upload = ReportSession.objects.using("default").get(id=upload_id)
     if upload.state == "processed":
         # don't need to process again because the intermediate result should already be in redis
         return False

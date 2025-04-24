@@ -47,9 +47,11 @@ def get_ta_processing_info(
     commitid: str,
     commit_yaml: dict[str, Any],
 ) -> TAProcInfo:
-    repository = Repository.objects.get(repoid=repoid)
+    repository = Repository.objects.using("default").get(repoid=repoid)
 
-    commit = Commit.objects.get(repository=repository, commitid=commitid)
+    commit = Commit.objects.using("default").get(
+        repository=repository, commitid=commitid
+    )
     branch = commit.branch
 
     user_yaml: UserYaml = UserYaml(commit_yaml)
