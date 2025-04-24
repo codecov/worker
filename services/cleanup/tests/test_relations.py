@@ -26,9 +26,16 @@ def dump_delete_queries(queryset: QuerySet) -> str:
 
         for query in relation.querysets:
             compiler = query.query.chain(DeleteQuery).get_compiler(query.db)
-            sql, _params = compiler.as_sql()
+            sql, params = compiler.as_sql()
             sql = sqlparse.format(sql, reindent=True, keyword_case="upper")
             queries += sql + ";\n"
+            if params:
+                queries += "-- ["
+                for i, param in enumerate(params):
+                    if i:
+                        queries += ", "
+                    queries += str(param)
+                queries += "]\n"
 
     return queries
 

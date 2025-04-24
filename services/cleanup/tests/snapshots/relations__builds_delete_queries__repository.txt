@@ -2,36 +2,42 @@
 DELETE
 FROM "reports_testinstance"
 WHERE "reports_testinstance"."repoid" IN (%s);
+-- [123]
 
 
 -- DailyTestRollup
 DELETE
 FROM "reports_dailytestrollups"
 WHERE "reports_dailytestrollups"."repoid" IN (%s);
+-- [123]
 
 
 -- UserMeasurement
 DELETE
 FROM "user_measurements"
 WHERE "user_measurements"."repo_id" IN (%s);
+-- [123]
 
 
 -- CacheConfig
 DELETE
 FROM "bundle_analysis_cacheconfig"
 WHERE "bundle_analysis_cacheconfig"."repo_id" IN (%s);
+-- [123]
 
 
 -- RepositoryToken
 DELETE
 FROM "codecov_auth_repositorytoken"
 WHERE "codecov_auth_repositorytoken"."repoid" IN (%s);
+-- [123]
 
 
 -- Branch
 DELETE
 FROM "branches"
 WHERE "branches"."repoid" IN (%s);
+-- [123]
 
 
 -- FlagComparison
@@ -41,6 +47,7 @@ WHERE "compare_flagcomparison"."repositoryflag_id" IN
     (SELECT U0."id"
      FROM "reports_repositoryflag" U0
      WHERE U0."repository_id" IN (%s));
+-- [123]
 
 
 -- ComponentComparison
@@ -53,6 +60,7 @@ WHERE "compare_componentcomparison"."commit_comparison_id" IN
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 DELETE
 FROM "compare_componentcomparison"
 WHERE "compare_componentcomparison"."commit_comparison_id" IN
@@ -62,6 +70,7 @@ WHERE "compare_componentcomparison"."commit_comparison_id" IN
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 
 
 -- CommitNotification
@@ -71,6 +80,7 @@ WHERE "commit_notifications"."commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 
 
 -- CommitError
@@ -80,6 +90,7 @@ WHERE "core_commiterror"."commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 
 
 -- LabelAnalysisProcessingError
@@ -92,6 +103,7 @@ WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" I
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 DELETE
 FROM "labelanalysis_labelanalysisprocessingerror"
 WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" IN
@@ -101,6 +113,7 @@ WHERE "labelanalysis_labelanalysisprocessingerror"."label_analysis_request_id" I
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 
 
 -- ReportResults
@@ -113,6 +126,7 @@ WHERE "reports_reportresults"."report_id" IN
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 
 
 -- ReportLevelTotals
@@ -125,6 +139,7 @@ WHERE "reports_reportleveltotals"."report_id" IN
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 
 
 -- UploadError
@@ -140,6 +155,7 @@ WHERE "reports_uploaderror"."upload_id" IN
               (SELECT U0."id"
                FROM "commits" U0
                WHERE U0."repoid" IN (%s))));
+-- [123]
 
 
 -- UploadFlagMembership
@@ -149,6 +165,7 @@ WHERE "reports_uploadflagmembership"."flag_id" IN
     (SELECT U0."id"
      FROM "reports_repositoryflag" U0
      WHERE U0."repository_id" IN (%s));
+-- [123]
 
 
 -- UploadLevelTotals
@@ -164,6 +181,7 @@ WHERE "reports_uploadleveltotals"."upload_id" IN
               (SELECT U0."id"
                FROM "commits" U0
                WHERE U0."repoid" IN (%s))));
+-- [123]
 
 
 -- TestResultReportTotals
@@ -176,6 +194,7 @@ WHERE "reports_testresultreporttotals"."report_id" IN
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 
 
 -- StaticAnalysisSuiteFilepath
@@ -185,12 +204,14 @@ WHERE "staticanalysis_staticanalysissuitefilepath"."file_snapshot_id" IN
     (SELECT U0."id"
      FROM "staticanalysis_staticanalysissinglefilesnapshot" U0
      WHERE U0."repository_id" IN (%s));
+-- [123]
 
 
 -- Pull
 DELETE
 FROM "pulls"
 WHERE "pulls"."repoid" IN (%s);
+-- [123]
 
 
 -- TestFlagBridge
@@ -200,18 +221,21 @@ WHERE "reports_test_results_flag_bridge"."test_id" IN
     (SELECT U0."id"
      FROM "reports_test" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 
 
 -- Flake
 DELETE
 FROM "reports_flake"
 WHERE "reports_flake"."repoid" IN (%s);
+-- [123]
 
 
 -- LastCacheRollupDate
 DELETE
 FROM "reports_lastrollupdate"
 WHERE "reports_lastrollupdate"."repoid" IN (%s);
+-- [123]
 
 
 -- CommitComparison
@@ -221,12 +245,14 @@ WHERE "compare_commitcomparison"."base_commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 DELETE
 FROM "compare_commitcomparison"
 WHERE "compare_commitcomparison"."compare_commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 
 
 -- LabelAnalysisRequest
@@ -236,12 +262,14 @@ WHERE "labelanalysis_labelanalysisrequest"."base_commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 DELETE
 FROM "labelanalysis_labelanalysisrequest"
 WHERE "labelanalysis_labelanalysisrequest"."head_commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 
 
 -- ReportSession
@@ -254,6 +282,7 @@ WHERE "reports_upload"."report_id" IN
          (SELECT U0."id"
           FROM "commits" U0
           WHERE U0."repoid" IN (%s)));
+-- [123]
 
 
 -- StaticAnalysisSuite
@@ -263,30 +292,35 @@ WHERE "staticanalysis_staticanalysissuite"."commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 
 
 -- StaticAnalysisSingleFileSnapshot
 DELETE
 FROM "staticanalysis_staticanalysissinglefilesnapshot"
 WHERE "staticanalysis_staticanalysissinglefilesnapshot"."repository_id" IN (%s);
+-- [123]
 
 
 -- RepositoryFlag
 DELETE
 FROM "reports_repositoryflag"
 WHERE "reports_repositoryflag"."repository_id" IN (%s);
+-- [123]
 
 
 -- Test
 DELETE
 FROM "reports_test"
 WHERE "reports_test"."repoid" IN (%s);
+-- [123]
 
 
 -- ReducedError
 DELETE
 FROM "reports_reducederror"
 WHERE "reports_reducederror"."repoid" IN (%s);
+-- [123]
 
 
 -- CommitReport
@@ -296,15 +330,18 @@ WHERE "reports_commitreport"."commit_id" IN
     (SELECT U0."id"
      FROM "commits" U0
      WHERE U0."repoid" IN (%s));
+-- [123]
 
 
 -- Commit
 DELETE
 FROM "commits"
 WHERE "commits"."repoid" IN (%s);
+-- [123]
 
 
 -- Repository
 DELETE
 FROM "repos"
 WHERE "repos"."repoid" = %s;
+-- [123]
