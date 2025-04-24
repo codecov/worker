@@ -26,6 +26,7 @@ from services.test_analytics.ta_metrics import (
     read_failures_summary,
     read_tests_totals_summary,
 )
+from services.test_analytics.ta_process_flakes import KEY_NAME
 from services.test_results import (
     FinisherResult,
     FlakeInfo,
@@ -143,7 +144,7 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         commit: Commit,
         chain_result: bool,
         commit_yaml: UserYaml,
-        impl_type: Literal["old", "both", "new"],
+        impl_type: Literal["old", "both"],
     ) -> FinisherResult:
         repoid = repo.repoid
         commitid = commit.commitid
@@ -152,6 +153,8 @@ class TestResultsFinisherTask(BaseCodecovTask, name=test_results_finisher_task_n
         if should_do_flaky_detection(repo, commit_yaml):
             if commit.merged is True or commit.branch == repo.branch:
                 redis_client.lpush(NEW_KEY.format(repo.repoid), commit.commitid)
+                if impl_type == "both":
+                    redis_client.lpush(KEY_NAME.format(repo.repoid), commit.commitid)
                 self.app.tasks[process_flakes_task_name].apply_async(
                     kwargs=dict(
                         repo_id=repoid,
