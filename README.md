@@ -1,3 +1,7 @@
+# PHASED OUT
+
+This project has been moved to [the `apps/worker` folder in our `umbrella` repository](https://github.com/codecov/umbrella/tree/main/apps/worker). Please contribute there instead.
+
 # worker
 
 ![Actions](https://github.com/codecov/worker/actions/workflows/ci.yml/badge.svg)
