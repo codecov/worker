@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = "==3.13.*"
 resolution-markers = [
     "platform_python_implementation != 'PyPy'",
@@ -1720,7 +1719,7 @@ wheels = [
 [[package]]
 name = "shared"
 version = "0.1.0"
-source = { git = "https://github.com/codecov/shared?rev=d1eba3c39afbc652515fb0144788b408e5db777e#d1eba3c39afbc652515fb0144788b408e5db777e" }
+source = { git = "https://github.com/codecov/shared?rev=a47acf6a3a914e57e31d39ffed8ad60cad731638#a47acf6a3a914e57e31d39ffed8ad60cad731638" }
 dependencies = [
     { name = "amplitude-analytics" },
     { name = "boto3" },
@@ -2060,7 +2059,7 @@ requires-dist = [
     { name = "regex", specifier = ">=2023.12.25" },
     { name = "requests", specifier = ">=2.32.0" },
     { name = "sentry-sdk", specifier = ">=2.13.0" },
-    { name = "shared", git = "https://github.com/codecov/shared?rev=d1eba3c39afbc652515fb0144788b408e5db777e" },
+    { name = "shared", git = "https://github.com/codecov/shared?rev=a47acf6a3a914e57e31d39ffed8ad60cad731638" },
     { name = "sqlalchemy", specifier = "==1.3.*" },
     { name = "sqlparse", specifier = "==0.5.0" },
     { name = "statsd", specifier = ">=3.3.0" },
