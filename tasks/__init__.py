@@ -39,7 +39,6 @@ from tasks.preprocess_upload import preprocess_upload_task
 from tasks.process_flakes import process_flakes_task
 from tasks.regular_cleanup import regular_cleanup_task
 from tasks.save_commit_measurements import save_commit_measurements_task
-from tasks.save_report_results import save_report_results_task
 from tasks.send_email import send_email
 from tasks.static_analysis_suite_check import static_analysis_suite_check_task
 from tasks.status_set_error import status_set_error_task
