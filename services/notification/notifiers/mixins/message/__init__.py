@@ -8,6 +8,7 @@ from shared.reports.resources import ReportTotals
 
 from database.models.core import Owner
 from helpers.environment import is_enterprise
+from rollouts import DISABLE_CROSS_POLLINATION_MESSAGE
 from services.comparison import ComparisonProxy, FilteredComparison
 from services.notification.notifiers.mixins.message.helpers import (
     should_message_be_compact,
@@ -217,7 +218,9 @@ class MessageMixin(object):
         ).intersection(self.repository.languages or {}):
             extra_message.append(ba_message)
 
-        if extra_message:
+        if extra_message and not DISABLE_CROSS_POLLINATION_MESSAGE.check_value(
+            self.repository.ownerid
+        ):
             for i in [
                 "<details><summary> :rocket: New features to boost your workflow: </summary>",
                 "",
