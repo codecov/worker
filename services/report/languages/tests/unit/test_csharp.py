@@ -1,11 +1,11 @@
-import xml.etree.cElementTree as etree
+from lxml import etree
 
 from services.report.languages import csharp
 from test_utils.base import BaseTestCase
 
 from . import create_report_builder_session
 
-xml = """<?xml version="1.0" encoding="utf-8"?>
+xml = b"""<?xml version="1.0" encoding="utf-8"?>
 <CoverageSession xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Summary numSequencePoints="1803" visitedSequencePoints="1647" numBranchPoints="1155" visitedBranchPoints="1048" sequenceCoverage="91.35" branchCoverage="90.74" maxCyclomaticComplexity="32" minCyclomaticComplexity="1" />
   <Modules>

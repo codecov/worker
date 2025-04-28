@@ -1,4 +1,4 @@
-import xml.etree.cElementTree as etree
+from lxml import etree
 
 from services.report.languages import scoverage
 from test_utils.base import BaseTestCase

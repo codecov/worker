@@ -71,7 +71,9 @@ def from_xml(xml: Element, report_builder_session: ReportBuilderSession) -> None
             "`create_coverage_file` with pre-fixed path is infallible"
         )
 
-        for line in _class.iter("line"):
+        lines = next(_class.iterchildren("lines"), None)
+        lines = lines.iter("line") if lines else []
+        for line in lines:
             _line = line.attrib
             ln: str | int = _line["number"]
             if ln == "undefined":
