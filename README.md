@@ -15,6 +15,7 @@ Code for Background Workers of Codecov. This is built on top of the `celery` asy
 
 ## Quickstart
 
+
 ### Setting Virtual Env
 
 This repo is set up with `direnv`, which will automatically
