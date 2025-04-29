@@ -12,10 +12,8 @@ from helpers.match import match
 from helpers.metrics import metrics
 from services.comparison import ComparisonProxy
 from services.comparison.types import Comparison
-from services.notification.notifiers.base import (
-    AbstractBaseNotifier,
-    NotificationResult,
-)
+from services.notification.notifiers.base import (AbstractBaseNotifier,
+                                                  NotificationResult)
 from services.urls import get_commit_url, get_pull_url
 from services.yaml.reader import get_paths_from_flags, round_number
 
@@ -159,9 +157,9 @@ class StandardNotifier(AbstractBaseNotifier):
         head_full_commit = comparison.head
         base_full_commit = comparison.project_coverage_base
         if comparison.has_project_coverage_base_report():
-            difference = Decimal(head_full_commit.report.totals.coverage) - Decimal(
-                base_full_commit.report.totals.coverage
-            )
+            head_full_commit_coverage: int | None = head_full_commit.report.totals.coverage
+            base_full_commit_coverage: int | None = base_full_commit.report.totals.coverage
+            difference = Decimal(head_full_commit_coverage) - Decimal(base_full_commit_coverage)
             message = (
                 "no change"
                 if difference == 0
